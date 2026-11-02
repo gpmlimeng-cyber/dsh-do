@@ -41,6 +41,25 @@ jobs:
           done
           find /tmp/goldens -name '*.png' | wc -l
 
+      - name: Bundle them with a list of what changed
+        run: |
+          git diff --name-only app/test > /tmp/goldens/CHANGED.txt
+          git diff --stat app/test >> /tmp/goldens/CHANGED.txt
+          cat /tmp/goldens/CHANGED.txt
+          (cd /tmp/goldens && tar czf /tmp/goldens.tgz .)
+          ls -la /tmp/goldens.tgz
+
+      - name: Publish the bundle as a release asset
+        # Artifact downloads go through Azure, which the phone cannot reach;
+        # a release asset it can fetch with the same token it builds with.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="goldens-$(date -u +%Y%m%d-%H%M)-${GITHUB_SHA::7}"
+          gh release create "$tag" /tmp/goldens.tgz \
+            --title "Goldens ${GITHUB_SHA::7}" \
+            --notes "Regenerated golden screenshots from ${GITHUB_SHA}."
+
       - uses: actions/upload-artifact@v4
         with:
           name: goldens
