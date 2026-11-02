@@ -317,8 +317,13 @@ void main() {
       final sub = container.listen(botChatProvider('b2'), (_, _) {});
       addTearDown(sub.close);
       await settle();
-      await container.read(botChatProvider('b2').notifier).send('插一句', mode: 'steer');
-      expect(transport.calls.last.$2, {'sessionId': 'b2', 'text': '插一句', 'mode': 'steer'});
+      await container.read(botChatProvider('b2').notifier).send('插一句', mode: 'steer', quote: '上面那句');
+      expect(transport.calls.last.$2, {
+        'sessionId': 'b2',
+        'text': '插一句',
+        'mode': 'steer',
+        'quote': '上面那句',
+      });
       await container.read(botChatProvider('b2').notifier).send('排着');
       expect(transport.calls.last.$2, {'sessionId': 'b2', 'text': '排着'});
     });

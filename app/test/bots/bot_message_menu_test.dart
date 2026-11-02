@@ -14,8 +14,8 @@ void main() {
     await pumpFrames(tester, 4);
     expect(find.text('复制'), findsOneWidget);
     expect(find.text('分享'), findsOneWidget);
-    // 引用 / 重生成 / 编辑 belong to a conversation, not to this line.
-    expect(find.text('引用'), findsNothing);
+    // 引用 is offered now; 重生成 belongs to a conversation, not to this line.
+    expect(find.text('引用'), findsOneWidget);
     expect(find.text('重新生成'), findsNothing);
   });
 
@@ -43,11 +43,10 @@ void main() {
     await pumpFrames(tester, 4);
     expect(find.text('复制'), findsOneWidget);
     expect(find.text('分享'), findsOneWidget);
-    // 群聊不是会话：选择文字、引用这些都不该出现。
+    // 群聊不是会话：选择文字不该出现；引用现在是有的。
     expect(find.text('选择文字'), findsNothing);
-    expect(find.text('引用'), findsNothing);
+    expect(find.text('引用'), findsOneWidget);
   });
-}
 
   testWidgets('a file-only group line has no menu at all', (tester) async {
     await tester.pumpWidget(

@@ -684,6 +684,7 @@ class BotReplyText extends StatelessWidget {
     required this.text,
     this.streaming = false,
     this.actions = const [MessageAction.copy, MessageAction.selectText, MessageAction.share],
+    this.onQuote,
   });
 
   final String text;
@@ -693,12 +694,15 @@ class BotReplyText extends StatelessWidget {
   /// selecting text is the chat's own reading tool.
   final List<MessageAction> actions;
 
+  /// 引用: puts this line above the composer. Null where引用 does not apply.
+  final ValueChanged<String>? onQuote;
+
   Future<void> _menu(BuildContext context) async {
     if (actions.isEmpty) return;
     final action = await showMessageMenu(
       context,
       text: text,
-      actions: actions,
+      actions: [...actions, if (onQuote != null) MessageAction.quote],
     );
     if (!context.mounted || action == null) return;
     switch (action) {
@@ -708,10 +712,9 @@ class BotReplyText extends StatelessWidget {
         await showSelectTextSheet(context, text, markdown: true);
       case MessageAction.share:
         await shareText(context, text);
-      case MessageAction.edit ||
-          MessageAction.quote ||
-          MessageAction.regenerate ||
-          MessageAction.branch:
+      case MessageAction.quote:
+        onQuote?.call(text);
+      case MessageAction.edit || MessageAction.regenerate || MessageAction.branch:
         break;
     }
   }
@@ -740,6 +743,7 @@ class GroupMessage extends StatelessWidget {
     this.admin = false,
     this.onOpenBot,
     this.onShowAll,
+    this.onQuote,
   });
 
   final DsBotItem item;
@@ -752,6 +756,9 @@ class GroupMessage extends StatelessWidget {
 
   /// A long post sent as a file: reads it whole.
   final VoidCallback? onShowAll;
+
+  /// 引用 on a group line (not offered on a line with no text).
+  final ValueChanged<String>? onQuote;
 
   static const face = 28.0;
   static const gap = 10.0;
@@ -799,6 +806,7 @@ class GroupMessage extends StatelessWidget {
           // One menu, not two: the inner one wins the gesture arena anyway.
           // A file-only line has no text worth copying or sharing.
           actions: item.text.trim().isEmpty ? const [] : const [MessageAction.copy, MessageAction.share],
+          onQuote: onQuote,
         ),
         if (onShowAll != null)
           TextButton(
@@ -908,11 +916,11 @@ class BotModelChip extends StatelessWidget {
 
 /// 复制 / 分享 for a line outside a conversation (a Bot's or a group's): the
 /// only two actions that make sense without the chat's own semantics.
-Future<void> botLineMenu(BuildContext context, String text) async {
+Future<void> botLineMenu(BuildContext context, String text, {ValueChanged<String>? onQuote}) async {
   final action = await showMessageMenu(
     context,
     text: text,
-    actions: const [MessageAction.copy, MessageAction.share],
+    actions: [MessageAction.copy, if (onQuote != null) MessageAction.quote, MessageAction.share],
   );
   if (!context.mounted || action == null) return;
   switch (action) {
@@ -920,6 +928,8 @@ Future<void> botLineMenu(BuildContext context, String text) async {
       await copyMessage(context, text);
     case MessageAction.share:
       await shareText(context, text);
+    case MessageAction.quote:
+      onQuote?.call(text);
     default:
       break;
   }
@@ -928,7 +938,14 @@ Future<void> botLineMenu(BuildContext context, String text) async {
 /// The person's message: its pictures and files above, its text in the bubble.
 /// A line that carries only attachments has no bubble at all.
 class BotUserMessage extends StatelessWidget {
-  const BotUserMessage({super.key, required this.text, this.pending = false, this.images = 0, this.attachments});
+  const BotUserMessage({
+    super.key,
+    required this.text,
+    this.pending = false,
+    this.images = 0,
+    this.attachments,
+    this.onQuote,
+  });
 
 
   final String text;
@@ -941,6 +958,9 @@ class BotUserMessage extends StatelessWidget {
   /// [SentAttachments] for the line's pictures and files, or null.
   final Widget? attachments;
 
+  /// 引用: this line goes above the composer.
+  final ValueChanged<String>? onQuote;
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -949,7 +969,7 @@ class BotUserMessage extends StatelessWidget {
     return Align(
       alignment: Alignment.centerRight,
       child: GestureDetector(
-        onLongPress: pending || text.trim().isEmpty ? null : () => botLineMenu(context, text),
+        onLongPress: pending || text.trim().isEmpty ? null : () => botLineMenu(context, text, onQuote: onQuote),
         child: UserBubble(
           text: shown,
           attachments: attachments,

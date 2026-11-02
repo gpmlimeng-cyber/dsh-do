@@ -1483,6 +1483,10 @@ class DsBotApi {
     /// `queue` waits for it to end. Anything else is the host's default
     /// (`queue`), which is also what a host without this field does.
     String? mode,
+
+    /// The passage this message answers, as plain text. The host builds the
+    /// quoted body; the app never pastes it into the message itself.
+    String? quote,
   }) =>
       call('send', {
         'sessionId': conversationId,
@@ -1490,6 +1494,7 @@ class DsBotApi {
         if (images.isNotEmpty) 'images': [for (final image in images) image.toJson()],
         if (fileReceiptIds.isNotEmpty) 'fileReceiptIds': fileReceiptIds,
         if (mode != null) 'mode': mode,
+        if (quote != null && quote.trim().isNotEmpty) 'quote': quote.trim(),
       }, const Duration(seconds: 40));
 
   /// Reads the Host's bounded preview, retaining its completeness metadata.

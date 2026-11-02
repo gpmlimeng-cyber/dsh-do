@@ -25,6 +25,7 @@ import 'package:dsh_app/ui/workspace/workspace_switcher.dart';
 import 'package:dsh_client/dsh_client.dart' show SessionSummary;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

@@ -19,6 +19,7 @@ import '../../state/voice_state.dart';
 import '../../state/chat_state.dart' show SendMode;
 import '../chat/voice/voice_controller.dart';
 import '../chat/widgets/attachments.dart';
+import '../chat/widgets/quote_chip.dart' show ComposerTrayStack, QuoteChip;
 import '../chat/model_sheet.dart';
 import '../chat/widgets/approval_card.dart';
 import '../common/status_dot.dart';
@@ -59,6 +60,8 @@ class _BotChatPageState extends ConsumerState<BotChatPage> {
   late final DsBotViewingController _viewing;
   /// Picked but unsent: shown above the composer, cleared when the send lands.
   List<DraftAttachment> _drafts = const [];
+  /// 引用 for the next message only; the host builds the quoted body.
+  String? _quote;
   late final VoiceInputController _voice;
   late final VoiceInputActiveController _voiceFlag;
 
@@ -104,6 +107,7 @@ class _BotChatPageState extends ConsumerState<BotChatPage> {
     final status = ref.read(dsBotProvider);
     if (!status.ready || status.team?.bot(widget.botId)?.sessionId != part) return;
     final attachments = _drafts;
+    final quote = _quote;
     final messenger = ScaffoldMessenger.maybeOf(context);
     await sendBotDraft(
       context,
@@ -113,7 +117,11 @@ class _BotChatPageState extends ConsumerState<BotChatPage> {
       hasAttachments: attachments.isNotEmpty,
       send: (text) async {
         final controller = ref.read(botChatProvider(widget.botId).notifier);
-        if (attachments.isEmpty) return controller.send(text, mode: botSendMode(mode));
+        if (attachments.isEmpty) {
+          final sent = await controller.send(text, mode: botSendMode(mode), quote: quote);
+          if (sent && mounted) setState(() => _quote = null);
+          return sent;
+        }
         final client = ref.read(activeConnectionProvider).value?.client;
         if (client == null) return false;
         try {
@@ -123,8 +131,14 @@ class _BotChatPageState extends ConsumerState<BotChatPage> {
             images: staged.images,
             fileReceiptIds: staged.receipts,
             mode: botSendMode(mode),
+            quote: quote,
           );
-          if (sent && mounted) setState(() => _drafts = const []);
+          if (sent && mounted) {
+            setState(() {
+              _drafts = const [];
+              _quote = null;
+            });
+          }
           return sent;
         } catch (error) {
           if (mounted) messenger?.showSnackBar(SnackBar(content: Text(describeDsBotError(error))));
@@ -145,6 +159,12 @@ class _BotChatPageState extends ConsumerState<BotChatPage> {
       stop: () => _stopGuard.action(botId: bot.id)(),
       send: (mode) => _send(target, bot.sessionId, mode: mode),
     );
+  }
+
+  void _setQuote(String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return;
+    setState(() => _quote = trimmed.length > 2000 ? trimmed.substring(0, 2000) : trimmed);
   }
 
   /// Opens the ＋ panel; the pick joins the tray above the composer.
@@ -269,8 +289,20 @@ class _BotChatPageState extends ConsumerState<BotChatPage> {
                       text: item.text,
                       images: item.images,
                       attachments: botLineAttachments(item, chat.sessionId),
+                      onQuote: _setQuote,
                     ),
-                    DsBotItemKind.bot => BotReplyText(text: item.text),
+                    DsBotItemKind.bot => Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // A Bot's own attachments draw like the person's do;
+                        // the pictures among them open full screen already.
+                        if (botLineAttachments(item, chat.sessionId) case final shown?) ...[
+                          shown,
+                          const SizedBox(height: 6),
+                        ],
+                        BotReplyText(text: item.text, onQuote: _setQuote),
+                      ],
+                    ),
                     DsBotItemKind.event => BotEventLine(
                       text: chatEventText(item, roomName: rooms[item.roomId]),
                       icon: AppIcons.swap,
@@ -328,12 +360,15 @@ class _BotChatPageState extends ConsumerState<BotChatPage> {
           leading: (status.hello?.api ?? 0) >= 2
               ? AttachButton(key: const ValueKey('attach-key'), onPressed: api == null || readOnly ? null : _attach)
               : null,
-          tray: _drafts.isEmpty
-              ? null
-              : ComposerTray(
-                  items: _drafts,
-                  onRemove: (gone) => setState(() => _drafts = [for (final draft in _drafts) if (draft != gone) draft]),
-                ),
+          tray: ComposerTrayStack.maybe(
+            quote: _quote == null ? null : QuoteChip(quote: _quote!, onRemove: () => setState(() => _quote = null)),
+            attachments: _drafts.isEmpty
+                ? null
+                : ComposerTray(
+                    items: _drafts,
+                    onRemove: (gone) => setState(() => _drafts = [for (final draft in _drafts) if (draft != gone) draft]),
+                  ),
+          ),
           hasAttachments: _drafts.isNotEmpty,
           running: ownTurn,
           onSend: () => _send(sendTarget, bot.sessionId),
