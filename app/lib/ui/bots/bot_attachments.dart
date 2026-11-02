@@ -24,6 +24,8 @@ Future<List<DraftAttachment>?> pickBotAttachments(
 }) async {
   final choice = await showPlusPanel(context, files: files);
   if (choice is! AttachChoice) return null;
+  // The panel was a page: the caller may be gone by the time it closes.
+  if (!context.mounted) return null;
   final picker = ref.read(attachmentPickerProvider);
   final messenger = ScaffoldMessenger.maybeOf(context);
   final PickedAttachments picked;
