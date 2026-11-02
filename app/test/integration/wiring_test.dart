@@ -19,7 +19,6 @@ import 'package:dsh_app/state/sessions_state.dart';
 import 'package:dsh_app/state/workspace_state.dart';
 import 'package:dsh_app/state/workspaces_state.dart';
 import 'package:dsh_app/ui/bots/bot_chat_page.dart';
-import 'package:dsh_app/ui/shell/drawer/session_tile.dart';
 import 'package:dsh_app/ui/chat/chat_screen.dart';
 import 'package:dsh_app/ui/chat/composer.dart';
 import 'package:dsh_app/ui/chat/empty_state.dart' show chatClock;
