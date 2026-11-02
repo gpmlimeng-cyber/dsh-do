@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
 import '../../state/attachments.dart';
+import '../chat/widgets/attachments.dart';
 import '../chat/widgets/plus_panel.dart';
 
 /// Opens the ＋ panel and returns what it picked; null when cancelled.
@@ -79,4 +80,23 @@ Future<({List<PromptImage> images, List<String> receipts})> stageBotAttachments(
     }
   }
   return (images: images, receipts: receipts);
+}
+
+/// The attachments a line carries, as the chat's own row of pictures and file
+/// cards. Null when the host only counted them (nothing to fetch by) or the
+/// conversation's Session is not known yet.
+Widget? botLineAttachments(DsBotItem item, String? sessionId) {
+  if (sessionId == null || item.files.isEmpty) return null;
+  final images = [
+    for (final file in item.files)
+      if (file.isImage) ImageAttachment(attachmentId: file.id, mediaType: file.mediaType ?? 'image', name: file.name),
+  ];
+  final files = [
+    for (final file in item.files)
+      if (!file.isImage) FileAttachment(attachmentId: file.id, name: file.name),
+  ];
+  if (images.isEmpty && files.isEmpty) return null;
+  // File cards label themselves from the file name: the host has no media type
+  // for a file, so the extension is the only hint there is.
+  return SentAttachments.echoed(sessionId: sessionId, images: images, files: files);
 }

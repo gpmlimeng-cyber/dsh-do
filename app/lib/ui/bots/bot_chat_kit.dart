@@ -650,21 +650,33 @@ class BotTypingLine extends StatelessWidget {
   }
 }
 
-/// The person's message.
+/// The person's message: its pictures and files above, its text in the bubble.
+/// A line that carries only attachments has no bubble at all.
 class BotUserMessage extends StatelessWidget {
-  const BotUserMessage({super.key, required this.text, this.pending = false, this.images = 0});
+  const BotUserMessage({super.key, required this.text, this.pending = false, this.images = 0, this.attachments});
 
   final String text;
   final bool pending;
+
+  /// How many images the line carries when the host only counted them; that is
+  /// all an older host says, so the line says so instead of drawing nothing.
   final int images;
+
+  /// [SentAttachments] for the line's pictures and files, or null.
+  final Widget? attachments;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final shown = images > 0 && text.isEmpty ? l10n.botsImagePlaceholder : text;
+    final shown = text.isEmpty && attachments == null && images > 0 ? l10n.botsImagePlaceholder : text;
+    if (shown.isEmpty && attachments == null) return const SizedBox.shrink();
     return Align(
       alignment: Alignment.centerRight,
-      child: UserBubble(text: shown, pendingLabel: pending ? l10n.botsSending : null),
+      child: UserBubble(
+        text: shown,
+        attachments: attachments,
+        pendingLabel: pending ? l10n.botsSending : null,
+      ),
     );
   }
 }

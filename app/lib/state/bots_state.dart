@@ -29,6 +29,10 @@ final dsBotApiFactoryProvider = Provider<DsBotApi? Function(HostConnection conne
 /// The npm package the app installs.
 const dsBotPackage = 'ds-bot';
 
+/// Where it comes from: this fork, which carries the mobile API the app talks
+/// to. The npm release does not have it yet.
+const dsBotSpec = 'github:gpmlimeng-cyber/dsh-bot';
+
 enum DsBotAvailability {
   /// No host connected.
   offline,

@@ -97,8 +97,6 @@ android {
                 storePassword = keyProps.getProperty("storePassword")
                 keyAlias = keyProps.getProperty("keyAlias")
                 keyPassword = keyProps.getProperty("keyPassword")
-                // A .p12 from openssl; absent means the JKS default.
-                storeType = keyProps.getProperty("storeType")
                 // All three schemes: AGP drops v1 for minSdk 24+, but some installers and
                 // security scanners on Chinese ROMs still read the JAR signature.
                 enableV1Signing = true

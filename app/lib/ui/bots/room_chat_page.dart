@@ -271,7 +271,11 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
                   BotStreamingRow() => const SizedBox.shrink(),
                   BotTypingRow(:final bot, :final label) => BotTypingLine(bot: bot, label: label),
                   BotItemRow(:final item, :final continued) => switch (item.kind) {
-                    DsBotItemKind.user => BotUserMessage(text: item.text, images: item.images),
+                    DsBotItemKind.user => BotUserMessage(
+                      text: item.text,
+                      images: item.images,
+                      attachments: botLineAttachments(item, widget.roomId),
+                    ),
                     DsBotItemKind.bot => GroupMessage(
                       item: item,
                       bot: team.bot(item.botId),

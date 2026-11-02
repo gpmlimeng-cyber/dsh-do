@@ -835,6 +835,27 @@ class DsBotFileText {
 enum DsBotItemKind { user, bot, event, answer, divider, unknown }
 
 /// One entry of a chat or a group chat, ready to draw.
+/// One attachment a line carries: enough to fetch an image by id, and to name
+/// a file. Files have no media type on the host; the name's extension is all.
+class DsBotAttachmentRef {
+  const DsBotAttachmentRef({required this.id, this.name, this.mediaType});
+
+  factory DsBotAttachmentRef.fromJson(Object? json) {
+    final map = asMapOrEmpty(json);
+    return DsBotAttachmentRef(
+      id: asString(map['id']) ?? '',
+      name: asString(map['name']),
+      mediaType: asString(map['mediaType']),
+    );
+  }
+
+  final String id;
+  final String? name;
+  final String? mediaType;
+
+  bool get isImage => mediaType?.startsWith('image/') ?? false;
+}
+
 class DsBotItem {
   const DsBotItem({
     required this.kind,
@@ -849,6 +870,7 @@ class DsBotItem {
     this.role,
     this.roomId,
     this.images = 0,
+    this.files = const [],
     this.duration,
     this.live = false,
     this.whole,
@@ -877,6 +899,7 @@ class DsBotItem {
       role: asString(map['role']),
       roomId: asString(map['roomId']),
       images: asInt(map['images']) ?? 0,
+      files: [for (final file in asListOrEmpty(map['files'])) DsBotAttachmentRef.fromJson(file)],
       duration: asInt(map['duration']) == null ? null : Duration(milliseconds: asInt(map['duration'])!),
       live: asBool(map['live']) ?? false,
       whole: whole == null ? null : DsBotLongText(asInt(whole['length']) ?? 0, asMapOrEmpty(whole['file'])),
@@ -904,6 +927,9 @@ class DsBotItem {
   final String? role;
   final String? roomId;
   final int images;
+
+  /// The attachments themselves, when the host names them.
+  final List<DsBotAttachmentRef> files;
   final Duration? duration;
 
   /// Said in the round still running; replaced by the logged one later.

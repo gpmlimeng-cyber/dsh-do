@@ -21,9 +21,6 @@ import '../../../state/workspaces_state.dart';
 import 'folder_sheets.dart';
 import '../session_search_page.dart' show showSessionSearch;
 import 'archive_notice.dart';
-import '../../bots/new_bot_page.dart';
-import '../../bots/new_room_sheet.dart';
-import '../../../state/bots_state.dart';
 import '../../common/brief_notice.dart';
 
 void _toast(ScaffoldMessengerState? messenger, String text, {String? undoLabel, VoidCallback? onUndo}) {
@@ -43,16 +40,6 @@ Future<void> openDrawerViewOptions(BuildContext context, WidgetRef ref, {VoidCal
   final action = await showDrawerViewSheet(context);
   if (!context.mounted || action == null) return;
   switch (action) {
-    case DrawerViewAction.newBot:
-      await Navigator.of(context).push(NewBotPage.route());
-    case DrawerViewAction.newRoom:
-      // A group needs two Bots to have members to choose from.
-      final team = ref.read(dsBotProvider).team;
-      if (team == null || team.bots.length < 2) {
-        _toast(ScaffoldMessenger.maybeOf(context), appL10n.botsPickTwoBots);
-        return;
-      }
-      await showNewRoomSheet(context);
     case DrawerViewAction.archived:
       final sessionId = await showSessionSearch(context, archivedOnly: true);
       if (sessionId == null || !context.mounted) return;

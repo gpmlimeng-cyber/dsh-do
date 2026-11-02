@@ -202,7 +202,11 @@ class _BotChatPageState extends ConsumerState<BotChatPage> {
                         : BotReplyText(text: text, streaming: true),
                   BotTypingRow() => const SizedBox.shrink(),
                   BotItemRow(:final item) => switch (item.kind) {
-                    DsBotItemKind.user => BotUserMessage(text: item.text, images: item.images),
+                    DsBotItemKind.user => BotUserMessage(
+                      text: item.text,
+                      images: item.images,
+                      attachments: botLineAttachments(item, chat.sessionId),
+                    ),
                     DsBotItemKind.bot => BotReplyText(text: item.text),
                     DsBotItemKind.event => BotEventLine(
                       text: chatEventText(item, roomName: rooms[item.roomId]),

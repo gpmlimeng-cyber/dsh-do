@@ -13,6 +13,7 @@ import '../../state/sessions_state.dart';
 import '../common/app_sheet.dart';
 import '../common/empty_view.dart';
 import '../common/fade_in.dart';
+import '../common/pressable.dart';
 import '../common/side_insets.dart';
 import '../common/status_dot.dart';
 import '../theme/app_icons.dart';
@@ -22,13 +23,12 @@ import 'sessions_drawer.dart' show sessionSelectionColor, sessionTitle;
 
 /// "搜索对话" at the top of the sessions drawer. Opens [SessionSearchPage];
 /// picking a result opens that conversation and closes the drawer.
-/// The drawer's search key: a 40dp round button beside 新对话. It opens the
-/// search page; the row of text it used to take is gone.
 class SessionSearchBar extends ConsumerWidget {
-  const SessionSearchBar({super.key, required this.onClose});
+  const SessionSearchBar({super.key, required this.onClose, this.padding = const EdgeInsets.fromLTRB(10, 2, 10, 6)});
 
   /// Closes the drawer.
   final VoidCallback onClose;
+  final EdgeInsetsGeometry padding;
 
   Future<void> _open(BuildContext context, WidgetRef ref) async {
     final sessionId = await showSessionSearch(context);
@@ -40,22 +40,38 @@ class SessionSearchBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
-    final scheme = Theme.of(context).colorScheme;
-    return Semantics(
-      button: true,
-      label: l10n.shellSearchChats,
-      excludeSemantics: true,
-      child: Tooltip(
-        message: l10n.shellSearchChats,
-        child: InkResponse(
-          onTap: () => _open(context, ref),
-          radius: 22,
-          child: Container(
-            key: const ValueKey('drawer-search-key'),
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(color: scheme.onSurface.withValues(alpha: 0.06), shape: BoxShape.circle),
-            child: Icon(AppIcons.search, size: 22, color: scheme.onSurface),
+    final theme = Theme.of(context);
+    final tertiary = DshColors.of(context).textTertiary;
+    return Padding(
+      padding: padding,
+      child: Semantics(
+        button: true,
+        label: l10n.shellSearchChats,
+        onTap: () => _open(context, ref),
+        excludeSemantics: true,
+        child: Pressable(
+          child: GlassSurface(
+            tier: GlassTier.pill,
+            stadium: true,
+            onTap: () => _open(context, ref),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 40),
+              child: Row(
+                children: [
+                  Icon(AppIcons.search, size: 20, color: tertiary),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      l10n.shellSearchChats,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium?.copyWith(color: tertiary),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),

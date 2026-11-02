@@ -20,7 +20,7 @@ const _groupMargin = EdgeInsets.fromLTRB(SheetTitleBar.inset, 0, SheetTitleBar.i
 
 // ── 对话列表 ─────────────────────────────────────────────────────────────────
 
-enum DrawerViewAction { newBot, newRoom, newFolder, manageFolders, select, archived }
+enum DrawerViewAction { newFolder, manageFolders, select, archived }
 
 /// Sort (applies at once), then 新建文件夹 / 管理文件夹 / 多选.
 Future<DrawerViewAction?> showDrawerViewSheet(BuildContext context) =>
@@ -59,20 +59,6 @@ class DrawerViewSheet extends ConsumerWidget {
           SheetGroup(
             margin: _groupMargin,
             children: [
-              // The drawer no longer has a DS Bot row to fold into, so the two
-              // creation entries live here.
-              ListPageRow(
-                icon: AppIcons.bot,
-                title: l10n.botsNewBot,
-                chevron: false,
-                onTap: () => Navigator.of(context).pop(DrawerViewAction.newBot),
-              ),
-              ListPageRow(
-                icon: AppIcons.newGroupChat,
-                title: l10n.botsNewGroup,
-                chevron: false,
-                onTap: () => Navigator.of(context).pop(DrawerViewAction.newRoom),
-              ),
               ListPageRow(
                 icon: AppIcons.newFolder,
                 title: l10n.shellNewFolder,

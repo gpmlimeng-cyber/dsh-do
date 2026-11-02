@@ -36,7 +36,7 @@ class DsBotInstallCard extends ConsumerWidget {
     final hub = ref.read(dsBotProvider.notifier);
     final job = await runPluginInstall(
       context,
-      PluginInstallRequest(name: dsBotPackage, spec: dsBotPackage, title: 'DS Bot', replaceInstalled: _update),
+      PluginInstallRequest(name: dsBotPackage, spec: dsBotSpec, title: 'DS Bot', replaceInstalled: _update),
     );
     if (job.phase == PluginInstallPhase.succeeded && !job.needsRestart) hub.retry();
   }
