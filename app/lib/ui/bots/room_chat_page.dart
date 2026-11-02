@@ -14,6 +14,7 @@ import '../../state/attachments.dart';
 import '../../state/bots_state.dart';
 import '../../state/connection_state.dart';
 import '../chat/composer.dart';
+import '../chat/voice/voice_controller.dart';
 import '../chat/widgets/attachments.dart';
 import '../chat/widgets/chat_card.dart';
 import '../common/status_dot.dart';
@@ -25,6 +26,7 @@ import '../shell/drawer/drawer_open_request.dart';
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
 import 'bot_attachments.dart';
+import 'bot_composer_deck.dart';
 import 'bot_draft_send.dart';
 import 'bot_avatar.dart';
 import 'unavailable_message.dart';
@@ -60,11 +62,13 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
   late final BotMentionController _mentions = BotMentionController(input: _input);
   /// Picked but unsent: shown above the composer, cleared when the send lands.
   List<DraftAttachment> _drafts = const [];
+  late final VoiceInputController _voice;
 
   @override
   void initState() {
     super.initState();
     _stopGuard = BotStopGuard(ref);
+    _voice = createBotVoice(ref, _input, alive: () => mounted);
     _viewing = ref.read(dsBotViewingProvider.notifier);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _viewing.set(widget.roomId);
@@ -73,6 +77,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
 
   @override
   void dispose() {
+    _voice.dispose();
     _stopGuard.dispose();
     _viewing.leave(widget.roomId);
     _mentions.dispose();
@@ -371,8 +376,12 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
           error: chat.error,
           onDismiss: () => ref.read(roomChatProvider(widget.roomId).notifier).dismissError(),
         ),
+        // A group has no single conversation behind it: the todo, goal and
+        // permission parts stay off; the activity and plugin strips still apply.
+        BotComposerDeck(sessionId: widget.roomId, running: chat.running, showSessionBars: false),
         Composer(
           hardwareEnterSends: ref.watch(settingsProvider.select((s) => s.hardwareEnterSends)),
+          voice: _voice,
           controller: _input,
           placeholder: l10n.botsGroupComposerHint,
           focusNode: _focus,

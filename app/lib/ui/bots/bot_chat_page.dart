@@ -14,6 +14,7 @@ import '../../state/attachments.dart';
 import '../../state/bots_state.dart';
 import '../../state/connection_state.dart';
 import '../chat/composer.dart';
+import '../chat/voice/voice_controller.dart';
 import '../chat/widgets/attachments.dart';
 import '../chat/model_sheet.dart';
 import '../chat/widgets/approval_card.dart';
@@ -27,6 +28,7 @@ import '../shell/drawer/drawer_open_request.dart';
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
 import 'bot_attachments.dart';
+import 'bot_composer_deck.dart';
 import 'bot_draft_send.dart';
 import 'bot_avatar.dart';
 import 'unavailable_message.dart';
@@ -54,11 +56,13 @@ class _BotChatPageState extends ConsumerState<BotChatPage> {
   late final DsBotViewingController _viewing;
   /// Picked but unsent: shown above the composer, cleared when the send lands.
   List<DraftAttachment> _drafts = const [];
+  late final VoiceInputController _voice;
 
   @override
   void initState() {
     super.initState();
     _stopGuard = BotStopGuard(ref);
+    _voice = createBotVoice(ref, _input, alive: () => mounted);
     _viewing = ref.read(dsBotViewingProvider.notifier);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _viewing.set(widget.botId);
@@ -67,6 +71,7 @@ class _BotChatPageState extends ConsumerState<BotChatPage> {
 
   @override
   void dispose() {
+    _voice.dispose();
     _stopGuard.dispose();
     _viewing.leave(widget.botId);
     _input.dispose();
@@ -254,11 +259,16 @@ class _BotChatPageState extends ConsumerState<BotChatPage> {
           error: chat.error,
           onDismiss: () => ref.read(botChatProvider(widget.botId).notifier).dismissError(),
         ),
+        BotComposerDeck(sessionId: bot.sessionId, running: ownTurn),
         Composer(
           hardwareEnterSends: ref.watch(settingsProvider.select((s) => s.hardwareEnterSends)),
           controller: _input,
           focusNode: _focus,
           connected: api != null && !readOnly,
+          voice: _voice,
+          accessory: BotContextRing(sessionId: bot.sessionId, model: botModelSelection(bot)),
+          waiting: question != null || view != null,
+          waitHint: question != null ? l10n.commonWaitingAnswer : null,
           // A host that speaks API 2 is the one that takes attachments on `send`.
           leading: (status.hello?.api ?? 0) >= 2
               ? AttachButton(key: const ValueKey('attach-key'), onPressed: api == null || readOnly ? null : _attach)
