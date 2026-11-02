@@ -162,7 +162,9 @@ class SessionsDrawer extends ConsumerWidget {
                       ),
                     ),
                     // 网页模式, quietly: the one solid element stays 新对话.
+                    // The three keys sit 8 apart, evenly.
                     const WebModeKey(),
+                    const SizedBox(width: 8),
                     SessionSearchBar(onClose: onClose),
                     const SizedBox(width: 8),
                     NewChatButton(onTap: newChat),

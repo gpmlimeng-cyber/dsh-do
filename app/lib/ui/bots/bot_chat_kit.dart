@@ -45,6 +45,7 @@ class BotChatHeader extends StatelessWidget {
     required this.status,
     required this.tone,
     required this.onDetails,
+    this.onLeading,
     this.scrolledUnder,
   });
 
@@ -53,6 +54,9 @@ class BotChatHeader extends StatelessWidget {
   final String status;
   final StatusTone tone;
   final VoidCallback onDetails;
+
+  /// What the header's first key does; the default steps back.
+  final VoidCallback? onLeading;
   final ValueNotifier<double>? scrolledUnder;
 
   static const barHeight = 56.0;
@@ -101,9 +105,9 @@ class BotChatHeader extends StatelessWidget {
                 children: [
                   _RoundKey(
                     key: const ValueKey('bot-back'),
-                    icon: AppIcons.back,
-                    tooltip: l10n.commonBack,
-                    onTap: () => Navigator.of(context).maybePop(),
+                    icon: onLeading == null ? AppIcons.back : AppIcons.menu,
+                    tooltip: onLeading == null ? l10n.commonBack : l10n.chatChats,
+                    onTap: onLeading ?? () => Navigator.of(context).maybePop(),
                   ),
                   const SizedBox(width: 8),
                   Expanded(

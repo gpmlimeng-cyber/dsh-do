@@ -15,6 +15,7 @@ import 'package:dsh_app/ui/shell/brand_mark.dart';
 import 'package:dsh_app/ui/shell/home_shell.dart';
 import 'package:dsh_app/ui/shell/page_frame.dart';
 import 'package:dsh_app/ui/shell/session_search_page.dart';
+import 'package:dsh_app/ui/web/mode_home.dart' show WebModeKey;
 import 'package:dsh_app/ui/shell/sessions_drawer.dart';
 import 'package:dsh_app/ui/theme/app_icons.dart';
 import 'package:dsh_app/ui/theme/theme.dart';
@@ -56,6 +57,7 @@ void main() {
       final lockup = tester.getRect(find.byType(BrandLockup));
       final newChat = tester.getRect(find.byType(NewChatButton));
       final search = tester.getRect(find.byKey(const ValueKey('drawer-search-key')));
+      final webMode = tester.getRect(find.byType(WebModeKey));
       final tile = tester.getRect(find.byType(SessionTile).first);
       final title = tester.getRect(find.text('修复登录按钮重复提交'));
 
@@ -64,8 +66,10 @@ void main() {
       expect(tile.left - drawer.left, _near(10));
       expect(drawer.right - tile.right, _near(10));
       // The search key sits between 网页模式 and 新对话 on the same line.
-      expect(search.size, const Size(40, 40));
+      // The same key as 网页模式, and the three sit 8 apart.
+      expect(search.size, const Size(36, 36));
       expect(search.center.dy, _near(lockup.center.dy));
+      expect(search.left - webMode.right, _near(8));
       expect(newChat.left - search.right, _near(8));
       expect(drawer.right - newChat.right, _near(10));
       // The pill and the lockup share a centre line.

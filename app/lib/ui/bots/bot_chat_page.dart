@@ -23,6 +23,7 @@ import '../features/feature_kit.dart';
 import '../shell/page_frame.dart';
 import 'bot_stop_guard.dart';
 import 'bot_action_scope.dart';
+import '../shell/drawer/drawer_open_request.dart';
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
 import 'bot_attachments.dart';
@@ -121,6 +122,8 @@ class _BotChatPageState extends ConsumerState<BotChatPage> {
       ref,
       files: client?.supportsEndpoint('fileUploads/upload') ?? true,
       limit: room,
+      // 本对话 (permissions, plan mode) acts on the session behind this Bot.
+      sessionId: sessionId,
     );
     if (!mounted || picked == null || picked.isEmpty) return;
     setState(() => _drafts = [..._drafts, ...picked]);
@@ -176,6 +179,7 @@ class _BotChatPageState extends ConsumerState<BotChatPage> {
         status: label,
         tone: tone,
         scrolledUnder: _scrolled,
+        onLeading: () => openDrawerOverShell(context, ref),
         onDetails: () => Navigator.of(context).push(BotDetailsPage.route(bot.id)),
       ),
       body: chat.loading && chat.items.isEmpty

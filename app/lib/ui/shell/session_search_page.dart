@@ -22,8 +22,8 @@ import 'sessions_drawer.dart' show sessionSelectionColor, sessionTitle;
 
 /// "搜索对话" at the top of the sessions drawer. Opens [SessionSearchPage];
 /// picking a result opens that conversation and closes the drawer.
-/// The drawer's search key: a 40dp round button beside 新对话. It opens the
-/// search page; the row of text it used to take is gone.
+/// The drawer's search key: the same 36dp chrome key as 网页模式, beside it.
+/// It opens the search page; the row of text it used to take is gone.
 class SessionSearchBar extends ConsumerWidget {
   const SessionSearchBar({super.key, required this.onClose});
 
@@ -40,24 +40,17 @@ class SessionSearchBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
-    final scheme = Theme.of(context).colorScheme;
+    // The same chrome key as 网页模式 beside it, so the row reads as one set.
     return Semantics(
       button: true,
       label: l10n.shellSearchChats,
       excludeSemantics: true,
-      child: Tooltip(
-        message: l10n.shellSearchChats,
-        child: InkResponse(
-          onTap: () => _open(context, ref),
-          radius: 22,
-          child: Container(
-            key: const ValueKey('drawer-search-key'),
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(color: scheme.onSurface.withValues(alpha: 0.06), shape: BoxShape.circle),
-            child: Icon(AppIcons.search, size: 22, color: scheme.onSurface),
-          ),
-        ),
+      child: GlassIconButton(
+        key: const ValueKey('drawer-search-key'),
+        icon: AppIcons.search,
+        tooltip: l10n.shellSearchChats,
+        size: 36,
+        onPressed: () => _open(context, ref),
       ),
     );
   }

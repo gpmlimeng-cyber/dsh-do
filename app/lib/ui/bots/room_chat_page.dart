@@ -21,6 +21,7 @@ import '../features/feature_kit.dart';
 import '../shell/page_frame.dart';
 import 'bot_stop_guard.dart';
 import 'bot_action_scope.dart';
+import '../shell/drawer/drawer_open_request.dart';
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
 import 'bot_attachments.dart';
@@ -248,6 +249,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
         status: label,
         tone: tone,
         scrolledUnder: _scrolled,
+        onLeading: () => openDrawerOverShell(context, ref),
         onDetails: () => Navigator.of(context).push(RoomDetailsPage.route(room.id)),
       ),
       body: chat.loading && chat.items.isEmpty

@@ -13,17 +13,19 @@ import '../chat/widgets/plus_panel.dart';
 
 /// Opens the ＋ panel and returns what it picked; null when cancelled.
 ///
-/// [files] false leaves 文件 out (DSH Remote stages no files). No `sessionId`:
-/// the panel's 本对话 (permissions, plan mode) belongs to a chat page, not to a
-/// Bot's conversation or a group. [limit] is the room left in the tray, so the
-/// picker stops at the same nine the chat page allows.
+/// [files] false leaves 文件 out (DSH Remote stages no files). [sessionId]
+/// is the conversation the panel's 本对话 card acts on: a Bot has one, a
+/// group chat does not, and the card is left out without it. [limit] is the
+/// room left in the tray, so the picker stops at the same nine the chat page
+/// allows.
 Future<List<DraftAttachment>?> pickBotAttachments(
   BuildContext context,
   WidgetRef ref, {
   bool files = true,
   int limit = maxAttachments,
+  String? sessionId,
 }) async {
-  final choice = await showPlusPanel(context, files: files);
+  final choice = await showPlusPanel(context, files: files, sessionId: sessionId);
   if (choice is! AttachChoice) return null;
   // The panel was a page: the caller may be gone by the time it closes.
   if (!context.mounted) return null;
