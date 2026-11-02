@@ -10,6 +10,11 @@ on:
       - ci/build-apk
   workflow_dispatch:
 
+# Publishing a release for each build: Actions artifacts live on a storage
+# host some phone networks cannot reach, release assets on another.
+permissions:
+  contents: write
+
 jobs:
   apk:
     runs-on: ubuntu-latest
@@ -67,6 +72,16 @@ jobs:
           name: dsh-go-apk
           path: app/build/app/outputs/flutter-apk/*.apk
           if-no-files-found: error
+
+      - name: Publish the APK as a release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="ci-$(date -u +%Y%m%d-%H%M)-${GITHUB_SHA::7}"
+          gh release create "$tag" \
+            app/build/app/outputs/flutter-apk/*.apk \
+            --title "CI build ${GITHUB_SHA::7}" \
+            --notes "Built from ${GITHUB_SHA}. Installs beside the shipped app (id suffix .ci, test signature); a fresh install starts without data."
 
   # Analysis and the test suite. Not yet required by the build: the golden
   # screenshots are stale until a `goldens` run refreshes them, and a red check
