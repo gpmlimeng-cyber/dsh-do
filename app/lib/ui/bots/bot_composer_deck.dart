@@ -17,6 +17,9 @@ import '../../state/voice_model_state.dart';
 import '../../state/voice_state.dart';
 import '../../state/voice_settings.dart';
 import '../../usage/usage_stats.dart';
+import '../../l10n/l10n.dart';
+import '../common/app_sheet.dart' show SheetGroup, showAppSheet;
+import '../common/sheet_title_bar.dart' show SheetTitleBar;
 import '../chat/dock/chat_dock.dart';
 import '../chat/dock/dock_stack.dart';
 import '../chat/usage_sheet.dart' show ContextRing, showUsageSheet;
@@ -28,6 +31,8 @@ import '../chat/widgets/plus_panel.dart' show showPermissionSheet;
 import '../plugins/native/composer_strip.dart';
 import '../plugins/native/native_composer_bar.dart';
 import '../safe_mode/safe_mode_banner.dart';
+import '../settings/settings_widgets.dart' show SettingsTile;
+import '../theme/app_icons.dart';
 
 /// Everything the native composer carries above itself: the safe-mode banner,
 /// the permission pill, the status deck (todo, goal, activity, a plugin's status
@@ -87,7 +92,8 @@ class BotComposerDeck extends ConsumerWidget {
           ),
         ),
         // The capsules (ui.json's and plugins'); nothing at all without any.
-        NativeComposerBar(sessionId: sessionId, visible: !running),
+        // The status line already rides in the deck as a card; not twice.
+        NativeComposerBar(sessionId: sessionId, visible: !running, strip: false),
       ],
     );
   }
@@ -132,3 +138,54 @@ VoiceInputController createBotVoice(
     if (alive()) ref.read(usageStatsProvider.notifier).count(UsageCount.voice);
   },
 );
+
+/// 长按发送键 while a turn runs: how the message reaches it. [steer] is off in
+/// a group, where 插话 would steer the relay Session rather than the members.
+Future<SendMode?> showBotSendOptions(BuildContext context, {bool steer = true}) => showAppSheet<SendMode>(
+  context,
+  builder: (sheet) => SafeArea(
+    top: false,
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SheetTitleBar(appL10n.chatSendMode),
+        SheetGroup(
+          margin: const EdgeInsets.symmetric(horizontal: SheetTitleBar.inset),
+          children: [
+            for (final (mode, icon, title, subtitle) in [
+              if (steer) (SendMode.steer, AppIcons.steer, appL10n.chatSteer, appL10n.chatSteerHint),
+              (SendMode.interrupt, AppIcons.interrupt, appL10n.chatInterruptAndSend, appL10n.chatInterruptHint),
+              (SendMode.queue, AppIcons.queued, appL10n.chatQueue, appL10n.chatQueueHint),
+            ])
+              SettingsTile(
+                tinted: false,
+                chevron: false,
+                icon: icon,
+                title: title,
+                subtitle: subtitle,
+                onTap: () => Navigator.pop(sheet, mode),
+              ),
+          ],
+        ),
+        const SizedBox(height: 20),
+      ],
+    ),
+  ),
+);
+
+/// The wire value of a send mode. `interrupt` is a stop plus a queued send:
+/// DSH keeps the inbox across a stop, so a prompt queued before it would wait
+/// for whatever is sent next.
+String botSendMode(SendMode mode) => mode == SendMode.steer ? 'steer' : 'queue';
+
+/// 打断并发送 stops the turn first and then sends; the other modes only send.
+/// One never happens without the other.
+Future<void> runBotSend(
+  SendMode mode, {
+  required Future<void> Function() stop,
+  required Future<void> Function(SendMode mode) send,
+}) async {
+  if (mode == SendMode.interrupt) await stop();
+  await send(mode);
+}

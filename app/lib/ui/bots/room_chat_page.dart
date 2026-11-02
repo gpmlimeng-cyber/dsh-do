@@ -14,6 +14,9 @@ import '../../state/attachments.dart';
 import '../../state/bots_state.dart';
 import '../../state/connection_state.dart';
 import '../chat/composer.dart';
+import '../../state/voice_model_state.dart';
+import '../../state/voice_state.dart';
+import '../../state/chat_state.dart' show SendMode;
 import '../chat/voice/voice_controller.dart';
 import '../chat/widgets/attachments.dart';
 import '../chat/widgets/chat_card.dart';
@@ -63,21 +66,37 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
   /// Picked but unsent: shown above the composer, cleared when the send lands.
   List<DraftAttachment> _drafts = const [];
   late final VoiceInputController _voice;
+  late final VoiceInputActiveController _voiceFlag;
 
   @override
   void initState() {
     super.initState();
     _stopGuard = BotStopGuard(ref);
     _voice = createBotVoice(ref, _input, alive: () => mounted);
+    // Other surfaces read this flag to keep dictation and speech apart.
+    _voiceFlag = ref.read(voiceInputActiveProvider.notifier);
+    _voice.addListener(_reportVoice);
+    // A download or deletion changes capabilities without replacing the host.
+    ref.listenManual(voiceModelProvider.select((s) => s.status == VoiceModelStatus.ready), (_, _) {
+      if (mounted && (ref.read(activeConnectionProvider).value?.isLocal ?? false)) {
+        unawaited(_voice.refreshAfterModelChange());
+      }
+    });
     _viewing = ref.read(dsBotViewingProvider.notifier);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _viewing.set(widget.roomId);
     });
   }
 
+  void _reportVoice() => _voiceFlag.set(_voice.active);
+
   @override
   void dispose() {
+    _voice.removeListener(_reportVoice);
     _voice.dispose();
+    // The page is gone, and its dictation with it.
+    final flag = _voiceFlag;
+    scheduleMicrotask(() => flag.set(false));
     _stopGuard.dispose();
     _viewing.leave(widget.roomId);
     _mentions.dispose();
@@ -87,7 +106,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
     super.dispose();
   }
 
-  Future<void> _send(BotActionScope target) async {
+  Future<void> _send(BotActionScope target, {SendMode mode = SendMode.queue}) async {
     if (!mounted || target.roomId != widget.roomId || !target.current(context, ref)) return;
     if (!ref.read(dsBotProvider).ready) return;
     final attachments = _drafts;
@@ -100,13 +119,19 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
       hasAttachments: attachments.isNotEmpty,
       send: (text) async {
         final controller = ref.read(roomChatProvider(widget.roomId).notifier);
-        if (attachments.isEmpty) return controller.send(text);
+        if (attachments.isEmpty) return controller.send(text, mode: botSendMode(mode));
         final client = ref.read(activeConnectionProvider).value?.client;
         if (client == null) return false;
         try {
-          // A group's id is its Session: the round reads the line from it.
-          final staged = await stageBotAttachments(client, widget.roomId, attachments);
-          final sent = await controller.send(text, images: staged.images, fileReceiptIds: staged.receipts);
+          // The line reaches the round through the group's current Session; a
+          // group that moved on has a newer one than its id.
+          final staged = await stageBotAttachments(client, _roomSession(), attachments);
+          final sent = await controller.send(
+            text,
+            images: staged.images,
+            fileReceiptIds: staged.receipts,
+            mode: botSendMode(mode),
+          );
           if (sent && mounted) setState(() => _drafts = const []);
           return sent;
         } catch (error) {
@@ -114,6 +139,24 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
           return false;
         }
       },
+    );
+  }
+
+  /// The Session the round runs in now, not the group's first part.
+  String _roomSession() => ref.read(dsBotProvider).team?.room(widget.roomId)?.sessionId ?? widget.roomId;
+
+  /// 长按发送键: while the round runs, choose how the message reaches it;
+  /// otherwise send at once.
+  Future<void> _sendOptions(BotActionScope target, DsBotRoom room, {required bool running}) async {
+    if (!running) return _send(target);
+    // 插话 steers the group's relay Session, not the member turns that are
+    // actually working; unverified, so a group offers 排队 and 打断 only.
+    final mode = await showBotSendOptions(context, steer: false);
+    if (!mounted || mode == null) return;
+    await runBotSend(
+      mode,
+      stop: () => _stopGuard.action(roomId: room.id)(),
+      send: (mode) => _send(target, mode: mode),
     );
   }
 
@@ -200,6 +243,9 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
     }
     final team = status.team;
     final room = team?.room(widget.roomId);
+    // Everything Session-scoped here (the deck's capsules and strips, the
+    // attachments' image fetches) follows the group's current Session.
+    final roomSession = room?.sessionId ?? widget.roomId;
     final continueTarget = BotActionScope(ref, roomId: widget.roomId);
     final fullTextScope = BotActionScope(ref, roomId: widget.roomId);
     final sendTarget = BotActionScope(ref, roomId: widget.roomId);
@@ -281,7 +327,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
                     DsBotItemKind.user => BotUserMessage(
                       text: item.text,
                       images: item.images,
-                      attachments: botLineAttachments(item, widget.roomId),
+                      attachments: botLineAttachments(item, roomSession),
                     ),
                     DsBotItemKind.bot => GroupMessage(
                       item: item,
@@ -378,7 +424,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
         ),
         // A group has no single conversation behind it: the todo, goal and
         // permission parts stay off; the activity and plugin strips still apply.
-        BotComposerDeck(sessionId: widget.roomId, running: chat.running, showSessionBars: false),
+        BotComposerDeck(sessionId: roomSession, running: chat.running, showSessionBars: false),
         Composer(
           hardwareEnterSends: ref.watch(settingsProvider.select((s) => s.hardwareEnterSends)),
           voice: _voice,
@@ -388,6 +434,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
           connected: api != null && !readOnly,
           running: chat.running,
           onSend: () => _send(sendTarget),
+          onSendOptions: () => _sendOptions(sendTarget, room, running: chat.running),
           onStop: _stopGuard.action(roomId: room.id),
           onKeyEvent: _mentions.handleKey,
           // 写 `@` 仍会按光标弹出成员候选；＋ 占住左边那颗键，附件优先。

@@ -311,6 +311,18 @@ void main() {
       expect(state.streaming, isNull);
     });
 
+    test('a send carries its mode; without one the payload stays as it was', () async {
+      final transport = FakeDsBotTransport();
+      final container = await start(transport);
+      final sub = container.listen(botChatProvider('b2'), (_, _) {});
+      addTearDown(sub.close);
+      await settle();
+      await container.read(botChatProvider('b2').notifier).send('插一句', mode: 'steer');
+      expect(transport.calls.last.$2, {'sessionId': 'b2', 'text': '插一句', 'mode': 'steer'});
+      await container.read(botChatProvider('b2').notifier).send('排着');
+      expect(transport.calls.last.$2, {'sessionId': 'b2', 'text': '排着'});
+    });
+
     test('a failed send goes back to the draft side and says why', () async {
       final transport = FakeDsBotTransport();
       transport.handlers['send'] = (_) => throw const DshRemoteException('bot/read-only', 'held');

@@ -14,6 +14,9 @@ import '../../state/attachments.dart';
 import '../../state/bots_state.dart';
 import '../../state/connection_state.dart';
 import '../chat/composer.dart';
+import '../../state/voice_model_state.dart';
+import '../../state/voice_state.dart';
+import '../../state/chat_state.dart' show SendMode;
 import '../chat/voice/voice_controller.dart';
 import '../chat/widgets/attachments.dart';
 import '../chat/model_sheet.dart';
@@ -57,21 +60,37 @@ class _BotChatPageState extends ConsumerState<BotChatPage> {
   /// Picked but unsent: shown above the composer, cleared when the send lands.
   List<DraftAttachment> _drafts = const [];
   late final VoiceInputController _voice;
+  late final VoiceInputActiveController _voiceFlag;
 
   @override
   void initState() {
     super.initState();
     _stopGuard = BotStopGuard(ref);
     _voice = createBotVoice(ref, _input, alive: () => mounted);
+    // Other surfaces read this flag to keep dictation and speech apart.
+    _voiceFlag = ref.read(voiceInputActiveProvider.notifier);
+    _voice.addListener(_reportVoice);
+    // A download or deletion changes capabilities without replacing the host.
+    ref.listenManual(voiceModelProvider.select((s) => s.status == VoiceModelStatus.ready), (_, _) {
+      if (mounted && (ref.read(activeConnectionProvider).value?.isLocal ?? false)) {
+        unawaited(_voice.refreshAfterModelChange());
+      }
+    });
     _viewing = ref.read(dsBotViewingProvider.notifier);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _viewing.set(widget.botId);
     });
   }
 
+  void _reportVoice() => _voiceFlag.set(_voice.active);
+
   @override
   void dispose() {
+    _voice.removeListener(_reportVoice);
     _voice.dispose();
+    // The page is gone, and its dictation with it.
+    final flag = _voiceFlag;
+    scheduleMicrotask(() => flag.set(false));
     _stopGuard.dispose();
     _viewing.leave(widget.botId);
     _input.dispose();
@@ -80,7 +99,7 @@ class _BotChatPageState extends ConsumerState<BotChatPage> {
     super.dispose();
   }
 
-  Future<void> _send(BotActionScope target, String part) async {
+  Future<void> _send(BotActionScope target, String part, {SendMode mode = SendMode.queue}) async {
     if (!mounted || target.botId != widget.botId || !target.current(context, ref)) return;
     final status = ref.read(dsBotProvider);
     if (!status.ready || status.team?.bot(widget.botId)?.sessionId != part) return;
@@ -94,12 +113,17 @@ class _BotChatPageState extends ConsumerState<BotChatPage> {
       hasAttachments: attachments.isNotEmpty,
       send: (text) async {
         final controller = ref.read(botChatProvider(widget.botId).notifier);
-        if (attachments.isEmpty) return controller.send(text);
+        if (attachments.isEmpty) return controller.send(text, mode: botSendMode(mode));
         final client = ref.read(activeConnectionProvider).value?.client;
         if (client == null) return false;
         try {
           final staged = await stageBotAttachments(client, part, attachments);
-          final sent = await controller.send(text, images: staged.images, fileReceiptIds: staged.receipts);
+          final sent = await controller.send(
+            text,
+            images: staged.images,
+            fileReceiptIds: staged.receipts,
+            mode: botSendMode(mode),
+          );
           if (sent && mounted) setState(() => _drafts = const []);
           return sent;
         } catch (error) {
@@ -107,6 +131,19 @@ class _BotChatPageState extends ConsumerState<BotChatPage> {
           return false;
         }
       },
+    );
+  }
+
+  /// 长按发送键: while a turn runs, choose how the message reaches it; otherwise
+  /// send at once.
+  Future<void> _sendOptions(BotActionScope target, DsBot bot, {required bool running}) async {
+    if (!running) return _send(target, bot.sessionId);
+    final mode = await showBotSendOptions(context);
+    if (!mounted || mode == null) return;
+    await runBotSend(
+      mode,
+      stop: () => _stopGuard.action(botId: bot.id)(),
+      send: (mode) => _send(target, bot.sessionId, mode: mode),
     );
   }
 
@@ -282,6 +319,7 @@ class _BotChatPageState extends ConsumerState<BotChatPage> {
           hasAttachments: _drafts.isNotEmpty,
           running: ownTurn,
           onSend: () => _send(sendTarget, bot.sessionId),
+          onSendOptions: () => _sendOptions(sendTarget, bot, running: ownTurn),
           onStop: _stopGuard.action(botId: bot.id),
           placeholder: l10n.botsComposerHint(bot.name),
         ),

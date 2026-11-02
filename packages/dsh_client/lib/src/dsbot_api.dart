@@ -426,6 +426,7 @@ class DsBotRoom {
   const DsBotRoom({
     required this.id,
     required this.name,
+    this.sessionId,
     this.members = const [],
     this.admin,
     this.mode = 'admin',
@@ -444,6 +445,7 @@ class DsBotRoom {
     return DsBotRoom(
       id: asString(map['id']) ?? '',
       name: asString(map['name']) ?? '',
+      sessionId: asString(map['sessionId']),
       members: asStringList(map['members']),
       admin: asString(map['admin']),
       mode: asString(map['mode']) ?? 'admin',
@@ -463,6 +465,12 @@ class DsBotRoom {
 
   final String id;
   final String name;
+
+  /// The Session the round runs in now. `id` only names its first part, so a
+  /// group whose Session moved on has two different ids; staging a file under
+  /// the old one leaves the receipt in a conversation the prompt never reads.
+  final String? sessionId;
+
   final List<String> members;
   final String? admin;
 
@@ -1458,12 +1466,17 @@ class DsBotApi {
     String text, {
     List<PromptImage> images = const [],
     List<String> fileReceiptIds = const [],
+    /// How the message reaches a running turn: `steer` joins its next step,
+    /// `queue` waits for it to end. Anything else is the host's default
+    /// (`queue`), which is also what a host without this field does.
+    String? mode,
   }) =>
       call('send', {
         'sessionId': conversationId,
         'text': text,
         if (images.isNotEmpty) 'images': [for (final image in images) image.toJson()],
         if (fileReceiptIds.isNotEmpty) 'fileReceiptIds': fileReceiptIds,
+        if (mode != null) 'mode': mode,
       }, const Duration(seconds: 40));
 
   /// Reads the Host's bounded preview, retaining its completeness metadata.

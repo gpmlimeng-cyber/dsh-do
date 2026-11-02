@@ -4,14 +4,22 @@
 import 'dart:async';
 
 import 'package:dsh_app/state/bots_state.dart';
+import 'package:dsh_app/state/chat_state.dart';
+import 'package:dsh_app/runtime/runtime_state.dart';
 import 'package:dsh_app/state/connection_state.dart';
+import 'package:dsh_app/state/usage_state.dart';
+import 'package:dsh_app/state/voice_model_state.dart';
+import 'package:dsh_app/state/voice_settings.dart';
+import 'package:dsh_app/state/voice_state.dart';
+import 'package:dsh_app/ui/chat/voice/voice_bridge.dart';
 import 'package:dsh_app/state/notify_state.dart';
 import 'package:dsh_app/state/plugins_state.dart';
 import 'package:dsh_client/dsh_client.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 
-import '../chat/support/harness.dart' show fakeConnection;
+import '../chat/support/composer_fakes.dart' show FakeVoiceBridge;
+import '../chat/support/harness.dart' show FakeChatController, FakeUsage, StaticRuntime, fakeConnection;
 
 class FakeDsBotTransport implements DsBotTransport {
   FakeDsBotTransport({Map<String, Object?>? team}) {
@@ -128,8 +136,30 @@ List<Override> dsBotOverrides(FakeDsBotTransport transport, {NotifyChannel? noti
   activeConnectionProvider.overrideWithValue(AsyncData(connection ?? fakeConnection)),
   dsBotApiFactoryProvider.overrideWithValue((_) => DsBotApi(transport)),
   localSafeModeProvider.overrideWithValue(false),
+  // The safe-mode banner reads the engine's status.
+  localRuntimeProvider.overrideWith(StaticRuntime.new),
   if (notify != null) notifyChannelProvider.overrideWithValue(notify),
+  // The Bot pages wear the chat composer's surroundings: the todo, goal,
+  // activity and plugin slots all read the Session behind the Bot, and the
+  // microphone reads the voice providers.
+  chatProvider.overrideWith2((id) => FakeChatController(id, const ChatState(loading: false))),
+  sessionUsageProvider.overrideWith2((id) => FakeUsage(id, SessionUsage.empty)),
+  voiceBridgeProvider.overrideWithValue(FakeVoiceBridge(caps: VoiceCapabilities.none)),
+  voiceModelProvider.overrideWith(FakeVoiceModel.new),
+  voiceSettingsProvider.overrideWith(FakeVoiceSettings.new),
 ];
+
+/// No model downloaded and none wanted: the microphone stays away.
+class FakeVoiceModel extends VoiceModelController {
+  @override
+  VoiceModelState build() => const VoiceModelState();
+}
+
+/// The system's own recognizer, so nothing asks the engine for a mode.
+class FakeVoiceSettings extends VoiceSettingsController {
+  @override
+  VoiceMode build() => VoiceMode.system;
+}
 
 const tinyPhoto =
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAB20lEQVR4nA3LoRGGIBiA4X8FVzDZdQADkeqdA3hkmoUBvgEoNLLHANxRDW8gOACu4Ar+Pv35/Qa6gX5gHFADy4AZ2AdkIAwcA2WgDtwDz8A78PtNdBP9xDihJpYJM7FPyESYOCbKRJ24J56Jd/rCTDfTz4wzamaZMTP7jMyEmWOmzNSZe+aZeecvaDpNrxk1SrNojGbXiCZoDk3RVM2teTSv/sJKt9KvjCtqZVkxK/uKrISVY6Ws1JV75Vl51y9sdBv9xrihNpYNs7FvyEbYODbKRt24N56Nd/uCpbP0ltGiLIvFWHaLWILlsBRLtdyWx/LaLzg6R+8YHcqxOIxjd4gjOA5HcVTH7Xgcr/uC0Am9MApKWAQj7IIIQTiEIlThFh7hlS94Ok/vGT3Ks3iMZ/eIJ3gOT/FUz+15PK//QqSL9JExoiJLxET2iERC5IiUSI3ckSfyxi8kukSfGBMqsSRMYk9IIiSOREnUxJ14Em/6QqbL9JkxozJLxmT2jGRC5siUTM3cmSfz5i+cdCf9yXiiTpYTc7KfyEk4OU7KST25T56T9/zCRXfRX4wX6mK5MBf7hVyEi+OiXNSL++K5eK8vNLpG3xgbqrE0TGNvSCM0jkZp1MbdeBpv4w9hucmQU0mAqQAAAABJRU5ErkJggg==';
