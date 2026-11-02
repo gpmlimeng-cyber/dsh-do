@@ -28,20 +28,28 @@ jobs:
         working-directory: app
 
       - name: Regenerate the goldens this change touches
-        run: flutter test --update-goldens test/bots/bots_golden_test.dart
+        # The output is kept even when the run fails: a failing golden test is
+        # what a person needs to read, and job logs live where the phone cannot
+        # reach them.
+        run: |
+          set -o pipefail
+          flutter test --update-goldens test/bots/bots_golden_test.dart 2>&1 | tee /tmp/goldens.test.log
         working-directory: app
 
       - name: Collect only the pictures that actually changed
+        if: always()
         run: |
           git status --porcelain app/test || true
           git diff --stat -- app/test || true
           mkdir -p /tmp/goldens
-          git diff --name-only -- app/test | while read -r file; do
+          git diff --name-only app/test | while read -r file; do
             [ -f "$file" ] && cp --parents "$file" /tmp/goldens/
           done
+          cp /tmp/goldens.test.log /tmp/goldens/ 2>/dev/null || true
           find /tmp/goldens -name '*.png' | wc -l
 
       - name: Bundle them with a list of what changed
+        if: always()
         run: |
           git diff --name-only app/test > /tmp/goldens/CHANGED.txt
           git diff --stat app/test >> /tmp/goldens/CHANGED.txt
@@ -50,6 +58,7 @@ jobs:
           ls -la /tmp/goldens.tgz
 
       - name: Publish the bundle as a release asset
+        if: always()
         # Artifact downloads go through Azure, which the phone cannot reach;
         # a release asset it can fetch with the same token it builds with.
         env:
@@ -61,7 +70,8 @@ jobs:
             --notes "Regenerated golden screenshots from ${GITHUB_SHA}."
 
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: goldens
           path: /tmp/goldens/**
-          if-no-files-found: error
+          if-no-files-found: warn
