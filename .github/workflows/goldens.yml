@@ -6,6 +6,10 @@ name: goldens
 on:
   workflow_dispatch:
 
+# Publishing the bundle needs write access; the default token is read-only.
+permissions:
+  contents: write
+
 jobs:
   update:
     runs-on: ubuntu-latest
