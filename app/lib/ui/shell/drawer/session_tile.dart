@@ -26,6 +26,7 @@ class SessionTile extends StatelessWidget {
     this.unread = false,
     this.pinned = false,
     this.badge,
+    this.note,
     this.leading,
     this.indent = 0,
     this.selecting = false,
@@ -49,6 +50,12 @@ class SessionTile extends StatelessWidget {
   /// one says the person pinned the row, which Bot rows cannot be.
   final String? badge;
 
+  /// A quiet phrase after the title, for the rows that can say what they are
+  /// doing (a Bot's current tool, when it last moved). Never the marker: that
+  /// one is a state, this one a sentence. Hidden while selecting, where the
+  /// check needs the room.
+  final String? note;
+
   /// A 22 face before the title, for the rows that are a Bot or a group; the
   /// row keeps its 44 height, so the face is inset rather than the row grown.
   final Widget? leading;
@@ -59,6 +66,9 @@ class SessionTile extends StatelessWidget {
   final bool selected;
 
   static const height = 44.0;
+
+  /// The most a [note] takes; the title keeps everything else.
+  static const noteWidth = 96.0;
 
   /// A folder's glyph (20) plus its gap (10): members' titles line up with
   /// the folder's name.
@@ -148,6 +158,20 @@ class SessionTile extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (note case final text? when !selecting) ...[
+                  const SizedBox(width: 8),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: noteWidth),
+                    child: Text(
+                      text,
+                      key: const ValueKey('note'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.right,
+                      style: theme.textTheme.labelSmall?.copyWith(color: colors.textTertiary),
+                    ),
+                  ),
+                ],
                 if (pinned) ...[
                   const SizedBox(width: 8),
                   Icon(AppIcons.pinActive, size: 14, color: colors.textTertiary),

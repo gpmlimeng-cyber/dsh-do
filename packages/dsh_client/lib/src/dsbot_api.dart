@@ -784,6 +784,14 @@ class DsBotTeam {
     return null;
   }
 
+  /// The group whose chat Session (any part) is [sessionId].
+  DsBotRoom? roomOfSession(String sessionId) {
+    for (final room in rooms) {
+      if (room.id == sessionId || room.sessionId == sessionId || room.parts.contains(sessionId)) return room;
+    }
+    return null;
+  }
+
   /// Every DSH Session the team uses: Bots' chats (all parts), groups' own
   /// Sessions and members' hidden group Sessions.
   Set<String> get sessionIds => {

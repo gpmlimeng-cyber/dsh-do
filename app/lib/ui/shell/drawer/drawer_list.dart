@@ -17,6 +17,7 @@ import '../../../state/workspaces_state.dart';
 import '../../common/empty_view.dart';
 import '../../theme/app_icons.dart';
 import '../../bots/bot_avatar.dart';
+import '../../bots/bot_format.dart' show shortTime, workPhrase;
 import '../../theme/theme.dart';
 import '../../bots/bot_chat_page.dart';
 import '../../bots/room_chat_page.dart';
@@ -108,7 +109,9 @@ class DrawerConversationList extends ConsumerWidget {
     void add(Key key, WidgetBuilder builder) => rows.add((key: key, builder: builder));
     // A Bot's own chat or a group chat: same row, its own chat page. Never
     // selectable, and its only long-press action is the folder.
-    final team = ref.watch(dsBotProvider).team;
+    final bots = ref.watch(dsBotProvider);
+    final team = bots.team;
+    final clock = now ?? ref.watch(drawerClockProvider)();
     Widget botTile(BotDrawerRow row, {bool inFolder = false}) => SessionTile(
       key: ValueKey('bot-${row.id}'),
       title: row.title,
@@ -119,6 +122,7 @@ class DrawerConversationList extends ConsumerWidget {
       unread: !readOnly && row.unread,
       pinned: false,
       badge: row.badge,
+      note: botRowNote(bots, row, clock),
       // A face is what tells these rows from the conversations beside them.
       leading: switch ((row.bot, row.room, team)) {
         (final bot?, _, _) => BotAvatar(bot: bot, size: 22),
@@ -235,4 +239,22 @@ class _FilterEmpty extends StatelessWidget {
       child: EmptyView(compact: true, icon: icon, title: title),
     );
   }
+}
+
+/// What a Bot or group row says on its right: what it is doing now, or when it
+/// last moved. Null when there is nothing to say — and while it waits for an
+/// answer, where the marker already says 待回答 / 待确认.
+String? botRowNote(DsBotStatus status, BotDrawerRow row, DateTime now) {
+  if (row.pending != null) return null;
+  if (row.isRoom) {
+    final works = status.live.rooms[row.id];
+    if (works != null && works.isNotEmpty) return appL10n.botsRoomWorkingCount(works.length);
+  } else {
+    final activity = status.live.activity[row.id];
+    if (row.running || activity == 'thinking') {
+      return workPhrase(status.live.bots[row.id], activity: activity, team: status.team);
+    }
+  }
+  if (!row.activity) return null;
+  return shortTime(row.updatedAt, now: now);
 }

@@ -16,6 +16,7 @@ import '../../state/adaptive_layout_state.dart';
 import '../../state/drawer_view_state.dart' show drawerSelectionProvider;
 import '../../state/sessions_state.dart' show currentSessionProvider;
 import '../bots/bot_alerts.dart';
+import '../bots/bot_session_routing.dart';
 import '../chat/chat_screen.dart';
 import '../chat/composer_toast.dart' show composerToastGap;
 import 'drawer/drawer_open_request.dart';
@@ -155,6 +156,8 @@ class _HomeShellState extends ConsumerState<HomeShell> with SingleTickerProvider
   Future<void> _search() async {
     final sessionId = await showSessionSearch(context);
     if (sessionId == null || !mounted) return;
+    // A Bot's or group's chat opens its own page, not the plain conversation.
+    if (openTeamChatIfOwned(context, ref, sessionId)) return;
     ref.read(currentSessionProvider.notifier).select(sessionId);
   }
 

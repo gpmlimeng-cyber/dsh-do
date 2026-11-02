@@ -661,6 +661,7 @@ final class BotDrawerRow extends DrawerRow {
     this.running = false,
     this.pending,
     this.unread = false,
+    this.activity = false,
     this.badge,
     this.bot,
     this.room,
@@ -674,6 +675,10 @@ final class BotDrawerRow extends DrawerRow {
   final bool running;
   final PendingKind? pending;
   final bool unread;
+
+  /// Something happened here (a message, a reminder): the row may show when.
+  /// A Bot that has never done anything stays bare.
+  final bool activity;
 
   /// 「主」 on a Main Bot; null otherwise. Never the pin marker.
   final String? badge;
@@ -844,6 +849,7 @@ final drawerBotRowsProvider = Provider<List<BotDrawerRow>>((ref) {
             ? PendingKind.approval
             : null,
         unread: inbox.unreadOf(bot.id) > 0,
+        activity: inbox.latest[bot.id] != null,
         badge: team.isMain(bot.id) ? appL10n.botsMainTag : null,
         bot: bot,
       ),
@@ -855,6 +861,7 @@ final drawerBotRowsProvider = Provider<List<BotDrawerRow>>((ref) {
         createdAt: room.createdAt ?? _earliest,
         running: live.rooms.containsKey(room.id),
         unread: inbox.unreadOf(room.id) > 0,
+        activity: inbox.latest[room.id] != null,
         room: room,
       ),
   ];

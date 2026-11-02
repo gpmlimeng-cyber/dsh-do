@@ -379,6 +379,117 @@ List<BotRow> transcriptRows(
   return rows;
 }
 
+// ── Tool wording ─────────────────────────────────────────────────────────────
+
+/// What a tool call is doing, said as an action rather than by the tool's own
+/// name: 「正在查看文件」 instead of `read_file`. The chat page classifies its
+/// own calls in `ui/chat/turn_summary.dart`; a Bot's entries carry only a name
+/// and no arguments, so the name map lives here.
+enum BotToolKind { run, read, edit, search, browse, message, group, memory, recall, team, ask, work }
+
+BotToolKind botToolKind(String name) {
+  final n = name.toLowerCase();
+  bool any(List<String> keys) => keys.any(n.contains);
+  if (any(['bash', 'shell', 'pwsh', 'exec', 'run', 'terminal', 'command'])) return BotToolKind.run;
+  // Before the file verbs: `todo_write` writes no file.
+  if (any(['todo', 'plan'])) return BotToolKind.work;
+  if (any(['memory'])) return BotToolKind.memory;
+  if (any(['recall', 'history', 'transcript'])) return BotToolKind.recall;
+  if (any(['team', 'bot_', 'delegate', 'assign'])) return BotToolKind.team;
+  if (any(['ask', 'question'])) return BotToolKind.ask;
+  if (any(['room', 'group'])) return BotToolKind.group;
+  if (any(['message', 'reply', 'send'])) return BotToolKind.message;
+  if (any(['write', 'edit', 'patch', 'mkdir', 'delete', 'remove', 'move', 'copy'])) return BotToolKind.edit;
+  if (any(['read', 'cat', 'list', 'view', 'glob'])) return BotToolKind.read;
+  if (any(['search', 'grep', 'find'])) return BotToolKind.search;
+  if (any(['fetch', 'browse', 'browser', 'web_view', 'http', 'url'])) return BotToolKind.browse;
+  return BotToolKind.work;
+}
+
+/// What one call did, for a finished row: 「查看文件」.
+String botToolLabel(L10n l10n, BotToolKind kind) => switch (kind) {
+  BotToolKind.run => l10n.botsToolRun,
+  BotToolKind.read => l10n.botsToolRead,
+  BotToolKind.edit => l10n.botsToolEdit,
+  BotToolKind.search => l10n.botsToolSearch,
+  BotToolKind.browse => l10n.botsToolBrowse,
+  BotToolKind.message => l10n.botsToolMessage,
+  BotToolKind.group => l10n.botsToolGroup,
+  BotToolKind.memory => l10n.botsToolMemory,
+  BotToolKind.recall => l10n.botsToolRecall,
+  BotToolKind.team => l10n.botsToolTeam,
+  BotToolKind.ask => l10n.botsToolAsk,
+  BotToolKind.work => l10n.botsToolWork,
+};
+
+/// What one call is doing, while it runs: 「正在查看文件」.
+String botToolWorkingLabel(L10n l10n, BotToolKind kind) => switch (kind) {
+  BotToolKind.run => l10n.botsToolWorkingRun,
+  BotToolKind.read => l10n.botsToolWorkingRead,
+  BotToolKind.edit => l10n.botsToolWorkingEdit,
+  BotToolKind.search => l10n.botsToolWorkingSearch,
+  BotToolKind.browse => l10n.botsToolWorkingBrowse,
+  BotToolKind.message => l10n.botsToolWorkingMessage,
+  BotToolKind.group => l10n.botsToolWorkingGroup,
+  BotToolKind.memory => l10n.botsToolWorkingMemory,
+  BotToolKind.recall => l10n.botsToolWorkingRecall,
+  BotToolKind.team => l10n.botsToolWorkingTeam,
+  BotToolKind.ask => l10n.botsToolWorkingAsk,
+  BotToolKind.work => l10n.botsToolWorkingWork,
+};
+
+/// A run of calls said as what the Bot did: 「执行 3 条命令 · 改了 2 个文件」.
+/// Same segments and order as the chat page's `ToolSummary`.
+String botToolSummary(L10n l10n, List<DsBotItem> items) {
+  var commands = 0, edited = 0, read = 0, searched = 0, web = 0, other = 0;
+  for (final item in items) {
+    switch (botToolKind(item.toolName ?? '')) {
+      case BotToolKind.run:
+        commands++;
+      case BotToolKind.edit:
+        edited++;
+      case BotToolKind.read:
+        read++;
+      case BotToolKind.search:
+        searched++;
+      case BotToolKind.browse:
+        web++;
+      case BotToolKind.message ||
+          BotToolKind.group ||
+          BotToolKind.memory ||
+          BotToolKind.recall ||
+          BotToolKind.team ||
+          BotToolKind.ask ||
+          BotToolKind.work:
+        other++;
+    }
+  }
+  final parts = [
+    if (commands > 0) l10n.activitySummaryCommands(commands),
+    if (edited > 0) l10n.activitySummaryEditedFiles(edited),
+    if (read > 0) l10n.activitySummaryReadFiles(read),
+    if (searched > 0) l10n.activitySummarySearches(searched),
+    if (web > 0) l10n.activitySummaryWeb(web),
+    if (other > 0) l10n.activitySummaryOther(other),
+  ];
+  return parts.isEmpty ? l10n.activitySummaryTotal(items.length) : parts.join(' · ');
+}
+
+/// How long a run of calls took, as 「8 秒」; null when the host sent nothing
+/// and the entries carry no times either.
+String? botToolSpan(L10n l10n, List<DsBotItem> items) {
+  var total = Duration.zero;
+  for (final item in items) {
+    if (item.duration case final duration?) total += duration;
+  }
+  if (total == Duration.zero && items.length >= 2) {
+    final times = [for (final item in items) ?item.time];
+    if (times.length >= 2) total = times.last.difference(times.first);
+  }
+  if (total < const Duration(seconds: 1)) return null;
+  return l10n.activitySpanSecondsText('${(total.inMilliseconds / 1000).round()}');
+}
+
 /// Consecutive tool calls from this many on fold into one group, as the chat
 /// page groups them.
 const toolGroupThreshold = 3;
@@ -449,12 +560,20 @@ class _BotToolGroupState extends State<BotToolGroup> {
     final colors = DshColors.of(context);
     final failed = widget.items.any((item) => item.toolStatus == 'failed');
     final tone = failed ? colors.warning : colors.textTertiary;
+    final running = widget.items.where(_running).toList();
+    // Running: what the last call under way is doing. Finished: what the run
+    // did, then how long it took.
+    final label = running.isEmpty
+        ? botToolSummary(l10n, widget.items)
+        : botToolWorkingLabel(l10n, botToolKind(running.last.toolName ?? ''));
+    final span = running.isEmpty ? botToolSpan(l10n, widget.items) : null;
+    final shown = span == null ? label : '$label · $span';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Semantics(
           button: true,
-          label: l10n.activitySpanToolCalls(widget.items.length),
+          label: shown,
           child: InkWell(
             onTap: () => setState(() => _open = !_open),
             borderRadius: AppShape.radiusSm,
@@ -466,7 +585,7 @@ class _BotToolGroupState extends State<BotToolGroup> {
                   const SizedBox(width: 8),
                   Flexible(
                     child: Text(
-                      l10n.activitySpanToolCalls(widget.items.length),
+                      shown,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodySmall?.copyWith(color: colors.textTertiary),
@@ -530,20 +649,37 @@ class _BotTranscriptState extends State<BotTranscript> {
   bool _away = false;
 
   @override
+  void initState() {
+    super.initState();
+    _controller.addListener(_check);
+    // The list has a position only after its first layout; a page that opens
+    // already scrolled away must still offer the way back.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _check();
+    });
+  }
+
+  @override
   void dispose() {
+    _controller.removeListener(_check);
     _controller.dispose();
     super.dispose();
   }
 
-  bool _onScroll(ScrollNotification note) {
-    final metrics = note.metrics;
+  /// This list's own position only. A `ScrollNotification` also carries the
+  /// scrolls of what the rows hold (a code block, a long table), and their
+  /// extents read as "far from the bottom" even when this list is at its end.
+  void _check() {
+    if (!_controller.hasClients) return;
+    final position = _controller.position;
     // Reversed: content above the top edge is what lies past the scroll end.
-    final above = metrics.maxScrollExtent - metrics.pixels;
+    final above = position.maxScrollExtent - position.pixels;
     widget.scrolledUnder?.value = (above / 24).clamp(0.0, 1.0);
     if (above < 400 && widget.hasEarlier && !widget.loadingEarlier) widget.onEarlier?.call();
-    final away = above > 240;
-    if (away != _away) setState(() => _away = away);
-    return false;
+    // Reversed, pixels counts from the newest row: 0 is the bottom. `above`
+    // is the distance to the oldest end, which is a different question.
+    final away = position.pixels > 240;
+    if (away != _away && mounted) setState(() => _away = away);
   }
 
   void _toBottom() => _controller.animateTo(0, duration: AppMotion.of(context, AppMotion.standard), curve: AppMotion.std);
@@ -560,9 +696,7 @@ class _BotTranscriptState extends State<BotTranscript> {
     final extra = widget.hasEarlier ? 1 : 0;
     return Stack(
       children: [
-        NotificationListener<ScrollNotification>(
-          onNotification: _onScroll,
-          child: ListView.builder(
+        ListView.builder(
             controller: _controller,
             reverse: true,
         padding: EdgeInsets.fromLTRB(0, widget.topInset, 0, 8),
@@ -582,7 +716,6 @@ class _BotTranscriptState extends State<BotTranscript> {
             ),
           );
         },
-          ),
         ),
         // Scrolled away from the newest row: one tap brings it back.
         Positioned(
@@ -933,8 +1066,9 @@ class BotUserMessage extends StatelessWidget {
   }
 }
 
-/// A tool call in a Bot's chat: what ran, and whether it is still running. The
-/// host sends no arguments or output, so there is nothing to expand yet.
+/// A tool call in a Bot's chat: what it is doing, and whether it is still
+/// running. Said as an action (「正在查看文件」), not by the tool's own name;
+/// the host sends no arguments or output, so there is nothing to expand.
 class BotToolRow extends StatelessWidget {
   const BotToolRow({super.key, required this.name, this.status});
 
@@ -950,11 +1084,9 @@ class BotToolRow extends StatelessWidget {
     final colors = DshColors.of(context);
     final failed = status == 'failed';
     final running = status == 'running';
-    final label = switch (status) {
-      'running' => l10n.chatToolRunning,
-      'failed' => l10n.commonFailed,
-      _ => null,
-    };
+    final kind = botToolKind(name);
+    final shown = running ? botToolWorkingLabel(l10n, kind) : botToolLabel(l10n, kind);
+    final label = failed ? l10n.commonFailed : null;
     final tone = failed ? colors.warning : colors.textTertiary;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
@@ -964,7 +1096,7 @@ class BotToolRow extends StatelessWidget {
           const SizedBox(width: 8),
           Flexible(
             child: Text(
-              name,
+              shown,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodySmall?.copyWith(color: colors.textTertiary),

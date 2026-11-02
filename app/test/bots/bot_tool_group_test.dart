@@ -1,5 +1,6 @@
 // 连续工具行到 3 条才合并成一组；运行中展开、结束后折叠。
 import 'package:dsh_app/ui/bots/bot_chat_kit.dart';
+import 'package:dsh_app/ui/theme/app_icons.dart';
 import 'package:dsh_client/dsh_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -37,25 +38,30 @@ void main() {
   testWidgets('a running group is open; a finished one is folded', (tester) async {
     final running = [_tool('read_file', status: 'running'), _tool('bash'), _tool('web_search')];
     await tester.pumpWidget(testApp(Scaffold(body: BotToolGroup(items: running))));
-    expect(find.text('read_file'), findsOneWidget);
-    expect(find.text('bash'), findsOneWidget);
+    // The folded line says what is under way; the rows under it say what each
+    // call is doing — never the tool's own name.
+    expect(find.text('正在查看文件'), findsNWidgets(2));
+    expect(find.text('运行命令'), findsOneWidget);
+    expect(find.text('联网搜索'), findsOneWidget);
+    expect(find.text('read_file'), findsNothing);
 
     final finished = [_tool('read_file'), _tool('bash'), _tool('web_search')];
     await tester.pumpWidget(testApp(Scaffold(body: BotToolGroup(items: finished))));
     await pumpFrames(tester, 2);
-    expect(find.text('read_file'), findsNothing);
-    expect(find.text('bash'), findsNothing);
+    expect(find.text('执行 1 条命令 · 读了 1 个文件 · 搜索 1 次'), findsOneWidget);
+    expect(find.text('查看文件'), findsNothing);
   });
 
   testWidgets('tapping the group opens and closes it', (tester) async {
     await tester.pumpWidget(
       testApp(Scaffold(body: BotToolGroup(items: [_tool('read_file'), _tool('bash'), _tool('web_search')]))),
     );
-    await tester.tap(find.textContaining('工具'));
+    expect(find.text('查看文件'), findsNothing);
+    await tester.tap(find.byIcon(AppIcons.terminal));
     await pumpFrames(tester, 2);
-    expect(find.text('read_file'), findsOneWidget);
-    await tester.tap(find.textContaining('工具'));
+    expect(find.text('查看文件'), findsOneWidget);
+    await tester.tap(find.byIcon(AppIcons.terminal));
     await pumpFrames(tester, 2);
-    expect(find.text('read_file'), findsNothing);
+    expect(find.text('查看文件'), findsNothing);
   });
 }

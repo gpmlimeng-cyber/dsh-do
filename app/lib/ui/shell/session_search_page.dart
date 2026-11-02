@@ -10,6 +10,7 @@ import '../../state/connection_state.dart';
 import '../../state/hosts_state.dart';
 import '../../state/session_search.dart';
 import '../../state/sessions_state.dart';
+import '../bots/bot_session_routing.dart';
 import '../common/app_sheet.dart';
 import '../common/empty_view.dart';
 import '../common/fade_in.dart';
@@ -33,6 +34,8 @@ class SessionSearchBar extends ConsumerWidget {
   Future<void> _open(BuildContext context, WidgetRef ref) async {
     final sessionId = await showSessionSearch(context);
     if (sessionId == null || !context.mounted) return;
+    // A Bot's or group's chat opens its page; the drawer closes either way.
+    if (openTeamChatIfOwned(context, ref, sessionId, beforeOpen: onClose)) return;
     ref.read(currentSessionProvider.notifier).select(sessionId);
     onClose();
   }
