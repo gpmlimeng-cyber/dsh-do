@@ -108,13 +108,6 @@ class _BotChatPageState extends ConsumerState<BotChatPage> {
   Future<void> _attach() async {
     final sessionId = ref.read(dsBotProvider).team?.bot(widget.botId)?.sessionId;
     if (sessionId == null) return;
-    final client = ref.read(activeConnectionProvider).value?.client;
-    final picked = await pickBotAttachments(
-      context,
-      ref,
-      files: client?.supportsEndpoint('fileUploads/upload') ?? true,
-    );
-    if (!mounted || picked == null || picked.isEmpty) return;
     final room = maxAttachments - _drafts.length;
     if (room <= 0) {
       ScaffoldMessenger.maybeOf(context)?.showSnackBar(
@@ -122,7 +115,15 @@ class _BotChatPageState extends ConsumerState<BotChatPage> {
       );
       return;
     }
-    setState(() => _drafts = [..._drafts, ...picked.take(room)]);
+    final client = ref.read(activeConnectionProvider).value?.client;
+    final picked = await pickBotAttachments(
+      context,
+      ref,
+      files: client?.supportsEndpoint('fileUploads/upload') ?? true,
+      limit: room,
+    );
+    if (!mounted || picked == null || picked.isEmpty) return;
+    setState(() => _drafts = [..._drafts, ...picked]);
   }
 
   Future<void> _pickModel(DsBot bot, BotActionScope scope) => pickBotModel(context, ref, bot, scope: scope);
@@ -250,7 +251,10 @@ class _BotChatPageState extends ConsumerState<BotChatPage> {
           controller: _input,
           focusNode: _focus,
           connected: api != null && !readOnly,
-          leading: AttachButton(key: const ValueKey('attach-key'), onPressed: api == null || readOnly ? null : _attach),
+          // A host that speaks API 2 is the one that takes attachments on `send`.
+          leading: (status.hello?.api ?? 0) >= 2
+              ? AttachButton(key: const ValueKey('attach-key'), onPressed: api == null || readOnly ? null : _attach)
+              : null,
           tray: _drafts.isEmpty
               ? null
               : ComposerTray(

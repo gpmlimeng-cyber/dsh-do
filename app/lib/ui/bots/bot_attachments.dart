@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../l10n/l10n.dart';
 import '../../state/attachments.dart';
 import '../chat/widgets/plus_panel.dart';
 
@@ -13,27 +14,45 @@ import '../chat/widgets/plus_panel.dart';
 ///
 /// [files] false leaves 文件 out (DSH Remote stages no files). No `sessionId`:
 /// the panel's 本对话 (permissions, plan mode) belongs to a chat page, not to a
-/// Bot's conversation or a group.
+/// Bot's conversation or a group. [limit] is the room left in the tray, so the
+/// picker stops at the same nine the chat page allows.
 Future<List<DraftAttachment>?> pickBotAttachments(
   BuildContext context,
   WidgetRef ref, {
   bool files = true,
+  int limit = maxAttachments,
 }) async {
   final choice = await showPlusPanel(context, files: files);
   if (choice is! AttachChoice) return null;
   final picker = ref.read(attachmentPickerProvider);
+  final messenger = ScaffoldMessenger.maybeOf(context);
   final PickedAttachments picked;
   try {
     picked = switch (choice.source) {
-      AttachSource.gallery => PickedAttachments(await picker.pickImages(limit: maxAttachments)),
+      AttachSource.gallery => PickedAttachments(await picker.pickImages(limit: limit)),
       AttachSource.camera => PickedAttachments([?await picker.takePhoto()]),
-      AttachSource.files => await picker.pickFiles(limit: maxAttachments),
+      AttachSource.files => await picker.pickFiles(limit: limit),
     };
-  } on PlatformException {
+  } on PlatformException catch (error) {
+    // A refused permission is the common case, and saying nothing looks broken.
+    if (!context.mounted) return null;
+    messenger?.showSnackBar(
+      SnackBar(
+        content: Text(
+          error.code.contains('denied') || error.code.contains('permission')
+              ? context.l10n.chatAttachmentPermission
+              : context.l10n.chatOpenAttachmentFailed,
+        ),
+      ),
+    );
+    return null;
+  } catch (_) {
+    if (!context.mounted) return null;
+    messenger?.showSnackBar(SnackBar(content: Text(context.l10n.chatReadFailed)));
     return null;
   }
-  if (picked.problem case final problem? when context.mounted) {
-    ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text(problem)));
+  if (picked.problem case final problem?) {
+    messenger?.showSnackBar(SnackBar(content: Text(problem)));
   }
   return picked.attachments;
 }

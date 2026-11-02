@@ -1386,7 +1386,9 @@ class DsBotApi {
   }
 
   /// Versions of the mobile API this client speaks.
-  static const supportedApi = [1];
+  /// Host versions this client speaks: 2 is `send` with images and staged
+  /// file receipts; 1 still works for everything else.
+  static const supportedApi = [1, 2];
 
   final DsBotTransport transport;
 

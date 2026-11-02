@@ -113,13 +113,6 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
 
   /// Opens the ＋ panel; the pick joins the tray above the composer.
   Future<void> _attach() async {
-    final client = ref.read(activeConnectionProvider).value?.client;
-    final picked = await pickBotAttachments(
-      context,
-      ref,
-      files: client?.supportsEndpoint('fileUploads/upload') ?? true,
-    );
-    if (!mounted || picked == null || picked.isEmpty) return;
     final room = maxAttachments - _drafts.length;
     if (room <= 0) {
       ScaffoldMessenger.maybeOf(context)?.showSnackBar(
@@ -127,7 +120,15 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
       );
       return;
     }
-    setState(() => _drafts = [..._drafts, ...picked.take(room)]);
+    final client = ref.read(activeConnectionProvider).value?.client;
+    final picked = await pickBotAttachments(
+      context,
+      ref,
+      files: client?.supportsEndpoint('fileUploads/upload') ?? true,
+      limit: room,
+    );
+    if (!mounted || picked == null || picked.isEmpty) return;
+    setState(() => _drafts = [..._drafts, ...picked]);
   }
 
   Future<void> _continue(DsBotRoom room, BotActionScope target) async {
@@ -375,7 +376,10 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
           onStop: _stopGuard.action(roomId: room.id),
           onKeyEvent: _mentions.handleKey,
           // 写 `@` 仍会按光标弹出成员候选；＋ 占住左边那颗键，附件优先。
-          leading: AttachButton(key: const ValueKey('attach-key'), onPressed: api == null || readOnly ? null : _attach),
+          // A host that speaks API 2 is the one that takes attachments on `send`.
+          leading: (status.hello?.api ?? 0) >= 2
+              ? AttachButton(key: const ValueKey('attach-key'), onPressed: api == null || readOnly ? null : _attach)
+              : null,
           tray: _drafts.isEmpty
               ? null
               : ComposerTray(

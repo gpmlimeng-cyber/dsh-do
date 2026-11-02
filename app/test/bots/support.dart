@@ -55,9 +55,9 @@ class FakeDsBotTransport implements DsBotTransport {
   bool helloOnFeed = true;
 
   Map<String, Object?> helloAnswer() => {
-    'api': 1,
+    'api': 2,
     'apiMin': 1,
-    'apiMax': 1,
+    'apiMax': 2,
     'plugin': {'name': 'ds-bot', 'version': '0.2.0'},
     'capabilities': [
       'state',
