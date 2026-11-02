@@ -159,20 +159,18 @@ void main() {
     near(tester.getRect(find.byType(TextField)).left - left.right, 8, 'text after the left key');
   }
 
-  testWidgets('in a group the @ key mirrors send, and opens the member list', (tester) async {
+  testWidgets('in a group the ＋ key mirrors send, and a typed @ opens the member list', (tester) async {
     await pump(tester, const RoomChatPage(roomId: 'r1'));
-    expectEndCaps(tester, tester.getRect(find.byKey(const ValueKey('mention-key'))));
-    await tester.tap(find.byKey(const ValueKey('mention-key')));
+    expectEndCaps(tester, tester.getRect(find.byKey(const ValueKey('attach-key'))));
+    await tester.enterText(find.byType(TextField), '@');
     await tester.pump(const Duration(milliseconds: 300));
-    expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, '@');
     expect(find.byType(BotMentionPicker), findsOneWidget);
   });
 
-  testWidgets('Bot composer starts at the text inset and keeps the send end cap', (tester) async {
+  testWidgets('Bot composer starts after its ＋ key and keeps the send end cap', (tester) async {
     await pump(tester, const BotChatPage(botId: 'b2'));
     final capsule = tester.getRect(find.byType(Composer));
-    final field = tester.getRect(find.byType(TextField));
-    near(field.left - capsule.left, 18, 'text starts without an empty key');
+    expectEndCaps(tester, tester.getRect(find.byKey(const ValueKey('attach-key'))));
     expect(tester.widget<TextField>(find.byType(TextField)).decoration!.hintText, '给 Writer 发消息…');
     final send = tester.getRect(
       find.ancestor(of: find.byIcon(AppIcons.send), matching: find.byType(AnimatedContainer)).first,

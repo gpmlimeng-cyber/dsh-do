@@ -1422,9 +1422,21 @@ class DsBotApi {
   Future<DsBotRoomPage> roomChat(String roomId, {Object? cursor}) async =>
       DsBotRoomPage.fromJson(await call('room-chat', {'roomId': roomId, 'cursor': ?cursor}));
 
-  /// Sends [text] to a Bot (its id) or a group (its id).
-  Future<void> send(String conversationId, String text) =>
-      call('send', {'sessionId': conversationId, 'text': text}, const Duration(seconds: 40));
+  /// Sends [text] to a Bot (its id) or a group (its id), with images inline
+  /// and the receipts of the files already staged in that conversation. Text
+  /// alone is one of the three.
+  Future<void> send(
+    String conversationId,
+    String text, {
+    List<PromptImage> images = const [],
+    List<String> fileReceiptIds = const [],
+  }) =>
+      call('send', {
+        'sessionId': conversationId,
+        'text': text,
+        if (images.isNotEmpty) 'images': [for (final image in images) image.toJson()],
+        if (fileReceiptIds.isNotEmpty) 'fileReceiptIds': fileReceiptIds,
+      }, const Duration(seconds: 40));
 
   /// Reads the Host's bounded preview, retaining its completeness metadata.
   Future<DsBotFileText> readFileText(DsBotLongText long) async =>

@@ -10,8 +10,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
 import '../../state/settings_state.dart';
+import '../../state/attachments.dart';
 import '../../state/bots_state.dart';
+import '../../state/connection_state.dart';
 import '../chat/composer.dart';
+import '../chat/widgets/attachments.dart';
 import '../chat/widgets/chat_card.dart';
 import '../common/status_dot.dart';
 import '../features/feature_kit.dart';
@@ -20,6 +23,7 @@ import 'bot_stop_guard.dart';
 import 'bot_action_scope.dart';
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
+import 'bot_attachments.dart';
 import 'bot_draft_send.dart';
 import 'bot_avatar.dart';
 import 'unavailable_message.dart';
@@ -53,6 +57,8 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
   final _scrolled = ValueNotifier(0.0);
   late final DsBotViewingController _viewing;
   late final BotMentionController _mentions = BotMentionController(input: _input);
+  /// Picked but unsent: shown above the composer, cleared when the send lands.
+  List<DraftAttachment> _drafts = const [];
 
   @override
   void initState() {
@@ -78,13 +84,50 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
   Future<void> _send(BotActionScope target) async {
     if (!mounted || target.roomId != widget.roomId || !target.current(context, ref)) return;
     if (!ref.read(dsBotProvider).ready) return;
+    final attachments = _drafts;
+    final messenger = ScaffoldMessenger.maybeOf(context);
     await sendBotDraft(
       context,
       ref,
       _input,
       roomId: widget.roomId,
-      send: (text) => ref.read(roomChatProvider(widget.roomId).notifier).send(text),
+      hasAttachments: attachments.isNotEmpty,
+      send: (text) async {
+        final controller = ref.read(roomChatProvider(widget.roomId).notifier);
+        if (attachments.isEmpty) return controller.send(text);
+        final client = ref.read(activeConnectionProvider).value?.client;
+        if (client == null) return false;
+        try {
+          // A group's id is its Session: the round reads the line from it.
+          final staged = await stageBotAttachments(client, widget.roomId, attachments);
+          final sent = await controller.send(text, images: staged.images, fileReceiptIds: staged.receipts);
+          if (sent && mounted) setState(() => _drafts = const []);
+          return sent;
+        } catch (error) {
+          if (mounted) messenger?.showSnackBar(SnackBar(content: Text(describeDsBotError(error))));
+          return false;
+        }
+      },
     );
+  }
+
+  /// Opens the ＋ panel; the pick joins the tray above the composer.
+  Future<void> _attach() async {
+    final client = ref.read(activeConnectionProvider).value?.client;
+    final picked = await pickBotAttachments(
+      context,
+      ref,
+      files: client?.supportsEndpoint('fileUploads/upload') ?? true,
+    );
+    if (!mounted || picked == null || picked.isEmpty) return;
+    final room = maxAttachments - _drafts.length;
+    if (room <= 0) {
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        SnackBar(content: Text(context.l10n.chatAttachmentLimit(maxAttachments))),
+      );
+      return;
+    }
+    setState(() => _drafts = [..._drafts, ...picked.take(room)]);
   }
 
   Future<void> _continue(DsBotRoom room, BotActionScope target) async {
@@ -331,14 +374,15 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
           onSend: () => _send(sendTarget),
           onStop: _stopGuard.action(roomId: room.id),
           onKeyEvent: _mentions.handleKey,
-          leading: MentionKey(
-            onPressed: api == null || readOnly
-                ? null
-                : () {
-                    _mentions.start();
-                    _focus.requestFocus();
-                  },
-          ),
+          // 写 `@` 仍会按光标弹出成员候选；＋ 占住左边那颗键，附件优先。
+          leading: AttachButton(key: const ValueKey('attach-key'), onPressed: api == null || readOnly ? null : _attach),
+          tray: _drafts.isEmpty
+              ? null
+              : ComposerTray(
+                  items: _drafts,
+                  onRemove: (gone) => setState(() => _drafts = [for (final draft in _drafts) if (draft != gone) draft]),
+                ),
+          hasAttachments: _drafts.isNotEmpty,
         ),
       ],
     );
