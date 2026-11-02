@@ -56,9 +56,8 @@ jobs:
           EOF
 
       - name: Build the APK
-        env:
-          # A separate id, so this build cannot replace the shipped app.
-          ORG_GRADLE_PROJECT_dshAppIdSuffix: ".ci"
+        # The app id is MODO's own (see build.gradle.kts), so this build cannot
+        # replace the shipped DSH Go; no extra suffix is needed.
         run: tooling/build-apk.sh --release -f arm64
 
       - name: List what was built

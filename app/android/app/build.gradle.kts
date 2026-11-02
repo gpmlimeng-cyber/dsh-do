@@ -36,9 +36,9 @@ android {
     }
 
     defaultConfig {
-        // The CI build installs beside the shipped app: a suffix keeps its id
-        // (and its private data) separate. Unset locally, so the id never moves.
-        applicationId = "io.github.ccch1mneyyy.dsh_app" + ((project.findProperty("dshAppIdSuffix") as String?) ?: "")
+        // This build is its own product (MODO): a different id, so it installs
+        // beside the shipped DSH Go and keeps its own data.
+        applicationId = "io.github.gpmlimeng.modo" + ((project.findProperty("dshAppIdSuffix") as String?) ?: "")
         // java.nio.file (symlinks while unpacking the rootfs) needs API 26.
         minSdk = 26
         // Target 28 like Termux, so the API 29+ exec restriction on app-private
