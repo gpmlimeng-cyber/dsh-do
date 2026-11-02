@@ -492,5 +492,6 @@ BotDrawerRow _bot(String id, {DateTime? at, DateTime? created, bool room = false
   title: id,
   updatedAt: at ?? _now,
   createdAt: created ?? (at ?? _now),
-  room: room,
+  bot: room ? null : DsBot(id: id, name: id),
+  room: room ? DsBotRoom(id: id, name: id) : null,
 );

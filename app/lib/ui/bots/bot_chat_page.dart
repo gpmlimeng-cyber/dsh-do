@@ -207,7 +207,11 @@ class _BotChatPageState extends ConsumerState<BotChatPage> {
       ),
       _ => (bot.role.isEmpty ? (team.isMain(bot.id) ? l10n.botsMainBot : l10n.botsIdle) : bot.role, StatusTone.ok),
     };
-    final rows = transcriptRows(chat.items, pending: chat.pending, streaming: ownTurn ? chat.streaming : null);
+    // Consecutive tool calls fold into one row, so a busy turn does not fill
+    // the transcript with them.
+    final rows = groupToolRows(
+      transcriptRows(chat.items, pending: chat.pending, streaming: ownTurn ? chat.streaming : null),
+    );
     final topInset = BotChatHeader.heightOf(context);
     final rooms = {for (final room in team.rooms) room.id: room.name};
     final readOnly = status.readOnly != null;
@@ -223,6 +227,13 @@ class _BotChatPageState extends ConsumerState<BotChatPage> {
         scrolledUnder: _scrolled,
         onLeading: () => openDrawerOverShell(context, ref),
         onDetails: () => Navigator.of(context).push(BotDetailsPage.route(bot.id)),
+        chip: switch (botModelSelection(bot)) {
+          final selection? => BotModelChip(
+            model: selection.model,
+            onTap: () => _pickModel(bot, modelScope),
+          ),
+          null => null,
+        },
       ),
       body: chat.loading && chat.items.isEmpty
           ? Padding(
@@ -247,6 +258,12 @@ class _BotChatPageState extends ConsumerState<BotChatPage> {
                         ? const Align(alignment: Alignment.centerLeft, child: _Thinking())
                         : BotReplyText(text: text, streaming: true),
                   BotTypingRow() => const SizedBox.shrink(),
+                  BotToolGroupRow(:final items) => BotToolGroup(
+                    // A stable key: paging in older rows must not hand this
+                    // group's open state to the one that lands on its index.
+                    key: ValueKey('tool-group-${items.first.callId ?? items.first.toolName}'),
+                    items: items,
+                  ),
                   BotItemRow(:final item) => switch (item.kind) {
                     DsBotItemKind.user => BotUserMessage(
                       text: item.text,
@@ -260,6 +277,7 @@ class _BotChatPageState extends ConsumerState<BotChatPage> {
                     ),
                     DsBotItemKind.answer => BotEventLine(text: l10n.botsAnsweredQuestion, icon: AppIcons.done),
                     DsBotItemKind.divider => BotEventLine(text: l10n.botsEarlierMessages, icon: AppIcons.history),
+                    DsBotItemKind.tool => BotToolRow(name: item.toolName ?? '', status: item.toolStatus),
                     DsBotItemKind.unknown => const SizedBox.shrink(),
                   },
                 },

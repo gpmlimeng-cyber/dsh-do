@@ -15,6 +15,7 @@ import '../../state/bots_state.dart';
 import '../chat/render/markdown_body.dart';
 import '../chat/widgets/chat_card.dart';
 import '../chat/widgets/message_actions.dart';
+import '../share/share_entry.dart' show shareText;
 import '../chat/widgets/notice_row.dart';
 import '../chat/widgets/user_bubble.dart';
 import '../common/capsule_chip.dart';
@@ -47,6 +48,7 @@ class BotChatHeader extends StatelessWidget {
     required this.onDetails,
     this.onLeading,
     this.scrolledUnder,
+    this.chip,
   });
 
   final Widget face;
@@ -58,6 +60,9 @@ class BotChatHeader extends StatelessWidget {
   /// What the header's first key does; the default steps back.
   final VoidCallback? onLeading;
   final ValueNotifier<double>? scrolledUnder;
+
+  /// The model this Bot runs on, before the details key.
+  final Widget? chip;
 
   static const barHeight = 56.0;
   static const key44 = 44.0;
@@ -176,6 +181,10 @@ class BotChatHeader extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (chip case final chip?) ...[
+                    const SizedBox(width: 8),
+                    chip,
+                  ],
                   const SizedBox(width: 8),
                   _RoundKey(
                     key: const ValueKey('bot-details'),
@@ -365,6 +374,122 @@ List<BotRow> transcriptRows(
   return rows;
 }
 
+/// Consecutive tool calls from this many on fold into one group, as the chat
+/// page groups them.
+const toolGroupThreshold = 3;
+
+/// A run of consecutive tool calls, folded so they do not push the reply down.
+final class BotToolGroupRow extends BotRow {
+  const BotToolGroupRow(this.items);
+
+  final List<DsBotItem> items;
+}
+
+/// [rows] with runs of [toolGroupThreshold] or more tool calls folded into one
+/// [BotToolGroupRow]; a shorter run stays as the lines it was.
+List<BotRow> groupToolRows(List<BotRow> rows) {
+  final out = <BotRow>[];
+  var run = <BotItemRow>[];
+  void flush() {
+    if (run.length >= toolGroupThreshold) {
+      out.add(BotToolGroupRow([for (final row in run) row.item]));
+    } else {
+      out.addAll(run);
+    }
+    run = <BotItemRow>[];
+  }
+
+  for (final row in rows) {
+    if (row is BotItemRow && row.item.kind == DsBotItemKind.tool) {
+      run.add(row);
+      continue;
+    }
+    if (run.isNotEmpty) flush();
+    out.add(row);
+  }
+  if (run.isNotEmpty) flush();
+  return out;
+}
+
+/// A folded run of tool calls: one line with how many ran, open while they are
+/// still running and folded again once they are done.
+class BotToolGroup extends StatefulWidget {
+  const BotToolGroup({super.key, required this.items});
+
+  final List<DsBotItem> items;
+
+  @override
+  State<BotToolGroup> createState() => _BotToolGroupState();
+}
+
+class _BotToolGroupState extends State<BotToolGroup> {
+  late bool _open = widget.items.any(_running);
+
+  static bool _running(DsBotItem item) => item.toolStatus == 'running';
+
+  @override
+  void didUpdateWidget(covariant BotToolGroup old) {
+    super.didUpdateWidget(old);
+    final was = old.items.any(_running);
+    final now = widget.items.any(_running);
+    // Still running: open. Just finished: fold back, as the chat page does.
+    if (now && !was) _open = true;
+    if (!now && was) _open = false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final colors = DshColors.of(context);
+    final failed = widget.items.any((item) => item.toolStatus == 'failed');
+    final tone = failed ? colors.warning : colors.textTertiary;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Semantics(
+          button: true,
+          label: l10n.activitySpanToolCalls(widget.items.length),
+          child: InkWell(
+            onTap: () => setState(() => _open = !_open),
+            borderRadius: AppShape.radiusSm,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Row(
+                children: [
+                  Icon(failed ? AppIcons.warning : AppIcons.terminal, size: 16, color: tone),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      l10n.activitySpanToolCalls(widget.items.length),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(color: colors.textTertiary),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(_open ? AppIcons.collapse : AppIcons.expand, size: 16, color: tone),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (_open)
+          Padding(
+            padding: const EdgeInsets.only(left: 24, top: 2),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final item in widget.items)
+                  BotToolRow(name: item.toolName ?? '', status: item.toolStatus),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 /// The transcript, newest at the bottom; scrolling up to the oldest row asks
 /// for the page before.
 class BotTranscript extends StatefulWidget {
@@ -396,14 +521,27 @@ class BotTranscript extends StatefulWidget {
 }
 
 class _BotTranscriptState extends State<BotTranscript> {
+  final _controller = ScrollController();
+  bool _away = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
   bool _onScroll(ScrollNotification note) {
     final metrics = note.metrics;
     // Reversed: content above the top edge is what lies past the scroll end.
     final above = metrics.maxScrollExtent - metrics.pixels;
     widget.scrolledUnder?.value = (above / 24).clamp(0.0, 1.0);
     if (above < 400 && widget.hasEarlier && !widget.loadingEarlier) widget.onEarlier?.call();
+    final away = above > 240;
+    if (away != _away) setState(() => _away = away);
     return false;
   }
+
+  void _toBottom() => _controller.animateTo(0, duration: AppMotion.of(context, AppMotion.standard), curve: AppMotion.std);
 
   @override
   Widget build(BuildContext context) {
@@ -415,10 +553,13 @@ class _BotTranscriptState extends State<BotTranscript> {
       );
     }
     final extra = widget.hasEarlier ? 1 : 0;
-    return NotificationListener<ScrollNotification>(
-      onNotification: _onScroll,
-      child: ListView.builder(
-        reverse: true,
+    return Stack(
+      children: [
+        NotificationListener<ScrollNotification>(
+          onNotification: _onScroll,
+          child: ListView.builder(
+            controller: _controller,
+            reverse: true,
         padding: EdgeInsets.fromLTRB(0, widget.topInset, 0, 8),
         itemCount: rows.length + extra,
         itemBuilder: (context, index) {
@@ -436,7 +577,43 @@ class _BotTranscriptState extends State<BotTranscript> {
             ),
           );
         },
-      ),
+          ),
+        ),
+        // Scrolled away from the newest row: one tap brings it back.
+        Positioned(
+          right: 16,
+          bottom: 16,
+          // Hidden is hidden to the finger and to a screen reader too: a
+          // scaled-to-zero button would still take both.
+          child: IgnorePointer(
+            ignoring: !_away,
+            child: ExcludeSemantics(
+              excluding: !_away,
+              child: AnimatedScale(
+                scale: _away ? 1 : 0,
+            duration: AppMotion.of(context, AppMotion.quick),
+            curve: AppMotion.std,
+            child: Semantics(
+              button: true,
+              label: context.l10n.chatBackToBottom,
+              child: Material(
+                color: Theme.of(context).colorScheme.surfaceContainerHigh,
+                shape: const CircleBorder(),
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  onTap: _away ? _toBottom : null,
+                  child: const SizedBox.square(
+                    dimension: 40,
+                    child: Icon(AppIcons.scrollToBottom, size: 22),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          ),
+        ),
+        ),
+      ],
     );
   }
 }
@@ -502,28 +679,46 @@ class BotEventLine extends StatelessWidget {
 /// A Bot's words in its own chat: bare full-width Markdown, like the chat's
 /// replies; long-press copies or selects.
 class BotReplyText extends StatelessWidget {
-  const BotReplyText({super.key, required this.text, this.streaming = false});
+  const BotReplyText({
+    super.key,
+    required this.text,
+    this.streaming = false,
+    this.actions = const [MessageAction.copy, MessageAction.selectText, MessageAction.share],
+  });
 
   final String text;
   final bool streaming;
 
+  /// What its long-press menu offers. A group line passes 复制 / 分享 only:
+  /// selecting text is the chat's own reading tool.
+  final List<MessageAction> actions;
+
   Future<void> _menu(BuildContext context) async {
+    if (actions.isEmpty) return;
     final action = await showMessageMenu(
       context,
       text: text,
-      actions: const [MessageAction.copy, MessageAction.selectText],
+      actions: actions,
     );
     if (!context.mounted || action == null) return;
-    if (action == MessageAction.copy) {
-      await copyMessage(context, text);
-    } else if (action == MessageAction.selectText) {
-      await showSelectTextSheet(context, text, markdown: true);
+    switch (action) {
+      case MessageAction.copy:
+        await copyMessage(context, text);
+      case MessageAction.selectText:
+        await showSelectTextSheet(context, text, markdown: true);
+      case MessageAction.share:
+        await shareText(context, text);
+      case MessageAction.edit ||
+          MessageAction.quote ||
+          MessageAction.regenerate ||
+          MessageAction.branch:
+        break;
     }
   }
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-    onLongPress: streaming ? null : () => _menu(context),
+    onLongPress: streaming || actions.isEmpty ? null : () => _menu(context),
     child: MarkdownBody(text: text, streaming: streaming, selectable: false, repairBareViews: true),
   );
 }
@@ -599,7 +794,12 @@ class GroupMessage extends StatelessWidget {
               ],
             ),
           ),
-        BotReplyText(text: item.text),
+        BotReplyText(
+          text: item.text,
+          // One menu, not two: the inner one wins the gesture arena anyway.
+          // A file-only line has no text worth copying or sharing.
+          actions: item.text.trim().isEmpty ? const [] : const [MessageAction.copy, MessageAction.share],
+        ),
         if (onShowAll != null)
           TextButton(
             onPressed: onShowAll,
@@ -654,10 +854,82 @@ class BotTypingLine extends StatelessWidget {
   }
 }
 
+/// The model the Bot runs on: tap it to pick another, as the chat's own header
+/// does.
+class BotModelChip extends StatelessWidget {
+  const BotModelChip({super.key, required this.model, required this.onTap});
+
+  /// The model's own name, without the provider.
+  final String model;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final colors = DshColors.of(context);
+    return Semantics(
+      button: true,
+      label: l10n.botsChooseModel,
+      child: Tooltip(
+        message: l10n.botsChooseModel,
+        child: GlassSurface(
+          key: const ValueKey('bot-model-chip'),
+          tier: GlassTier.chrome,
+          stadium: true,
+          onTap: onTap,
+          child: SizedBox(
+            height: 32,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(AppIcons.model, size: 14, color: colors.textTertiary),
+                  const SizedBox(width: 6),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 96),
+                    child: Text(
+                      model,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelMedium?.copyWith(color: colors.textSecondary),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 复制 / 分享 for a line outside a conversation (a Bot's or a group's): the
+/// only two actions that make sense without the chat's own semantics.
+Future<void> botLineMenu(BuildContext context, String text) async {
+  final action = await showMessageMenu(
+    context,
+    text: text,
+    actions: const [MessageAction.copy, MessageAction.share],
+  );
+  if (!context.mounted || action == null) return;
+  switch (action) {
+    case MessageAction.copy:
+      await copyMessage(context, text);
+    case MessageAction.share:
+      await shareText(context, text);
+    default:
+      break;
+  }
+}
+
 /// The person's message: its pictures and files above, its text in the bubble.
 /// A line that carries only attachments has no bubble at all.
 class BotUserMessage extends StatelessWidget {
   const BotUserMessage({super.key, required this.text, this.pending = false, this.images = 0, this.attachments});
+
 
   final String text;
   final bool pending;
@@ -676,10 +948,60 @@ class BotUserMessage extends StatelessWidget {
     if (shown.isEmpty && attachments == null) return const SizedBox.shrink();
     return Align(
       alignment: Alignment.centerRight,
-      child: UserBubble(
-        text: shown,
-        attachments: attachments,
-        pendingLabel: pending ? l10n.botsSending : null,
+      child: GestureDetector(
+        onLongPress: pending || text.trim().isEmpty ? null : () => botLineMenu(context, text),
+        child: UserBubble(
+          text: shown,
+          attachments: attachments,
+          pendingLabel: pending ? l10n.botsSending : null,
+        ),
+      ),
+    );
+  }
+}
+
+/// A tool call in a Bot's chat: what ran, and whether it is still running. The
+/// host sends no arguments or output, so there is nothing to expand yet.
+class BotToolRow extends StatelessWidget {
+  const BotToolRow({super.key, required this.name, this.status});
+
+  final String name;
+
+  /// `running` / `done` / `failed`.
+  final String? status;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final colors = DshColors.of(context);
+    final failed = status == 'failed';
+    final running = status == 'running';
+    final label = switch (status) {
+      'running' => l10n.chatToolRunning,
+      'failed' => l10n.commonFailed,
+      _ => null,
+    };
+    final tone = failed ? colors.warning : colors.textTertiary;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Icon(failed ? AppIcons.warning : running ? AppIcons.running : AppIcons.done, size: 16, color: tone),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodySmall?.copyWith(color: colors.textTertiary),
+            ),
+          ),
+          if (label != null) ...[
+            const SizedBox(width: 8),
+            Text(label, style: theme.textTheme.labelSmall?.copyWith(color: tone)),
+          ],
+        ],
       ),
     );
   }

@@ -26,6 +26,7 @@ class SessionTile extends StatelessWidget {
     this.unread = false,
     this.pinned = false,
     this.badge,
+    this.leading,
     this.indent = 0,
     this.selecting = false,
     this.selected = false,
@@ -47,6 +48,10 @@ class SessionTile extends StatelessWidget {
   /// A small tag before the marker (a Main Bot's 「主」). Never the pin: that
   /// one says the person pinned the row, which Bot rows cannot be.
   final String? badge;
+
+  /// A 22 face before the title, for the rows that are a Bot or a group; the
+  /// row keeps its 44 height, so the face is inset rather than the row grown.
+  final Widget? leading;
 
   /// Content inset from the 20 line (folder members: [folderIndent]).
   final double indent;
@@ -126,6 +131,10 @@ class SessionTile extends StatelessWidget {
             child: Row(
               children: [
                 _CheckSlot(selecting: selecting, selected: selected),
+                if (leading case final face?) ...[
+                  SizedBox.square(dimension: 22, child: face),
+                  const SizedBox(width: 8),
+                ],
                 Expanded(
                   child: Text(
                     title,

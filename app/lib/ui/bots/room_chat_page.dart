@@ -351,6 +351,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
                         _ => null,
                       },
                     ),
+                    DsBotItemKind.tool => BotToolRow(name: item.toolName ?? '', status: item.toolStatus),
                     _ => const SizedBox.shrink(),
                   },
                 },

@@ -11,10 +11,12 @@ import '../../../l10n/l10n.dart';
 import '../../../state/drawer_view_state.dart';
 import '../../../state/session_attention_state.dart';
 import '../../../state/session_created_state.dart';
+import '../../../state/bots_state.dart';
 import '../../../state/sessions_state.dart';
 import '../../../state/workspaces_state.dart';
 import '../../common/empty_view.dart';
 import '../../theme/app_icons.dart';
+import '../../bots/bot_avatar.dart';
 import '../../theme/theme.dart';
 import '../../bots/bot_chat_page.dart';
 import '../../bots/room_chat_page.dart';
@@ -106,6 +108,7 @@ class DrawerConversationList extends ConsumerWidget {
     void add(Key key, WidgetBuilder builder) => rows.add((key: key, builder: builder));
     // A Bot's own chat or a group chat: same row, its own chat page. Never
     // selectable, and its only long-press action is the folder.
+    final team = ref.watch(dsBotProvider).team;
     Widget botTile(BotDrawerRow row, {bool inFolder = false}) => SessionTile(
       key: ValueKey('bot-${row.id}'),
       title: row.title,
@@ -116,6 +119,12 @@ class DrawerConversationList extends ConsumerWidget {
       unread: !readOnly && row.unread,
       pinned: false,
       badge: row.badge,
+      // A face is what tells these rows from the conversations beside them.
+      leading: switch ((row.bot, row.room, team)) {
+        (final bot?, _, _) => BotAvatar(bot: bot, size: 22),
+        (_, final room?, final team?) => RoomAvatar(room: room, team: team, size: 22),
+        _ => null,
+      },
       indent: inFolder ? SessionTile.folderIndent : 0,
       selecting: selecting,
       selected: false,
@@ -124,7 +133,7 @@ class DrawerConversationList extends ConsumerWidget {
           : () {
               Navigator.of(
                 context,
-              ).push(row.room ? RoomChatPage.route(row.id) : BotChatPage.route(row.id));
+              ).push(row.isRoom ? RoomChatPage.route(row.id) : BotChatPage.route(row.id));
               // Close once the page covers us, so "back" lands on the chat.
               Future<void>.delayed(AppMotion.slow, onClose);
             },

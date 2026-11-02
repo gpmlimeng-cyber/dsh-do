@@ -840,7 +840,7 @@ class DsBotFileText {
   final bool? whole;
 }
 
-enum DsBotItemKind { user, bot, event, answer, divider, unknown }
+enum DsBotItemKind { user, bot, event, answer, divider, tool, unknown }
 
 /// One entry of a chat or a group chat, ready to draw.
 /// One attachment a line carries: enough to fetch an image by id, and to name
@@ -879,6 +879,9 @@ class DsBotItem {
     this.roomId,
     this.images = 0,
     this.files = const [],
+    this.callId,
+    this.toolName,
+    this.toolStatus,
     this.duration,
     this.live = false,
     this.whole,
@@ -894,6 +897,7 @@ class DsBotItem {
         'event' => DsBotItemKind.event,
         'answer' => DsBotItemKind.answer,
         'divider' => DsBotItemKind.divider,
+        'tool' => DsBotItemKind.tool,
         _ => DsBotItemKind.unknown,
       },
       id: asString(map['id']),
@@ -908,6 +912,9 @@ class DsBotItem {
       roomId: asString(map['roomId']),
       images: asInt(map['images']) ?? 0,
       files: [for (final file in asListOrEmpty(map['files'])) DsBotAttachmentRef.fromJson(file)],
+      callId: asString(map['callId']),
+      toolName: asString(map['name']),
+      toolStatus: asString(map['status']),
       duration: asInt(map['duration']) == null ? null : Duration(milliseconds: asInt(map['duration'])!),
       live: asBool(map['live']) ?? false,
       whole: whole == null ? null : DsBotLongText(asInt(whole['length']) ?? 0, asMapOrEmpty(whole['file'])),
@@ -938,6 +945,12 @@ class DsBotItem {
 
   /// The attachments themselves, when the host names them.
   final List<DsBotAttachmentRef> files;
+
+  /// For [DsBotItemKind.tool]: the call, the tool, and `running` / `done` /
+  /// `failed`. Nothing more is sent, so the row has nothing to expand.
+  final String? callId;
+  final String? toolName;
+  final String? toolStatus;
   final Duration? duration;
 
   /// Said in the round still running; replaced by the logged one later.

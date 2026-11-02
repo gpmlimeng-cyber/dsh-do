@@ -662,7 +662,8 @@ final class BotDrawerRow extends DrawerRow {
     this.pending,
     this.unread = false,
     this.badge,
-    this.room = false,
+    this.bot,
+    this.room,
   });
 
   @override
@@ -677,8 +678,13 @@ final class BotDrawerRow extends DrawerRow {
   /// 「主」 on a Main Bot; null otherwise. Never the pin marker.
   final String? badge;
 
-  /// A group chat rather than a Bot's own chat.
-  final bool room;
+  /// The Bot this row is, for its face; null on a group row.
+  final DsBot? bot;
+
+  /// The group this row is, for its face; null on a Bot row.
+  final DsBotRoom? room;
+
+  bool get isRoom => room != null;
 
   @override
   DateTime sortKeyOf(DrawerSort sort) => sort == DrawerSort.created ? createdAt : updatedAt;
@@ -839,6 +845,7 @@ final drawerBotRowsProvider = Provider<List<BotDrawerRow>>((ref) {
             : null,
         unread: inbox.unreadOf(bot.id) > 0,
         badge: team.isMain(bot.id) ? appL10n.botsMainTag : null,
+        bot: bot,
       ),
     for (final room in team.rooms)
       BotDrawerRow(
@@ -848,7 +855,7 @@ final drawerBotRowsProvider = Provider<List<BotDrawerRow>>((ref) {
         createdAt: room.createdAt ?? _earliest,
         running: live.rooms.containsKey(room.id),
         unread: inbox.unreadOf(room.id) > 0,
-        room: true,
+        room: room,
       ),
   ];
 });

@@ -31,6 +31,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../shell/golden_harness.dart';
 import '../workspace/support.dart';
 import 'support.dart';
+import '../bots/support.dart' show FakeDsBotTransport, dsBotOverrides;
 
 const _eps = 0.01;
 
@@ -42,6 +43,7 @@ Future<ProviderContainer> _pump(
   DrawerView view = sampleFolders,
   Map<String, PendingKind> pending = const {},
   double textScale = 1,
+  List<Override> extra = const [],
 }) async {
   SharedPreferences.setMockInitialValues(storedView(view));
   usePhoneSurface(tester);
@@ -59,6 +61,7 @@ Future<ProviderContainer> _pump(
         currentSessionProvider.overrideWith(() => FakeCurrentSession('s2')),
         pendingInteractionsProvider.overrideWith(() => FixedPending(pending)),
         unreadSessionIdsProvider.overrideWithValue(const {}),
+        ...extra,
       ],
     ),
   );
@@ -259,4 +262,22 @@ void main() {
       expect(empty.center.dx, _near(drawer.center.dx));
     });
   });
+  testWidgets('a Bot inside a folder is indented past its face', (tester) async {
+    await _pump(
+      tester,
+      view: const DrawerView(
+        loaded: true,
+        folders: [DrawerFolder(id: 'f1', name: '工作', sessionIds: ['m1'])],
+      ),
+      extra: dsBotOverrides(FakeDsBotTransport()),
+    );
+    final drawer = _rect(tester, find.byType(SessionsDrawer));
+    final row = find.ancestor(of: find.text('Chief'), matching: find.byType(SessionTile));
+    expect(_rect(tester, row).height, _near(SessionTile.height));
+    // 10 row inset + 30 folder indent + 22 face + 8 gap.
+    final title = _rect(tester, find.descendant(of: row, matching: find.text('Chief')));
+    expect(title.left - drawer.left, _near(70));
+  });
+
 }
+
