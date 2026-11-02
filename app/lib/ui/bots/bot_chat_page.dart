@@ -23,6 +23,7 @@ import '../chat/widgets/quote_chip.dart' show ComposerTrayStack, QuoteChip;
 import '../chat/model_sheet.dart';
 import '../chat/widgets/approval_card.dart';
 import '../common/status_dot.dart';
+import '../session/session_detail_page.dart';
 import '../common/typing_indicator.dart';
 import '../features/feature_kit.dart';
 import '../shell/page_frame.dart';
@@ -246,7 +247,10 @@ class _BotChatPageState extends ConsumerState<BotChatPage> {
         tone: tone,
         scrolledUnder: _scrolled,
         onLeading: () => openDrawerOverShell(context, ref),
+        // The title capsule opens the Bot's own details; the key on the right
+        // opens the conversation's (trajectory, files, progress).
         onDetails: () => Navigator.of(context).push(BotDetailsPage.route(bot.id)),
+        onInfo: () => SessionDetailPage.open(context, bot.sessionId),
         chip: switch (botModelSelection(bot)) {
           final selection? => BotModelChip(
             model: selection.model,

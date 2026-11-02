@@ -49,6 +49,7 @@ class BotChatHeader extends StatelessWidget {
     this.onLeading,
     this.scrolledUnder,
     this.chip,
+    this.onInfo,
   });
 
   final Widget face;
@@ -63,6 +64,10 @@ class BotChatHeader extends StatelessWidget {
 
   /// The model this Bot runs on, before the details key.
   final Widget? chip;
+
+  /// The right key: 对话详情 (trajectory, files, progress). Without it the key
+  /// opens the same place as the title capsule.
+  final VoidCallback? onInfo;
 
   static const barHeight = 56.0;
   static const key44 = 44.0;
@@ -190,7 +195,7 @@ class BotChatHeader extends StatelessWidget {
                     key: const ValueKey('bot-details'),
                     icon: AppIcons.info,
                     tooltip: l10n.commonDetails,
-                    onTap: onDetails,
+                    onTap: onInfo ?? onDetails,
                   ),
                 ],
               ),
