@@ -57,8 +57,11 @@ jobs:
 
       - name: Build the APK
         # The app id is MODO's own (see build.gradle.kts), so this build cannot
-        # replace the shipped DSH Go; no extra suffix is needed.
-        run: tooling/build-apk.sh --release -f arm64
+        # replace the shipped DSH Go; no extra suffix is needed. The log is kept
+        # for the failure step: job logs live where the phone cannot read them.
+        run: |
+          set -o pipefail
+          tooling/build-apk.sh --release -f arm64 2>&1 | tee /tmp/build.log
 
       - name: List what was built
         if: always()
@@ -71,6 +74,15 @@ jobs:
           name: dsh-go-apk
           path: app/build/app/outputs/flutter-apk/*.apk
           if-no-files-found: error
+
+      - name: Publish the build log when it fails
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [ -f /tmp/build.log ] || echo "no build log" > /tmp/build.log
+          tag="buildlog-$(date -u +%Y%m%d-%H%M)-${GITHUB_SHA::7}"
+          gh release create "$tag" /tmp/build.log --title "Build log ${GITHUB_SHA::7}" --notes "tooling/build-apk.sh output from ${GITHUB_SHA}."
 
       - name: Publish the APK as a release asset
         env:
