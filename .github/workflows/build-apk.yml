@@ -1,0 +1,107 @@
+name: build-apk
+
+# Builds a release APK on x86_64 runners, for phones that cannot build one
+# themselves. The bundled runtime is not in git (runtime/out is ignored); the
+# first step reproduces it from runtime/build-runtime.sh, the second builds the
+# APK exactly as tooling/build-apk.sh does locally.
+on:
+  push:
+    branches:
+      - ci/build-apk
+  workflow_dispatch:
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.9'
+          cache: true
+
+      - name: Host tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends xz-utils unzip zip
+          flutter --version
+          java -version
+          python3 --version
+
+      - name: Build the bundled runtime (arm64)
+        run: runtime/build-runtime.sh arm64-v8a
+
+      - name: Sign with the repository's test key
+        # A throwaway key, committed on purpose: the CI build must install
+        # beside the shipped app and keep one stable signature between runs.
+        run: |
+          cat > app/android/key.properties <<'EOF'
+          storeFile=../ci/test-signing.p12
+          storeType=PKCS12
+          storePassword=dshgoci
+          keyAlias=dshgo-ci
+          keyPassword=dshgoci
+          EOF
+
+      - name: Build the APK
+        env:
+          # A separate id, so this build cannot replace the shipped app.
+          ORG_GRADLE_PROJECT_dshAppIdSuffix: ".ci"
+        run: tooling/build-apk.sh --release -f arm64
+
+      - name: List what was built
+        if: always()
+        run: |
+          ls -la app/build/app/outputs/flutter-apk/ || true
+          cat runtime/out/manifest.json 2>/dev/null | head -50 || true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dsh-go-apk
+          path: app/build/app/outputs/flutter-apk/*.apk
+          if-no-files-found: error
+
+  # Analysis and the test suite. Not yet required by the build: the golden
+  # screenshots are stale until a `goldens` run refreshes them, and a red check
+  # should not hide a working APK. Make this `needs:` once the goldens land.
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.9'
+          cache: true
+
+      - name: Fonts the golden tests render with
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+
+      - name: Fetch packages
+        run: flutter pub get
+        working-directory: app
+
+      - name: Analyze
+        run: flutter analyze
+        working-directory: app
+
+      - name: Test
+        run: flutter test
+        working-directory: app
+
+      # The client package carries the DS Bot wire shapes (send, hello);
+      # the app's own tests never load it.
+      - name: Test the client package
+        run: dart test
+        working-directory: packages/dsh_client

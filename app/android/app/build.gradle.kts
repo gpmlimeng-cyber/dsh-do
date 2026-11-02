@@ -36,7 +36,9 @@ android {
     }
 
     defaultConfig {
-        applicationId = "io.github.ccch1mneyyy.dsh_app"
+        // The CI build installs beside the shipped app: a suffix keeps its id
+        // (and its private data) separate. Unset locally, so the id never moves.
+        applicationId = "io.github.ccch1mneyyy.dsh_app" + ((project.findProperty("dshAppIdSuffix") as String?) ?: "")
         // java.nio.file (symlinks while unpacking the rootfs) needs API 26.
         minSdk = 26
         // Target 28 like Termux, so the API 29+ exec restriction on app-private
@@ -95,6 +97,8 @@ android {
                 storePassword = keyProps.getProperty("storePassword")
                 keyAlias = keyProps.getProperty("keyAlias")
                 keyPassword = keyProps.getProperty("keyPassword")
+                // A .p12 from openssl; absent means the JKS default.
+                storeType = keyProps.getProperty("storeType")
                 // All three schemes: AGP drops v1 for minSdk 24+, but some installers and
                 // security scanners on Chinese ROMs still read the JAR signature.
                 enableV1Signing = true
