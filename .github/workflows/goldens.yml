@@ -23,9 +23,15 @@ jobs:
           cache: true
 
       - name: Fonts the golden tests render with
+        # The tests read Noto Sans CJK Light, which lives in -extra; the
+        # directory it lands in varies (opentype/noto, noto-cjk), so point the
+        # tests at wherever the font really is.
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk fonts-noto-cjk-extra
+          dir="$(dirname "$(find / -name 'NotoSansCJK-Light.ttc' -print -quit 2>/dev/null)")"
+          echo "fonts in $dir"
+          echo "DSH_TEST_FONT_DIR=$dir" >> "$GITHUB_ENV"
 
       - name: Fetch packages
         run: flutter pub get
