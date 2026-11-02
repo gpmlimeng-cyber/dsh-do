@@ -1,5 +1,5 @@
-// How the feature pages hook into the shell. The drawer folds DS Bot's
-// conversations into one row and offers one 「分享」; the session detail bar
+// How the feature pages hook into the shell. The drawer lists Bots and groups
+// as rows of their own and offers one 「分享」; the session detail bar
 // has the terminal key (mirroring back);
 // a subagent tool row opens that child; a one-shot child gets the read-only
 // bar instead of the composer; a lapsed ChatGPT / Claude sign-in reads as such
@@ -18,7 +18,8 @@ import 'package:dsh_app/state/session_detail_state.dart';
 import 'package:dsh_app/state/sessions_state.dart';
 import 'package:dsh_app/state/workspace_state.dart';
 import 'package:dsh_app/state/workspaces_state.dart';
-import 'package:dsh_app/ui/bots/bots_page.dart';
+import 'package:dsh_app/ui/bots/bot_chat_page.dart';
+import 'package:dsh_app/ui/shell/drawer/session_tile.dart';
 import 'package:dsh_app/ui/chat/chat_screen.dart';
 import 'package:dsh_app/ui/chat/composer.dart';
 import 'package:dsh_app/ui/chat/empty_state.dart' show chatClock;
@@ -49,7 +50,15 @@ import '../shell/golden_harness.dart'
 
 class _ReadyBot extends DsBotController {
   @override
-  DsBotStatus build() => const DsBotStatus(availability: DsBotAvailability.ready, team: DsBotTeam(revision: 1));
+  DsBotStatus build() => const DsBotStatus(
+    availability: DsBotAvailability.ready,
+    team: DsBotTeam(
+      revision: 1,
+      mainBotIds: ['b1'],
+      bots: [DsBot(id: 'b1', name: 'Chief', sessionId: 'b1c')],
+      rooms: [DsBotRoom(id: 'r1', name: '发布会')],
+    ),
+  );
 }
 
 class _Inbox extends DsBotInboxController {
@@ -181,38 +190,35 @@ void main() {
   });
 
   group('drawer', () {
-    testWidgets('DS Bot conversations fold into one row with the unread count', (tester) async {
+    testWidgets('a Bot and a group are rows of their own, beside conversations', (tester) async {
       usePhoneView(tester);
       await tester.pumpWidget(testApp(_drawer(), overrides: _drawerOverrides()));
       await pumpFrames(tester, 6);
       final drawer = find.byType(SessionsDrawer);
-      expect(find.descendant(of: drawer, matching: find.text('DS Bot')), findsOneWidget);
-      // s3, s5 are the Bots'; the rest stay listed.
+      // The Bot's own conversations stay out of the list; the Bot and the group
+      // are rows of their own.
       expect(find.text('解释 proot 的 link2symlink'), findsNothing);
       expect(find.text('写一个解析 tar.xz 的 Kotlin 工具'), findsNothing);
       expect(find.text('给设置页加深色模式'), findsOneWidget);
-      expect(find.descendant(of: find.byType(DsBotDrawerRow), matching: find.text('3')), findsOneWidget);
-
-      // On the drawer's grid: glyph on the 20 text line, a 44 row.
-      final drawerLeft = tester.getRect(drawer).left;
-      final row = tester.getRect(find.byType(DsBotDrawerRow));
+      expect(find.descendant(of: drawer, matching: find.text('Chief')), findsOneWidget);
+      expect(find.descendant(of: drawer, matching: find.text('发布会')), findsOneWidget);
+      // A Main Bot is tagged, and the unread arrives as the row's dot.
+      final botRow = find.ancestor(of: find.text('Chief'), matching: find.byType(SessionTile));
+      expect(find.descendant(of: botRow, matching: find.text('主')), findsOneWidget);
+      final row = tester.getRect(botRow);
       expect(row.height, 44);
-      final glyph = tester.getRect(
-        find.descendant(of: find.byType(DsBotDrawerRow), matching: find.byIcon(AppIcons.bot)),
-      );
-      expect(glyph.left - drawerLeft, 20);
-      expect(glyph.center.dy, moreOrLessEquals(row.center.dy));
+      expect(tester.getRect(find.text('Chief')).left - tester.getRect(drawer).left, 20);
 
-      await tester.tap(find.byType(DsBotDrawerRow));
+      await tester.tap(find.text('Chief'));
       await tester.pumpAndSettle();
-      expect(find.byType(BotsPage), findsOneWidget);
+      expect(find.byType(BotChatPage), findsOneWidget);
     });
 
-    testWidgets('no Bot conversations and no DS Bot: no row', (tester) async {
+    testWidgets('no DS Bot: no Bot row', (tester) async {
       usePhoneView(tester);
       await tester.pumpWidget(testApp(_drawer(), overrides: [..._drawerOverrides(owned: const {}, installed: false)]));
       await pumpFrames(tester, 6);
-      expect(find.byType(DsBotDrawerRow), findsNothing);
+      expect(find.text('Chief'), findsNothing);
       expect(find.text('解释 proot 的 link2symlink'), findsOneWidget);
     });
 

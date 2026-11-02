@@ -15,6 +15,9 @@ import '../../../state/sessions_state.dart';
 import '../../../state/workspaces_state.dart';
 import '../../common/empty_view.dart';
 import '../../theme/app_icons.dart';
+import '../../theme/theme.dart';
+import '../../bots/bot_chat_page.dart';
+import '../../bots/room_chat_page.dart';
 import '../sessions_drawer.dart' show sessionTitle;
 import 'drawer_actions.dart';
 import 'folder_header.dart';
@@ -25,8 +28,8 @@ class DrawerConversationList extends ConsumerWidget {
     super.key,
     required this.onOpen,
     required this.onLongPress,
+    required this.onClose,
     this.onNewChat,
-    this.leading,
     this.now,
     this.readOnly = false,
   });
@@ -40,8 +43,8 @@ class DrawerConversationList extends ConsumerWidget {
   /// A conversation's actions.
   final void Function(SessionSummary session) onLongPress;
 
-  /// Above everything when nothing is filtered or chosen (DS Bot's row).
-  final Widget? leading;
+  /// Closes the drawer once a Bot's chat covers it.
+  final VoidCallback onClose;
 
   /// Clock override for the day groups (tests).
   final DateTime? now;
@@ -66,7 +69,8 @@ class DrawerConversationList extends ConsumerWidget {
     if (!readOnly && sort == DrawerSort.created) {
       final ids = [
         for (final block in blocks)
-          for (final s in block.items) s.sessionId,
+          for (final row in block.items)
+            if (row is SessionRow) row.id,
       ];
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (context.mounted) ref.read(sessionCreatedProvider.notifier).ensure(ids);
@@ -100,16 +104,42 @@ class DrawerConversationList extends ConsumerWidget {
     // every conversation makes even a selection change scale with the history.
     final rows = <({Key key, WidgetBuilder builder})>[];
     void add(Key key, WidgetBuilder builder) => rows.add((key: key, builder: builder));
-    void addSessions(List<SessionSummary> items) {
-      for (final s in items) {
-        add(ValueKey('session-${s.sessionId}'), (_) => tile(s));
-      }
-    }
+    // A Bot's own chat or a group chat: same row, its own chat page. Never
+    // selectable, and its only long-press action is the folder.
+    Widget botTile(BotDrawerRow row, {bool inFolder = false}) => SessionTile(
+      key: ValueKey('bot-${row.id}'),
+      title: row.title,
+      running: row.running,
+      // A pushed route is not `currentSessionProvider`'s session.
+      current: false,
+      pending: readOnly ? null : row.pending,
+      unread: !readOnly && row.unread,
+      pinned: false,
+      badge: row.badge,
+      indent: inFolder ? SessionTile.folderIndent : 0,
+      selecting: selecting,
+      selected: false,
+      onTap: selecting
+          ? () {}
+          : () {
+              Navigator.of(
+                context,
+              ).push(row.room ? RoomChatPage.route(row.id) : BotChatPage.route(row.id));
+              // Close once the page covers us, so "back" lands on the chat.
+              Future<void>.delayed(AppMotion.slow, onClose);
+            },
+      onLongPress: readOnly || selecting ? null : () => moveToFolderFlow(context, ref, [row.id]),
+    );
 
-    final showLeading = leading != null && filter == DrawerFilter.all && !selecting;
-    if (showLeading) {
-      const key = ValueKey('leading');
-      add(key, (_) => KeyedSubtree(key: key, child: leading!));
+    void addRows(List<DrawerRow> items) {
+      for (final row in items) {
+        switch (row) {
+          case SessionRow(:final session):
+            add(ValueKey('session-${row.id}'), (_) => tile(session));
+          case BotDrawerRow():
+            add(ValueKey('bot-${row.id}'), (_) => botTile(row));
+        }
+      }
     }
     var foldersLabelled = false;
     for (final block in blocks) {
@@ -118,11 +148,11 @@ class DrawerConversationList extends ConsumerWidget {
           const key = ValueKey('filter-empty');
           add(key, (_) => _FilterEmpty(matching, key: key));
         case FilteredBlock(:final items):
-          addSessions(items);
+          addRows(items);
         case PinnedBlock(:final items):
           const key = ValueKey('pinned-label');
           add(key, (_) => DrawerEyebrow(l10n.commonPin, key: key));
-          addSessions(items);
+          addRows(items);
         case FolderBlock(:final folder, :final items):
           if (!foldersLabelled) {
             foldersLabelled = true;
@@ -148,13 +178,19 @@ class DrawerConversationList extends ConsumerWidget {
             (_) => DrawerFolderBody(
               key: bodyKey,
               open: !folder.collapsed,
-              childrenBuilder: () => [for (final s in items) tile(s, inFolder: true)],
+              childrenBuilder: () => [
+                for (final row in items)
+                  if (row is SessionRow)
+                    tile(row.session, inFolder: true)
+                  else if (row is BotDrawerRow)
+                    botTile(row, inFolder: true),
+              ],
             ),
           );
         case DayBlock(:final day, :final items):
           final key = ValueKey('day-${day.name}');
           add(key, (_) => DrawerEyebrow(sessionDayLabels[day]!, key: key));
-          addSessions(items);
+          addRows(items);
       }
     }
     // Preserve keyed row/folder state when pinning, sorting or hiding the

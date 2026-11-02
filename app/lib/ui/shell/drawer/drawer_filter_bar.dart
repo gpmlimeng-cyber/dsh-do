@@ -26,12 +26,21 @@ class DrawerFilterBar extends ConsumerWidget {
     final l10n = context.l10n;
     final filter = ref.watch(drawerFilterProvider);
     final scope = ref.watch(drawerScopeProvider);
-    if (scope == null || (scope.sessions.isEmpty && filter == DrawerFilter.all)) {
+    // Bots and groups are rows too, so the bar shows for a team with no
+    // conversations, and their unread and questions count here as well.
+    final bots = ref.watch(drawerBotRowsProvider);
+    if (scope == null || (scope.sessions.isEmpty && bots.isEmpty && filter == DrawerFilter.all)) {
       return const SizedBox(width: double.infinity);
     }
     final listed = {for (final s in scope.sessions) s.sessionId};
-    final pending = scope.readOnly ? 0 : ref.watch(pendingInteractionsProvider).keys.where(listed.contains).length;
-    final unread = scope.readOnly ? 0 : ref.watch(unreadSessionIdsProvider).where(listed.contains).length;
+    final pending = scope.readOnly
+        ? 0
+        : ref.watch(pendingInteractionsProvider).keys.where(listed.contains).length +
+              bots.where((row) => row.pending != null).length;
+    final unread = scope.readOnly
+        ? 0
+        : ref.watch(unreadSessionIdsProvider).where(listed.contains).length +
+              bots.where((row) => row.unread).length;
     String label(DrawerFilter f) => switch (f) {
       _ when f == filter && scope.readOnly => readListHeading(f.label, scope.status),
       DrawerFilter.pending when pending > 0 => '${f.label} $pending',
