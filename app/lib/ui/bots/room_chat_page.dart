@@ -323,6 +323,9 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
                   BotPendingRow(:final pending) => BotUserMessage(text: pending.text, pending: true),
                   BotStreamingRow() => const SizedBox.shrink(),
                   BotTypingRow(:final bot, :final label) => BotTypingLine(bot: bot, label: label),
+                  // A group has no tool events to show; the row exists so the
+                  // switch stays exhaustive, and the same widget keeps it honest.
+                  BotToolGroupRow(:final items) => BotToolGroup(items: items),
                   BotItemRow(:final item, :final continued) => switch (item.kind) {
                     DsBotItemKind.user => BotUserMessage(
                       text: item.text,

@@ -893,7 +893,7 @@ class BotModelChip extends StatelessWidget {
                       model,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.labelMedium?.copyWith(color: colors.textSecondary),
+                      style: theme.textTheme.labelMedium?.copyWith(color: colors.textTertiary),
                     ),
                   ),
                 ],
