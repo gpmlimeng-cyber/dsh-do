@@ -1,0 +1,54 @@
+name: tests
+
+# Analyze and the test suite, with the output published where the phone can
+# read it: job logs live on a host this network cannot reach.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.9'
+          cache: true
+
+      - name: Fonts the golden tests render with
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk fonts-noto-cjk-extra
+          dir="$(dirname "$(find / -name 'NotoSansCJK-Light.ttc' -print -quit 2>/dev/null)")"
+          echo "fonts in $dir"
+          echo "DSH_TEST_FONT_DIR=$dir" >> "$GITHUB_ENV"
+
+      - name: Fetch packages
+        run: flutter pub get
+        working-directory: app
+
+      - name: Analyze and test
+        run: |
+          set +e
+          {
+            echo "=== flutter analyze"
+            (cd app && flutter analyze)
+            echo "=== flutter test"
+            (cd app && flutter test)
+          } > /tmp/tests.log 2>&1
+          tail -c 200000 /tmp/tests.log
+
+      - name: Publish the log as a release asset
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="tests-$(date -u +%Y%m%d-%H%M)-${GITHUB_SHA::7}"
+          gh release create "$tag" /tmp/tests.log \
+            --title "Tests ${GITHUB_SHA::7}" \
+            --notes "flutter analyze and flutter test from ${GITHUB_SHA}."
