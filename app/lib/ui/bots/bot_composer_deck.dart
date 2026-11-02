@@ -25,7 +25,6 @@ import '../chat/dock/dock_stack.dart';
 import '../chat/usage_sheet.dart' show ContextRing, showUsageSheet;
 import '../chat/voice/voice_controller.dart';
 import '../chat/widgets/activity_strip.dart';
-import '../chat/widgets/auto_approve_pill.dart';
 import '../chat/widgets/permission_pill.dart';
 import '../chat/widgets/plus_panel.dart' show showPermissionSheet;
 import '../plugins/native/composer_strip.dart';
