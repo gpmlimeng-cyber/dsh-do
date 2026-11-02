@@ -39,6 +39,7 @@ List<SessionSummary> _sample() => [
 
 List<DrawerBlock> _blocks({
   List<SessionSummary>? sessions,
+  List<BotDrawerRow> bots = const [],
   List<String> pinned = const [],
   DrawerView view = const DrawerView(loaded: true),
   DrawerFilter filter = DrawerFilter.all,
@@ -48,6 +49,7 @@ List<DrawerBlock> _blocks({
   bool scoped = false,
 }) => drawerBlocks(
   sessions: sessions ?? _sample(),
+  bots: bots,
   pinnedIds: pinned,
   view: view,
   filter: filter,
@@ -58,7 +60,7 @@ List<DrawerBlock> _blocks({
   scoped: scoped,
 );
 
-List<String> _ids(DrawerBlock b) => [for (final s in b.items) s.sessionId];
+List<String> _ids(DrawerBlock b) => [for (final row in b.items) row.id];
 
 class _Sessions extends SessionsController {
   _Sessions(this.visible, [List<SessionSummary>? all]) : all = all ?? visible;
@@ -437,3 +439,58 @@ void main() {
     });
   });
 }
+
+BotDrawerRow _bot(String id, {DateTime? at, DateTime? created, bool room = false}) => BotDrawerRow(
+  id: id,
+  title: id,
+  updatedAt: at ?? _now,
+  createdAt: created ?? (at ?? _now),
+  room: room,
+);
+
+test('a Bot or a group shows by its day, beside conversations', () {
+  final blocks = _blocks(
+    sessions: const [],
+    bots: [
+      _bot('b1', at: _now),
+      _bot('r1', at: _now.subtract(const Duration(days: 1)), room: true),
+    ],
+  );
+  final days = blocks.whereType<DayBlock>().toList();
+  expect(days.map((b) => b.day), [SessionDay.today, SessionDay.yesterday]);
+  expect(_ids(days.first), ['b1']);
+  expect(_ids(days[1]), ['r1']);
+});
+
+test('a Bot row is never selectable: 全选 must not delete its Session', () {
+  final blocks = _blocks(bots: [_bot('b1'), _bot('r1', room: true)]);
+  final ids = drawerSelectableIds(blocks);
+  expect(ids, isNot(contains('b1')));
+  expect(ids, isNot(contains('r1')));
+  expect(ids, containsAll(['a', 'b']));
+});
+
+test('created order keys a Bot by its creation time, as a conversation is', () {
+  final view = const DrawerView(loaded: true, sort: DrawerSort.created);
+  final blocks = _blocks(
+    sessions: const [],
+    bots: [
+      _bot('new', at: _now, created: _now),
+      _bot('old', at: _now, created: _now.subtract(const Duration(days: 40))),
+    ],
+    view: view,
+  );
+  final ids = [for (final block in blocks) ..._ids(block)];
+  expect(ids.first, 'new');
+  expect(ids.last, 'old');
+});
+
+test('a Bot moved into a folder shows there, and a deleted one leaves no row', () {
+  final view = const DrawerView(
+    loaded: true,
+    folders: [DrawerFolder(id: 'f1', name: 'Work', sessionIds: ['b1', 'gone'])],
+  );
+  final blocks = _blocks(bots: [_bot('b1')], view: view);
+  final folder = blocks.whereType<FolderBlock>().single;
+  expect(_ids(folder), ['b1']);
+});

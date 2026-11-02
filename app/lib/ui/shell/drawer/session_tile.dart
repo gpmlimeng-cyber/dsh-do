@@ -25,6 +25,7 @@ class SessionTile extends StatelessWidget {
     this.pending,
     this.unread = false,
     this.pinned = false,
+    this.badge,
     this.indent = 0,
     this.selecting = false,
     this.selected = false,
@@ -42,6 +43,10 @@ class SessionTile extends StatelessWidget {
 
   /// Shown as a small pin (inside folders; elsewhere 置顶 says it).
   final bool pinned;
+
+  /// A small tag before the marker (a Main Bot's 「主」). Never the pin: that
+  /// one says the person pinned the row, which Bot rows cannot be.
+  final String? badge;
 
   /// Content inset from the 20 line (folder members: [folderIndent]).
   final double indent;
@@ -84,6 +89,7 @@ class SessionTile extends StatelessWidget {
       if (pending == null && running) l10n.shellCurrentlyRunning,
       if (pending == null && !running && unread) l10n.shellUnread,
       if (pinned) l10n.shellPinned,
+      ?badge,
     ].join(l10n.shellSemanticsSeparator);
     return Semantics(
       selected: highlighted,
@@ -136,6 +142,10 @@ class SessionTile extends StatelessWidget {
                 if (pinned) ...[
                   const SizedBox(width: 8),
                   Icon(AppIcons.pinActive, size: 14, color: colors.textTertiary),
+                ],
+                if (badge case final text?) ...[
+                  const SizedBox(width: 8),
+                  _Badge(text),
                 ],
                 AnimatedSwitcher(
                   duration: AppMotion.of(context, AppMotion.quick),
@@ -221,6 +231,27 @@ class _CheckSlot extends StatelessWidget {
                 ),
         ),
       ),
+    );
+  }
+}
+
+/// A small tag on a row's end (a Main Bot's 「主」).
+class _Badge extends StatelessWidget {
+  const _Badge(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = DshColors.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+      decoration: ShapeDecoration(
+        color: theme.colorScheme.onSurface.withValues(alpha: 0.06),
+        shape: Squircle.border(AppShape.sm),
+      ),
+      child: Text(text, style: theme.textTheme.labelSmall?.copyWith(color: colors.textTertiary)),
     );
   }
 }
