@@ -54,30 +54,35 @@ class BotComposerDeck extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // 「自动允许中 ×」 while everything runs unlocked, else 「⚠ 完全权限」 when the
-    // conversation is looser than 工作区内修改.
-    Widget? pill() {
-      if (!showSessionBars) return null;
-      if (ref.watch(chatProvider(sessionId).select((s) => s.autoApprove))) {
-        return AutoApprovePill(
-          onDisable: () => ref.read(chatProvider(sessionId).notifier).setAutoApprove(false),
-        );
-      }
-      final preset = ref.watch(sessionModesProvider(sessionId).select((m) => m.risky ? m.preset : null));
+    // conversation is looser than 工作区内修改. As in the chat page: in the
+    // capsule row while idle, beside the activity strip while a turn runs.
+    final autoApprove =
+        showSessionBars && ref.watch(chatProvider(sessionId).select((s) => s.autoApprove));
+    final preset = showSessionBars
+        ? ref.watch(sessionModesProvider(sessionId).select((m) => m.risky ? m.preset : null))
+        : null;
+    void disableAutoApprove() => ref.read(chatProvider(sessionId).notifier).setAutoApprove(false);
+    void openPermissions() => unawaited(showPermissionSheet(context, sessionId));
+
+    Widget? capsule() {
+      if (autoApprove) return AutoApprovePill(onDisable: disableAutoApprove);
       if (preset == null) return null;
-      return PermissionPill(preset: preset, onTap: () => unawaited(showPermissionSheet(context, sessionId)));
+      return PermissionPill(preset: preset, onTap: openPermissions);
     }
 
-    final shownPill = pill();
+    Widget? stripRisk() {
+      if (autoApprove) return StripRiskChip.autoApprove(context, onDisable: disableAutoApprove);
+      if (preset == null) return null;
+      return StripRiskChip.permission(context, preset: preset, onTap: openPermissions);
+    }
+
+    final pillsInCapsules = !running;
+    final shownCapsule = pillsInCapsules ? capsule() : null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // Safe mode / trial banner; draws nothing otherwise.
         const SafeModeBanner(padding: EdgeInsets.only(bottom: 8)),
-        if (shownPill case final shown?)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Align(alignment: Alignment.centerLeft, child: shown),
-          ),
         BackdropGroup(
           child: DockStack(
             cards: [
@@ -88,11 +93,15 @@ class BotComposerDeck extends ConsumerWidget {
               ],
               ComposerStripSlot(sessionId: sessionId, visible: !running),
             ],
+            // Running: the permission chip rides beside the activity strip,
+            // which is the second row only while a turn runs.
+            accessory: running ? stripRisk() : null,
           ),
         ),
-        // The capsules (ui.json's and plugins'); nothing at all without any.
+        // The capsules (ui.json's and plugins') and, while idle, the permission
+        // chip as their leading: one row, as the chat page has it.
         // The status line already rides in the deck as a card; not twice.
-        NativeComposerBar(sessionId: sessionId, visible: !running, strip: false),
+        NativeComposerBar(sessionId: sessionId, visible: !running, strip: false, leading: shownCapsule),
       ],
     );
   }
