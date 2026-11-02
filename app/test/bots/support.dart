@@ -12,6 +12,7 @@ import 'package:dsh_app/state/voice_model_state.dart';
 import 'package:dsh_app/state/voice_settings.dart';
 import 'package:dsh_app/state/voice_state.dart';
 import 'package:dsh_app/ui/chat/voice/voice_bridge.dart';
+import 'package:dsh_app/state/models_state.dart';
 import 'package:dsh_app/state/notify_state.dart';
 import 'package:dsh_app/state/plugins_state.dart';
 import 'package:dsh_client/dsh_client.dart';
@@ -19,7 +20,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 
 import '../chat/support/composer_fakes.dart' show FakeVoiceBridge;
-import '../chat/support/harness.dart' show FakeChatController, FakeUsage, StaticRuntime, fakeConnection;
+import '../chat/support/harness.dart' show FakeChatController, FakeUsage, StaticRuntime, fakeConnection, testCatalog;
 
 class FakeDsBotTransport implements DsBotTransport {
   FakeDsBotTransport({Map<String, Object?>? team}) {
@@ -132,7 +133,12 @@ class RecordingNotifyChannel extends NotifyChannel {
 }
 
 /// DS Bot on 本机 through [transport].
-List<Override> dsBotOverrides(FakeDsBotTransport transport, {NotifyChannel? notify, HostConnection? connection}) => [
+List<Override> dsBotOverrides(
+  FakeDsBotTransport transport, {
+  NotifyChannel? notify,
+  HostConnection? connection,
+  ModelCatalog? catalog,
+}) => [
   activeConnectionProvider.overrideWithValue(AsyncData(connection ?? fakeConnection)),
   dsBotApiFactoryProvider.overrideWithValue((_) => DsBotApi(transport)),
   localSafeModeProvider.overrideWithValue(false),
@@ -147,6 +153,11 @@ List<Override> dsBotOverrides(FakeDsBotTransport transport, {NotifyChannel? noti
   voiceBridgeProvider.overrideWithValue(FakeVoiceBridge(caps: VoiceCapabilities.none)),
   voiceModelProvider.overrideWith(FakeVoiceModel.new),
   voiceSettingsProvider.overrideWith(FakeVoiceSettings.new),
+  // The header's model chip reads the catalog: without it the chip renders an
+  // empty catalog first and the frame after, which makes goldens flicker.
+  // A test that needs a specific catalog passes it here, not as a second
+  // override of the same provider.
+  modelCatalogProvider.overrideWith((ref) async => catalog ?? testCatalog),
 ];
 
 /// No model downloaded and none wanted: the microphone stays away.

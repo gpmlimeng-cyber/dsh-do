@@ -867,60 +867,8 @@ class BotTypingLine extends StatelessWidget {
   }
 }
 
-/// The model the Bot runs on: tap it to pick another, as the chat's own header
-/// does.
-class BotModelChip extends StatelessWidget {
-  const BotModelChip({super.key, required this.model, required this.onTap});
-
-  /// The model's own name, without the provider.
-  final String model;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final theme = Theme.of(context);
-    final colors = DshColors.of(context);
-    return Semantics(
-      button: true,
-      label: l10n.botsChooseModel,
-      child: Tooltip(
-        message: l10n.botsChooseModel,
-        child: GlassSurface(
-          key: const ValueKey('bot-model-chip'),
-          tier: GlassTier.chrome,
-          stadium: true,
-          onTap: onTap,
-          child: SizedBox(
-            height: 32,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(AppIcons.model, size: 14, color: colors.textTertiary),
-                  const SizedBox(width: 6),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 96),
-                    child: Text(
-                      model,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.labelMedium?.copyWith(color: colors.textTertiary),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// 复制 / 分享 for a line outside a conversation (a Bot's or a group's): the
-/// only two actions that make sense without the chat's own semantics.
+/// 复制 / 引用 / 分享 for a line outside a conversation (a Bot's or a group's):
+/// the actions that make sense without the chat's own semantics.
 Future<void> botLineMenu(BuildContext context, String text, {ValueChanged<String>? onQuote}) async {
   final action = await showMessageMenu(
     context,

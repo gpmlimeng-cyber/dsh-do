@@ -3,7 +3,6 @@
 // the new Bot form and the new group sheet create, memory is edited in place,
 // a member's work is stopped.
 
-import 'package:dsh_app/state/models_state.dart';
 import 'package:dsh_app/ui/bots/bot_chat_page.dart';
 import 'package:dsh_app/ui/bots/bot_details_page.dart';
 import 'package:dsh_app/ui/bots/bots_page.dart';
@@ -102,9 +101,9 @@ void main() {
         home: const BotDetailsPage(botId: 'm1'),
         brightness: Brightness.light,
         overrides: [
-          ...dsBotOverrides(fake),
-          modelCatalogProvider.overrideWith(
-            (_) async => const ModelCatalog(
+          ...dsBotOverrides(
+            fake,
+            catalog: const ModelCatalog(
               defaultSelection: null,
               groups: [
                 ProviderGroup('deepseek', 'DeepSeek', [

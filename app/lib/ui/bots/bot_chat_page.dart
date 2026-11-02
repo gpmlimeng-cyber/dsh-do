@@ -251,13 +251,12 @@ class _BotChatPageState extends ConsumerState<BotChatPage> {
         // opens the conversation's (trajectory, files, progress).
         onDetails: () => Navigator.of(context).push(BotDetailsPage.route(bot.id)),
         onInfo: () => SessionDetailPage.open(context, bot.sessionId),
-        chip: switch (botModelSelection(bot)) {
-          final selection? => BotModelChip(
-            model: selection.model,
-            onTap: () => _pickModel(bot, modelScope),
-          ),
-          null => null,
-        },
+        // The chat page's own chip: same height, padding, chevron and type.
+        chip: ModelChip(
+          selection: botModelSelection(bot),
+          grouped: true,
+          onSelected: (selection) => applyBotModel(context, ref, bot, selection, scope: modelScope),
+        ),
       ),
       body: chat.loading && chat.items.isEmpty
           ? Padding(
@@ -394,28 +393,42 @@ Future<void> pickBotModel(BuildContext context, WidgetRef ref, DsBot bot, {BotAc
   bool current() => target.current(context, ref);
 
   if (!current()) return Future.value();
-  final messenger = ScaffoldMessenger.maybeOf(context);
   return showModelSheet(
     context,
     current: botModelSelection(bot),
-    onSelected: (selection) async {
-      // A modal can outlive a host switch, reconnect, or removal of this Bot.
-      // Check before any write; never redirect an old choice through hub.api.
-      if (!current()) return;
-      try {
-        await api!.updateBot(
-          bot.id,
-          model: '${selection.provider}/${selection.model}',
-          // A model without levels clears the previous Bot override.
-          // Omission means "keep" to DS Bot, not "use the default".
-          effort: selection.reasoningEffort ?? '',
-        );
-        if (current()) await hub.refresh();
-      } catch (error) {
-        if (current()) messenger?.showSnackBar(SnackBar(content: Text(describeDsBotError(error))));
-      }
-    },
+    onSelected: (selection) => applyBotModel(context, ref, bot, selection, scope: scope),
   );
+}
+
+/// Saves [selection] on [bot]. The header's model chip opens the same sheet
+/// itself, so the write lives here rather than inside the sheet's callback.
+Future<void> applyBotModel(
+  BuildContext context,
+  WidgetRef ref,
+  DsBot bot,
+  ModelSelection selection, {
+  BotActionScope? scope,
+}) async {
+  final target = scope ?? BotActionScope(ref, botId: bot.id);
+  if (!target.current(context, ref)) return;
+  final hub = ref.read(dsBotProvider.notifier);
+  final api = target.api;
+  final messenger = ScaffoldMessenger.maybeOf(context);
+  // A sheet can outlive a host switch, reconnect, or removal of this Bot.
+  // Check before any write; never redirect an old choice through hub.api.
+  if (!target.current(context, ref)) return;
+  try {
+    await api!.updateBot(
+      bot.id,
+      model: '${selection.provider}/${selection.model}',
+      // A model without levels clears the previous Bot override.
+      // Omission means "keep" to DS Bot, not "use the default".
+      effort: selection.reasoningEffort ?? '',
+    );
+    if (target.current(context, ref)) await hub.refresh();
+  } catch (error) {
+    if (target.current(context, ref)) messenger?.showSnackBar(SnackBar(content: Text(describeDsBotError(error))));
+  }
 }
 
 /// A Bot's model as the model sheet names it.
