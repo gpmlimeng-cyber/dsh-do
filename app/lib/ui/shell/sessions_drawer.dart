@@ -164,7 +164,8 @@ class SessionsDrawer extends ConsumerWidget {
                     ),
                     // 网页模式, quietly: the one solid element stays 新对话.
                     const WebModeKey(),
-                                  const SizedBox(width: 8),
+                    SessionSearchBar(onClose: onClose),
+                    const SizedBox(width: 8),
                     NewChatButton(onTap: newChat),
                   ],
                 ),
@@ -174,7 +175,6 @@ class SessionsDrawer extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
         onDetails: () => onOpen(DrawerDestination.engine),
       ),
-      SessionSearchBar(onClose: onClose),
       // The workspace switcher (once the host's workspace list has
       // arrived) and the list's options, then the status filters.
       SmoothSize(

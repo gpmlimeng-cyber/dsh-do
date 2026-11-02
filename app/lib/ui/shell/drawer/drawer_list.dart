@@ -106,7 +106,7 @@ class DrawerConversationList extends ConsumerWidget {
     void add(Key key, WidgetBuilder builder) => rows.add((key: key, builder: builder));
     // A Bot's own chat or a group chat: same row, its own chat page. Never
     // selectable, and its only long-press action is the folder.
-    Widget botTile(BotDrawerRow row) => SessionTile(
+    Widget botTile(BotDrawerRow row, {bool inFolder = false}) => SessionTile(
       key: ValueKey('bot-${row.id}'),
       title: row.title,
       running: row.running,
@@ -116,6 +116,7 @@ class DrawerConversationList extends ConsumerWidget {
       unread: !readOnly && row.unread,
       pinned: false,
       badge: row.badge,
+      indent: inFolder ? SessionTile.folderIndent : 0,
       selecting: selecting,
       selected: false,
       onTap: selecting
@@ -179,7 +180,7 @@ class DrawerConversationList extends ConsumerWidget {
               open: !folder.collapsed,
               childrenBuilder: () => [
                 for (final row in items)
-                  if (row is SessionRow) tile(row.session, inFolder: true) else botTile(row),
+                  if (row is SessionRow) tile(row.session, inFolder: true) else botTile(row, inFolder: true),
               ],
             ),
           );
