@@ -23,8 +23,13 @@ const _groupMargin = EdgeInsets.fromLTRB(SheetTitleBar.inset, 0, SheetTitleBar.i
 enum DrawerViewAction { newBot, newRoom, newFolder, manageFolders, select, archived }
 
 /// Sort (applies at once), then 新建文件夹 / 管理文件夹 / 多选.
-Future<DrawerViewAction?> showDrawerViewSheet(BuildContext context) =>
-    showAppSheet<DrawerViewAction>(context, builder: (_) => const DrawerViewSheet());
+/// The list's options. Six rows and the sort control no longer fit a phone at
+/// large text sizes, so the sheet takes its own height and scrolls.
+Future<DrawerViewAction?> showDrawerViewSheet(BuildContext context) => showAppSheet<DrawerViewAction>(
+  context,
+  isScrollControlled: true,
+  builder: (_) => const DrawerViewSheet(),
+);
 
 class DrawerViewSheet extends ConsumerWidget {
   const DrawerViewSheet({super.key});
@@ -36,11 +41,12 @@ class DrawerViewSheet extends ConsumerWidget {
     final hasFolders = ref.watch(drawerViewProvider.select((v) => v.folders.isNotEmpty));
     return SafeArea(
       top: false,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SheetTitleBar(l10n.shellChatList),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SheetTitleBar(l10n.shellChatList),
           Padding(
             padding: const EdgeInsets.fromLTRB(SheetTitleBar.inset + 8, 0, SheetTitleBar.inset, 8),
             child: Semantics(header: true, child: Text(l10n.shellSort, style: groupTitleStyle(context))),
@@ -98,8 +104,9 @@ class DrawerViewSheet extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: 4),
-        ],
+            const SizedBox(height: 4),
+          ],
+        ),
       ),
     );
   }
