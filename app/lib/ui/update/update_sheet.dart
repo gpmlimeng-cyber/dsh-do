@@ -47,10 +47,14 @@ Future<void> checkForUpdates(BuildContext context, WidgetRef ref) async {
 String formatUpdateSize(int bytes) => '${(bytes / 1024 / 1024).toStringAsFixed(1)} MB';
 
 /// What went wrong, for the person: (title, explanation).
-(String, String) describeUpdateProblem(UpdateProblem problem, {int? size}) => switch (problem) {
+(String, String) describeUpdateProblem(UpdateProblem problem, {int? size, String? detail}) => switch (problem) {
   UpdateProblem.network => (appL10n.updateDownloadInterrupted, appL10n.updateDownloadInterruptedMessage),
   UpdateProblem.unavailable => (appL10n.updateDownloadUnavailable, appL10n.updateDownloadUnavailableMessage),
-  UpdateProblem.checksum => (appL10n.updateChecksumFailed, appL10n.updateChecksumFailedMessage),
+  // The source and the two digests say whether a mirror served something else.
+  UpdateProblem.checksum => (
+    appL10n.updateChecksumFailed,
+    detail == null ? appL10n.updateChecksumFailedMessage : '${appL10n.updateChecksumFailedMessage}\n$detail',
+  ),
   UpdateProblem.noChecksum => (appL10n.updateChecksumMissing, appL10n.updateChecksumMissingMessage),
   UpdateProblem.storage => (appL10n.updateStorageWriteFailed, appL10n.updateStorageWriteFailedMessage),
   UpdateProblem.noSpace => (
@@ -260,6 +264,7 @@ class UpdateSheet extends ConsumerWidget {
         final (title, text) = describeUpdateProblem(
           update.problem ?? UpdateProblem.installFailed,
           size: update.asset?.size,
+          detail: update.problemDetail,
         );
         return _Notice(
           icon: AppIcons.error,

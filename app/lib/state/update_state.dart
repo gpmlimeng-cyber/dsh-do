@@ -94,6 +94,7 @@ class AppUpdateState {
     this.total,
     this.source,
     this.problem,
+    this.problemDetail,
   });
 
   /// Preferences were read; nothing automatic runs before that.
@@ -124,6 +125,10 @@ class AppUpdateState {
   final String? source;
   final UpdateProblem? problem;
 
+  /// Extra lines under a failure: for a checksum mismatch, which source
+  /// answered and how its digest differed.
+  final String? problemDetail;
+
   bool get hasUpdate => latest != null;
   bool get isSkipped => latest != null && skippedVersion == latest!.version.toString();
   ReleaseAsset? get asset => latest?.apkFor(flavor);
@@ -150,6 +155,7 @@ class AppUpdateState {
     int? Function()? total,
     String? Function()? source,
     UpdateProblem? Function()? problem,
+    String? Function()? problemDetail,
   }) => AppUpdateState(
     loaded: loaded ?? this.loaded,
     autoCheck: autoCheck ?? this.autoCheck,
@@ -166,6 +172,7 @@ class AppUpdateState {
     total: total == null ? this.total : total(),
     source: source == null ? this.source : source(),
     problem: problem == null ? this.problem : problem(),
+    problemDetail: problemDetail == null ? this.problemDetail : problemDetail(),
   );
 }
 
@@ -583,13 +590,14 @@ class AppUpdateController extends Notifier<AppUpdateState> {
         state = state.copyWith(task: UpdateTaskPhase.ready);
       case DownloadCancelled():
         state = state.copyWith(task: UpdateTaskPhase.idle, received: 0);
-      case DownloadFailed(:final failure):
+      case DownloadFailed(:final failure, :final detail):
         fail(switch (failure) {
           DownloadFailure.network => UpdateProblem.network,
           DownloadFailure.unavailable => UpdateProblem.unavailable,
           DownloadFailure.checksum => UpdateProblem.checksum,
           DownloadFailure.storage => UpdateProblem.storage,
         });
+        if (detail != null && owns()) state = state.copyWith(problemDetail: () => detail);
     }
   }
 
