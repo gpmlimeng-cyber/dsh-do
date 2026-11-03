@@ -410,24 +410,47 @@ List<DsBotItem> botTranscriptItems(List<DsBotItem> items, {required bool running
 /// Turn numbers restart with every part, so this only attaches when the newest
 /// row that carries a turn is that same turn: a page read from history never
 /// picks up the current part's card.
-List<BotRow> attachArtifacts(List<BotRow> rows, TurnArtifacts? group) {
+List<BotRow> attachArtifacts(List<BotRow> rows, TurnArtifacts? group, {bool atOldestEnd = true}) {
   if (group == null || group.files.isEmpty) return rows;
   int? turnOf(BotRow row) => switch (row) {
     BotItemRow(:final item) => item.turn,
     BotToolGroupRow(:final items) => items.isEmpty ? null : items.last.turn,
     _ => null,
   };
-  int? newest;
+  // Where the card goes, without letting an old part's card land in a new one:
+  //
+  // 1. under the last row stamped with exactly this turn;
+  // 2. otherwise only when no row belongs to a *later* turn (a new turn already
+  //    started, so the card must not drift down), falling back to the last Bot
+  //    message;
+  // 3. a page with no turn stamps at all (an older host) may only use that
+  //    fallback when it is not a history page — otherwise it would hang an old
+  //    part's card under the newest row of a page read backwards.
   var at = -1;
+  var anyTurn = false;
+  var anyLater = false;
   for (var i = 0; i < rows.length; i++) {
     final turn = turnOf(rows[i]);
     if (turn == null) continue;
-    newest = turn;
+    anyTurn = true;
     if (turn == group.turn) at = i;
+    if (turn > group.turn) anyLater = true;
   }
-  if (newest != group.turn) return rows;
-  final placed = [...rows]..insert(at + 1, BotArtifactsRow(group));
-  return placed;
+  if (at < 0) {
+    // A page that stamps turns but never this one (the turn was paged out) must
+    // not fall back either: the card would hang off another turn's last row.
+    if (anyLater || anyTurn) return rows;
+    if (!atOldestEnd) return rows;
+    for (var i = rows.length - 1; i >= 0; i--) {
+      final row = rows[i];
+      if (row is BotItemRow && row.item.kind == DsBotItemKind.bot) {
+        at = i;
+        break;
+      }
+    }
+  }
+  if (at < 0) return rows;
+  return [...rows]..insert(at + 1, BotArtifactsRow(group));
 }
 
 // ── Tool wording ─────────────────────────────────────────────────────────────

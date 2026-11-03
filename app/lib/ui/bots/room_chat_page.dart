@@ -124,7 +124,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
       send: (text) async {
         final controller = ref.read(roomChatProvider(widget.roomId).notifier);
         if (attachments.isEmpty) {
-          final sent = await controller.send(text, mode: botSendMode(mode), quote: quote);
+          final sent = await controller.send(withQuote(text, quote), mode: botSendMode(mode));
           if (sent && mounted) setState(() => _quote = null);
           return sent;
         }

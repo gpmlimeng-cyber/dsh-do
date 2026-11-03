@@ -16,6 +16,8 @@ import '../common/empty_view.dart';
 import '../common/fade_in.dart';
 import '../common/side_insets.dart';
 import '../common/status_dot.dart';
+import '../../state/bots_state.dart';
+import '../bots/bot_avatar.dart';
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
 import 'page_frame.dart';
@@ -347,14 +349,28 @@ class _SearchBody extends ConsumerWidget {
 
     final current = ref.watch(currentSessionProvider);
     final clock = now ?? DateTime.now();
-    Widget tile(SessionSearchResult r) => SearchResultTile(
-      result: r,
-      terms: results.terms,
-      showFolder: results.showFolders,
-      current: r.session.sessionId == current,
-      now: clock,
-      onTap: () => r.archived ? _openArchived(context, ref, r.session) : onPick(r.session.sessionId),
-    );
+    // A Bot's or group's chat is one of these Sessions: show the name and face
+    // the drawer shows, not the title DSH gave it (any part counts).
+    final team = ref.watch(dsBotProvider).team;
+    Widget tile(SessionSearchResult r) {
+      final id = r.session.sessionId;
+      final bot = team?.botOfSession(id);
+      final room = bot == null ? team?.roomOfSession(id) : null;
+      return SearchResultTile(
+        result: r,
+        terms: results.terms,
+        showFolder: results.showFolders,
+        current: id == current,
+        now: clock,
+        title: bot?.name ?? room?.name,
+        leading: switch ((bot, room)) {
+          (final bot?, _) => BotAvatar(bot: bot, size: 22),
+          (_, final room?) => RoomAvatar(room: room, team: team!, size: 22),
+          _ => null,
+        },
+        onTap: () => r.archived ? _openArchived(context, ref, r.session) : onPick(id),
+      );
+    }
     final side = SessionSearchPage.sideFor(MediaQuery.sizeOf(context).width);
     return ListView(
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
@@ -444,6 +460,8 @@ class SearchResultTile extends StatelessWidget {
     required this.current,
     required this.now,
     required this.onTap,
+    this.title,
+    this.leading,
   });
 
   final SessionSearchResult result;
@@ -453,6 +471,12 @@ class SearchResultTile extends StatelessWidget {
   final DateTime now;
   final VoidCallback onTap;
 
+  /// A Bot's or group's name; null keeps the Session's own title.
+  final String? title;
+
+  /// Their 22 face; null keeps the row as it was.
+  final Widget? leading;
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -461,7 +485,11 @@ class SearchResultTile extends StatelessWidget {
     final colors = DshColors.of(context);
     final shape = Squircle.border(AppShape.md);
     final session = result.session;
-    final title = sessionTitle(session);
+    // The title a match may highlight: the Bot's or group's name, else the
+    // Session's own (null when DSH has none — the fallback wording is not a
+    // title and is never highlighted, exactly as before).
+    final ownTitle = this.title ?? session.title;
+    final title = ownTitle ?? sessionTitle(session);
     final folder = showFolder ? folderLabel(session.cwd) : null;
     final snippet = result.snippet;
     final excerpt = snippet == null || snippet.isEmpty ? null : excerptAround(snippet, matchRanges(snippet, terms));
@@ -496,10 +524,14 @@ class SearchResultTile extends StatelessWidget {
               children: [
                 Row(
                   children: [
+                    if (leading case final face?) ...[
+                      SizedBox.square(dimension: 22, child: face),
+                      const SizedBox(width: 8),
+                    ],
                     Expanded(
                       child: HighlightedText(
                         title,
-                        ranges: session.title == null ? const [] : matchRanges(title, terms),
+                        ranges: ownTitle == null || ownTitle.isEmpty ? const [] : matchRanges(ownTitle, terms),
                         maxLines: 1,
                         style: theme.textTheme.bodyLarge!.copyWith(
                           fontSize: 15,

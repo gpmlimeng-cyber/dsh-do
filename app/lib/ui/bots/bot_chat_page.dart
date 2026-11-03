@@ -135,7 +135,7 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
       send: (text) async {
         final controller = ref.read(botChatProvider(widget.botId).notifier);
         if (attachments.isEmpty) {
-          final sent = await controller.send(text, mode: botSendMode(mode), quote: quote);
+          final sent = await controller.send(withQuote(text, quote), mode: botSendMode(mode));
           if (sent && mounted) setState(() => _quote = null);
           return sent;
         }
@@ -256,7 +256,12 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
     // and a Bot page that only reads DS Bot's transcript must not open one.
     // 「引擎在线」is the local engine actually running, not merely a connection
     // object existing; 「页面可见」is this route on top *and* the app resumed.
-    final engineUp = ref.watch(localRuntimeProvider.select((s) => s.status.phase == RuntimePhase.running));
+    // 引擎在线 is per host: the local engine runs here, a remote host is up
+    // while its connection is. Judging a remote Bot by the local engine would
+    // hide every delivered card there.
+    final engineUp = status.isLocal
+        ? ref.watch(localRuntimeProvider.select((s) => s.status.phase == RuntimePhase.running))
+        : ref.watch(activeConnectionProvider.select((c) => c.value != null));
     final visible = _resumed && (ModalRoute.of(context)?.isCurrent ?? true);
     final artifacts = visible && engineUp
         ? ref.watch(sessionArtifactsProvider(bot.sessionId))
@@ -271,6 +276,10 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
         ),
       ),
       delivered,
+      // A page that can still load older entries is a history page: the turn
+      // numbers there restart per part, so a card must not be placed by sheer
+      // "newest row" guessing.
+      atOldestEnd: !chat.hasEarlier,
     );
     final topInset = BotChatHeader.heightOf(context);
     final rooms = {for (final room in team.rooms) room.id: room.name};

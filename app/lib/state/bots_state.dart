@@ -839,7 +839,6 @@ class BotChatController extends Notifier<BotChatState> {
     List<PromptImage> images = const [],
     List<String> fileReceiptIds = const [],
     String? mode,
-    String? quote,
   }) async {
     final api = _api;
     final trimmed = text.trim();
@@ -848,7 +847,7 @@ class BotChatController extends Notifier<BotChatState> {
     final entry = DsBotPending(trimmed, DateTime.now());
     state = state.copyWith(pending: [...state.pending, entry], error: () => null);
     try {
-      await api.send(botId, trimmed, images: images, fileReceiptIds: fileReceiptIds, mode: mode, quote: quote);
+      await api.send(botId, trimmed, images: images, fileReceiptIds: fileReceiptIds, mode: mode);
       return true;
     } catch (error) {
       if (!_current(generation)) return false;
@@ -1060,7 +1059,6 @@ class RoomChatController extends Notifier<RoomChatState> {
     List<PromptImage> images = const [],
     List<String> fileReceiptIds = const [],
     String? mode,
-    String? quote,
   }) async {
     final api = _api;
     final trimmed = text.trim();
@@ -1069,7 +1067,7 @@ class RoomChatController extends Notifier<RoomChatState> {
     final entry = DsBotPending(trimmed, DateTime.now());
     state = state.copyWith(pending: [...state.pending, entry], error: () => null);
     try {
-      await api.send(roomId, trimmed, images: images, fileReceiptIds: fileReceiptIds, mode: mode, quote: quote);
+      await api.send(roomId, trimmed, images: images, fileReceiptIds: fileReceiptIds, mode: mode);
       return true;
     } catch (error) {
       if (!_current(generation)) return false;
