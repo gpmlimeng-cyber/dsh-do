@@ -105,11 +105,17 @@ jobs:
           PREVIEW: ${{ inputs.prerelease }}
         run: |
           apk="$(ls app/build/app/outputs/flutter-apk/*.apk | head -1)"
+          echo "apk=$apk version=${VERSION:-<none>} preview=${PREVIEW:-<none>}"
           if [ -n "$VERSION" ]; then
             file="dsh-go-${VERSION}-arm64.apk"
             cp "$apk" "/tmp/$file"
-            notes="MODO ${VERSION}. 基于上游 v1.0.8。$( [ "$PREVIEW" = "true" ] && echo '预览版：可能不稳定。' )"
+            # Not `notes="...$( [ "$PREVIEW" = true ] && echo ...)": the runner
+            # uses `bash -e`, a failed command substitution makes the whole
+            # assignment fail, and the step exits 1 with no output at all — that
+            # is how the first 2.0.0 publish died, after a 15-minute build.
+            notes="MODO ${VERSION}. 基于上游 v1.0.8。"
             if [ "$PREVIEW" = "true" ]; then
+              notes="$notes 预览版：可能不稳定。"
               gh release create "v${VERSION}" "/tmp/$file" --title "MODO ${VERSION} (preview)" --notes "$notes" --prerelease
             else
               gh release create "v${VERSION}" "/tmp/$file" --title "MODO ${VERSION}" --notes "$notes" --latest
