@@ -175,6 +175,9 @@ ReleaseInfo? parseGithubReleaseList(Object? json, {bool allowPrerelease = false}
     if (entry['prerelease'] == true && !allowPrerelease) continue;
     try {
       final release = parseGithubRelease(entry);
+      // A release whose assets are still uploading (or named another way) has
+      // nothing to install: skip it rather than hide the older one that works.
+      if (release.apks.isEmpty) continue;
       if (best == null || release.version.isNewerThan(best.version)) best = release;
     } on FormatException {
       continue;

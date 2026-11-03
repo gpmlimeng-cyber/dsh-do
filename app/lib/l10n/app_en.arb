@@ -4866,6 +4866,8 @@
   "updateCheck": "Check for updates",
   "updateAutoCheck": "Check automatically",
   "updateAutoCheckDaily": "Once a day",
+  "updateIncludePreviews": "Include preview builds when checking",
+  "updateBasedOn": "Based on upstream {version}",
   "updateTileDownloading": "Downloading",
   "updateTileDownloadingPercent": "Downloading {percent}%",
   "updateTileVerifying": "Verifying",

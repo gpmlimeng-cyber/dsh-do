@@ -16899,6 +16899,14 @@ class L10nEn extends L10n {
   String get updateAutoCheckDaily => 'Once a day';
 
   @override
+  String get updateIncludePreviews => 'Include preview builds when checking';
+
+  @override
+  String updateBasedOn(String version) {
+    return 'Based on upstream $version';
+  }
+
+  @override
   String get updateTileDownloading => 'Downloading';
 
   @override

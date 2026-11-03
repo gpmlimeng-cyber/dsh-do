@@ -13,6 +13,7 @@ import '../shell/brand_mark.dart';
 import '../shell/page_frame.dart';
 import '../star/star_prompt_dialog.dart' show openStarProject;
 import '../theme/theme.dart';
+import '../update/update_config.dart' show upstreamBaseline;
 import '../update/update_tiles.dart';
 import 'settings_widgets.dart';
 
@@ -39,7 +40,18 @@ class AboutPage extends ConsumerWidget {
           children: [
             SettingsTile(
               spot: Spots.version,
-              value: Text(version, style: AppType.tabular(theme.textTheme.bodyMedium!)),
+              // The version Android reports, and the upstream release it is
+              // built on (one constant: `update_config.dart`).
+              value: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(version, style: AppType.tabular(theme.textTheme.bodyMedium!)),
+                  Text(
+                    l10n.updateBasedOn(upstreamBaseline),
+                    style: theme.textTheme.labelSmall?.copyWith(color: colors.textTertiary),
+                  ),
+                ],
+              ),
             ),
             const AppUpdateTiles(),
             SettingsTile(

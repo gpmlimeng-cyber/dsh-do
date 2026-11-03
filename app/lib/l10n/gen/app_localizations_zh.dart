@@ -16022,6 +16022,14 @@ class L10nZh extends L10n {
   String get updateAutoCheckDaily => '每天检查一次';
 
   @override
+  String get updateIncludePreviews => '检查更新时包含预览版';
+
+  @override
+  String updateBasedOn(String version) {
+    return '基于上游 $version';
+  }
+
+  @override
   String get updateTileDownloading => '下载中';
 
   @override

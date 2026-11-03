@@ -29288,6 +29288,18 @@ abstract class L10n {
   /// **'每天检查一次'**
   String get updateAutoCheckDaily;
 
+  /// No description provided for @updateIncludePreviews.
+  ///
+  /// In zh, this message translates to:
+  /// **'检查更新时包含预览版'**
+  String get updateIncludePreviews;
+
+  /// No description provided for @updateBasedOn.
+  ///
+  /// In zh, this message translates to:
+  /// **'基于上游 {version}'**
+  String updateBasedOn(String version);
+
   /// No description provided for @updateTileDownloading.
   ///
   /// In zh, this message translates to:
