@@ -726,5 +726,13 @@
         "type": "String"
       }
     }
+  },
+  "chatNewContentCount": "{count} 条新内容",
+  "@chatNewContentCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   }
 }

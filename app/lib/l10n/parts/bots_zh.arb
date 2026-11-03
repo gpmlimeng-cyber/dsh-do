@@ -944,5 +944,9 @@
   "botsCreationConnectionChanged": "连接已变化，请重新打开创建页面后再操作。",
   "botsPermissionGroupWide": "本群统一权限",
   "botsPermissionGroupWideOn": "对本群所有成员的会话生效，切换会立刻改掉现有会话",
-  "botsPermissionGroupWideOff": "每个成员用它自己的权限预设"
+  "botsPermissionGroupWideOff": "每个成员用它自己的权限预设",
+  "botsStopAll": "停全部",
+  "botsStopAllTitle": "停止所有成员的本轮工作？",
+  "botsStopAllBody": "正在工作的成员会立刻停下，可以再继续",
+  "botsAlreadySpoke": "已说"
 }
