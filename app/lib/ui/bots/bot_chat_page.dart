@@ -295,7 +295,7 @@ class _BotChatPageState extends ConsumerState<BotChatPage> {
                         ? const Align(alignment: Alignment.centerLeft, child: _Thinking())
                         : BotReplyText(text: text, streaming: true),
                   BotTypingRow() => const SizedBox.shrink(),
-                  BotArtifactsRow(:final group) => ArtifactCard(sessionId: chat.sessionId, group: group),
+                  BotArtifactsRow(:final group) => ArtifactCard(sessionId: bot.sessionId, group: group),
                   BotToolGroupRow(:final items) => BotToolGroup(
                     // A stable key: paging in older rows must not hand this
                     // group's open state to the one that lands on its index.
@@ -409,8 +409,6 @@ class _BotChatPageState extends ConsumerState<BotChatPage> {
 Future<void> pickBotModel(BuildContext context, WidgetRef ref, DsBot bot, {BotActionScope? scope}) {
   final target = scope ?? BotActionScope(ref, botId: bot.id);
   if (!target.current(context, ref)) return Future.value();
-  final hub = ref.read(dsBotProvider.notifier);
-  final api = target.api;
   bool current() => target.current(context, ref);
 
   if (!current()) return Future.value();
@@ -446,9 +444,11 @@ Future<void> applyBotModel(
       // Omission means "keep" to DS Bot, not "use the default".
       effort: selection.reasoningEffort ?? '',
     );
-    if (target.current(context, ref)) await hub.refresh();
+    if (context.mounted && target.current(context, ref)) await hub.refresh();
   } catch (error) {
-    if (target.current(context, ref)) messenger?.showSnackBar(SnackBar(content: Text(describeDsBotError(error))));
+    if (context.mounted && target.current(context, ref)) {
+      messenger?.showSnackBar(SnackBar(content: Text(describeDsBotError(error))));
+    }
   }
 }
 

@@ -3,6 +3,7 @@
 import 'package:dsh_app/ui/bots/bot_chat_page.dart';
 import 'package:dsh_app/ui/bots/room_chat_page.dart';
 import 'package:dsh_app/ui/chat/dsh_ui/dsh_ui_block.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

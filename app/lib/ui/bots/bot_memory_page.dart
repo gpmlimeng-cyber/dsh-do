@@ -8,7 +8,6 @@ import 'package:intl/intl.dart';
 
 import '../../l10n/l10n.dart';
 import '../../state/bots_state.dart';
-import '../common/empty_view.dart';
 import '../common/list_page_row.dart';
 import '../features/feature_kit.dart';
 import '../shell/page_frame.dart';
