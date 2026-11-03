@@ -24,6 +24,11 @@ library;
 /// points a build elsewhere (upstream again, or a test repository).
 const updateRepo = String.fromEnvironment('DSH_UPDATE_REPO', defaultValue: 'gpmlimeng-cyber/dsh-do');
 
+/// The upstream project this line is based on. Star links, the community
+/// feed and the project link in shared messages keep pointing here even
+/// though this build's own updates come from [updateRepo].
+const upstreamRepo = 'ccch1mneyyy/dsh-go';
+
 /// The upstream version this line is based on, for 「2.0.3（基于上游 v1.0.8）」.
 /// One place only: when upstream moves, this and the version's minor change.
 const upstreamBaseline = 'v1.0.8';

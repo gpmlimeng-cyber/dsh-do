@@ -26,13 +26,23 @@ import 'room_chat_page.dart';
 ///
 /// [beforeOpen] runs after the match and before the navigation — the sessions
 /// drawer closes itself there.
-bool openTeamChatIfOwned(
+Future<bool> openTeamChatIfOwned(
   BuildContext context,
   WidgetRef ref,
   String sessionId, {
   VoidCallback? beforeOpen,
-}) {
-  final team = ref.read(dsBotProvider).team;
+}) async {
+  // The team loads asynchronously (hello + state). Reading it cold gives null,
+  // and a search hit would fall through to the plain chat — where messages
+  // never reach the Bot. Load it first, then decide.
+  var team = ref.read(dsBotProvider).team;
+  if (team == null) {
+    // A search pick must not look dead while the team loads; the callers
+    // navigate on `true`, and a slow host just falls through to the plain chat.
+    await ref.read(dsBotProvider.notifier).refresh().timeout(const Duration(seconds: 3), onTimeout: () {});
+    if (!context.mounted) return false;
+    team = ref.read(dsBotProvider).team;
+  }
   if (team == null) return false;
   if (team.botOfSession(sessionId) case final bot?) {
     beforeOpen?.call();

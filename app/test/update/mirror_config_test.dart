@@ -11,9 +11,9 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'support.dart';
 
-const _api = 'https://api.github.com/repos/ccch1mneyyy/dsh-go/releases/latest';
+final _api = 'https://api.github.com/repos/$updateRepo/releases/latest';
 const _apk = 'dsh-go-0.9.0-arm64.apk';
-const _githubApk = 'https://github.com/ccch1mneyyy/dsh-go/releases/download/v0.9.0/$_apk';
+final _githubApk = 'https://github.com/$updateRepo/releases/download/v0.9.0/$_apk';
 const _mirror = 'https://dl.example.com';
 const _mirrorFeed = '$_mirror/update.json';
 const _mirrorApk = '$_mirror/download/0.9.0/$_apk';

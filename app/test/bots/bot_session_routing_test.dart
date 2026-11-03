@@ -30,7 +30,7 @@ class _Picked extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) => Scaffold(
     body: Center(
       child: TextButton(
-        onPressed: () => result(openTeamChatIfOwned(context, ref, id)),
+        onPressed: () async => result(await openTeamChatIfOwned(context, ref, id)),
         child: const Text('打开'),
       ),
     ),

@@ -85,6 +85,13 @@ class _NewBotPageState extends ConsumerState<NewBotPage> {
     super.dispose();
   }
 
+  /// 可视化回复 only once the preferences loaded: their default is "on", and a
+  /// cold start would otherwise add the dsh-ui hint despite the switch.
+  bool _visualRepliesOn() {
+    final settings = ref.read(settingsProvider);
+    return settings.loaded && settings.visualReplies;
+  }
+
   /// The model it starts on: picked here, else the host's default.
   ModelSelection? _effectiveModel(DsBotTeam? team) {
     if (_model != null) return _model;
@@ -113,10 +120,9 @@ class _NewBotPageState extends ConsumerState<NewBotPage> {
       final bot = await api.createBot(
         name: name,
         role: _role.text.trim().isEmpty ? null : _role.text.trim(),
-        instructions: newBotInstructions(
-          _instructions.text,
-          visualReplies: ref.read(settingsProvider).visualReplies,
-        ),
+        // Preferences may still be loading: deciding on their default would
+        // add the hint to a Bot whose setting is off.
+        instructions: newBotInstructions(_instructions.text, visualReplies: _visualRepliesOn()),
         color: _color,
         model: model == null ? null : '${model.provider}/${model.model}',
         effort: model?.reasoningEffort,

@@ -18,7 +18,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../phone/phone_channel.dart' show PhoneTaskStatus;
 import '../pets/pet_signals.dart' show petFocusProvider, petPendingProvider;
-import '../update/update_config.dart' show updateRepo;
+import '../update/update_config.dart' show upstreamRepo;
 import 'draft_store.dart';
 import 'notify_state.dart' show appForegroundProvider, chatOnScreenProvider;
 import 'phone_state.dart' show phoneChannelProvider;
@@ -33,7 +33,7 @@ final starPromptGateProvider = Provider<bool>((ref) => starPromptEnabled);
 
 /// Where 「去 GitHub 点 Star」 goes: the public repository's page (its releases
 /// are the app's updates).
-final starProjectPage = Uri.https('github.com', '/$updateRepo');
+final starProjectPage = Uri.https('github.com', '/$upstreamRepo');
 
 /// The numbers behind the prompt, with their reasons in the design note.
 abstract final class StarPromptRules {

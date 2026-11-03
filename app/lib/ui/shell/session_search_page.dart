@@ -35,7 +35,7 @@ class SessionSearchBar extends ConsumerWidget {
     final sessionId = await showSessionSearch(context);
     if (sessionId == null || !context.mounted) return;
     // A Bot's or group's chat opens its page; the drawer closes either way.
-    if (openTeamChatIfOwned(context, ref, sessionId, beforeOpen: onClose)) return;
+    if (await openTeamChatIfOwned(context, ref, sessionId, beforeOpen: onClose)) return;
     ref.read(currentSessionProvider.notifier).select(sessionId);
     onClose();
   }

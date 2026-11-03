@@ -50,6 +50,7 @@ class AppUpdateTiles extends ConsumerWidget {
         SettingsSwitchTile(
           icon: tint == null ? null : AppIcons.autoUpdate,
           tint: tint ?? 0,
+          spot: Spots.updatePreviews,
           title: l10n.updateIncludePreviews,
           value: update.includePreviews,
           onChanged: (v) => unawaited(controller.setIncludePreviews(v)),

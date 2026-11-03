@@ -88,11 +88,22 @@ class SessionTile extends StatelessWidget {
     final colors = DshColors.of(context);
     final shape = Squircle.border(AppShape.md);
     final highlighted = selecting ? selected : current;
+    // Big type makes every word at the end wider; the row is one line and must
+    // not overflow, so the trailing words are capped (and cut) instead.
+    // Big type: the trailing words give way instead of growing the row (the
+    // note is dropped entirely, the markers keep a fixed cap and ellipsis).
+    final scale = (MediaQuery.textScalerOf(context).scale(14) / 14).clamp(1.0, 2.0).toDouble();
+    final roomForNote = scale <= 1.4;
     final Widget? marker = switch ((pending, running, unread)) {
-      (final PendingKind kind, _, _) => Text(
-        kind.label,
-        key: const ValueKey('pending'),
-        style: theme.textTheme.labelMedium?.copyWith(color: colors.warning, fontWeight: FontWeight.w500),
+      (final PendingKind kind, _, _) => ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 64),
+        child: Text(
+          kind.label,
+          key: const ValueKey('pending'),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.labelMedium?.copyWith(color: colors.warning, fontWeight: FontWeight.w500),
+        ),
       ),
       (_, true, _) => const StatusDot(key: ValueKey('running'), tone: StatusTone.busy, size: dot),
       (_, _, true) => _UnreadDot(key: const ValueKey('unread'), color: scheme.onSurfaceVariant),
@@ -158,7 +169,7 @@ class SessionTile extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (note case final text? when !selecting) ...[
+                if (note case final text? when !selecting && roomForNote) ...[
                   const SizedBox(width: 8),
                   ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: noteWidth),

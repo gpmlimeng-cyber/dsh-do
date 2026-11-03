@@ -17,8 +17,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../chat/support/harness.dart' show fakeConnection;
+import '../chat/support/harness.dart' show fakeConnection, FakeChatController;
 import 'support.dart';
+import 'package:dsh_app/state/chat_state.dart' show chatProvider, ChatState;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -61,6 +62,7 @@ void main() {
     test('the relay cannot reach plugin routes', () async {
       final container = ProviderContainer(
         overrides: [
+              chatProvider.overrideWith2((id) => FakeChatController(id, const ChatState(loading: false))),
           activeConnectionProvider.overrideWithValue(AsyncData(fakeConnection)),
           dsBotApiFactoryProvider.overrideWithValue((_) => null),
         ],

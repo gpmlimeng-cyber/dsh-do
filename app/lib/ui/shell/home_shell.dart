@@ -157,7 +157,7 @@ class _HomeShellState extends ConsumerState<HomeShell> with SingleTickerProvider
     final sessionId = await showSessionSearch(context);
     if (sessionId == null || !mounted) return;
     // A Bot's or group's chat opens its own page, not the plain conversation.
-    if (openTeamChatIfOwned(context, ref, sessionId)) return;
+    if (await openTeamChatIfOwned(context, ref, sessionId)) return;
     ref.read(currentSessionProvider.notifier).select(sessionId);
   }
 

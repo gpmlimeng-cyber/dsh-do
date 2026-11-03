@@ -147,9 +147,12 @@ VoiceInputController createBotVoice(
   },
 );
 
-/// 长按发送键 while a turn runs: how the message reaches it. [steer] is off in
-/// a group, where 插话 would steer the relay Session rather than the members.
-Future<SendMode?> showBotSendOptions(BuildContext context, {bool steer = true}) => showAppSheet<SendMode>(
+/// 长按发送键 while a turn runs: how the message reaches it.
+///
+/// 插话 is off everywhere for now: DS Bot's `send` ignores the mode it is given
+/// (`queue` is hard-coded there), so offering it would name a behaviour the
+/// host does not have. Turn it on when the host reads `mode`.
+Future<SendMode?> showBotSendOptions(BuildContext context, {bool steer = false}) => showAppSheet<SendMode>(
   context,
   builder: (sheet) => SafeArea(
     top: false,

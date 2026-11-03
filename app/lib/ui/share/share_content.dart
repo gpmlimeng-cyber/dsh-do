@@ -12,12 +12,12 @@ import 'package:flutter/widgets.dart';
 import '../../l10n/l10n.dart';
 import '../../share_code/conversation_redact.dart' show redactText;
 import '../../state/chat_state.dart';
-import '../../update/update_config.dart' show updateRepo;
+import '../../update/update_config.dart' show upstreamRepo;
 import '../chat/dsh_ui/dsh_ui.dart';
 import '../chat/run_info.dart' show formatSpan;
 
 /// The project page every card's QR code and footer point at.
-const dshGoProjectUrl = 'https://github.com/$updateRepo';
+const dshGoProjectUrl = 'https://github.com/$upstreamRepo';
 
 /// One piece of a share card's body.
 @immutable

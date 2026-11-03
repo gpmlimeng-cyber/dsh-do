@@ -12,6 +12,8 @@ import '../../l10n/l10n.dart';
 import '../../state/settings_state.dart';
 import '../../state/attachments.dart';
 import '../../state/bots_state.dart';
+import '../../runtime/runtime_bridge.dart' show RuntimePhase;
+import '../../runtime/runtime_state.dart' show localRuntimeProvider;
 import '../../state/connection_state.dart';
 import '../../state/artifacts.dart' show sessionArtifactsProvider;
 import '../chat/composer.dart';
@@ -55,7 +57,7 @@ class BotChatPage extends ConsumerStatefulWidget {
   ConsumerState<BotChatPage> createState() => _BotChatPageState();
 }
 
-class _BotChatPageState extends ConsumerState<BotChatPage> {
+class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingObserver {
   late final BotStopGuard _stopGuard;
   final _input = TextEditingController();
   final _focus = FocusNode();
@@ -67,6 +69,16 @@ class _BotChatPageState extends ConsumerState<BotChatPage> {
   String? _quote;
   late final VoiceInputController _voice;
   late final VoiceInputActiveController _voiceFlag;
+
+  /// The app is in front. The artifacts watch (which opens the Session's chat)
+  /// waits for both this and a visible route.
+  bool _resumed = true;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final resumed = state == AppLifecycleState.resumed;
+    if (resumed != _resumed && mounted) setState(() => _resumed = resumed);
+  }
 
   @override
   void initState() {
@@ -82,6 +94,7 @@ class _BotChatPageState extends ConsumerState<BotChatPage> {
         unawaited(_voice.refreshAfterModelChange());
       }
     });
+    WidgetsBinding.instance.addObserver(this);
     _viewing = ref.read(dsBotViewingProvider.notifier);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _viewing.set(widget.botId);
@@ -92,6 +105,7 @@ class _BotChatPageState extends ConsumerState<BotChatPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _voice.removeListener(_reportVoice);
     _voice.dispose();
     // The page is gone, and its dictation with it.
@@ -218,8 +232,9 @@ class _BotChatPageState extends ConsumerState<BotChatPage> {
     final question = team.questionOf(bot);
     final view = team.viewOf(bot);
     final api = ref.read(dsBotProvider.notifier).api;
+    // 等你回答 already shows on the pending card and in the composer's hint;
+    // the header keeps the Bot's own state instead of saying it a third time.
     final (String label, StatusTone tone) = switch (()) {
-      _ when question != null || view != null => (l10n.commonWaitingAnswer, StatusTone.warn),
       _ when bot.waiting => (l10n.botsWaitingModel, StatusTone.warn),
       _ when work != null => (
         [
@@ -235,7 +250,17 @@ class _BotChatPageState extends ConsumerState<BotChatPage> {
     // it is the newest thing.
     // What the newest turn delivered, under its last row. A page read from
     // history never matches, because turn numbers restart per part.
-    final artifacts = ref.watch(sessionArtifactsProvider(bot.sessionId));
+    //
+    // Watched only while this page is on top and the engine is connected: the
+    // provider builds that Session's chat, and its connection, on first watch,
+    // and a Bot page that only reads DS Bot's transcript must not open one.
+    // 「引擎在线」is the local engine actually running, not merely a connection
+    // object existing; 「页面可见」is this route on top *and* the app resumed.
+    final engineUp = ref.watch(localRuntimeProvider.select((s) => s.status.phase == RuntimePhase.running));
+    final visible = _resumed && (ModalRoute.of(context)?.isCurrent ?? true);
+    final artifacts = visible && engineUp
+        ? ref.watch(sessionArtifactsProvider(bot.sessionId))
+        : const <TurnArtifacts>[];
     final delivered = artifacts.isEmpty ? null : artifacts.last;
     final rows = attachArtifacts(
       groupToolRows(
