@@ -69,6 +69,9 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
   List<DraftAttachment> _drafts = const [];
   /// 引用 for the next message only; the host builds the quoted body.
   String? _quote;
+  /// The running round's progress, read once a second while the page is up.
+  DsBotRoomProgress? _progress;
+  Timer? _progressTimer;
   late final VoiceInputController _voice;
   late final VoiceInputActiveController _voiceFlag;
 
@@ -90,12 +93,34 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _viewing.set(widget.roomId);
     });
+    // A read, and only while a round runs: nothing here starts a turn.
+    _progressTimer = Timer.periodic(const Duration(seconds: 1), (_) => unawaited(_readProgress()));
   }
 
   void _reportVoice() => _voiceFlag.set(_voice.active);
 
+  /// Reads the round's progress. Silent on failure: the last one stands.
+  Future<void> _readProgress() async {
+    if (!mounted) return;
+    final lifecycle = WidgetsBinding.instance.lifecycleState;
+    if (lifecycle != null && lifecycle != AppLifecycleState.resumed) return;
+    if (!ref.read(roomChatProvider(widget.roomId)).running) {
+      if (_progress != null) setState(() => _progress = null);
+      return;
+    }
+    final api = ref.read(dsBotProvider.notifier).api;
+    if (api == null) return;
+    try {
+      final fresh = await api.roomProgress(widget.roomId);
+      if (mounted) setState(() => _progress = fresh);
+    } catch (_) {
+      // A read that fails changes nothing on screen.
+    }
+  }
+
   @override
   void dispose() {
+    _progressTimer?.cancel();
     _voice.removeListener(_reportVoice);
     _voice.dispose();
     // The page is gone, and its dictation with it.
@@ -303,6 +328,22 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
       _ when room.paused => (l10n.commonPaused, StatusTone.warn),
       _ => (l10n.botsMemberCount(room.members.length), StatusTone.ok),
     };
+    final progress = _progress;
+    final spokenNames = [
+      for (final id in progress?.spokenBy ?? const <String>[]) ?team.bot(id)?.name,
+    ];
+    final speakingNow = [
+      for (final id in progress?.speaking ?? const <String>[]) ?team.bot(id)?.name,
+    ].firstOrNull;
+    // Added to the status line rather than a row of its own: the header already
+    // says what the group is doing, and this is the same sentence, counted.
+    final progressText = progress == null || progress.isEmpty
+        ? null
+        : [
+            if (spokenNames.isNotEmpty) '${l10n.botsAlreadySpoke} ${spokenNames.length}',
+            if (speakingNow != null) l10n.botsNamedSpeaking(speakingNow),
+          ].join(' · ');
+
     final typing = speaker == null
         ? null
         : BotTypingRow(
@@ -317,7 +358,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
       header: BotChatHeader(
         face: RoomAvatar(room: room, team: team, size: BotChatHeader.faceSize),
         title: room.name,
-        status: label,
+        status: progressText == null ? label : '$label · $progressText',
         tone: tone,
         scrolledUnder: _scrolled,
         onLeading: () => openDrawerOverShell(context, ref),

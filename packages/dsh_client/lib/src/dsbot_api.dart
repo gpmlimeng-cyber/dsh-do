@@ -1054,6 +1054,43 @@ class DsBotChatPage {
 }
 
 /// A page of a group chat.
+/// One round's progress in a group: [replies] mixes member replies with the
+/// round's own lines (folders, pauses, approvals), so the names are taken from
+/// each reply's `botId`, deduped, never from the array's length.
+class DsBotRoomProgress {
+  const DsBotRoomProgress({this.roomId, this.callId, this.speaking = const [], this.replies = const []});
+
+  factory DsBotRoomProgress.fromJson(Object? json) {
+    final map = asMapOrEmpty(json);
+    return DsBotRoomProgress(
+      roomId: asString(map['roomId']),
+      callId: asString(map['callId']),
+      speaking: [for (final id in asListOrEmpty(map['speaking'])) ?asString(id)],
+      replies: [for (final reply in asListOrEmpty(map['replies'])) asMapOrEmpty(reply)],
+    );
+  }
+
+  final String? roomId;
+  final String? callId;
+
+  /// Members speaking right now.
+  final List<String> speaking;
+
+  /// Every entry of the round so far, members and the round's own lines alike.
+  final List<Map<String, dynamic>> replies;
+
+  /// Members that have spoken, in the order they first did.
+  List<String> get spokenBy {
+    final seen = <String>{};
+    return [
+      for (final reply in replies)
+        if (asString(reply['botId']) case final id? when seen.add(id)) id,
+    ];
+  }
+
+  bool get isEmpty => speaking.isEmpty && replies.isEmpty;
+}
+
 class DsBotRoomPage {
   const DsBotRoomPage({required this.roomId, required this.items, this.cursor, this.running = false, this.speaking});
 
@@ -1559,6 +1596,16 @@ class DsBotApi {
 
   Future<DsBotRoomPage> roomChat(String roomId, {Object? cursor}) async =>
       DsBotRoomPage.fromJson(await call('room-chat', {'roomId': roomId, 'cursor': ?cursor}));
+
+  /// A running round's progress: who has spoken, who is speaking. A read, so
+  /// watching it never starts a turn. Empty when no round is under way.
+  Future<DsBotRoomProgress> roomProgress(String roomId) async {
+    for (final raw in asListOrEmpty(await call('room-progress', {'roomId': roomId}))) {
+      final entry = DsBotRoomProgress.fromJson(raw);
+      if (entry.roomId == null || entry.roomId == roomId) return entry;
+    }
+    return const DsBotRoomProgress();
+  }
 
   /// Sends [text] to a Bot (its id) or a group (its id), with images inline
   /// and the receipts of the files already staged in that conversation. Text
