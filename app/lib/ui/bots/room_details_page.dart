@@ -28,6 +28,7 @@ import 'bot_sheets.dart';
 import 'bots_page.dart' show BotTag;
 import 'memory_card.dart';
 import 'working_folder_sheet.dart';
+import 'room_activity_sheet.dart';
 import 'room_relay_limit_sheet.dart';
 import 'room_chat_page.dart' show GroupApprovalCard;
 
@@ -433,6 +434,17 @@ class RoomDetailsPage extends ConsumerWidget {
                       : null,
                 ),
               ],
+            ),
+            ListPageRow(
+              key: const ValueKey('room-activity'),
+              icon: AppIcons.chart,
+              title: l10n.botsUsage,
+              chevron: false,
+              onTap: scope.api == null
+                  ? null
+                  : () => unawaited(
+                      showRoomActivitySheet(context, room: room, team: team, api: scope.api!),
+                    ),
             ),
             gap,
             BotMemoryCard(roomId: room.id),

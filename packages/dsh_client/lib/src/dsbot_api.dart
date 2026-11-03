@@ -1761,6 +1761,12 @@ class DsBotApi {
   Future<bool> stopRoomWork(String roomId) async =>
       asBool(await call('stop-room-work', {'roomId': roomId})) ?? false;
 
+  /// DSH's own figures for a Bot's current part (`run-stats`): `sessionStats`
+  /// (turns, decode time and tokens), `tokenUsage`, `contextPressure`. Empty on a
+  /// Host that does not answer them.
+  Future<Map<String, Object?>> runStats(String botId) async =>
+      asMapOrEmpty(await call('run-stats', {'botId': botId}));
+
   Future<void> answerApproval(String id, {required bool allow}) =>
       call('approval-answer', {'id': id, 'choice': allow ? 'allow' : 'reject'});
 
