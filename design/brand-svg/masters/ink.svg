@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="ink-plate" x1="0" y1="98" x2="0" y2="926" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#212227"/><stop offset=".55" stop-color="#1B1C21"/><stop offset="1" stop-color="#17181C"/></linearGradient>
+    <linearGradient id="ink-glyph" x1="330" y1="273" x2="700" y2="751" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".42" stop-color="#FFFFFF"/><stop offset=".78" stop-color="#FFFFFF"/><stop offset="1" stop-color="#FFFFFF"/></linearGradient>
+        <g id="ink-mark">
+      <path d="M280 273 L371 358.8 Q377.5 365.4 384 358.8 L475 273 A22 22 0 0 1 497 295 V447 A22 22 0 0 1 475 469 H280 A22 22 0 0 1 258 447 V295 A22 22 0 0 1 280 273 Z"/>
+      <circle cx="668" cy="371" r="98"/>
+      <path d="M280 555 H399 A98 98 0 0 1 399 751 H280 A22 22 0 0 1 258 729 V577 A22 22 0 0 1 280 555 Z"/>
+      <circle cx="668" cy="653" r="98"/>
+    </g>
+  </defs>
+
+  <rect x="98" y="98" width="828" height="828" fill="url(#ink-plate)"/>
+  <use href="#ink-mark" fill="url(#ink-glyph)"/>
+</svg>
