@@ -197,7 +197,14 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('bot-create')));
     await frames(tester);
     final call = fake.calls.firstWhere((c) => c.$1 == 'create-bot');
-    expect(call.$2, {'name': '设计师', 'role': '画海报', 'color': 'green', 'model': 'deepseek/deepseek-v4-flash'});
+    expect(call.$2, {
+      'name': '设计师',
+      'role': '画海报',
+      'color': 'green',
+      'model': 'deepseek/deepseek-v4-flash',
+      // 可视化回复 is on by default: a new Bot is told to use dsh-ui.
+      'instructions': newBotInstructions('', visualReplies: true),
+    });
     expect(find.byType(BotChatPage), findsOneWidget);
   });
 

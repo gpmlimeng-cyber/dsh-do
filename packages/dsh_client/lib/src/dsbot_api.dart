@@ -848,7 +848,7 @@ class DsBotFileText {
   final bool? whole;
 }
 
-enum DsBotItemKind { user, bot, event, answer, divider, tool, unknown }
+enum DsBotItemKind { user, bot, event, answer, divider, tool, thinking, unknown }
 
 /// One entry of a chat or a group chat, ready to draw.
 /// One attachment a line carries: enough to fetch an image by id, and to name
@@ -890,6 +890,8 @@ class DsBotItem {
     this.callId,
     this.toolName,
     this.toolStatus,
+    this.turn,
+    this.seq,
     this.duration,
     this.live = false,
     this.whole,
@@ -906,6 +908,7 @@ class DsBotItem {
         'answer' => DsBotItemKind.answer,
         'divider' => DsBotItemKind.divider,
         'tool' => DsBotItemKind.tool,
+        'thinking' => DsBotItemKind.thinking,
         _ => DsBotItemKind.unknown,
       },
       id: asString(map['id']),
@@ -923,6 +926,8 @@ class DsBotItem {
       callId: asString(map['callId']),
       toolName: asString(map['name']),
       toolStatus: asString(map['status']),
+      turn: asInt(map['turn']),
+      seq: asInt(map['seq']),
       duration: asInt(map['duration']) == null ? null : Duration(milliseconds: asInt(map['duration'])!),
       live: asBool(map['live']) ?? false,
       whole: whole == null ? null : DsBotLongText(asInt(whole['length']) ?? 0, asMapOrEmpty(whole['file'])),
@@ -959,6 +964,12 @@ class DsBotItem {
   final String? callId;
   final String? toolName;
   final String? toolStatus;
+
+  /// The session turn this entry belongs to, and the event sequence inside its
+  /// part. Both are per part: a Bot's chat pages through parts. Absent from a
+  /// host older than these fields.
+  final int? turn;
+  final int? seq;
   final Duration? duration;
 
   /// Said in the round still running; replaced by the logged one later.
@@ -1131,15 +1142,28 @@ class DsBotMemoryEntry {
 
 /// A Bot's or a group's memory, as the memory panel shows it.
 class DsBotMemoryView {
-  const DsBotMemoryView({required this.entries, this.summary, this.summarizing = false, this.error});
+  const DsBotMemoryView({
+    required this.entries,
+    this.summary,
+    this.summarizing = false,
+    this.error,
+    this.sizes = const {},
+    this.limits = const {},
+  });
 
   factory DsBotMemoryView.fromJson(Object? json) {
     final map = asMapOrEmpty(json);
+    Map<String, int> counts(Object? value) => {
+      for (final entry in asMapOrEmpty(value).entries)
+        if (asInt(entry.value) case final count?) entry.key: count,
+    };
     return DsBotMemoryView(
       entries: [for (final entry in asListOrEmpty(map['entries'])) DsBotMemoryEntry.fromJson(entry)],
       summary: asString(asMapOrEmpty(map['summary'])['text']),
       summarizing: asBool(map['summarizing']) ?? false,
       error: asString(map['error']),
+      sizes: counts(map['sizes']),
+      limits: counts(map['limits']),
     );
   }
 
@@ -1147,6 +1171,12 @@ class DsBotMemoryView {
   final String? summary;
   final bool summarizing;
   final String? error;
+
+  /// Characters used per scope (`own`, `team`, `group`), as the host counts them.
+  final Map<String, int> sizes;
+
+  /// The host's caps, in characters: `entry`, `main` (a MEMORY.md), `topic`.
+  final Map<String, int> limits;
 }
 
 /// Token counts.

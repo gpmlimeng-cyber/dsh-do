@@ -13,7 +13,9 @@ import '../../state/settings_state.dart';
 import '../../state/attachments.dart';
 import '../../state/bots_state.dart';
 import '../../state/connection_state.dart';
+import '../../state/artifacts.dart' show sessionArtifactsProvider;
 import '../chat/composer.dart';
+import '../chat/widgets/artifact_card.dart';
 import '../../state/voice_model_state.dart';
 import '../../state/voice_state.dart';
 import '../../state/chat_state.dart' show SendMode;
@@ -229,9 +231,21 @@ class _BotChatPageState extends ConsumerState<BotChatPage> {
       _ => (bot.role.isEmpty ? (team.isMain(bot.id) ? l10n.botsMainBot : l10n.botsIdle) : bot.role, StatusTone.ok),
     };
     // Consecutive tool calls fold into one row, so a busy turn does not fill
-    // the transcript with them.
-    final rows = groupToolRows(
-      transcriptRows(chat.items, pending: chat.pending, streaming: ownTurn ? chat.streaming : null),
+    // the transcript with them; a turn's thinking is one line, and only while
+    // it is the newest thing.
+    // What the newest turn delivered, under its last row. A page read from
+    // history never matches, because turn numbers restart per part.
+    final artifacts = ref.watch(sessionArtifactsProvider(bot.sessionId));
+    final delivered = artifacts.isEmpty ? null : artifacts.last;
+    final rows = attachArtifacts(
+      groupToolRows(
+        transcriptRows(
+          botTranscriptItems(chat.items, running: ownTurn),
+          pending: chat.pending,
+          streaming: ownTurn ? chat.streaming : null,
+        ),
+      ),
+      delivered,
     );
     final topInset = BotChatHeader.heightOf(context);
     final rooms = {for (final room in team.rooms) room.id: room.name};
@@ -281,6 +295,7 @@ class _BotChatPageState extends ConsumerState<BotChatPage> {
                         ? const Align(alignment: Alignment.centerLeft, child: _Thinking())
                         : BotReplyText(text: text, streaming: true),
                   BotTypingRow() => const SizedBox.shrink(),
+                  BotArtifactsRow(:final group) => ArtifactCard(sessionId: chat.sessionId, group: group),
                   BotToolGroupRow(:final items) => BotToolGroup(
                     // A stable key: paging in older rows must not hand this
                     // group's open state to the one that lands on its index.
@@ -313,6 +328,12 @@ class _BotChatPageState extends ConsumerState<BotChatPage> {
                     DsBotItemKind.answer => BotEventLine(text: l10n.botsAnsweredQuestion, icon: AppIcons.done),
                     DsBotItemKind.divider => BotEventLine(text: l10n.botsEarlierMessages, icon: AppIcons.history),
                     DsBotItemKind.tool => BotToolRow(name: item.toolName ?? '', status: item.toolStatus),
+                    // One line while a turn reasons, before its reply starts:
+                    // no expand, no buttons, nothing else to read.
+                    DsBotItemKind.thinking => BotTypingLine(
+                      bot: bot,
+                      label: '${bot.name} · ${l10n.botsThinking}',
+                    ),
                     DsBotItemKind.unknown => const SizedBox.shrink(),
                   },
                 },

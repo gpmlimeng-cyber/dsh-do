@@ -345,6 +345,9 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
                   BotTypingRow(:final bot, :final label) => BotTypingLine(bot: bot, label: label),
                   // A group has no tool events to show; the row exists so the
                   // switch stays exhaustive, and the same widget keeps it honest.
+                  // A group does not carry turn-level deliverables: its rows come
+                  // from the group's own record, not from one conversation's turns.
+                  BotArtifactsRow() => const SizedBox.shrink(),
                   BotToolGroupRow(:final items) => BotToolGroup(items: items),
                   BotItemRow(:final item, :final continued) => switch (item.kind) {
                     DsBotItemKind.user => BotUserMessage(
@@ -386,6 +389,9 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
                       },
                     ),
                     DsBotItemKind.tool => BotToolRow(name: item.toolName ?? '', status: item.toolStatus),
+                    // A group's relay Session runs no model, so a thinking
+                    // step should never reach here; it says nothing if it does.
+                    DsBotItemKind.thinking => const SizedBox.shrink(),
                     _ => const SizedBox.shrink(),
                   },
                 },

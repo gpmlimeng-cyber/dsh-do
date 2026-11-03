@@ -21,6 +21,7 @@ import 'unavailable_message.dart';
 import 'bot_action_scope.dart';
 import 'bot_chat_page.dart';
 import 'bot_format.dart';
+import 'bot_schedules_card.dart';
 import 'bot_sheets.dart';
 import 'duplicate_bot_row.dart';
 import 'memory_card.dart';
@@ -209,6 +210,8 @@ class BotDetailsPage extends ConsumerWidget {
             ),
             gap,
             BotMemoryCard(botId: bot.id),
+            gap,
+            BotSchedulesCard(sessionId: bot.sessionId, botName: bot.name),
             if (usage != null) ...[
               gap,
               ListPageCard(

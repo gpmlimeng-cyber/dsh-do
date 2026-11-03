@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
 import '../../state/bots_state.dart';
+import '../../state/settings_state.dart' show settingsProvider;
 import '../chat/model_sheet.dart';
 import '../common/discard_guard.dart';
 import '../common/list_page_row.dart';
@@ -30,6 +31,21 @@ class NewBotPage extends ConsumerStatefulWidget {
 
   @override
   ConsumerState<NewBotPage> createState() => _NewBotPageState();
+}
+
+/// What a new Bot is told about 可视化回复, when that setting is on: the
+/// engine's own AGENTS.md section explains dsh-ui, and this asks the Bot to
+/// reach for it in its conversation instead of writing another paragraph. The
+/// setting off means nothing is added, and a person who already wrote `dsh-ui`
+/// themselves is never told twice.
+String? newBotInstructions(String typed, {required bool visualReplies}) {
+  final text = typed.trim();
+  if (!visualReplies || text.toLowerCase().contains('dsh-ui')) return text.isEmpty ? null : text;
+  final hint = AppLocale.isEnglish
+      ? 'When a chart or card explains it better, answer with a ```dsh-ui fence '
+            '(JSON following the dsh-ui spec) instead of a plain paragraph.'
+      : '适合用图表或卡片说明时，用 ```dsh-ui 围栏呈现（JSON 按 dsh-ui 规范），不要只写一段文字。';
+  return text.isEmpty ? hint : '$text\n\n$hint';
 }
 
 class _NewBotPageState extends ConsumerState<NewBotPage> {
@@ -97,7 +113,10 @@ class _NewBotPageState extends ConsumerState<NewBotPage> {
       final bot = await api.createBot(
         name: name,
         role: _role.text.trim().isEmpty ? null : _role.text.trim(),
-        instructions: _instructions.text.trim().isEmpty ? null : _instructions.text.trim(),
+        instructions: newBotInstructions(
+          _instructions.text,
+          visualReplies: ref.read(settingsProvider).visualReplies,
+        ),
         color: _color,
         model: model == null ? null : '${model.provider}/${model.model}',
         effort: model?.reasoningEffort,

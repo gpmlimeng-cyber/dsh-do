@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../l10n/l10n.dart';
+import '../../state/artifacts.dart' show TurnArtifacts;
 import '../../state/bots_state.dart';
 import '../chat/render/markdown_body.dart';
 import '../chat/widgets/chat_card.dart';
@@ -348,6 +349,12 @@ final class BotTypingRow extends BotRow {
   final String label;
 }
 
+/// What a turn delivered, drawn under the last row of that turn.
+final class BotArtifactsRow extends BotRow {
+  const BotArtifactsRow(this.group);
+  final TurnArtifacts group;
+}
+
 /// Rows for [items]: a time line before a message more than 15 minutes after
 /// the one before it, and [continued] runs of one speaker.
 List<BotRow> transcriptRows(
@@ -377,6 +384,50 @@ List<BotRow> transcriptRows(
   if (streaming != null) rows.add(BotStreamingRow(streaming));
   if (typing != null) rows.add(typing);
   return rows;
+}
+
+/// The entries a Bot's chat draws: a turn's thinking is **one** line, and only
+/// while it is the newest thing.
+///
+/// A step that reasons stamps its own `thinking` before its reply or tools, so
+/// one turn can add several with messages in between. Only the last one can
+/// still be "what the Bot is doing": as soon as a reply or a tool row follows
+/// it, that step is over, and [running] false (a finished turn, or a part read
+/// from history) drops it too.
+List<DsBotItem> botTranscriptItems(List<DsBotItem> items, {required bool running}) {
+  if (items.isEmpty) return items;
+  final newest = items.last;
+  final rest = [
+    for (final item in items)
+      if (item.kind != DsBotItemKind.thinking) item,
+  ];
+  if (running && newest.kind == DsBotItemKind.thinking) rest.add(newest);
+  return rest;
+}
+
+/// Puts [group]'s deliverables under the turn they belong to.
+///
+/// Turn numbers restart with every part, so this only attaches when the newest
+/// row that carries a turn is that same turn: a page read from history never
+/// picks up the current part's card.
+List<BotRow> attachArtifacts(List<BotRow> rows, TurnArtifacts? group) {
+  if (group == null || group.files.isEmpty) return rows;
+  int? turnOf(BotRow row) => switch (row) {
+    BotItemRow(:final item) => item.turn,
+    BotToolGroupRow(:final items) => items.isEmpty ? null : items.last.turn,
+    _ => null,
+  };
+  int? newest;
+  var at = -1;
+  for (var i = 0; i < rows.length; i++) {
+    final turn = turnOf(rows[i]);
+    if (turn == null) continue;
+    newest = turn;
+    if (turn == group.turn) at = i;
+  }
+  if (newest != group.turn) return rows;
+  final placed = [...rows]..insert(at + 1, BotArtifactsRow(group));
+  return placed;
 }
 
 // ── Tool wording ─────────────────────────────────────────────────────────────
@@ -760,24 +811,34 @@ class _BotTranscriptState extends State<BotTranscript> {
 EdgeInsets rowPadding(BotRow row) => switch (row) {
   BotItemRow(continued: true) => const EdgeInsets.fromLTRB(16, 4, 16, 0),
   BotTimeRow() => const EdgeInsets.fromLTRB(16, 20, 16, 4),
+  BotArtifactsRow() => const EdgeInsets.fromLTRB(16, 12, 16, 0),
   _ => const EdgeInsets.fromLTRB(16, 16, 16, 0),
 };
 
-/// 「14:05」 between messages far apart.
+/// 「14:05」 between messages far apart, with a hairline on each side so the
+/// break in the conversation reads as one.
 class BotTimeLine extends StatelessWidget {
   const BotTimeLine(this.time, {super.key});
 
   final DateTime time;
 
   @override
-  Widget build(BuildContext context) => Center(
-    child: Text(
-      shortTime(time),
-      style: AppType.tabular(
-        Theme.of(context).textTheme.labelSmall!.copyWith(color: DshColors.of(context).textTertiary),
-      ),
-    ),
-  );
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final line = theme.colorScheme.outlineVariant.withValues(alpha: 0.7);
+    return Row(
+      children: [
+        Expanded(child: Container(key: const ValueKey('time-line-left'), height: 1, color: line)),
+        const SizedBox(width: 10),
+        Text(
+          shortTime(time),
+          style: AppType.tabular(theme.textTheme.labelSmall!.copyWith(color: DshColors.of(context).textTertiary)),
+        ),
+        const SizedBox(width: 10),
+        Expanded(child: Container(key: const ValueKey('time-line-right'), height: 1, color: line)),
+      ],
+    );
+  }
 }
 
 /// A quiet centred line: something that happened, not something said.
