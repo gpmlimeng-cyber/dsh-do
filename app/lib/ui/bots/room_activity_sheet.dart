@@ -190,11 +190,9 @@ class _RoomActivityState extends State<_RoomActivity> {
                       child: Text(
                         [
                           '${l10n.botsMembers} ${rows.length}',
-                          // No ready-made 「N 轮」 string: the count stands on its
-                          // own after the label the sheet already has.
-                          '${l10n.activityUsageContext} $totalTurns',
+                          l10n.activityUsageTurns(totalTurns),
                           if (hit != null) '${l10n.activityCacheHit} ${(hit * 100).round()}%',
-                          if (fullest != null) '${fullest.name} ${(fullestShare * 100).round()}%',
+                          if (fullest != null) '${fullest.name} · ${l10n.activityUsageContext} ${(fullestShare * 100).round()}%',
                         ].join(' · '),
                         style: theme.textTheme.bodySmall?.copyWith(color: dsh.textTertiary),
                       ),
@@ -218,8 +216,8 @@ class _RoomActivityState extends State<_RoomActivity> {
     final share = activity.contextShare;
     if (share != null) parts.add('${l10n.activityUsageContext} ${(share * 100).round()}%');
     final speed = activity.speed;
-    if (speed != null && speed > 0) parts.add('${speed.round()} tok/s');
-    if (activity.turns > 0) parts.add('${activity.turns}×');
+    if (speed != null && speed > 0) parts.add(l10n.activityStepTokenSpeed('${speed.round()}'));
+    if (activity.turns > 0) parts.add(l10n.activityUsageTurns(activity.turns));
     return parts.isEmpty ? null : parts.join(' · ');
   }
 }
