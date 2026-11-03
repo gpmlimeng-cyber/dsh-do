@@ -114,11 +114,18 @@ jobs:
             # assignment fail, and the step exits 1 with no output at all — that
             # is how the first 2.0.0 publish died, after a 15-minute build.
             notes="MODO ${VERSION}. 基于上游 v1.0.8。"
-            if [ "$PREVIEW" = "true" ]; then
-              notes="$notes 预览版：可能不稳定。"
-              gh release create "v${VERSION}" "/tmp/$file" --title "MODO ${VERSION} (preview)" --notes "$notes" --prerelease
+            # Release notes live in the repository, one file per version, so the
+            # text is reviewed with the code instead of typed into the workflow.
+            notes_file="docs/release-notes/${VERSION}.md"
+            if [ -f "$notes_file" ]; then
+              notes_args=(--notes-file "$notes_file")
             else
-              gh release create "v${VERSION}" "/tmp/$file" --title "MODO ${VERSION}" --notes "$notes" --latest
+              notes_args=(--notes "$notes")
+            fi
+            if [ "$PREVIEW" = "true" ]; then
+              gh release create "v${VERSION}" "/tmp/$file" --title "MODO ${VERSION} (preview)" "${notes_args[@]}" --prerelease
+            else
+              gh release create "v${VERSION}" "/tmp/$file" --title "MODO ${VERSION}" "${notes_args[@]}" --latest
             fi
           else
             tag="ci-$(date -u +%Y%m%d-%H%M)-${GITHUB_SHA::7}"
