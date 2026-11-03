@@ -147,10 +147,11 @@ class ApkDownloader {
         if (step == _Step.cancelled) return const DownloadCancelled();
         if (step == _Step.storage) return const DownloadFailed(DownloadFailure.storage);
         if (step == _Step.complete) {
+          var actual = '';
           try {
             await part.rename(target.path);
             onVerifying?.call();
-            final actual = await hasher(target);
+            actual = await hasher(target);
             if (actual == sha256) return DownloadDone(target, url);
             // Corrupt or tampered: start over from the next source. The
             // partial file goes too — resuming it would append good bytes to
