@@ -20,7 +20,12 @@ Future<void> openBotAttachmentFile(
 }) async {
   final l10n = context.l10n;
   final id = file.attachmentId;
-  if (id == null) return;
+  // A Host that sends neither id nor attachmentId names the file but gives the
+  // phone no way to fetch it; saying so beats a tap that does nothing.
+  if (id == null || id.isEmpty) {
+    _say(context, l10n.chatOpenAttachmentFailed);
+    return;
+  }
   final api = BotActionScope(ref, botId: botId, roomId: roomId).api;
   if (api == null) {
     _say(context, l10n.commonNotConnected);

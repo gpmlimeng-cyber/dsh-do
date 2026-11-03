@@ -338,7 +338,7 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
                   ),
                   BotItemRow(:final item) => switch (item.kind) {
                     DsBotItemKind.user => BotUserMessage(
-                      text: item.text,
+                      text: botLineText(item),
                       images: item.images,
                       attachments: botLineAttachments(
                         item,
@@ -370,7 +370,7 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
                           shown,
                           const SizedBox(height: 6),
                         ],
-                        BotReplyText(text: item.text, onQuote: _setQuote),
+                        BotReplyText(text: botLineText(item), onQuote: _setQuote),
                       ],
                     ),
                     DsBotItemKind.event => BotEventLine(

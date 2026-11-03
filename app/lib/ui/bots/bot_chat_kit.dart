@@ -1034,6 +1034,7 @@ class GroupMessage extends StatelessWidget {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final dsh = DshColors.of(context);
+    final text = botLineText(item);
     final name = bot?.name ?? item.name ?? 'Bot';
     final color = bot?.ink ?? item.color ?? dsBotDefaultColor(item.botId ?? name);
     final avatar = bot == null ? BotMonogram(name: name, color: color, size: face) : BotAvatar(bot: bot!, size: face);
@@ -1068,10 +1069,10 @@ class GroupMessage extends StatelessWidget {
             ),
           ),
         BotReplyText(
-          text: item.text,
+          text: text,
           // One menu, not two: the inner one wins the gesture arena anyway.
           // A file-only line has no text worth copying or sharing.
-          actions: item.text.trim().isEmpty ? const [] : const [MessageAction.copy, MessageAction.share],
+          actions: text.isEmpty ? const [] : const [MessageAction.copy, MessageAction.share],
           onQuote: onQuote,
         ),
         if (onShowAll != null)
@@ -1148,6 +1149,24 @@ Future<void> botLineMenu(BuildContext context, String text, {ValueChanged<String
       break;
   }
 }
+
+/// A line's text as it should read on the phone.
+///
+/// A line that carries files arrives with one `[File "name" (N bytes) attached]`
+/// line beside them: that is the host writing the files into the text for a
+/// reader that cannot see the row of cards. The phone draws the cards, so those
+/// lines are dropped here instead of showing as noise under the bubble (a line
+/// that was only files then reads as nothing at all).
+String botLineText(DsBotItem item) {
+  if (item.files.isEmpty) return item.text;
+  return item.text
+      .split('\n')
+      .where((line) => !_fileMarker.hasMatch(line.trim()))
+      .join('\n')
+      .trim();
+}
+
+final _fileMarker = RegExp(r'^\[File ".*" \(\d+ bytes?\) attached\]$');
 
 /// The person's message: its pictures and files above, its text in the bubble.
 /// A line that carries only attachments has no bubble at all.

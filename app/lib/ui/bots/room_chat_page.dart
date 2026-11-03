@@ -386,7 +386,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
                   BotToolGroupRow(:final items) => BotToolGroup(items: items),
                   BotItemRow(:final item, :final continued) => switch (item.kind) {
                     DsBotItemKind.user => BotUserMessage(
-                      text: item.text,
+                      text: botLineText(item),
                       images: item.images,
                       attachments: botLineAttachments(
                         item,

@@ -872,7 +872,11 @@ class DsBotAttachmentRef {
   factory DsBotAttachmentRef.fromJson(Object? json) {
     final map = asMapOrEmpty(json);
     return DsBotAttachmentRef(
-      id: asString(map['id']) ?? '',
+      // `id` is what the room and chat pages send today; `attachmentId` is the
+      // same reference under the name the engine's own records use. A Host that
+      // still answers with that one would otherwise leave every file card without
+      // an id, so tapping it could only say it failed.
+      id: asString(map['id']) ?? asString(map['attachmentId']) ?? '',
       name: asString(map['name']),
       mediaType: asString(map['mediaType']),
     );
