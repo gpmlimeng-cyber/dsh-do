@@ -722,6 +722,10 @@ class _BotTranscriptState extends State<BotTranscript> {
   final _controller = ScrollController();
   bool _away = false;
 
+  /// Rows that arrived while the list was scrolled away: the badge on the way
+  /// back. Reset as soon as the newest row is on screen again.
+  int _new = 0;
+
   @override
   void initState() {
     super.initState();
@@ -731,6 +735,13 @@ class _BotTranscriptState extends State<BotTranscript> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _check();
     });
+  }
+
+  @override
+  void didUpdateWidget(BotTranscript oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final added = widget.rows.length - oldWidget.rows.length;
+    if (added > 0 && _away && mounted) setState(() => _new += added);
   }
 
   @override
@@ -754,9 +765,13 @@ class _BotTranscriptState extends State<BotTranscript> {
     // is the distance to the oldest end, which is a different question.
     final away = position.pixels > 240;
     if (away != _away && mounted) setState(() => _away = away);
+    if (!away && _new != 0 && mounted) setState(() => _new = 0);
   }
 
-  void _toBottom() => _controller.animateTo(0, duration: AppMotion.of(context, AppMotion.standard), curve: AppMotion.std);
+  void _toBottom() {
+    if (_new != 0) setState(() => _new = 0);
+    _controller.animateTo(0, duration: AppMotion.of(context, AppMotion.standard), curve: AppMotion.std);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -814,9 +829,38 @@ class _BotTranscriptState extends State<BotTranscript> {
                 clipBehavior: Clip.antiAlias,
                 child: InkWell(
                   onTap: _away ? _toBottom : null,
-                  child: const SizedBox.square(
+                  child: SizedBox.square(
                     dimension: 40,
-                    child: Icon(AppIcons.scrollToBottom, size: 22),
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        const Center(child: Icon(AppIcons.scrollToBottom, size: 22)),
+                        // What arrived while away: the button alone says "back to
+                        // the newest line", the count says why it is worth it.
+                        if (_new > 0)
+                          Positioned(
+                            top: 2,
+                            right: 2,
+                            child: Semantics(
+                              label: context.l10n.chatNewContentCount(_new),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.error,
+                                  borderRadius: BorderRadius.circular(9),
+                                ),
+                                child: Text(
+                                  '$_new',
+                                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    color: Theme.of(context).colorScheme.onError,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               ),
