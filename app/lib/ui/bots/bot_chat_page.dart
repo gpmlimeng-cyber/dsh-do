@@ -36,6 +36,7 @@ import 'bot_action_scope.dart';
 import '../shell/drawer/drawer_open_request.dart';
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
+import 'bot_attachment_open.dart';
 import 'bot_attachments.dart';
 import 'bot_composer_deck.dart';
 import 'bot_draft_send.dart';
@@ -339,7 +340,17 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
                     DsBotItemKind.user => BotUserMessage(
                       text: item.text,
                       images: item.images,
-                      attachments: botLineAttachments(item, chat.sessionId),
+                      attachments: botLineAttachments(
+                        item,
+                        chat.sessionId,
+                        onOpenFile: (file) => openBotAttachmentFile(
+                          context,
+                          ref,
+                          sessionId: chat.sessionId,
+                          file: file,
+                          botId: bot.id,
+                        ),
+                      ),
                       onQuote: _setQuote,
                     ),
                     DsBotItemKind.bot => Column(
@@ -347,7 +358,17 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
                       children: [
                         // A Bot's own attachments draw like the person's do;
                         // the pictures among them open full screen already.
-                        if (botLineAttachments(item, chat.sessionId) case final shown?) ...[
+                        if (botLineAttachments(
+                        item,
+                        chat.sessionId,
+                        onOpenFile: (file) => openBotAttachmentFile(
+                          context,
+                          ref,
+                          sessionId: chat.sessionId,
+                          file: file,
+                          botId: bot.id,
+                        ),
+                      ) case final shown?) ...[
                           shown,
                           const SizedBox(height: 6),
                         ],

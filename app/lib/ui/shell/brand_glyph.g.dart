@@ -5,9 +5,8 @@
 // launcher layer (android/app/src/main/res/drawable/ic_launcher_monochrome.xml).
 
 // dart format off
-import 'dart:typed_data';
 import 'dart:ui' as ui;
-import 'dart:ui' show Color, Offset, Path, Rect, Shader, TileMode;
+import 'dart:ui' show Color, Offset, Path, Rect, Shader;
 
 /// Paths, gradients and measurements of the brand glyph (see `brand_mark.dart`).
 abstract final class BrandGlyph {

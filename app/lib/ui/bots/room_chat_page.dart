@@ -29,6 +29,7 @@ import 'bot_action_scope.dart';
 import '../shell/drawer/drawer_open_request.dart';
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
+import 'bot_attachment_open.dart';
 import 'bot_attachments.dart';
 import 'bot_composer_deck.dart';
 import 'bot_draft_send.dart';
@@ -352,13 +353,33 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
                     DsBotItemKind.user => BotUserMessage(
                       text: item.text,
                       images: item.images,
-                      attachments: botLineAttachments(item, roomSession),
+                      attachments: botLineAttachments(
+                        item,
+                        roomSession,
+                        onOpenFile: (file) => openBotAttachmentFile(
+                          context,
+                          ref,
+                          sessionId: roomSession,
+                          file: file,
+                          roomId: room.id,
+                        ),
+                      ),
                       onQuote: _setQuote,
                     ),
                     DsBotItemKind.bot => Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (botLineAttachments(item, roomSession) case final shown?) ...[
+                        if (botLineAttachments(
+                        item,
+                        roomSession,
+                        onOpenFile: (file) => openBotAttachmentFile(
+                          context,
+                          ref,
+                          sessionId: roomSession,
+                          file: file,
+                          roomId: room.id,
+                        ),
+                      ) case final shown?) ...[
                           shown,
                           const SizedBox(height: 6),
                         ],

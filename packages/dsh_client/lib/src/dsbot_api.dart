@@ -1541,6 +1541,15 @@ class DsBotApi {
     return asString(asMapOrEmpty(value)['text']) ?? asString(value) ?? '';
   }
 
+  /// The Host's bounded text of a file a message attached (`file-text`), for
+  /// opening the file in place. The Host wants the id and the name; it answers
+  /// `bot/invalid` without an id and `bot/unavailable` when it cannot read it.
+  Future<DsBotFileText> readAttachmentText(DsBotAttachmentRef file) async => DsBotFileText.fromJson(
+    await call('file-text', {
+      'file': {'attachmentId': file.id, 'name': file.name ?? ''},
+    }),
+  );
+
   /// Copies the Bot's settings into a new Session; history and personal memory are fresh.
   Future<DsBot> duplicateBot(String id) async => DsBot.fromJson(await call('duplicate-bot', {'id': id}));
 

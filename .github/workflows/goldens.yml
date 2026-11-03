@@ -43,7 +43,12 @@ jobs:
         # reach them.
         run: |
           set -o pipefail
-          flutter test --update-goldens test/bots/bots_golden_test.dart 2>&1 | tee /tmp/goldens.test.log
+          flutter test --update-goldens \
+            test/launch/launch_golden_test.dart \
+            test/launch/launch_icon_test.dart \
+            test/share/share_card_golden_test.dart \
+            test/shell/shell_golden_test.dart \
+            test/bots/bots_golden_test.dart 2>&1 | tee /tmp/goldens.test.log
         working-directory: app
 
       - name: Collect only the pictures that actually changed

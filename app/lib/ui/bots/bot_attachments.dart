@@ -87,7 +87,11 @@ Future<({List<PromptImage> images, List<String> receipts})> stageBotAttachments(
 /// The attachments a line carries, as the chat's own row of pictures and file
 /// cards. Null when the host only counted them (nothing to fetch by) or the
 /// conversation's Session is not known yet.
-Widget? botLineAttachments(DsBotItem item, String? sessionId) {
+Widget? botLineAttachments(
+  DsBotItem item,
+  String? sessionId, {
+  void Function(FileAttachment file)? onOpenFile,
+}) {
   if (sessionId == null || item.files.isEmpty) return null;
   final images = [
     for (final file in item.files)
@@ -100,5 +104,5 @@ Widget? botLineAttachments(DsBotItem item, String? sessionId) {
   if (images.isEmpty && files.isEmpty) return null;
   // File cards label themselves from the file name: the host has no media type
   // for a file, so the extension is the only hint there is.
-  return SentAttachments.echoed(sessionId: sessionId, images: images, files: files);
+  return SentAttachments.echoed(sessionId: sessionId, images: images, files: files, onOpenFile: onOpenFile);
 }
