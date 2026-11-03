@@ -438,6 +438,7 @@ class DsBotRoom {
     this.createdAt,
     this.workDir,
     this.parts = const [],
+    this.permission,
   });
 
   factory DsBotRoom.fromJson(Object? json) {
@@ -460,6 +461,7 @@ class DsBotRoom {
       createdAt: asEpochMs(map['createdAt']),
       workDir: asString(map['workDir']),
       parts: asStringList(map['parts']),
+      permission: asString(map['permission']),
     );
   }
 
@@ -726,6 +728,7 @@ class DsBotTeam {
     this.modelsKey,
     this.memory = true,
     this.readOnly,
+    this.permissions,
   });
 
   factory DsBotTeam.fromJson(JsonMap map) => DsBotTeam(
@@ -742,6 +745,7 @@ class DsBotTeam {
     modelsKey: asString(map['modelsKey']),
     memory: asBool(map['memory']) ?? true,
     readOnly: asString(map['readOnly']),
+    permissions: map['permissions'] == null ? null : DsBotPermissionCatalog.fromJson(map['permissions']),
   );
 
   final int revision;
@@ -757,6 +761,10 @@ class DsBotTeam {
   final String? modelsKey;
   final bool memory;
   final String? readOnly;
+
+  /// The presets a group may set for all its members; null when the Host has no
+  /// permission service (or an older one without a catalog).
+  final DsBotPermissionCatalog? permissions;
 
   DsBot? bot(String? id) {
     if (id == null) return null;
@@ -870,6 +878,49 @@ class DsBotAttachmentRef {
   final String? mediaType;
 
   bool get isImage => mediaType?.startsWith('image/') ?? false;
+}
+
+/// The presets a group may set for all its members (`state.permissions`): DSH's
+/// catalog with the session-only `auto` already filtered out by the Host.
+class DsBotPermissionCatalog {
+  const DsBotPermissionCatalog({this.options = const [], this.defaultPreset});
+
+  factory DsBotPermissionCatalog.fromJson(Object? json) {
+    if (json == null) return const DsBotPermissionCatalog();
+    final map = asMapOrEmpty(json);
+    return DsBotPermissionCatalog(
+      options: [for (final option in asListOrEmpty(map['options'])) DsBotPermissionOption.fromJson(option)],
+      defaultPreset: asString(map['defaultPreset']),
+    );
+  }
+
+  final List<DsBotPermissionOption> options;
+  final String? defaultPreset;
+
+  DsBotPermissionOption? option(String? value) {
+    for (final option in options) {
+      if (option.value == value) return option;
+    }
+    return null;
+  }
+}
+
+/// One selectable preset: the value the Host stores, and its name for display.
+class DsBotPermissionOption {
+  const DsBotPermissionOption({required this.value, required this.name, this.description});
+
+  factory DsBotPermissionOption.fromJson(Object? json) {
+    final map = asMapOrEmpty(json);
+    return DsBotPermissionOption(
+      value: asString(map['value']) ?? '',
+      name: asString(map['name']) ?? '',
+      description: asString(map['description']),
+    );
+  }
+
+  final String value;
+  final String name;
+  final String? description;
 }
 
 class DsBotItem {
@@ -1617,6 +1668,7 @@ class DsBotApi {
     String? admin,
     List<String>? add,
     List<String>? remove,
+    String? permission,
   }) => call('update-room', {
     'id': id,
     'name': ?name,
@@ -1625,6 +1677,10 @@ class DsBotApi {
     'admin': ?admin,
     'add': ?add,
     'remove': ?remove,
+    // Passing null leaves the group's preset alone; clearing it means an empty
+    // string (the Host reads undefined as "no change" and ''/null as "each member
+    // keeps its own").
+    'permission': ?permission,
   });
 
   /// Explicit null restores the server default; omission would keep the old limit.

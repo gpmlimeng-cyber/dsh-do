@@ -2,6 +2,8 @@
 // the group answers, its notice, members at work (with 「停下」), approvals
 // waiting, the group memory.
 
+import 'dart:async';
+
 import 'package:dsh_client/dsh_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,6 +15,7 @@ import '../common/list_page_row.dart';
 import '../common/page_hero.dart';
 import '../common/segmented_pill.dart';
 import '../common/sheet_title_bar.dart';
+import '../features/feature_format.dart';
 import '../shell/page_frame.dart';
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
@@ -105,6 +108,50 @@ class RoomDetailsPage extends ConsumerWidget {
       case 'remove':
         await _update(context, ref, scope, (api) => api.updateRoom(room.id, remove: [bot.id]));
     }
+  }
+
+  /// Picks the preset a group uses for every member's sessions here. Choosing
+  /// one also turns the switch on; the Host applies it to the sessions already open.
+  Future<void> _pickRoomPermission(
+    BuildContext context,
+    WidgetRef ref,
+    BotActionScope scope,
+    DsBotRoom room,
+    DsBotTeam team,
+  ) async {
+    final options = team.permissions?.options ?? const <DsBotPermissionOption>[];
+    if (options.isEmpty) return;
+    final current = room.permission;
+    final picked = await showAppSheet<String>(
+      context,
+      builder: (sheet) => SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SheetTitleBar(context.l10n.catalogPermission),
+            SheetGroup(
+              children: [
+                for (final option in options)
+                  ListPageRow(
+                    icon: option.value == current ? AppIcons.done : null,
+                    title: permissionName(option.value, option.name),
+                    subtitle: permissionHint(option.value, option.description),
+                    subtitleMaxLines: 2,
+                    chevron: false,
+                    onTap: () => Navigator.pop(sheet, option.value),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+    if (!context.mounted || picked == null || picked == current) return;
+    if (!scope.current(context, ref)) return;
+    await _update(context, ref, scope, (api) => api.updateRoom(room.id, permission: picked));
   }
 
   Future<void> _delete(BuildContext context, WidgetRef ref, DsBotRoom room) async {
@@ -257,6 +304,46 @@ class RoomDetailsPage extends ConsumerWidget {
                         : (_) {},
                   ),
                 ),
+                // 本群统一权限: one preset for every member's sessions here, in
+                // place of each member's own. The Host has always supported it;
+                // this is the entry it was missing.
+                if (team.permissions?.options.isNotEmpty ?? false) ...[
+                  ListPageRow(
+                    key: const ValueKey('room-permission-toggle'),
+                    icon: AppIcons.redacted,
+                    title: l10n.botsPermissionGroupWide,
+                    trailing: Switch(
+                      value: room.permission != null,
+                      onChanged: !writable
+                          ? null
+                          : (on) => on
+                                ? unawaited(_pickRoomPermission(context, ref, scope, room, team))
+                                // '' is how a group goes back to each member's own
+                                // preset; null would mean "leave it alone".
+                                : unawaited(
+                                    _update(context, ref, scope, (api) => api.updateRoom(room.id, permission: '')),
+                                  ),
+                    ),
+                  ),
+                  if (room.permission case final preset?)
+                    ListPageRow(
+                      key: const ValueKey('room-permission-preset'),
+                      title: l10n.catalogPermission,
+                      value: permissionName(preset, team.permissions?.option(preset)?.name),
+                      onTap: writable
+                          ? () => unawaited(_pickRoomPermission(context, ref, scope, room, team))
+                          : null,
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                    child: Text(
+                      room.permission == null
+                          ? l10n.botsPermissionGroupWideOff
+                          : l10n.botsPermissionGroupWideOn,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: dsh.textTertiary),
+                    ),
+                  ),
+                ],
                 if (room.relayLimitDefault != null)
                   ListPageRow(
                     key: const ValueKey('room-relay-limit'),
