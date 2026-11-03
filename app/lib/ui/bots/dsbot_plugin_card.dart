@@ -55,7 +55,7 @@ class DsBotPluginCard extends ConsumerWidget {
       ),
     );
     if (job.phase == PluginInstallPhase.succeeded) {
-      unawaited(ref.read(dsBotProvider.notifier).retry());
+      ref.read(dsBotProvider.notifier).retry();
       unawaited(ref.read(dsBotPluginUpdateProvider.notifier).check());
     }
   }
