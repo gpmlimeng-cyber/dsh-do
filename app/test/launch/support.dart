@@ -62,10 +62,11 @@ Future<ui.Image> shippedIcon(int px, {String variant = 'mist'}) async {
   // The plate gradient only: the file also carries the sheen layer (a second
   // <gradient>), whose stops are not part of the icon's colour ramp.
   final plate = RegExp(r'<gradient\b[^>]*>(.*?)</gradient>', dotAll: true).firstMatch(xml)?.group(1) ?? xml;
-  final colours = [
-    for (final m in RegExp(r'android:color="#([0-9A-Fa-f]{6,8})"').allMatches(plate))
-      // 6-digit stops (the masters write #RRGGBB) are opaque: add the alpha.
-      Color(int.parse(m.group(1)!.padLeft(8, 'F'), radix: 16)),
+  // Offset and colour pairs: Flutter takes three or more colours only with explicit
+  // stops. 6-digit stops (the masters write #RRGGBB) are opaque: pad the alpha.
+  final stops = [
+    for (final m in RegExp(r'android:offset="([0-9.]+)"\s+android:color="#([0-9A-Fa-f]{6,8})"').allMatches(plate))
+      (double.parse(m.group(1)!), Color(int.parse(m.group(2)!.padLeft(8, 'F'), radix: 16))),
   ];
   final bytes = File('android/app/src/main/res/mipmap-xxxhdpi/ic_launcher${suffix}_foreground.png').readAsBytesSync();
   final codec = await ui.instantiateImageCodec(bytes);
@@ -81,7 +82,13 @@ Future<ui.Image> shippedIcon(int px, {String variant = 'mist'}) async {
     ..translate(-18, -18)
     ..drawRect(
       const Rect.fromLTWH(0, 0, 108, 108),
-      Paint()..shader = ui.Gradient.linear(const Offset(7.57, -5.87), const Offset(100.43, 113.87), colours),
+      Paint()
+        ..shader = ui.Gradient.linear(
+          const Offset(7.57, -5.87),
+          const Offset(100.43, 113.87),
+          [for (final stop in stops) stop.$2],
+          [for (final stop in stops) stop.$1],
+        ),
     )
     ..drawImageRect(
       foreground,
