@@ -498,6 +498,11 @@ class DsBotRoom {
   /// The members' hidden Sessions in this group (and their earlier parts).
   final List<String> parts;
 
+  /// One preset for every member of this group, in place of each member's own;
+  /// null means each member's own. Clearing sends '', never null (null = leave
+  /// the setting alone).
+  final String? permission;
+
   bool get adminFirst => mode != 'everyone';
 }
 
