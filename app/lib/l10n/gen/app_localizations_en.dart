@@ -3005,6 +3005,28 @@ class L10nEn extends L10n {
   String get botsCreationConnectionChanged => 'The connection changed. Reopen this form to create on the current host.';
 
   @override
+  String get botsPermissionGroupWide => 'One permission preset for this group';
+
+  @override
+  String get botsPermissionGroupWideOn =>
+      'Applies to every member’s sessions here; switching changes the ones already open';
+
+  @override
+  String get botsPermissionGroupWideOff => 'Each member uses their own permission preset';
+
+  @override
+  String get botsStopAll => 'Stop all';
+
+  @override
+  String get botsStopAllTitle => 'Stop what every member is doing this round?';
+
+  @override
+  String get botsStopAllBody => 'Members at work stop at once; you can continue again';
+
+  @override
+  String get botsAlreadySpoke => 'Spoke';
+
+  @override
   String get brandXiaomi => 'Xiaomi / Redmi';
 
   @override
@@ -4491,6 +4513,11 @@ class L10nEn extends L10n {
   @override
   String chatArtifactSemantics(String name, String description) {
     return '$name, $description';
+  }
+
+  @override
+  String chatNewContentCount(int count) {
+    return '$count new';
   }
 
   @override

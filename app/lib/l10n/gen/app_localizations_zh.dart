@@ -2852,6 +2852,27 @@ class L10nZh extends L10n {
   String get botsCreationConnectionChanged => '连接已变化，请重新打开创建页面后再操作。';
 
   @override
+  String get botsPermissionGroupWide => '本群统一权限';
+
+  @override
+  String get botsPermissionGroupWideOn => '对本群所有成员的会话生效，切换会立刻改掉现有会话';
+
+  @override
+  String get botsPermissionGroupWideOff => '每个成员用它自己的权限预设';
+
+  @override
+  String get botsStopAll => '停全部';
+
+  @override
+  String get botsStopAllTitle => '停止所有成员的本轮工作？';
+
+  @override
+  String get botsStopAllBody => '正在工作的成员会立刻停下，可以再继续';
+
+  @override
+  String get botsAlreadySpoke => '已说';
+
+  @override
   String get brandXiaomi => '小米 / Redmi';
 
   @override
@@ -4218,6 +4239,11 @@ class L10nZh extends L10n {
   @override
   String chatArtifactSemantics(String name, String description) {
     return '$name，$description';
+  }
+
+  @override
+  String chatNewContentCount(int count) {
+    return '$count 条新内容';
   }
 
   @override

@@ -5228,6 +5228,48 @@ abstract class L10n {
   /// **'连接已变化，请重新打开创建页面后再操作。'**
   String get botsCreationConnectionChanged;
 
+  /// No description provided for @botsPermissionGroupWide.
+  ///
+  /// In zh, this message translates to:
+  /// **'本群统一权限'**
+  String get botsPermissionGroupWide;
+
+  /// No description provided for @botsPermissionGroupWideOn.
+  ///
+  /// In zh, this message translates to:
+  /// **'对本群所有成员的会话生效，切换会立刻改掉现有会话'**
+  String get botsPermissionGroupWideOn;
+
+  /// No description provided for @botsPermissionGroupWideOff.
+  ///
+  /// In zh, this message translates to:
+  /// **'每个成员用它自己的权限预设'**
+  String get botsPermissionGroupWideOff;
+
+  /// No description provided for @botsStopAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'停全部'**
+  String get botsStopAll;
+
+  /// No description provided for @botsStopAllTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'停止所有成员的本轮工作？'**
+  String get botsStopAllTitle;
+
+  /// No description provided for @botsStopAllBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在工作的成员会立刻停下，可以再继续'**
+  String get botsStopAllBody;
+
+  /// No description provided for @botsAlreadySpoke.
+  ///
+  /// In zh, this message translates to:
+  /// **'已说'**
+  String get botsAlreadySpoke;
+
   /// No description provided for @brandXiaomi.
   ///
   /// In zh, this message translates to:
@@ -7741,6 +7783,12 @@ abstract class L10n {
   /// In zh, this message translates to:
   /// **'{name}，{description}'**
   String chatArtifactSemantics(String name, String description);
+
+  /// No description provided for @chatNewContentCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 条新内容'**
+  String chatNewContentCount(int count);
 
   /// No description provided for @commonCancel.
   ///
