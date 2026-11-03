@@ -6,18 +6,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
 import '../../state/bots_state.dart';
+import '../../state/dsbot_plugin_update.dart';
 import '../../state/plugins_state.dart';
 import '../common/list_page_row.dart';
 import '../plugins/plugin_actions.dart';
 import '../theme/app_icons.dart';
+import '../theme/theme.dart';
 
-/// The DS Bot plugin itself: the copy this host has, and a way to reinstall it
-/// from the fork the app talks to.
+/// The DS Bot plugin itself: which copy this host has, what the fork publishes,
+/// and a way to install it.
 ///
 /// The Bot pages need the mobile API this fork's plugin carries; the copy in the
 /// plugin market is the official one, which does not have it, and the market's
-/// update button therefore never offers this fork's builds. This row is that
-/// update path: it installs the fork's latest over the installed copy.
+/// update button therefore never offers this fork's builds. This row is the
+/// update path: it asks the fork once a day on its own, again whenever the
+/// person taps 检查更新, and installs what it finds over the installed copy.
 class DsBotPluginCard extends ConsumerWidget {
   const DsBotPluginCard({super.key});
 
@@ -28,7 +31,7 @@ class DsBotPluginCard extends ConsumerWidget {
     return null;
   }
 
-  Future<void> _reinstall(BuildContext context, WidgetRef ref) async {
+  Future<void> _install(BuildContext context, WidgetRef ref) async {
     final l10n = context.l10n;
     final confirmed = await showDialog<bool>(
       context: context,
@@ -53,14 +56,35 @@ class DsBotPluginCard extends ConsumerWidget {
     );
     if (job.phase == PluginInstallPhase.succeeded) {
       unawaited(ref.read(dsBotProvider.notifier).retry());
+      unawaited(ref.read(dsBotPluginUpdateProvider.notifier).check());
     }
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
-    final bundle = _installed(ref.watch(installedPluginsProvider).value);
-    final version = bundle?.version;
+    final dsh = DshColors.of(context);
+    final installed = _installed(ref.watch(installedPluginsProvider).value)?.version;
+    final update = ref.watch(dsBotPluginUpdateProvider);
+    final checking = update.isLoading;
+    final known = update.value;
+    final newer = known?.isNewerThan(installed) ?? false;
+
+    final String? subtitle;
+    if (installed == null) {
+      subtitle = null;
+    } else if (checking) {
+      subtitle = '${l10n.pluginsInstalledVersion} $installed · ${l10n.updateCheck}…';
+    } else if (newer) {
+      subtitle = '${l10n.pluginsInstalledVersion} $installed · ${l10n.marketUpdateAvailable} ${known?.latest ?? ''}';
+    } else if (known?.failed == true) {
+      subtitle = '${l10n.pluginsInstalledVersion} $installed · ${l10n.updateCheckUnavailable}';
+    } else if (known?.latest != null) {
+      subtitle = '${l10n.pluginsInstalledVersion} $installed · ${l10n.updateTileUpToDate}';
+    } else {
+      subtitle = '${l10n.pluginsInstalledVersion} $installed';
+    }
+
     return ListPageCard(
       title: 'DS Bot',
       children: [
@@ -68,9 +92,19 @@ class DsBotPluginCard extends ConsumerWidget {
           key: const ValueKey('dsbot-plugin'),
           icon: AppIcons.plugin,
           title: l10n.pluginsTitle,
-          subtitle: version == null || version.isEmpty ? null : '${l10n.pluginsInstalledVersion} $version',
+          subtitle: subtitle,
+          subtitleColor: newer ? dsh.info : null,
           chevron: false,
-          onTap: () => unawaited(_reinstall(context, ref)),
+          trailing: checking
+              ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2))
+              : TextButton(
+                  key: const ValueKey('dsbot-plugin-check'),
+                  onPressed: () => unawaited(
+                    newer ? _install(context, ref) : ref.read(dsBotPluginUpdateProvider.notifier).check(),
+                  ),
+                  child: Text(newer ? l10n.commonUpdate : l10n.updateCheck),
+                ),
+          onTap: newer ? () => unawaited(_install(context, ref)) : null,
         ),
       ],
     );
