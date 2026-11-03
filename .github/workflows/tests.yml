@@ -49,6 +49,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           tag="tests-$(date -u +%Y%m%d-%H%M)-${GITHUB_SHA::7}"
-          gh release create "$tag" /tmp/tests.log \
+          # --prerelease: an auxiliary release must never take `releases/latest`
+          gh release create "$tag" /tmp/tests.log --prerelease \
             --title "Tests ${GITHUB_SHA::7}" \
             --notes "flutter analyze and flutter test from ${GITHUB_SHA}."

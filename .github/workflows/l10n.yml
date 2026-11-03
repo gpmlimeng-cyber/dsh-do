@@ -42,4 +42,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           tag="l10n-$(date -u +%Y%m%d-%H%M)-${GITHUB_SHA::7}"
-          gh release create "$tag" /tmp/l10n.tgz --title "l10n ${GITHUB_SHA::7}" --notes "Generated L10n class from ${GITHUB_SHA}."
+          # --prerelease: an auxiliary release must never take `releases/latest`
+          gh release create "$tag" /tmp/l10n.tgz --prerelease --title "l10n ${GITHUB_SHA::7}" --notes "Generated L10n class from ${GITHUB_SHA}."

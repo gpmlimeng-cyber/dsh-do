@@ -69,9 +69,16 @@ jobs:
         # The app id is MODO's own (see build.gradle.kts), so this build cannot
         # replace the shipped DSH Go; no extra suffix is needed. The log is kept
         # for the failure step: job logs live where the phone cannot read them.
+        # VERSION names the release *and* the APK's own version name: without
+        # --build-name every build says pubspec's 2.0.0, so an update installs
+        # and then still reports the old version.
+        env:
+          VERSION: ${{ inputs.version }}
         run: |
           set -o pipefail
-          tooling/build-apk.sh --release -f arm64 2>&1 | tee /tmp/build.log
+          args=(--release -f arm64)
+          if [ -n "$VERSION" ]; then args+=(--build-name "$VERSION"); fi
+          tooling/build-apk.sh "${args[@]}" 2>&1 | tee /tmp/build.log
 
       - name: List what was built
         if: always()
@@ -92,7 +99,7 @@ jobs:
         run: |
           [ -f /tmp/build.log ] || echo "no build log" > /tmp/build.log
           tag="buildlog-$(date -u +%Y%m%d-%H%M)-${GITHUB_SHA::7}"
-          gh release create "$tag" /tmp/build.log --title "Build log ${GITHUB_SHA::7}" --notes "tooling/build-apk.sh output from ${GITHUB_SHA}."
+          gh release create "$tag" /tmp/build.log --prerelease --title "Build log ${GITHUB_SHA::7}" --notes "tooling/build-apk.sh output from ${GITHUB_SHA}."
 
       - name: Publish the APK as a release asset
         # Two kinds of release: a named one (v2.0.0, or v2.1.0-rc.1 as a
@@ -129,7 +136,7 @@ jobs:
             fi
           else
             tag="ci-$(date -u +%Y%m%d-%H%M)-${GITHUB_SHA::7}"
-            gh release create "$tag" "$apk" \
+            gh release create "$tag" "$apk" --prerelease \
               --title "CI build ${GITHUB_SHA::7}" \
               --notes "Built from ${GITHUB_SHA}. A test build; the app's updater ignores it."
           fi

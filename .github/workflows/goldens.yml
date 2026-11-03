@@ -80,7 +80,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           tag="goldens-$(date -u +%Y%m%d-%H%M)-${GITHUB_SHA::7}"
-          gh release create "$tag" /tmp/goldens.tgz \
+          # --prerelease: an auxiliary release must never take `releases/latest`
+          # away from the app release the updater reads.
+          gh release create "$tag" /tmp/goldens.tgz --prerelease \
             --title "Goldens ${GITHUB_SHA::7}" \
             --notes "Regenerated golden screenshots from ${GITHUB_SHA}."
 

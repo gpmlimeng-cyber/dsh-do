@@ -35,6 +35,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           tag="analyze-$(date -u +%Y%m%d-%H%M)-${GITHUB_SHA::7}"
-          gh release create "$tag" /tmp/analyze.txt \
+          # --prerelease: an auxiliary release must never take `releases/latest`
+          # away from the app release the updater reads.
+          gh release create "$tag" /tmp/analyze.txt --prerelease \
             --title "analyze ${GITHUB_SHA::7}" \
             --notes "flutter analyze output for ${GITHUB_SHA}"
