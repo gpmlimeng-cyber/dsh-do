@@ -346,7 +346,6 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
                         onOpenFile: (file) => openBotAttachmentFile(
                           context,
                           ref,
-                          sessionId: chat.sessionId,
                           file: file,
                           botId: bot.id,
                         ),
@@ -364,7 +363,6 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
                         onOpenFile: (file) => openBotAttachmentFile(
                           context,
                           ref,
-                          sessionId: chat.sessionId,
                           file: file,
                           botId: bot.id,
                         ),

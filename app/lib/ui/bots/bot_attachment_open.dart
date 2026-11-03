@@ -14,7 +14,6 @@ import 'bot_file_text_body.dart';
 Future<void> openBotAttachmentFile(
   BuildContext context,
   WidgetRef ref, {
-  required String sessionId,
   required FileAttachment file,
   String? botId,
   String? roomId,

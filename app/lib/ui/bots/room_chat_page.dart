@@ -359,7 +359,6 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
                         onOpenFile: (file) => openBotAttachmentFile(
                           context,
                           ref,
-                          sessionId: roomSession,
                           file: file,
                           roomId: room.id,
                         ),
@@ -375,7 +374,6 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
                         onOpenFile: (file) => openBotAttachmentFile(
                           context,
                           ref,
-                          sessionId: roomSession,
                           file: file,
                           roomId: room.id,
                         ),
