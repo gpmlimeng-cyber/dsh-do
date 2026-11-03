@@ -198,6 +198,9 @@ class RoomDetailsPage extends ConsumerWidget {
       for (final a in status.live.approvals)
         if (a.roomId == room.id && a.answerable) a,
     ];
+    // Members stopped on a question only this person can answer: that outranks
+    // "working", which can be true at the same time.
+    final awaiting = {for (final approval in approvals) approval.botId};
     final memory = ref.watch(dsBotMemoryProvider((botId: null, roomId: room.id))).value;
     final adminName = team.bot(room.admin)?.name;
     final subtitle = [
@@ -270,10 +273,16 @@ class RoomDetailsPage extends ConsumerWidget {
                     leading: BotAvatar(bot: bot, size: 32, working: working.containsKey(bot.id)),
                     title: bot.name,
                     badge: room.admin == bot.id ? BotTag(l10n.botsAdmin) : null,
-                    subtitle: working.containsKey(bot.id)
+                    subtitle: awaiting.contains(bot.id)
+                        ? l10n.botsMemberNeedsApproval
+                        : working.containsKey(bot.id)
                         ? workPhrase(working[bot.id]) ?? l10n.botsWorking
                         : (bot.role.isEmpty ? null : bot.role),
-                    subtitleColor: working.containsKey(bot.id) ? dsh.info : null,
+                    subtitleColor: awaiting.contains(bot.id)
+                        ? Theme.of(context).colorScheme.error
+                        : working.containsKey(bot.id)
+                        ? dsh.info
+                        : null,
                     trailing: working.containsKey(bot.id) && writable
                         ? TextButton(
                             onPressed: () => _update(context, ref, scope, (api) => api.stopMemberWork(room.id, bot.id)),
