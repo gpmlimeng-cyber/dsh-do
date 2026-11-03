@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../state/dsbot_plugin_update.dart';
 import '../../state/notify_state.dart' show launchNoticeShownProvider;
 import '../../state/update_state.dart';
 import 'update_sheet.dart';
@@ -31,7 +32,15 @@ class _UpdateLaunchCheckState extends ConsumerState<UpdateLaunchCheck> {
   void initState() {
     super.initState();
     _timer = Timer(widget.delay, () => unawaited(_run()));
-    _lifecycle = AppLifecycleListener(onResume: () => unawaited(ref.read(appUpdateProvider.notifier).onAppResumed()));
+    _lifecycle = AppLifecycleListener(
+      onResume: () {
+        unawaited(ref.read(appUpdateProvider.notifier).onAppResumed());
+        // The DS Bot plugin is updated the same way — the app's own update
+        // found nothing when the phone came back; its Bot pages may still be a
+        // version behind.
+        unawaited(ref.read(dsBotPluginUpdateProvider.notifier).checkIfStale());
+      },
+    );
   }
 
   @override
@@ -43,6 +52,7 @@ class _UpdateLaunchCheckState extends ConsumerState<UpdateLaunchCheck> {
 
   Future<void> _run() async {
     if (!mounted) return;
+    unawaited(ref.read(dsBotPluginUpdateProvider.notifier).checkIfStale());
     final offer = await ref.read(appUpdateProvider.notifier).autoCheckIfDue();
     if (!offer || !mounted) return;
     // Don't cover a page or sheet the person is in, or interrupt typing (raw

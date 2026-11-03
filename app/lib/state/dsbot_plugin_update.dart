@@ -72,6 +72,18 @@ class DsBotPluginUpdateController extends AsyncNotifier<DsBotPluginUpdate> {
     return stored;
   }
 
+  /// Asks the fork when the last answer is older than [olderThan] — the app
+  /// was brought back to the front, not the day's check — and does nothing
+  /// otherwise. GitHub answers 60 requests an hour per address, so a resume
+  /// must not ask every time.
+  Future<void> checkIfStale({Duration olderThan = const Duration(minutes: 30)}) async {
+    final known = state.value;
+    final at = known?.checkedAt;
+    if (at != null && DateTime.now().difference(at) < olderThan) return;
+    if (state.isLoading) return;
+    await check();
+  }
+
   /// Asks the fork, then keeps the answer (and the day it arrived).
   Future<void> check() async {
     final before = state.value;
