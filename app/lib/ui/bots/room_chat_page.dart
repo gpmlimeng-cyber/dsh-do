@@ -332,17 +332,11 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
     final spokenNames = [
       for (final id in progress?.spokenBy ?? const <String>[]) ?team.bot(id)?.name,
     ];
-    final speakingNow = [
-      for (final id in progress?.speaking ?? const <String>[]) ?team.bot(id)?.name,
-    ].firstOrNull;
-    // Added to the status line rather than a row of its own: the header already
-    // says what the group is doing, and this is the same sentence, counted.
-    final progressText = progress == null || progress.isEmpty
+    // Only the count: the status line above already names whoever is speaking,
+    // and repeating it there read as「Chief 正在发言 · … · 某甲 正在发言」.
+    final progressText = progress == null || progress.isEmpty || spokenNames.isEmpty
         ? null
-        : [
-            if (spokenNames.isNotEmpty) '${l10n.botsAlreadySpoke} ${spokenNames.length}',
-            if (speakingNow != null) l10n.botsNamedSpeaking(speakingNow),
-          ].join(' · ');
+        : '${l10n.botsAlreadySpoke} ${spokenNames.length}';
 
     final typing = speaker == null
         ? null
