@@ -1700,6 +1700,11 @@ class DsBotApi {
   Future<bool> stopMemberWork(String roomId, String botId) async =>
       asBool(await call('stop-member-work', {'roomId': roomId, 'botId': botId})) ?? false;
 
+  /// Stops what every member is doing in the group (`stop-room-work`), not just
+  /// the member speaking now.
+  Future<bool> stopRoomWork(String roomId) async =>
+      asBool(await call('stop-room-work', {'roomId': roomId})) ?? false;
+
   Future<void> answerApproval(String id, {required bool allow}) =>
       call('approval-answer', {'id': id, 'choice': allow ? 'allow' : 'reject'});
 

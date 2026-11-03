@@ -240,6 +240,28 @@ class RoomDetailsPage extends ConsumerWidget {
               ),
               gap,
             ],
+            // 停全部: every member at work in this group, not the speaker alone.
+            // Hidden when nobody is working, so the row never does nothing.
+            if (working.isNotEmpty && writable)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: ListPageRow(
+                  key: const ValueKey('room-stop-all'),
+                  icon: AppIcons.blocked,
+                  title: l10n.botsStopAll,
+                  danger: true,
+                  chevron: false,
+                  onTap: () async {
+                    final ok = await confirmDelete(
+                      context,
+                      title: l10n.botsStopAllTitle,
+                      body: l10n.botsStopAllBody,
+                    );
+                    if (!ok || !context.mounted) return;
+                    await _update(context, ref, scope, (api) => api.stopRoomWork(room.id));
+                  },
+                ),
+              ),
             ListPageCard(
               title: l10n.botsMembersCountTitle(members.length),
               children: [
