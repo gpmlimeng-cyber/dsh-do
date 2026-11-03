@@ -59,9 +59,13 @@ class FakeLaunchChannel extends LaunchChannel {
 Future<ui.Image> shippedIcon(int px, {String variant = 'mist'}) async {
   final suffix = variant == 'mist' ? '' : '_$variant';
   final xml = File('android/app/src/main/res/drawable/ic_launcher${suffix}_background.xml').readAsStringSync();
+  // The plate gradient only: the file also carries the sheen layer (a second
+  // <gradient>), whose stops are not part of the icon's colour ramp.
+  final plate = RegExp(r'<gradient\b[^>]*>(.*?)</gradient>', dotAll: true).firstMatch(xml)?.group(1) ?? xml;
   final colours = [
-    for (final m in RegExp(r'android:color="#([0-9A-Fa-f]{8})"').allMatches(xml))
-      Color(int.parse(m.group(1)!, radix: 16)),
+    for (final m in RegExp(r'android:color="#([0-9A-Fa-f]{6,8})"').allMatches(plate))
+      // 6-digit stops (the masters write #RRGGBB) are opaque: add the alpha.
+      Color(int.parse(m.group(1)!.padLeft(8, 'F'), radix: 16)),
   ];
   final bytes = File('android/app/src/main/res/mipmap-xxxhdpi/ic_launcher${suffix}_foreground.png').readAsBytesSync();
   final codec = await ui.instantiateImageCodec(bytes);
