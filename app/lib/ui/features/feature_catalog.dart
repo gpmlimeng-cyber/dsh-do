@@ -361,8 +361,10 @@ final featureSections = <FeatureSection>[
       action: (context, ref, _) async {
         final id = await showSessionSearch(context);
         if (id == null || !context.mounted) return;
-        // A Bot's or group's chat opens its own page.
+        // A Bot's or group's chat opens its own page. Deciding needs the team,
+        // which may still be loading, so this waits — check the page again.
         if (await openTeamChatIfOwned(context, ref, id)) return;
+        if (!context.mounted) return;
         openSessionInChat(context, ref, id);
       },
     ),

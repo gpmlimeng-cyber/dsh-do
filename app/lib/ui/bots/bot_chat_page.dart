@@ -15,7 +15,7 @@ import '../../state/bots_state.dart';
 import '../../runtime/runtime_bridge.dart' show RuntimePhase;
 import '../../runtime/runtime_state.dart' show localRuntimeProvider;
 import '../../state/connection_state.dart';
-import '../../state/artifacts.dart' show sessionArtifactsProvider;
+import '../../state/artifacts.dart' show TurnArtifacts, sessionArtifactsProvider;
 import '../chat/composer.dart';
 import '../chat/widgets/artifact_card.dart';
 import '../../state/voice_model_state.dart';

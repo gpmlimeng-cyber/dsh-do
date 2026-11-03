@@ -13,8 +13,8 @@ const _mirrors = [
 
 final _api = 'https://api.github.com/repos/$updateRepo/releases/latest';
 final _manifest = 'https://github.com/$updateRepo/releases/latest/download/update.json';
-const _m1 = 'https://mirror-one.example/$_manifest';
-const _m2 = 'https://mirror-two.example/$_manifest';
+final _m1 = 'https://mirror-one.example/$_manifest';
+final _m2 = 'https://mirror-two.example/$_manifest';
 const _feed = 'https://update.example.com/dsh/update.json';
 
 void main() {
