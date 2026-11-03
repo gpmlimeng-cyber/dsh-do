@@ -13,7 +13,7 @@ import '../shell/brand_mark.dart';
 import '../shell/page_frame.dart';
 import '../star/star_prompt_dialog.dart' show openStarProject;
 import '../theme/theme.dart';
-import '../update/update_config.dart' show upstreamBaseline;
+import '../../update/update_config.dart' show upstreamBaseline;
 import '../update/update_tiles.dart';
 import 'settings_widgets.dart';
 
