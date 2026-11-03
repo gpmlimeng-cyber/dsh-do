@@ -1112,6 +1112,7 @@ class BotUserMessage extends StatelessWidget {
     super.key,
     required this.text,
     this.pending = false,
+    this.pendingSince,
     this.images = 0,
     this.attachments,
     this.onQuote,
@@ -1120,6 +1121,11 @@ class BotUserMessage extends StatelessWidget {
 
   final String text;
   final bool pending;
+
+  /// When a queued line was made. The label says how long it has waited — an
+  /// approximation (a retry or a page rebuild restarts the clock), enough to show
+  /// it has not been picked up yet, not a record.
+  final DateTime? pendingSince;
 
   /// How many images the line carries when the host only counted them; that is
   /// all an older host says, so the line says so instead of drawing nothing.
@@ -1143,10 +1149,21 @@ class BotUserMessage extends StatelessWidget {
         child: UserBubble(
           text: shown,
           attachments: attachments,
-          pendingLabel: pending ? l10n.botsSending : null,
+          pendingLabel: pending ? _pendingLabel(context) : null,
         ),
       ),
     );
+  }
+
+  String _pendingLabel(BuildContext context) {
+    final since = pendingSince;
+    if (since == null) return context.l10n.botsSending;
+    final waited = DateTime.now().difference(since);
+    final span = context.l10n.activitySpanMinutesSeconds(
+      waited.inMinutes,
+      (waited.inSeconds % 60).toString().padLeft(2, '0'),
+    );
+    return '${context.l10n.chatQueued} · $span';
   }
 }
 
