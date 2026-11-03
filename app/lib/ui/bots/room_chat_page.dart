@@ -135,11 +135,10 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
           // group that moved on has a newer one than its id.
           final staged = await stageBotAttachments(client, _roomSession(), attachments);
           final sent = await controller.send(
-            text,
+            withQuote(text, quote),
             images: staged.images,
             fileReceiptIds: staged.receipts,
             mode: botSendMode(mode),
-            quote: quote,
           );
           if (sent && mounted) {
             setState(() {

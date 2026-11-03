@@ -1,4 +1,5 @@
 // 用户自己发的附件：Bot 私聊和群聊都要画成文件卡片，不是一段文字。
+import 'package:flutter/material.dart';
 import 'package:dsh_app/ui/bots/bot_chat_page.dart';
 import 'package:dsh_app/ui/bots/room_chat_page.dart';
 import 'package:flutter_test/flutter_test.dart';

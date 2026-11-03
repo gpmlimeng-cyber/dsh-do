@@ -144,11 +144,10 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
         try {
           final staged = await stageBotAttachments(client, part, attachments);
           final sent = await controller.send(
-            text,
+            withQuote(text, quote),
             images: staged.images,
             fileReceiptIds: staged.receipts,
             mode: botSendMode(mode),
-            quote: quote,
           );
           if (sent && mounted) {
             setState(() {
