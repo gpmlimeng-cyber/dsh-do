@@ -9,6 +9,16 @@ on:
     branches:
       - ci/build-apk
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g. 2.0.0). Empty: a ci- test build.'
+        required: false
+        default: ''
+      prerelease:
+        description: 'Mark the release as a preview (not the latest)'
+        required: false
+        type: boolean
+        default: false
 
 # Publishing a release for each build: Actions artifacts live on a storage
 # host some phone networks cannot reach, release assets on another.
@@ -85,14 +95,31 @@ jobs:
           gh release create "$tag" /tmp/build.log --title "Build log ${GITHUB_SHA::7}" --notes "tooling/build-apk.sh output from ${GITHUB_SHA}."
 
       - name: Publish the APK as a release asset
+        # Two kinds of release: a named one (v2.0.0, or v2.1.0-rc.1 as a
+        # preview) that the app's own updater reads, and a ci- test build that
+        # it ignores. The updater looks for `dsh-go-<version>-arm64.apk` under
+        # `releases/latest`, so a named release carries exactly that file.
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+          PREVIEW: ${{ inputs.prerelease }}
         run: |
-          tag="ci-$(date -u +%Y%m%d-%H%M)-${GITHUB_SHA::7}"
-          gh release create "$tag" \
-            app/build/app/outputs/flutter-apk/*.apk \
-            --title "CI build ${GITHUB_SHA::7}" \
-            --notes "Built from ${GITHUB_SHA}. Installs beside the shipped app (id suffix .ci, test signature); a fresh install starts without data."
+          apk="$(ls app/build/app/outputs/flutter-apk/*.apk | head -1)"
+          if [ -n "$VERSION" ]; then
+            file="dsh-go-${VERSION}-arm64.apk"
+            cp "$apk" "/tmp/$file"
+            notes="MODO ${VERSION}. 基于上游 v1.0.8。$( [ "$PREVIEW" = "true" ] && echo '预览版：可能不稳定。' )"
+            if [ "$PREVIEW" = "true" ]; then
+              gh release create "v${VERSION}" "/tmp/$file" --title "MODO ${VERSION} (preview)" --notes "$notes" --prerelease
+            else
+              gh release create "v${VERSION}" "/tmp/$file" --title "MODO ${VERSION}" --notes "$notes" --latest
+            fi
+          else
+            tag="ci-$(date -u +%Y%m%d-%H%M)-${GITHUB_SHA::7}"
+            gh release create "$tag" "$apk" \
+              --title "CI build ${GITHUB_SHA::7}" \
+              --notes "Built from ${GITHUB_SHA}. A test build; the app's updater ignores it."
+          fi
 
   # Analysis and the test suite. Not yet required by the build: the golden
   # screenshots are stale until a `goldens` run refreshes them, and a red check
