@@ -45,7 +45,10 @@ class _RoomAggregateDetailsPageState extends ConsumerState<RoomAggregateDetailsP
   String? _activityKey;
 
   Future<RoomMembersActivity> _activityFor(DsBotApi? api, DsBotRoom room, DsBotTeam team) {
-    final key = '${room.id}|${room.members.join(',')}|${api == null}';
+    // The group's Sessions join the key: a member's first word here adds one, and
+    // the totals must switch from their own chat to it without reopening the page.
+    final sessions = [for (final id in room.members) '${id}:${room.sessions[id] ?? ''}'].join(',');
+    final key = '${room.id}|${room.members.join(',')}|$sessions|${api == null}';
     if (_activity == null || _activityKey != key) {
       _activityKey = key;
       _activity = loadRoomMembersActivity(api, room, team);
