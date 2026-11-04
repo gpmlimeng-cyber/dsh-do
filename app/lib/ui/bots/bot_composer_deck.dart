@@ -9,8 +9,10 @@ import 'package:dsh_client/dsh_client.dart' show ModelSelection;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../state/bots_state.dart';
 import '../../state/chat_state.dart';
 import '../../state/connection_state.dart';
+import '../../state/room_activity_state.dart' show roomMembersActivityProvider, roomUsageTotal;
 import '../../state/session_modes.dart';
 import '../../state/usage_state.dart';
 import '../../state/voice_model_state.dart';
@@ -23,6 +25,7 @@ import '../common/sheet_title_bar.dart' show SheetTitleBar;
 import '../chat/dock/chat_dock.dart';
 import '../chat/dock/dock_stack.dart';
 import '../chat/usage_sheet.dart' show ContextRing, showUsageSheet;
+import '../session/session_tab.dart';
 import '../chat/voice/voice_controller.dart';
 import '../chat/widgets/activity_strip.dart';
 import '../chat/widgets/permission_pill.dart';
@@ -32,6 +35,8 @@ import '../plugins/native/native_composer_bar.dart';
 import '../safe_mode/safe_mode_banner.dart';
 import '../settings/settings_widgets.dart' show SettingsTile;
 import '../theme/app_icons.dart';
+import 'room_activity_strip.dart' show RoomActivityStrip, RoomStatus;
+import 'room_aggregate_details_page.dart';
 
 /// Everything the native composer carries above itself: the safe-mode banner,
 /// the permission pill, the status deck (todo, goal, activity, a plugin's status
@@ -42,6 +47,7 @@ class BotComposerDeck extends ConsumerWidget {
     required this.sessionId,
     required this.running,
     this.showSessionBars = true,
+    this.roomActivity,
   });
 
   final String sessionId;
@@ -49,7 +55,12 @@ class BotComposerDeck extends ConsumerWidget {
 
   /// The todo, goal and permission parts speak of one conversation. A group has
   /// no single one of those, so its deck keeps the activity and plugin strips.
+  /// (The activity strip used to be gated by this too, which contradicted it.)
   final bool showSessionBars;
+
+  /// A group's own status line. Null in a Bot's chat, where the activity strip
+  /// reads a single turn; a group has no single turn to read.
+  final RoomStatus? roomActivity;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -76,7 +87,10 @@ class BotComposerDeck extends ConsumerWidget {
       return StripRiskChip.permission(context, preset: preset, onTap: openPermissions);
     }
 
-    final pillsInCapsules = !running;
+    // The capsule row gives way to the deck while anything is happening: a
+    // member running, or a member waiting for an answer. Idle, it leads.
+    final busy = running || roomActivity?.waiting == true || roomActivity?.activity != null;
+    final pillsInCapsules = !busy;
     final shownCapsule = pillsInCapsules ? capsule() : null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -89,8 +103,11 @@ class BotComposerDeck extends ConsumerWidget {
               if (showSessionBars) ...[
                 TodoDockSlot(sessionId: sessionId),
                 GoalDockSlot(sessionId: sessionId),
-                ActivityStripSlot(sessionId: sessionId),
               ],
+              if (roomActivity case final status?)
+                RoomActivityStrip(status: status)
+              else
+                ActivityStripSlot(sessionId: sessionId),
               ComposerStripSlot(sessionId: sessionId, visible: !running),
             ],
             // Running: the permission chip rides beside the activity strip,
@@ -101,8 +118,36 @@ class BotComposerDeck extends ConsumerWidget {
         // The capsules (ui.json's and plugins') and, while idle, the permission
         // chip as their leading: one row, as the chat page has it.
         // The status line already rides in the deck as a card; not twice.
-        NativeComposerBar(sessionId: sessionId, visible: !running, strip: false, leading: shownCapsule),
+        NativeComposerBar(sessionId: sessionId, visible: !busy, strip: false, leading: shownCapsule),
       ],
+    );
+  }
+}
+
+/// The context ring beside a group's send key: the share of the group's *total*
+/// window, the same figures the 上下文 tab shows. Nothing until those figures
+/// arrive — a ring must not flicker — and nothing when no window is known.
+class RoomContextRing extends ConsumerWidget {
+  const RoomContextRing({super.key, required this.roomId});
+
+  final String roomId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final team = ref.watch(dsBotProvider.select((s) => s.team));
+    final room = team?.room(roomId);
+    if (room == null) return const SizedBox.shrink();
+    final sessionId = room.sessionId;
+    final usage = sessionId == null ? SessionUsage.empty : ref.watch(sessionUsageProvider(sessionId));
+    final members = ref.watch(roomMembersActivityProvider(roomId)).value;
+    if (members == null) return const SizedBox.shrink();
+    final fraction = roomUsageTotal(usage, members).contextFraction;
+    if (fraction == null) return const SizedBox.shrink();
+    return ContextRing(
+      fraction: fraction,
+      onTap: () => Navigator.of(context).push(
+        RoomAggregateDetailsPage.route(roomId, initialTab: SessionTab.context),
+      ),
     );
   }
 }

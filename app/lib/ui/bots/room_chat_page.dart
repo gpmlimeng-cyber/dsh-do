@@ -9,6 +9,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
+import '../../state/room_activity_state.dart' show roomMembersActivityProvider, roomUsageTotal;
+import '../../state/room_message_mode.dart';
 import '../../state/settings_state.dart';
 import '../../state/attachments.dart';
 import '../../state/bots_state.dart';
@@ -17,11 +19,12 @@ import '../chat/composer.dart';
 import '../../state/voice_model_state.dart';
 import '../../state/voice_state.dart';
 import '../../state/chat_state.dart' show SendMode;
+import '../../state/usage_state.dart' show SessionUsage, sessionUsageProvider;
 import '../chat/voice/voice_controller.dart';
 import '../chat/widgets/attachments.dart';
 import '../chat/widgets/quote_chip.dart' show ComposerTrayStack, QuoteChip;
 import '../chat/widgets/chat_card.dart';
-import '../common/status_dot.dart';
+import '../common/status_dot.dart' show StatusTone;
 import '../features/feature_kit.dart';
 import '../shell/page_frame.dart';
 import 'bot_stop_guard.dart';
@@ -43,6 +46,8 @@ import 'bot_chat_page.dart';
 import 'bot_format.dart';
 import 'bot_mention.dart';
 import 'room_approval_action.dart';
+import 'room_activity_strip.dart' show roomStatusOf;
+import 'room_message_sheet.dart' show showRoomMessageSheet;
 import 'room_aggregate_details_page.dart';
 import 'room_details_page.dart';
 import 'room_full_text_sheet.dart';
@@ -76,6 +81,51 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
   /// The running round's progress, read once a second while the page is up.
   DsBotRoomProgress? _progress;
   Timer? _progressTimer;
+  /// The round that just finished, said once in the header for six seconds —
+  /// the flow no longer draws a `done` line when the words already say it.
+  String? _flash;
+  StatusTone? _flashTone;
+  Timer? _flashTimer;
+
+  /// The last `done`/`failed` line seen, so only a new one flashes.
+  String? _lastFlashKey;
+  bool _flashPrimed = false;
+
+  ({String key, String event, DsBotItem item})? _latestFlash(List<DsBotItem> items) {
+    for (final item in items.reversed) {
+      if (item.kind != DsBotItemKind.event) continue;
+      if (item.event != 'done' && item.event != 'failed') continue;
+      return (key: '${item.seq ?? item.id}', event: item.event!, item: item);
+    }
+    return null;
+  }
+
+  void _rememberFlash(DsBotRoom room, DsBotTeam team, RoomMessageMode mode, List<String> names) {
+    final items = ref.read(roomChatProvider(widget.roomId)).items;
+    final latest = _latestFlash(items);
+    if (latest == null) return;
+    if (!_flashPrimed) {
+      // The first page of a conversation already has its history: only a new
+      // line afterwards flashes.
+      _flashPrimed = true;
+      _lastFlashKey = latest.key;
+      return;
+    }
+    if (latest.key == _lastFlashKey) return;
+    _lastFlashKey = latest.key;
+    // A line the current mode filters out must not speak either.
+    if (visibleRoomItems([latest.item], mode, memberNames: names).isEmpty) return;
+    final name = team.bot(latest.item.botId)?.name;
+    if (name == null) return;
+    final warn = latest.event == 'failed';
+    setState(() {
+      // One string for both: the tone says whether it finished or failed.
+      _flash = appL10n.botsNamedDone(name);
+      _flashTone = warn ? StatusTone.warn : StatusTone.busy;
+      _flashTimer?.cancel();
+      _flashTimer = null;
+    });
+  }
   late final VoiceInputController _voice;
   late final VoiceInputActiveController _voiceFlag;
 
@@ -125,6 +175,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
   @override
   void dispose() {
     _progressTimer?.cancel();
+    _flashTimer?.cancel();
     _voice.removeListener(_reportVoice);
     _voice.dispose();
     // The page is gone, and its dictation with it.
@@ -137,6 +188,38 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
     _focus.dispose();
     _scrolled.dispose();
     super.dispose();
+  }
+
+  /// The composer's right side: the group's context ring, and — while a turn
+  /// runs with an empty field — a microphone. Both may hide; then there is no
+  /// accessory at all, so the send key keeps its place (the Composer adds 2dp
+  /// before any accessory it is given).
+  Widget? _composerAccessory({required DsBotRoom room, required bool running}) {
+    final voice = _voice;
+    final empty = _input.text.trim().isEmpty && _drafts.isEmpty;
+    final mic = running && empty && voice.available && !voice.active;
+    final sessionId = room.sessionId;
+    final usage = sessionId == null ? SessionUsage.empty : ref.watch(sessionUsageProvider(sessionId));
+    final members = ref.watch(roomMembersActivityProvider(room.id)).value;
+    final ring = members == null ? null : roomUsageTotal(usage, members).contextFraction;
+    if (ring == null && !mic) return null;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (ring != null) RoomContextRing(roomId: room.id),
+        if (mic)
+          Padding(
+            padding: const EdgeInsetsDirectional.only(start: 2),
+            child: _ComposerMicKey(
+              onPressed: () {
+                // As Composer._startVoice: the keyboard covers the field.
+                _focus.unfocus();
+                voice.start();
+              },
+            ),
+          ),
+      ],
+    );
   }
 
   Future<void> _send(BotActionScope target, {SendMode mode = SendMode.queue}) async {
@@ -160,16 +243,22 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
         }
         final client = ref.read(activeConnectionProvider).value?.client;
         if (client == null) return false;
+        final outgoing = withQuote(text, quote);
+        // The bubble shows at once, with the pictures still on this phone; the
+        // host only logs the line once a relay runs, which can take a while.
+        final pending = controller.beginPending(outgoing, drafts: attachments);
         try {
           // The line reaches the round through the group's current Session; a
           // group that moved on has a newer one than its id.
           final staged = await stageBotAttachments(client, _roomSession(), attachments);
           final sent = await controller.send(
-            withQuote(text, quote),
+            outgoing,
             images: staged.images,
             fileReceiptIds: staged.receipts,
             mode: botSendMode(mode),
+            pending: pending,
           );
+          if (!sent) controller.dropPending(pending);
           if (sent && mounted) {
             setState(() {
               _drafts = const [];
@@ -178,11 +267,24 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
           }
           return sent;
         } catch (error) {
+          // The upload failed before `send` could take the bubble back.
+          controller.dropPending(pending);
           if (mounted) messenger?.showSnackBar(SnackBar(content: Text(describeDsBotError(error))));
           return false;
         }
       },
     );
+  }
+
+  /// The last user line on the page: the round that may still be delivering
+  /// starts after it. -1 when the page holds no user line.
+  int _lastUserRow(List<BotRow> rows) {
+    var at = -1;
+    for (var i = 0; i < rows.length; i++) {
+      final row = rows[i];
+      if (row is BotItemRow && row.item.kind == DsBotItemKind.user) at = i;
+    }
+    return at;
   }
 
   /// The Session the round runs in now, not the group's first part.
@@ -311,36 +413,42 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
     final members = [for (final id in room.members) ?team.bot(id)];
     _mentions.setMembers(members, room.admin);
     final chat = ref.watch(roomChatProvider(widget.roomId));
-    final working = status.live.rooms[room.id] ?? const <DsBotWork>[];
+    // Which lines this group shows. Filtering is rendering only: pending,
+    // unread counts, 「已说 N」 and the round's progress keep the full list.
+    final mode = ref.watch(roomMessageModeProvider(room.id));
+    final modeBot = mode.memberId == null ? null : team.bot(mode.memberId!);
     final approvals = [
       for (final a in status.live.approvals)
         if (a.roomId == room.id && a.answerable) a,
     ];
-    final speakingId = chat.speaking ?? working.where((w) => w.speaking).firstOrNull?.botId;
-    final speaker = team.bot(speakingId);
-    final (String label, StatusTone tone) = switch (()) {
-      _ when approvals.isNotEmpty => (l10n.botsMemberNeedsApproval, StatusTone.warn),
-      _ when speaker != null => (l10n.botsNamedSpeaking(speaker.name), StatusTone.busy),
-      _ when working.isNotEmpty => (
-        l10n.botsNamedActivity(
-          team.bot(working.first.botId)?.name ?? 'Bot',
-          workPhrase(working.first) ?? l10n.botsWorking,
-        ),
-        StatusTone.busy,
-      ),
-      _ when chat.running => (l10n.botsDiscussing, StatusTone.busy),
-      _ when room.paused => (l10n.commonPaused, StatusTone.warn),
-      _ => (l10n.botsMemberCount(room.members.length), StatusTone.ok),
-    };
-    final progress = _progress;
-    final spokenNames = [
-      for (final id in progress?.spokenBy ?? const <String>[]) ?team.bot(id)?.name,
-    ];
-    // Only the count: the status line above already names whoever is speaking,
-    // and repeating it there read as「Chief 正在发言 · … · 某甲 正在发言」.
-    final progressText = progress == null || progress.isEmpty || spokenNames.isEmpty
-        ? null
-        : '${l10n.botsAlreadySpoke} ${spokenNames.length}';
+    // The header's line and the deck's line are worked out once, so the two
+    // cannot say different things about the same round.
+    final statusLine = roomStatusOf(
+      l10n: l10n,
+      team: team,
+      room: room,
+      live: status.live,
+      running: chat.running,
+      speaking: chat.speaking,
+      progress: _progress,
+      flash: _flash == null ? null : (label: _flash!, tone: _flashTone ?? StatusTone.busy),
+    );
+    // The six seconds start when the line can actually be seen: a run or a
+    // pending approval keeps the header's own state first.
+    if (_flash != null &&
+        _flashTimer == null &&
+        statusLine.activity == null &&
+        !statusLine.waiting) {
+      _flashTimer = Timer(const Duration(seconds: 6), () {
+        if (!mounted) return;
+        setState(() {
+          _flash = null;
+          _flashTone = null;
+          _flashTimer = null;
+        });
+      });
+    }
+    final speaker = statusLine.bot;
 
     final typing = speaker == null
         ? null
@@ -351,7 +459,10 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
     // What each member delivered in this group, from their Session here; the card
     // goes under their last line. The group Session's own delivery keeps the
     // single-conversation placement by turn.
+    // One card per file, not per member: two members delivering the same file
+    // would otherwise draw it twice. The first member to deliver it keeps it.
     final deliveredByBot = <String, ({String sessionId, TurnArtifacts group})>{};
+    final seenFiles = <String>{};
     for (final id in room.members) {
       final bot = team.bot(id);
       if (bot == null) continue;
@@ -359,16 +470,35 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
       if (memberSession.isEmpty) continue;
       final artifacts = ref.watch(sessionArtifactsProvider(memberSession));
       if (artifacts.isEmpty) continue;
-      deliveredByBot[id] = (sessionId: memberSession, group: artifacts.last);
+      final group = artifacts.last;
+      final fresh = [
+        for (final file in group.files)
+          if (seenFiles.add(file.path)) file,
+      ];
+      if (fresh.isEmpty) continue;
+      deliveredByBot[id] = (
+        sessionId: memberSession,
+        group: TurnArtifacts(turn: group.turn, endSeq: group.endSeq, files: fresh),
+      );
     }
     final groupArtifacts = room.sessionId == null ? null : ref.watch(sessionArtifactsProvider(room.sessionId!));
+    final visible = visibleRoomItems(chat.items, mode, memberNames: [for (final bot in members) bot.name]);
+    final names = [for (final bot in members) bot.name];
+    if (!_flashPrimed) {
+      _rememberFlash(room, team, mode, names);
+    }
+    ref.listen(roomChatProvider(widget.roomId).select((s) => s.items), (_, _) {
+      if (mounted) _rememberFlash(room, team, mode, names);
+    });
+    final transcript = transcriptRows(withoutDoneEchoes(visible), pending: chat.pending, typing: typing);
     final rows = attachMemberArtifacts(
       attachArtifacts(
-        transcriptRows(chat.items, pending: chat.pending, typing: typing),
+        transcript,
         groupArtifacts == null || groupArtifacts.isEmpty ? null : groupArtifacts.last,
         atOldestEnd: !chat.hasEarlier,
       ),
       deliveredByBot,
+      roundStart: _lastUserRow(transcript),
     );
     final topInset = BotChatHeader.heightOf(context);
     final readOnly = status.readOnly != null;
@@ -377,8 +507,10 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
       header: BotChatHeader(
         face: RoomAvatar(room: room, team: team, size: BotChatHeader.faceSize),
         title: room.name,
-        status: progressText == null ? label : '$label · $progressText',
-        tone: tone,
+        status: statusLine.spoken == 0
+            ? statusLine.label
+            : '${statusLine.label} · ${l10n.botsAlreadySpoke} ${statusLine.spoken}',
+        tone: statusLine.tone,
         scrolledUnder: _scrolled,
         onLeading: () => openDrawerOverShell(context, ref),
         // The title capsule is the group's own details; the key on the right is
@@ -386,6 +518,14 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
         // page a Bot's chat shows, read from the Session the group runs in.
         onDetails: () => Navigator.of(context).push(RoomDetailsPage.route(room.id)),
         onInfo: () => Navigator.of(context).push(RoomAggregateDetailsPage.route(room.id)),
+        onMessages: () => showRoomMessageSheet(
+          context,
+          room: room,
+          team: team,
+          current: mode,
+          onSelected: (picked) => ref.read(roomMessageModesProvider.notifier).set(room.id, picked),
+        ),
+        messagesBadge: modeBot == null ? null : BotAvatar(bot: modeBot, size: 16),
       ),
       body: chat.loading && chat.items.isEmpty
           ? Padding(
@@ -399,12 +539,26 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
               hasEarlier: chat.hasEarlier,
               loadingEarlier: chat.loadingEarlier,
               onEarlier: () => ref.read(roomChatProvider(widget.roomId).notifier).loadEarlier(),
-              empty: _Members(room: room, team: team),
+              empty: mode.isAll
+                  ? _Members(room: room, team: team)
+                  : Center(
+                      child: Text(
+                        mode.isRelevant ? l10n.botsMessageModeEmptyRelevant : l10n.botsMessageModeEmpty,
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodyMedium?.copyWith(color: DshColors.of(context).textTertiary),
+                      ),
+                    ),
               rowBuilder: (context, row) => Padding(
                 padding: rowPadding(row),
                 child: switch (row) {
                   BotTimeRow(:final time) => BotTimeLine(time),
-                  BotPendingRow(:final pending) => BotUserMessage(text: pending.text, pending: true, pendingSince: pending.at),
+                  BotPendingRow(:final pending) => BotUserMessage(
+                    text: pending.text,
+                    pending: true,
+                    pendingSince: pending.at,
+                    attachments: pending.drafts.isEmpty ? null : SentAttachments.pending(pending.drafts),
+                  ),
                   BotStreamingRow() => const SizedBox.shrink(),
                   BotTypingRow(:final bot, :final label) => BotTypingLine(bot: bot, label: label),
                   // A group has no tool events to show; the row exists so the
@@ -558,36 +712,82 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
         ),
         // A group has no single conversation behind it: the todo, goal and
         // permission parts stay off; the activity and plugin strips still apply.
-        BotComposerDeck(sessionId: roomSession, running: chat.running, showSessionBars: false),
-        Composer(
-          hardwareEnterSends: ref.watch(settingsProvider.select((s) => s.hardwareEnterSends)),
-          voice: _voice,
-          controller: _input,
-          placeholder: l10n.botsGroupComposerHint,
-          focusNode: _focus,
-          connected: api != null && !readOnly,
+        BotComposerDeck(
+          sessionId: roomSession,
           running: chat.running,
-          onSend: () => _send(sendTarget),
-          onSendOptions: () => _sendOptions(sendTarget, room, running: chat.running),
-          onStop: _stopGuard.action(roomId: room.id),
-          onKeyEvent: _mentions.handleKey,
-          // 写 `@` 仍会按光标弹出成员候选；＋ 占住左边那颗键，附件优先。
-          // A host that speaks API 2 is the one that takes attachments on `send`.
-          leading: (status.hello?.api ?? 0) >= 2
-              ? AttachButton(key: const ValueKey('attach-key'), onPressed: api == null || readOnly ? null : _attach)
-              : null,
-          tray: ComposerTrayStack.maybe(
-            quote: _quote == null ? null : QuoteChip(quote: _quote!, onRemove: () => setState(() => _quote = null)),
-            attachments: _drafts.isEmpty
-                ? null
-                : ComposerTray(
-                    items: _drafts,
-                    onRemove: (gone) => setState(() => _drafts = [for (final draft in _drafts) if (draft != gone) draft]),
-                  ),
+          showSessionBars: false,
+          roomActivity: statusLine,
+        ),
+        // The accessory shows while the field is empty, so the field's text is
+        // listened to here (the Composer listens to it anyway).
+        ListenableBuilder(
+          listenable: _input,
+          builder: (context, _) => Composer(
+            hardwareEnterSends: ref.watch(settingsProvider.select((s) => s.hardwareEnterSends)),
+            voice: _voice,
+            controller: _input,
+            placeholder: l10n.botsGroupComposerHint,
+            // A group's 插话 only affects the relay Session and is unverified:
+            // name what the send key really does — queued until this round ends.
+            runningHint: chat.running ? l10n.chatGeneratingQueueHint : null,
+            focusNode: _focus,
+            connected: api != null && !readOnly,
+            running: chat.running,
+            onSend: () => _send(sendTarget),
+            onSendOptions: () => _sendOptions(sendTarget, room, running: chat.running),
+            onStop: _stopGuard.action(roomId: room.id),
+            onKeyEvent: _mentions.handleKey,
+            // The ring is the group's total; the microphone appears only while a
+            // run holds the send key and the field is empty.
+            accessory: _composerAccessory(room: room, running: chat.running),
+            // 写 `@` 仍会按光标弹出成员候选；＋ 占住左边那颗键，附件优先。
+            // A host that speaks API 2 is the one that takes attachments on `send`.
+            leading: (status.hello?.api ?? 0) >= 2
+                ? AttachButton(key: const ValueKey('attach-key'), onPressed: api == null || readOnly ? null : _attach)
+                : null,
+            tray: ComposerTrayStack.maybe(
+              quote: _quote == null ? null : QuoteChip(quote: _quote!, onRemove: () => setState(() => _quote = null)),
+              attachments: _drafts.isEmpty
+                  ? null
+                  : ComposerTray(
+                      items: _drafts,
+                      onRemove: (gone) => setState(() => _drafts = [for (final draft in _drafts) if (draft != gone) draft]),
+                    ),
+            ),
+            hasAttachments: _drafts.isNotEmpty,
           ),
-          hasAttachments: _drafts.isNotEmpty,
         ),
       ],
+    );
+  }
+}
+
+/// The microphone a group needs while a run holds the send key: the same quiet
+/// circle the Composer draws when that key is the microphone, so the row looks
+/// unchanged from the conversation's side.
+class _ComposerMicKey extends StatelessWidget {
+  const _ComposerMicKey({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  static const size = 40.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final colors = Theme.of(context).colorScheme;
+    return Semantics(
+      button: true,
+      label: l10n.chatVoiceInput,
+      child: GestureDetector(
+        onTap: onPressed,
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(color: colors.onSurface.withValues(alpha: 0.06), shape: BoxShape.circle),
+          child: Icon(AppIcons.voice, size: 22, color: colors.onSurface),
+        ),
+      ),
     );
   }
 }

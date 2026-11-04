@@ -1,0 +1,272 @@
+// The group chat's status line in the deck above the composer: who is running
+// what, with the clock ticking beside it, in the same kind of pill the todo and
+// goal bars use. It shows only while a member runs — an idle group keeps the
+// header's own line (已说 N / 待批准 / 成员数), so the same words never appear
+// twice on one screen.
+//
+// The header and this line read the same state; [roomStatusOf] works the words
+// out once, so the two cannot say different things about the same round.
+
+import 'dart:async';
+
+import 'package:dsh_client/dsh_client.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../state/run_pulse.dart';
+
+import '../../l10n/l10n.dart';
+import '../chat/dock/dock_pill.dart';
+import '../chat/run_info.dart' show formatClock;
+import '../chat/widgets/live_clock.dart';
+import '../common/status_dot.dart' show StatusTone;
+import '../theme/app_icons.dart';
+import '../theme/theme.dart';
+import 'bot_avatar.dart';
+import 'bot_format.dart' show workPhrase;
+
+/// The group's own line, worked out once for the header and the deck:
+/// [label]/[tone] are the header's; [activity] is the deck's line (null while
+/// nobody runs), with the member it belongs to and the step's start time for the
+/// clock; [spoken] is how many members have said something this round.
+typedef RoomStatus = ({
+  String label,
+  StatusTone tone,
+  String? activity,
+  DateTime? since,
+  DsBot? bot,
+  int spoken,
+  bool waiting,
+  DsBotWork? work,
+  int others,
+  String? sessionId,
+});
+
+/// The header's line and the deck's activity line, from the group's live state.
+RoomStatus roomStatusOf({
+  required L10n l10n,
+  required DsBotTeam team,
+  required DsBotRoom room,
+  required DsBotLive live,
+  required bool running,
+  required String? speaking,
+  required DsBotRoomProgress? progress,
+  ({String label, StatusTone tone})? flash,
+}) {
+  final working = live.rooms[room.id] ?? const <DsBotWork>[];
+  final approvals = [
+    for (final approval in live.approvals)
+      if (approval.roomId == room.id && approval.answerable) approval,
+  ];
+  // Whose turn it is: the chat's own speaker wins, then the first member the
+  // Host marks as speaking.
+  String? speakingWorkId;
+  for (final work in working) {
+    if (work.speaking) {
+      speakingWorkId = work.botId;
+      break;
+    }
+  }
+  final speaker = team.bot(speaking ?? speakingWorkId);
+  // The header states the moment, never the tool: who runs what and for how
+  // long is the deck's line below, and saying it twice reads as two events.
+  final waiting = approvals.isNotEmpty;
+  final (String label, StatusTone tone) = switch (()) {
+    _ when waiting => (l10n.botsMemberNeedsApproval, StatusTone.warn),
+    _ when speaker != null || working.isNotEmpty || running => (l10n.botsDiscussing, StatusTone.busy),
+    // A round just finished (or failed): said once, briefly, instead of the
+    // member's own line in the flow. Never over a run or a pending approval.
+    _ when flash != null => (flash.label, flash.tone),
+    _ when room.paused => (l10n.commonPaused, StatusTone.warn),
+    _ => (l10n.botsMemberCount(room.members.length), StatusTone.ok),
+  };
+  final spoken = [for (final id in progress?.spokenBy ?? const <String>[]) ?team.bot(id)?.name].length;
+  // The deck's line: what is happening now, never an idle state. The main seat
+  // is whoever speaks, else the member whose step started first; the rest fold
+  // into 「+N」.
+  DsBotWork? mainWork;
+  DsBot? mainBot;
+  if (speaker != null) {
+    mainBot = speaker;
+    mainWork = _workOf(working, speaker.id);
+  } else if (working.isNotEmpty) {
+    mainWork = working.first;
+    for (final work in working) {
+      final a = mainWork.since ?? DateTime(9999);
+      final b = work.since ?? DateTime(9999);
+      if (b.isBefore(a)) mainWork = work;
+    }
+    mainBot = team.bot(mainWork.botId);
+  }
+  final others = [for (final work in working) if (work.botId != mainWork?.botId) work].length;
+  final (String? activity, DateTime? since) = switch (()) {
+    _ when speaker != null => (l10n.botsNamedSpeaking(speaker.name), mainWork?.since),
+    _ when working.isNotEmpty => (
+      l10n.botsNamedActivity(mainBot?.name ?? 'Bot', workPhrase(mainWork) ?? l10n.botsWorking),
+      mainWork?.since,
+    ),
+    _ when running => (l10n.botsDiscussing, null),
+    _ => (null, null),
+  };
+  return (
+    label: label,
+    tone: tone,
+    activity: activity,
+    since: since,
+    bot: mainBot,
+    spoken: spoken,
+    waiting: waiting,
+    work: mainWork,
+    others: others,
+    sessionId: mainBot == null ? null : _memberSession(room, mainBot),
+  );
+}
+
+/// The step of [botId], when the host names one.
+DsBotWork? _workOf(List<DsBotWork> working, String botId) {
+  for (final work in working) {
+    if (work.botId == botId) return work;
+  }
+  return null;
+}
+
+/// The Session that holds a member's work here (its group Session, else its own).
+String? _memberSession(DsBotRoom room, DsBot bot) {
+  final inRoom = room.sessions[bot.id];
+  return inRoom == null || inRoom.isEmpty ? bot.sessionId : inRoom;
+}
+
+/// The deck's status line: a dock slot that is zero high while nobody runs, and
+/// rises into place while a member does — the same motion as the todo bar.
+class RoomActivityStrip extends StatelessWidget {
+  const RoomActivityStrip({super.key, required this.status});
+
+  final RoomStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final visible = status.activity != null || status.waiting;
+    return DockSlot(
+      key: const ValueKey('room-activity'),
+      child: visible ? _RoomActivityBar(status: status) : null,
+    );
+  }
+}
+
+class _RoomActivityBar extends ConsumerStatefulWidget {
+  const _RoomActivityBar({required this.status});
+
+  final RoomStatus status;
+
+  @override
+  ConsumerState<_RoomActivityBar> createState() => _RoomActivityBarState();
+}
+
+class _RoomActivityBarState extends ConsumerState<_RoomActivityBar> {
+  /// How long the step's figures stay up, as the single chat's strip does.
+  static const statsFor = Duration(seconds: 4);
+
+  Timer? _stats;
+
+  @override
+  void dispose() {
+    _stats?.cancel();
+    super.dispose();
+  }
+
+  void _showStats() {
+    HapticFeedback.selectionClick();
+    _stats?.cancel();
+    _stats = Timer(statsFor, () {
+      if (mounted) setState(() => _stats = null);
+    });
+    setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final status = widget.status;
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final l10n = context.l10n;
+    final waiting = status.waiting;
+    final bot = status.bot;
+    final sessionId = status.sessionId;
+    final pulse = sessionId == null ? null : ref.watch(runPulseProvider(sessionId));
+    final ink = waiting ? DshColors.of(context).warning : null;
+    final showStats = _stats != null && !waiting;
+
+    final TextSpan line;
+    if (waiting) {
+      line = TextSpan(text: l10n.botsMemberNeedsApproval, style: DockText.title(context, color: ink));
+    } else if (showStats) {
+      final speed = pulse == null ? null : pulse.tokensPerSecond;
+      line = TextSpan(
+        text: speed == null ? l10n.botsWorking : '${speed.round()} tok/s',
+        style: AppType.tabular(DockText.detail(context, color: colors.onSurface)),
+      );
+    } else {
+      final target = status.work?.target;
+      line = TextSpan(
+        children: [
+          TextSpan(
+            text: bot == null ? l10n.botsGroupChat : bot.name,
+            style: DockText.title(context, color: ink),
+          ),
+          TextSpan(
+            text: '  ${workPhrase(status.work) ?? l10n.botsWorking}',
+            style: DockText.detail(context, color: ink),
+          ),
+          if (target != null && target.isNotEmpty)
+            TextSpan(
+              text: '  $target',
+              style: AppType.tabular(DockText.detail(context, color: DshColors.of(context).textTertiary)),
+            ),
+        ],
+      );
+    }
+
+    return Semantics(
+      liveRegion: true,
+      label: status.activity ?? (waiting ? l10n.botsMemberNeedsApproval : ''),
+      excludeSemantics: true,
+      child: GlassSurface(
+        tier: GlassTier.chrome,
+        stadium: true,
+        onLongPress: waiting ? null : _showStats,
+        child: DockRow(
+          // The member doing it, as its face; the group itself has no face.
+          leading: bot == null
+              ? DockGlyph.icon(AppIcons.groupChat, color: waiting ? ink : colors.primary)
+              : BotAvatar(bot: bot, size: DockMetrics.glyph),
+          content: Text.rich(line, maxLines: 1, overflow: TextOverflow.ellipsis),
+          accessory: showStats || waiting
+              ? (showStats && status.since != null
+                  ? LiveElapsed(
+                      since: status.since,
+                      builder: (context, elapsed) => elapsed == null
+                          ? const SizedBox.shrink()
+                          : Text(formatClock(elapsed), style: AppType.tabular(DockText.detail(context))),
+                    )
+                  : null)
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (status.others > 0) ...[
+                      Text('+${status.others}', style: AppType.tabular(DockText.detail(context))),
+                      const SizedBox(width: 6),
+                    ],
+                    LiveElapsed(
+                      since: status.since,
+                      builder: (context, elapsed) => elapsed == null
+                          ? const SizedBox.shrink()
+                          : Text(formatClock(elapsed), style: AppType.tabular(DockText.detail(context))),
+                    ),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+}

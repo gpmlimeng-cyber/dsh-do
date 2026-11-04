@@ -15,6 +15,8 @@ import '../../state/artifacts.dart' show TurnArtifacts;
 import '../../state/bots_state.dart';
 import '../chat/render/markdown_body.dart';
 import '../chat/widgets/chat_card.dart';
+import '../chat/dsh_ui/dsh_ui.dart';
+import '../chat/secret_mask.dart';
 import '../chat/widgets/message_actions.dart';
 import '../share/share_entry.dart' show shareText;
 import '../chat/widgets/notice_row.dart';
@@ -51,6 +53,8 @@ class BotChatHeader extends StatelessWidget {
     this.scrolledUnder,
     this.chip,
     this.onInfo,
+    this.onMessages,
+    this.messagesBadge,
   });
 
   final Widget face;
@@ -69,6 +73,12 @@ class BotChatHeader extends StatelessWidget {
   /// The right key: 对话详情 (trajectory, files, progress). Without it the key
   /// opens the same place as the title capsule.
   final VoidCallback? onInfo;
+
+  /// 消息模式: only a group passes it, and the key sits left of the details one.
+  final VoidCallback? onMessages;
+
+  /// A member's face on the messages key: the mode shows that member only.
+  final Widget? messagesBadge;
 
   static const barHeight = 56.0;
   static const key44 = 44.0;
@@ -191,6 +201,16 @@ class BotChatHeader extends StatelessWidget {
                     const SizedBox(width: 8),
                     chip,
                   ],
+                  if (onMessages case final onMessages?) ...[
+                    const SizedBox(width: 8),
+                    _RoundKey(
+                      key: const ValueKey('bot-messages'),
+                      icon: AppIcons.menu,
+                      tooltip: l10n.botsMessageMode,
+                      onTap: onMessages,
+                      badge: messagesBadge,
+                    ),
+                  ],
                   const SizedBox(width: 8),
                   _RoundKey(
                     key: const ValueKey('bot-details'),
@@ -209,11 +229,14 @@ class BotChatHeader extends StatelessWidget {
 }
 
 class _RoundKey extends StatelessWidget {
-  const _RoundKey({super.key, required this.icon, required this.tooltip, required this.onTap});
+  const _RoundKey({super.key, required this.icon, required this.tooltip, required this.onTap, this.badge});
 
   final IconData icon;
   final String tooltip;
   final VoidCallback onTap;
+
+  /// Pinned to the key's lower right: 消息模式's member, when one is chosen.
+  final Widget? badge;
 
   @override
   Widget build(BuildContext context) => Semantics(
@@ -228,7 +251,13 @@ class _RoundKey extends StatelessWidget {
         onTap: onTap,
         child: Tooltip(
           message: tooltip,
-          child: Center(child: Icon(icon, size: 22, color: Theme.of(context).colorScheme.onSurface)),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Center(child: Icon(icon, size: 22, color: Theme.of(context).colorScheme.onSurface)),
+              if (badge case final badge?) Positioned(right: 1, bottom: 1, child: badge),
+            ],
+          ),
         ),
       ),
     ),
@@ -420,8 +449,14 @@ List<DsBotItem> botTranscriptItems(List<DsBotItem> items, {required bool running
 /// (that is what [attachArtifacts] does for one conversation). It goes under the
 /// last line the member spoke instead — where a reader looks for "what did they
 /// deliver". One card per member; a member with nothing delivered is skipped.
-List<BotRow> attachMemberArtifacts(List<BotRow> rows, Map<String, ({String sessionId, TurnArtifacts group})> byBot) {
-  if (byBot.isEmpty) return rows;
+List<BotRow> attachMemberArtifacts(
+  List<BotRow> rows,
+  Map<String, ({String sessionId, TurnArtifacts group})> byBot, {
+  int roundStart = -1,
+}) {
+  // No user line on this page (or only a history page): no card at all — the
+  // round that delivered cannot be told apart from the past.
+  if (byBot.isEmpty || roundStart < 0) return rows;
   final lastAt = <String, int>{};
   for (var i = 0; i < rows.length; i++) {
     final row = rows[i];
@@ -429,7 +464,7 @@ List<BotRow> attachMemberArtifacts(List<BotRow> rows, Map<String, ({String sessi
     final item = row.item;
     if (item.kind != DsBotItemKind.bot) continue;
     final botId = item.botId;
-    if (botId == null || !byBot.containsKey(botId)) continue;
+    if (botId == null || !byBot.containsKey(botId) || i <= roundStart) continue;
     lastAt[botId] = i;
   }
   if (lastAt.isEmpty) return rows;
@@ -992,8 +1027,8 @@ class BotReplyText extends StatelessWidget {
   final String text;
   final bool streaming;
 
-  /// What its long-press menu offers. A group line passes 复制 / 分享 only:
-  /// selecting text is the chat's own reading tool.
+  /// What its long-press menu offers; 引用 is added in [_menu] where it applies.
+  /// A group member's line offers the same set as the Bot's own.
   final List<MessageAction> actions;
 
   /// 引用: puts this line above the composer. Null where引用 does not apply.
@@ -1005,21 +1040,26 @@ class BotReplyText extends StatelessWidget {
 
   Future<void> _menu(BuildContext context) async {
     if (actions.isEmpty) return;
+    // A Bot's reply carries ```dsh-ui JSON for the phone to draw: the preview,
+    // 复制 and 引用 show the words instead, as the chat's own menu does.
+    final plain = dshUiPlainText(text);
     final action = await showMessageMenu(
       context,
-      text: text,
+      text: plain,
       actions: [...actions, if (onQuote != null) MessageAction.quote],
     );
     if (!context.mounted || action == null) return;
     switch (action) {
       case MessageAction.copy:
-        await copyMessage(context, text);
+        await copyMessage(context, plain);
       case MessageAction.selectText:
+        // The sheet renders it: the Markdown, as the reply reads.
         await showSelectTextSheet(context, text, markdown: true);
       case MessageAction.share:
-        await shareText(context, text);
+        // As 复制: a view's JSON is not what the reply says.
+        await shareText(context, plain);
       case MessageAction.quote:
-        onQuote?.call(text);
+        onQuote?.call(plain);
       case MessageAction.edit || MessageAction.regenerate || MessageAction.branch:
         break;
     }
@@ -1122,8 +1162,10 @@ class GroupMessage extends StatelessWidget {
         BotReplyText(
           text: text,
           // One menu, not two: the inner one wins the gesture arena anyway.
-          // A file-only line has no text worth copying or sharing.
-          actions: text.isEmpty ? const [] : const [MessageAction.copy, MessageAction.share],
+          // A file-only line has no text worth copying, selecting or sharing.
+          actions: text.isEmpty
+              ? const []
+              : const [MessageAction.copy, MessageAction.selectText, MessageAction.share],
           onQuote: onQuote,
           onLinkTap: onLinkTap,
         ),
@@ -1181,20 +1223,23 @@ class BotTypingLine extends StatelessWidget {
   }
 }
 
-/// 复制 / 引用 / 分享 for a line outside a conversation (a Bot's or a group's):
-/// the actions that make sense without the chat's own semantics.
+/// 复制 / 选择文字 / 引用 for a person's line outside a conversation (a Bot's or
+/// a group's): what makes sense without the chat's own semantics. 分享 is not
+/// one of them — a person's bubbles have none — and the preview is masked so a
+/// pasted key never shows in the sheet, while 复制 takes the text as typed.
 Future<void> botLineMenu(BuildContext context, String text, {ValueChanged<String>? onQuote}) async {
   final action = await showMessageMenu(
     context,
-    text: text,
-    actions: [MessageAction.copy, if (onQuote != null) MessageAction.quote, MessageAction.share],
+    text: maskSecrets(text, mark: '•'),
+    actions: [MessageAction.copy, MessageAction.selectText, if (onQuote != null) MessageAction.quote],
   );
   if (!context.mounted || action == null) return;
   switch (action) {
     case MessageAction.copy:
       await copyMessage(context, text);
-    case MessageAction.share:
-      await shareText(context, text);
+    case MessageAction.selectText:
+      // Plain text: a person's message is not rendered as Markdown.
+      await showSelectTextSheet(context, text, markdown: false);
     case MessageAction.quote:
       onQuote?.call(text);
     default:

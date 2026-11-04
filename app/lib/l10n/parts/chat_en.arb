@@ -316,5 +316,6 @@
         "type": "int"
       }
     }
-  }
+  },
+  "chatGeneratingQueueHint": "Working \u00b7 queued sends wait"
 }

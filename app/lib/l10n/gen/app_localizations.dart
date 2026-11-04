@@ -33091,6 +33091,23 @@ abstract class L10n {
   /// In zh, this message translates to:
   /// **'还没连上「{name}」，连上后再打开网页版'**
   String webConnectHostFirst(String name);
+
+  /// No description provided for @botsMessageMode.
+  String get botsMessageMode;
+  /// No description provided for @botsMessageModeRelevant.
+  String get botsMessageModeRelevant;
+  /// No description provided for @botsMessageModeEmpty.
+  String get botsMessageModeEmpty;
+
+  /// No description provided for @botsMessageModeEmptyRelevant.
+  String get botsMessageModeEmptyRelevant;
+
+  /// **'{name} 已完成'**
+  String botsNamedDone(String name);
+
+  /// No description provided for @chatGeneratingQueueHint.
+  String get chatGeneratingQueueHint;
+
 }
 
 class _L10nDelegate extends LocalizationsDelegate<L10n> {

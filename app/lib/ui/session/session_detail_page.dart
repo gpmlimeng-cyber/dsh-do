@@ -21,6 +21,7 @@ import '../chat/run_info.dart';
 import '../chat/step_detail_page.dart';
 import '../chat/trajectory_sheet.dart';
 import '../chat/turn_summary.dart';
+import '../chat/turn_usage.dart';
 import '../chat/usage_sheet.dart';
 import '../chat/widgets/activity_strip.dart' show TodoProgress;
 import '../chat/widgets/change_card.dart' show DiffCounts;
@@ -1234,75 +1235,15 @@ class ContextTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = context.l10n;
-    final theme = Theme.of(context);
-    final dsh = DshColors.of(context);
     final usage = ref.watch(sessionUsageProvider(sessionId));
     final model = ref.watch(chatProvider(sessionId).select((s) => s.model));
     final turns = ref.watch(chatProvider(sessionId).select((s) => s.turns));
     final pricing = model == null ? null : knownPricing['${model.provider}/${model.model}'];
-    final recent = [
-      for (final trace in turns.reversed)
-        if (!trace.usage.isEmpty) trace,
-    ].take(12).toList();
-    final peak = recent.fold(0, (m, t) => t.usage.total > m ? t.usage.total : m);
     return ListView(
       padding: _listPadding(context),
       children: [
         SessionUsageSections(usage: usage, pricing: pricing),
-        if (recent.isNotEmpty)
-          ListPageCard(
-            title: l10n.hubSessionTurnUsage,
-            // Same rhythm as the usage groups above (SheetGroup: 6 + 6).
-            margin: const EdgeInsets.fromLTRB(16, 6, 16, 6),
-            children: [
-              for (final trace in recent)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 9, 16, 9),
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: 52,
-                        child: Text(
-                          l10n.hubSessionTurn(trace.turn),
-                          style: AppType.tabular(theme.textTheme.bodySmall!.copyWith(color: dsh.textTertiary)),
-                        ),
-                      ),
-                      Expanded(
-                        child: TimelineBar(
-                          start: Duration.zero,
-                          duration: Duration(milliseconds: trace.usage.total),
-                          total: Duration(milliseconds: peak <= 0 ? 1 : peak),
-                          color: theme.colorScheme.primary.withValues(alpha: 0.75),
-                          height: 6,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      SizedBox(
-                        width: 52,
-                        child: Text(
-                          formatTokens(trace.usage.total),
-                          textAlign: TextAlign.right,
-                          style: AppType.tabular(
-                            theme.textTheme.bodySmall!.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                          ),
-                        ),
-                      ),
-                      SizedBox(
-                        width: 64,
-                        child: Text(
-                          trace.usage.cacheHitRate == null
-                              ? ''
-                              : l10n.hubSessionCacheHit(formatPercent(trace.usage.cacheHitRate!)),
-                          textAlign: TextAlign.right,
-                          style: AppType.tabular(theme.textTheme.bodySmall!.copyWith(color: dsh.textTertiary)),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
+        TurnUsageCard(turns: turns),
       ],
     );
   }

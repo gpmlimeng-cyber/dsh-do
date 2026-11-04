@@ -1894,6 +1894,18 @@
   "botsStopAllTitle": "停止所有成员的本轮工作？",
   "botsStopAllBody": "正在工作的成员会立刻停下，可以再继续",
   "botsAlreadySpoke": "已说",
+  "botsMessageMode": "消息模式",
+  "botsMessageModeRelevant": "仅与我相关",
+  "botsMessageModeEmpty": "该成员在本群还没有发言",
+  "botsMessageModeEmptyRelevant": "这里没有与你相关的消息",
+  "botsNamedDone": "{name} 已完成",
+  "@botsNamedDone": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "brandXiaomi": "小米 / Redmi",
   "brandHuawei": "华为",
   "brandHonor": "荣耀",
@@ -2773,6 +2785,7 @@
       }
     }
   },
+  "chatGeneratingQueueHint": "生成中 · 可排队",
   "commonCancel": "取消",
   "commonRetry": "重试",
   "commonClose": "关闭",

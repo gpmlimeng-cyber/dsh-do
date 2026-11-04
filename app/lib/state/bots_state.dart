@@ -13,6 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../l10n/l10n.dart';
 import '../ui/chat/secret_mask.dart';
 import 'app_info.dart';
+import 'attachments.dart' show DraftAttachment;
 import 'connection_state.dart';
 import 'hosts_state.dart';
 import 'notify_state.dart';
@@ -630,10 +631,18 @@ NotifyPost dsBotPost(HostRef host, DsBotNotice notice) {
 /// A message sent from here that the chat does not show yet.
 @immutable
 class DsBotPending {
-  const DsBotPending(this.text, this.at, {this.failed = false});
+  const DsBotPending(this.text, this.at, {this.failed = false, this.drafts = const [], this.afterSeq});
   final String text;
   final DateTime at;
   final bool failed;
+
+  /// The pictures and files still being uploaded with this line: drawn as they
+  /// will look once the host echoes them, so a photo shows the moment it is sent.
+  final List<DraftAttachment> drafts;
+
+  /// The newest line the chat held when this bubble was made: a line with no text
+  /// pairs only with what came after, never with an older picture message.
+  final int? afterSeq;
 }
 
 @immutable
@@ -684,14 +693,27 @@ class BotChatState {
 }
 
 /// Drops pending sends the chat now shows (the same text, from the user).
+///
+/// An echoed message can carry the note ds-bot writes so a text-only model can
+/// read a posted picture; [withoutImageNotes] takes it off both sides first, so
+/// a send whose echo carries one still settles instead of queueing forever.
 List<DsBotPending> settlePending(List<DsBotPending> pending, Iterable<DsBotItem> shown) {
   final texts = [
     for (final item in shown)
-      if (item.kind == DsBotItemKind.user) item.text.trim(),
+      if (item.kind == DsBotItemKind.user)
+        (text: withoutImageNotes(item.text), attachments: item.images + item.files.length, seq: item.seq),
   ];
   final left = <DsBotPending>[];
   for (final entry in pending) {
-    final at = texts.indexOf(entry.text.trim());
+    final wanted = withoutImageNotes(entry.text);
+    // A line that was only pictures carries no text to compare: it pairs with a
+    // user line of the same attachment count, never with the first empty one.
+    final at = wanted.isEmpty
+        ? texts.indexWhere((item) =>
+            item.text.isEmpty &&
+            item.attachments == entry.drafts.length &&
+            (entry.afterSeq == null || (item.seq != null && item.seq! > entry.afterSeq!)))
+        : texts.indexWhere((item) => item.text == wanted);
     if (at >= 0 && !entry.failed) {
       texts.removeAt(at);
     } else {
@@ -699,6 +721,16 @@ List<DsBotPending> settlePending(List<DsBotPending> pending, Iterable<DsBotItem>
     }
   }
   return left;
+}
+
+/// [text] without ds-bot's image reading notes: `[Image "…", read by …:] …
+/// [End of image "…"]` and the one-line "could not be read right now" form.
+/// Everything else is left alone, so text a person typed still compares as it
+/// is — a note is the only thing that ever differs between a send and its echo.
+String withoutImageNotes(String text) {
+  final block = RegExp(r'\[Image [^\]]*?[,.][\s\S]*?\[End of image [^\]]*?\]');
+  final line = RegExp(r'\[Image [^\]]*?\]');
+  return text.replaceAll(block, '').replaceAll(line, '').trim();
 }
 
 /// Pages from `chat`, new entries and the reply being written from the feed.
@@ -834,18 +866,41 @@ class BotChatController extends Notifier<BotChatState> {
 
   /// Sends [text] with [images] inline and [fileReceiptIds] already staged;
   /// it shows at once and leaves the pending list when the chat echoes it.
+  /// Puts the sending bubble on screen before its upload starts: a message that
+  /// is only pictures would otherwise show nothing until the host logs it.
+  DsBotPending beginPending(String text, {List<DraftAttachment> drafts = const []}) {
+    int? newest;
+    for (final item in state.items) {
+      if (item.seq case final seq? when newest == null || seq > newest) newest = seq;
+    }
+    final entry = DsBotPending(text.trim(), DateTime.now(), drafts: drafts, afterSeq: newest);
+    state = state.copyWith(pending: [...state.pending, entry], error: () => null);
+    return entry;
+  }
+
+  /// Takes a bubble back when the upload failed before [send] was reached.
+  void dropPending(DsBotPending entry) {
+    state = state.copyWith(
+      pending: [
+        for (final p in state.pending)
+          if (!identical(p, entry)) p,
+      ],
+    );
+  }
+
   Future<bool> send(
     String text, {
     List<PromptImage> images = const [],
     List<String> fileReceiptIds = const [],
     String? mode,
+    DsBotPending? pending,
   }) async {
     final api = _api;
     final trimmed = text.trim();
     if (api == null || (trimmed.isEmpty && images.isEmpty && fileReceiptIds.isEmpty)) return false;
     final generation = _generation;
-    final entry = DsBotPending(trimmed, DateTime.now());
-    state = state.copyWith(pending: [...state.pending, entry], error: () => null);
+    final entry = pending ?? DsBotPending(trimmed, DateTime.now());
+    if (pending == null) state = state.copyWith(pending: [...state.pending, entry], error: () => null);
     try {
       await api.send(botId, trimmed, images: images, fileReceiptIds: fileReceiptIds, mode: mode);
       return true;

@@ -19257,4 +19257,24 @@ class L10nEn extends L10n {
   String webConnectHostFirst(String name) {
     return 'Connect to “$name” to open DSH Web';
   }
+
+  @override
+  String get botsMessageMode => 'Message mode';
+
+  @override
+  String get botsMessageModeRelevant => 'Only what involves me';
+
+  @override
+  String get botsMessageModeEmpty => 'This member has not spoken in this group yet';
+
+  @override
+  String get botsMessageModeEmptyRelevant => 'No messages involve you yet';
+
+  @override
+  String botsNamedDone(String name) {
+    return '$name is done';
+  }
+
+  @override
+  String get chatGeneratingQueueHint => 'Working · queued sends wait';
 }

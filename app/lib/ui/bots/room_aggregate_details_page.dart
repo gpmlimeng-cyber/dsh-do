@@ -5,13 +5,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/l10n.dart';
 import '../../state/bots_state.dart';
 import '../../state/chat_state.dart';
+import '../../state/room_activity_state.dart' show RoomMembersActivity, roomMembersActivityProvider, roomUsageTotal;
 import '../../state/session_detail_state.dart';
 import '../../state/usage_state.dart';
 import '../common/list_page_row.dart';
 import '../chat/diff_page.dart' show ChangeDiffPage;
 import '../chat/turn_summary.dart' show FileChange, fileChangesOf;
-import '../chat/trajectory_sheet.dart' show TimelineBar;
-import '../chat/usage_sheet.dart' show SessionUsageSections, formatPercent, formatTokens;
+import '../chat/turn_usage.dart' show TurnUsageCard;
+import '../chat/usage_sheet.dart' show SessionUsageSections;
 import '../chat/widgets/change_card.dart' show DiffCounts;
 import '../common/page_hero.dart';
 import '../chat/widgets/activity_strip.dart' show TodoProgress;
@@ -21,7 +22,6 @@ import '../session/workspace_files.dart' show WorkspaceFilesTab;
 import '../shell/page_frame.dart';
 import '../theme/app_icons.dart';
 import '../theme/semantic_colors.dart' show DshColors;
-import 'bot_action_scope.dart';
 import 'bot_format.dart' show workPhrase;
 import 'bot_avatar.dart';
 
@@ -34,12 +34,15 @@ import 'bot_avatar.dart';
 /// Session itself is stated on the page so the totals are not read as the whole
 /// story.
 class RoomAggregateDetailsPage extends ConsumerStatefulWidget {
-  const RoomAggregateDetailsPage({super.key, required this.roomId});
+  const RoomAggregateDetailsPage({super.key, required this.roomId, this.initialTab = SessionTab.trajectory});
 
   final String roomId;
 
-  static Route<void> route(String roomId) =>
-      MaterialPageRoute<void>(builder: (_) => RoomAggregateDetailsPage(roomId: roomId));
+  /// Which tab opens first — the composer's context ring lands on 上下文.
+  final SessionTab initialTab;
+
+  static Route<void> route(String roomId, {SessionTab initialTab = SessionTab.trajectory}) =>
+      MaterialPageRoute<void>(builder: (_) => RoomAggregateDetailsPage(roomId: roomId, initialTab: initialTab));
 
   @override
   ConsumerState<RoomAggregateDetailsPage> createState() => _RoomAggregateDetailsPageState();
@@ -47,24 +50,20 @@ class RoomAggregateDetailsPage extends ConsumerStatefulWidget {
 
 class _RoomAggregateDetailsPageState extends ConsumerState<RoomAggregateDetailsPage>
     with TickerProviderStateMixin {
-  late final TabController _controller = TabController(length: 5, vsync: this);
+  /// The page's tabs, in order; [SessionTab.plugins] and 子代理 stay out.
+  static const _tabs = [
+    SessionTab.trajectory,
+    SessionTab.changes,
+    SessionTab.files,
+    SessionTab.progress,
+    SessionTab.context,
+  ];
 
-  /// One read per room, not one per build: `run-stats` is a round trip per
-  /// member, and the page rebuilds on every scroll and tab change.
-  Future<RoomMembersActivity>? _activity;
-  String? _activityKey;
-
-  Future<RoomMembersActivity> _activityFor(DsBotApi? api, DsBotRoom room, DsBotTeam team) {
-    // The group's Sessions join the key: a member's first word here adds one, and
-    // the totals must switch from their own chat to it without reopening the page.
-    final sessions = [for (final id in room.members) '${id}:${room.sessions[id] ?? ''}'].join(',');
-    final key = '${room.id}|${room.members.join(',')}|$sessions|$api';
-    if (_activity == null || _activityKey != key) {
-      _activityKey = key;
-      _activity = loadRoomMembersActivity(api, room, team);
-    }
-    return _activity!;
-  }
+  late final TabController _controller = TabController(
+    length: _tabs.length,
+    vsync: this,
+    initialIndex: _tabs.contains(widget.initialTab) ? _tabs.indexOf(widget.initialTab) : 0,
+  );
 
   @override
   void dispose() {
@@ -90,18 +89,13 @@ class _RoomAggregateDetailsPageState extends ConsumerState<RoomAggregateDetailsP
         ],
       );
     }
-    final api = BotActionScope(ref, roomId: room.id).api;
     final roomSession = room.sessionId;
-    final activity = _activityFor(api, room, team);
-    final labels = [
-      SessionTab.trajectory.label,
-      SessionTab.changes.label,
-      SessionTab.files.label,
-      SessionTab.progress.label,
-      SessionTab.context.label,
-    ];
+    final activity = ref.watch(roomMembersActivityProvider(room.id));
+    final labels = [for (final tab in _tabs) tab.label];
     return AppPage(
-      title: room.name,
+      // The tab bar says what the page is; the hero below keeps the group's
+      // name, so the group is still what the page is about.
+      title: l10n.hubSessionDetails,
       hero: PageHero(
         leading: RoomAvatar(room: room, team: team, size: 56),
         title: room.name,
@@ -114,10 +108,21 @@ class _RoomAggregateDetailsPageState extends ConsumerState<RoomAggregateDetailsP
         ),
       ),
       slivers: [
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: GlassSegments(controller: _controller, labels: labels),
+        // The tabs stay at the top once the hero scrolls away, as the single
+        // conversation's details page does; each tab's own list keeps scrolling
+        // underneath. The band behind them keeps the text from running through
+        // the glass.
+        SliverPersistentHeader(
+          pinned: true,
+          delegate: _PinnedBox(
+            extent: 60,
+            child: ColoredBox(
+              color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.96),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                child: GlassSegments(controller: _controller, labels: labels),
+              ),
+            ),
           ),
         ),
         SliverFillRemaining(
@@ -139,6 +144,28 @@ class _RoomAggregateDetailsPageState extends ConsumerState<RoomAggregateDetailsP
   }
 }
 
+/// A fixed-height sliver header that stays put while the page scrolls: the tab
+/// strip's own box. (The single chat's page keeps a private copy; sharing one
+/// would mean touching it for no gain here.)
+class _PinnedBox extends SliverPersistentHeaderDelegate {
+  const _PinnedBox({required this.extent, required this.child});
+
+  final double extent;
+  final Widget child;
+
+  @override
+  double get minExtent => extent;
+
+  @override
+  double get maxExtent => extent;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) => SizedBox.expand(child: child);
+
+  @override
+  bool shouldRebuild(_PinnedBox oldDelegate) => oldDelegate.extent != extent || oldDelegate.child != child;
+}
+
 class _Empty extends StatelessWidget {
   const _Empty();
 
@@ -156,12 +183,15 @@ class _Empty extends StatelessWidget {
   );
 }
 
-/// 轨迹 for a group: the group Session's own turns, with a member summary on top.
+/// 轨迹 for a group: one trajectory, chosen from the group Session or a member.
 ///
-/// The group Session shows every relay, but not what each member did inside their
-/// own Session — so a card at the top states each member's turns, tool calls and
-/// time, and the trajectory below stays exactly the single-conversation one.
-class _RoomTrajectoryTab extends ConsumerWidget {
+/// The group Session shows every relay, but not what each member did inside
+/// their own Session, so the chips above the list switch which Session the
+/// single-conversation trajectory reads: the group first, then the members in
+/// the order the group states them. A member who has not spoken here yet falls
+/// back to their own conversation (see [memberSessionFor]) — its turns are then
+/// shown, and nothing says they happened in this group.
+class _RoomTrajectoryTab extends ConsumerStatefulWidget {
   const _RoomTrajectoryTab({required this.room, required this.team, required this.roomSession});
 
   final DsBotRoom room;
@@ -169,51 +199,80 @@ class _RoomTrajectoryTab extends ConsumerWidget {
   final String? roomSession;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = context.l10n;
-    final sessionId = roomSession;
-    final body = sessionId == null ? const _Empty() : TrajectoryTab(sessionId: sessionId);
-    // Each member's turns from their Session for this group; a member with none
-    // yet simply has no line.
-    final rows = <(DsBot, List<TurnTrace>)>[];
-    final seen = <String>{};
-    for (final id in room.members) {
-      final bot = team.bot(id);
-      if (bot == null) continue;
-      final memberSession = memberSessionFor(room, bot);
-      if (memberSession == null || memberSession.isEmpty || !seen.add(memberSession)) continue;
-      final turns = ref.watch(chatProvider(memberSession).select((s) => s.turns));
-      if (turns.isNotEmpty) rows.add((bot, turns));
+  ConsumerState<_RoomTrajectoryTab> createState() => _RoomTrajectoryTabState();
+}
+
+class _RoomTrajectoryTabState extends ConsumerState<_RoomTrajectoryTab> {
+  /// The member whose Session is on screen; null is the group's own. Kept as an
+  /// id, not as a Session: the group's runs in another Session after a part
+  /// change, and the page follows it without being reopened.
+  String? _memberId;
+
+  @override
+  void didUpdateWidget(_RoomTrajectoryTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Another group: back to its own Session.
+    if (oldWidget.room.id != widget.room.id) {
+      _memberId = null;
+      return;
     }
-    if (rows.isEmpty) return body;
+    // The member was removed from the group: fall back to the group's Session.
+    if (_memberId case final id? when !widget.room.members.contains(id)) _memberId = null;
+  }
+
+  /// The Session the chips point at: the group's own, or a member's for this
+  /// group. Null means there is nothing to read — a group without a Session of
+  /// its own, or a member the team no longer has.
+  String? _sessionFor(DsBotRoom room) {
+    if (_memberId case final id?) {
+      final bot = widget.team.bot(id);
+      return bot == null ? null : memberSessionFor(room, bot);
+    }
+    return widget.roomSession;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final room = widget.room;
+    // Members are filtered like the files tab does it: an id that no longer
+    // resolves to a Bot is skipped rather than drawn as a nameless chip.
+    final members = [
+      for (final id in room.members) widget.team.bot(id),
+    ].whereType<DsBot>().toList();
+    final sessionId = _sessionFor(room);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-          child: ListPageCard(
-            title: l10n.botsMembers,
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          child: Row(
             children: [
-              for (final (bot, turns) in rows)
-                ListPageRow(
-                  key: ValueKey('member-trajectory-${bot.id}'),
-                  leading: BotAvatar(bot: bot, size: 28),
-                  title: bot.name,
-                  // Turns, tool calls and seconds: figures only, no words to
-                  // translate.
-                  subtitle: [
-                    '${turns.length}×',
-                    '${turns.fold<int>(0, (sum, turn) => sum + turn.spans.where((span) => span.kind == TraceKind.tool).length)}',
-                    '${turns.fold<Duration>(Duration.zero, (sum, turn) => sum + (turn.duration ?? Duration.zero)).inSeconds}s',
-                  ].join(' · '),
-                  subtitleMaxLines: 1,
-                  chevron: false,
+              _Chip(
+                key: const ValueKey('room-trajectory-group'),
+                label: l10n.botsGroupChat,
+                selected: _memberId == null,
+                onTap: () => setState(() => _memberId = null),
+              ),
+              for (final member in members) ...[
+                const SizedBox(width: 8),
+                _Chip(
+                  key: ValueKey('room-trajectory-${member.id}'),
+                  label: member.name,
+                  avatar: BotAvatar(bot: member, size: 20),
+                  selected: _memberId == member.id,
+                  onTap: () => setState(() => _memberId = member.id),
                 ),
+              ],
             ],
           ),
         ),
-        const SizedBox(height: 8),
-        Expanded(child: body),
+        Expanded(
+          child: sessionId == null
+              ? const _Empty()
+              : TrajectoryTab(key: ValueKey('room-trajectory-session-$sessionId'), sessionId: sessionId),
+        ),
       ],
     );
   }
@@ -478,148 +537,6 @@ String? memberSessionFor(DsBotRoom room, DsBot bot) {
   return inRoom == null || inRoom.isEmpty ? bot.sessionId : inRoom;
 }
 
-/// One member's figures, as the two summed tabs show them.
-class RoomMemberActivity {
-  const RoomMemberActivity({
-    required this.bot,
-    this.turns = 0,
-    this.contextTokens,
-    this.window,
-    this.speed,
-    this.decodeMs = 0,
-    this.cacheRead = 0,
-    this.inputTokens = 0,
-  });
-
-  final DsBot bot;
-  final int turns;
-  final int? contextTokens;
-  final int? window;
-
-  /// Output tokens per second: `decodeTokens / (decodeMs / 1000)`.
-  final double? speed;
-  final num decodeMs;
-  final int cacheRead;
-  final int inputTokens;
-
-  double? get contextShare {
-    final used = contextTokens;
-    final size = window;
-    if (used == null || size == null || size <= 0) return null;
-    return (used / size).clamp(0.0, 1.0);
-  }
-}
-
-/// Every member's figures, summed the way the page states them.
-class RoomMembersActivity {
-  const RoomMembersActivity({required this.members});
-
-  final List<RoomMemberActivity> members;
-
-  int get turns => members.fold(0, (sum, m) => sum + m.turns);
-  int get contextTokens => members.fold(0, (sum, m) => sum + (m.contextTokens ?? 0));
-  int get cacheRead => members.fold(0, (sum, m) => sum + m.cacheRead);
-  int get inputTokens => members.fold(0, (sum, m) => sum + m.inputTokens);
-  num get decodeMs => members.fold<num>(0, (sum, m) => sum + m.decodeMs);
-
-  /// The largest share of a member's own window: "who is closest to full".
-  double? get maxContextShare {
-    double? best;
-    for (final member in members) {
-      final share = member.contextShare;
-      if (share != null && (best == null || share > best)) best = share;
-    }
-    return best;
-  }
-
-  RoomMemberActivity? get fullest {
-    RoomMemberActivity? best;
-    double? bestShare;
-    for (final member in members) {
-      final share = member.contextShare;
-      if (share != null && (bestShare == null || share > bestShare)) {
-        best = member;
-        bestShare = share;
-      }
-    }
-    return best;
-  }
-
-  /// Total output tokens over total decode time, so slow members weigh in.
-  double? get speed {
-    var tokens = 0.0;
-    var ms = 0.0;
-    for (final member in members) {
-      final rate = member.speed;
-      if (rate == null || rate <= 0) continue;
-      tokens += rate * (member.decodeMs / 1000);
-      ms += member.decodeMs.toDouble();
-    }
-    return ms <= 0 ? null : tokens / (ms / 1000);
-  }
-
-  double get cacheHit => inputTokens == 0 ? 0 : cacheRead / inputTokens;
-}
-
-/// Reads every member's `run-stats`, one per member. A member the Host cannot
-/// answer keeps a row with no figures; the page never fails as a whole.
-Future<RoomMembersActivity> loadRoomMembersActivity(DsBotApi? api, DsBotRoom room, DsBotTeam team) async {
-  final bots = [for (final id in room.members) team.bot(id)].whereType<DsBot>().toList();
-  if (api == null) return RoomMembersActivity(members: [for (final bot in bots) RoomMemberActivity(bot: bot)]);
-  final read = await Future.wait([
-    for (final bot in bots)
-      () async {
-        try {
-          // A member's figures are the ones from their Session *in this group*
-          // when the Host names it; the Bot's own Session is the fallback.
-          return _member(bot, await api.runStats(bot.id, sessionId: room.sessions[bot.id]));
-        } catch (_) {
-          return RoomMemberActivity(bot: bot);
-        }
-      }(),
-  ]);
-  return RoomMembersActivity(members: read);
-}
-
-int? _int(Object? value) => switch (value) {
-  final num n => n.round(),
-  final String s => int.tryParse(s),
-  _ => null,
-};
-
-num? _num(Object? value) => switch (value) {
-  final num n => n,
-  final String s => num.tryParse(s),
-  _ => null,
-};
-
-Map<String, Object?> _map(Object? value) =>
-    value is Map ? {for (final entry in value.entries) '${entry.key}': entry.value} : const {};
-
-RoomMemberActivity _member(DsBot bot, Map<String, Object?> json) {
-  final stats = _map(json['sessionStats']);
-  final pressure = _map(json['contextPressure']);
-  final usage = _map(json['tokenUsage']);
-  final decodeTokens = _num(stats['decodeTokens']);
-  final decodeMs = _num(stats['decodeMs']);
-  final speed = decodeTokens == null || decodeMs == null || decodeMs <= 0 ? null : decodeTokens / (decodeMs / 1000);
-  final cacheRead = _int(usage['cacheReadTokens']) ?? 0;
-  final uncached = _int(usage['uncachedInputTokens']) ?? 0;
-  final cacheWrite = _int(usage['cacheWriteTokens']) ?? 0;
-  return RoomMemberActivity(
-    bot: bot,
-    turns: _int(stats['turns']) ?? 0,
-    // `projectedTokens` is what the next turn would carry; fall back to the
-    // measured pressure when the Host only sends that.
-    contextTokens: _int(pressure['projectedTokens']) ?? _int(pressure['pressureTokens']),
-    window: _int(pressure['contextWindow']),
-    speed: speed,
-    decodeMs: decodeMs ?? 0,
-    cacheRead: cacheRead,
-    inputTokens: cacheRead + uncached + cacheWrite,
-  );
-}
-
 /// 进度 for a group: what is still open here.
 ///
 /// A group Session rarely has a todo list of its own — each member keeps theirs —
@@ -822,160 +739,56 @@ class _RoomProgressTab extends ConsumerWidget {
   }
 }
 
-/// 上下文 for a group.
+/// 上下文 for a group: what the whole group is spending, then the detail.
 ///
-/// Three of the four blocks are the single-conversation page's: the group
-/// Session's usage summary and its last turns are read from `room.sessionId`,
-/// because every relay and reply lands there. The member sums are a fourth block,
-/// read from each member's own Session for this group. Without a group Session
-/// the two conversation blocks are hidden rather than faked.
+/// The two top cards add up the group's own Session and every member's Session
+/// *in this group*, so they state the group's real spend — the group Session
+/// alone runs almost no model. The last turns are the group Session's, because
+/// member turns only come as sums.
 class _RoomContextTab extends ConsumerWidget {
   const _RoomContextTab({required this.room, required this.activity, required this.roomSession});
 
   final DsBotRoom room;
-  final Future<RoomMembersActivity> activity;
+
+  /// The members' figures. While they are read again the previous value stays
+  /// (`AsyncValue`), so numbers swap in place instead of vanishing behind a
+  /// spinner and jumping back to the top.
+  final AsyncValue<RoomMembersActivity> activity;
+
   final String? roomSession;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = context.l10n;
-    final theme = Theme.of(context);
-    final dsh = DshColors.of(context);
     final sessionId = roomSession;
     final usage = sessionId == null ? null : ref.watch(sessionUsageProvider(sessionId));
-    final model = sessionId == null ? null : ref.watch(chatProvider(sessionId).select((s) => s.model));
     final turns = sessionId == null
         ? const <TurnTrace>[]
         : ref.watch(chatProvider(sessionId).select((s) => s.turns));
-    final pricing = model == null ? null : knownPricing['${model.provider}/${model.model}'];
-    final recent = [
-      for (final trace in turns.reversed)
-        if (!trace.usage.isEmpty) trace,
-    ].take(12).toList();
-    final peak = recent.fold<int>(0, (most, trace) => trace.usage.total > most ? trace.usage.total : most);
+    final total = activity.value;
+    final groupUsage = usage ?? SessionUsage.empty;
+    final totals = total == null ? groupUsage : roomUsageTotal(groupUsage, total);
+    // No window and no tokens anywhere: the members' rows are the whole tab. A
+    // group that never ran therefore has no card of zeros.
+    final showCards = totals.contextFraction != null || totals.hasTokens;
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
       children: [
-        // The group Session's own summary: what the relays cost.
-        if (usage != null) SessionUsageSections(usage: usage, pricing: pricing),
-        FutureBuilder<RoomMembersActivity>(
-          future: activity,
-          builder: (context, snapshot) {
-            final total = snapshot.data;
-            if (total == null) {
-              return const Padding(
-                padding: EdgeInsets.symmetric(vertical: 24),
-                child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-              );
-            }
-            final share = total.maxContextShare;
-            final fullest = total.fullest;
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SizedBox(height: 8),
-                Text(
-                  l10n.activityUsageContext,
-                  style: theme.textTheme.labelMedium?.copyWith(color: dsh.textTertiary),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Text(
-                      share == null ? '—' : '${(share * 100).round()}% · ${formatTokens(total.contextTokens)}',
-                      style: theme.textTheme.titleMedium,
-                    ),
-                    const Spacer(),
-                    if (fullest != null) ...[
-                      Text(
-                        fullest.bot.name,
-                        style: theme.textTheme.labelSmall?.copyWith(color: dsh.textTertiary),
-                      ),
-                      const SizedBox(width: 8),
-                    ],
-                    Text(
-                      '${l10n.activityCacheHit} ${(total.cacheHit * 100).round()}%',
-                      style: theme.textTheme.labelSmall?.copyWith(color: dsh.textTertiary),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  // 合计 = N 位成员 + 群会话, as the page states it.
-                  '${l10n.botsMembers} ${total.members.length} + ${l10n.botsGroupChat}',
-                  style: theme.textTheme.labelSmall?.copyWith(color: dsh.textTertiary),
-                ),
-                const SizedBox(height: 8),
-                for (final member in total.members)
-                  ListPageRow(
-                    key: ValueKey('member-context-${member.bot.id}'),
-                    leading: BotAvatar(bot: member.bot, size: 32),
-                    title: member.bot.name,
-                    subtitle: [
-                      if (member.contextShare != null) '${(member.contextShare! * 100).round()}%',
-                      if (member.contextTokens != null) formatTokens(member.contextTokens!),
-                      if (member.turns > 0) '${member.turns}×',
-                      if (member.speed != null) '${member.speed!.round()} tok/s',
-                    ].join(' · '),
-                    subtitleMaxLines: 1,
-                    chevron: false,
-                  ),
-              ],
-            );
-          },
-        ),
+        // The group's own Session and every member's Session in this group,
+        // added up; the members' rows below are the detail. No price: the
+        // members may run different models, so one pricing does not hold.
+        if (showCards) SessionUsageSections(usage: totals, pricing: null),
         // The group Session's last turns, as the single-conversation page draws
         // them. Member turns only come as sums, so they are not plotted here.
-        if (recent.isNotEmpty)
-          ListPageCard(
-            title: l10n.hubSessionTurnUsage,
-            margin: const EdgeInsets.fromLTRB(16, 6, 16, 6),
-            children: [
-              for (final trace in recent)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 9, 16, 9),
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: 52,
-                        child: Text(
-                          l10n.hubSessionTurn(trace.turn),
-                          style: theme.textTheme.bodySmall?.copyWith(color: dsh.textTertiary),
-                        ),
-                      ),
-                      Expanded(
-                        child: TimelineBar(
-                          start: Duration.zero,
-                          duration: Duration(milliseconds: trace.usage.total),
-                          total: Duration(milliseconds: peak <= 0 ? 1 : peak),
-                          color: theme.colorScheme.primary.withValues(alpha: 0.75),
-                          height: 6,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      SizedBox(
-                        width: 52,
-                        child: Text(
-                          formatTokens(trace.usage.total),
-                          textAlign: TextAlign.right,
-                          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                        ),
-                      ),
-                      SizedBox(
-                        width: 64,
-                        child: Text(
-                          trace.usage.cacheHitRate == null
-                              ? ''
-                              : l10n.hubSessionCacheHit(formatPercent(trace.usage.cacheHitRate!)),
-                          textAlign: TextAlign.right,
-                          style: theme.textTheme.bodySmall?.copyWith(color: dsh.textTertiary),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
+        TurnUsageCard(turns: turns),
+        if (total == null && activity.isLoading) ...[
+          // Only the detail waits; the cards above already show what is known.
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Center(
+              child: SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2)),
+            ),
           ),
+        ],
       ],
     );
   }

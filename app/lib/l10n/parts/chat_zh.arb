@@ -737,5 +737,6 @@
         "type": "int"
       }
     }
-  }
+  },
+  "chatGeneratingQueueHint": "\u751f\u6210\u4e2d \u00b7 \u53ef\u6392\u961f"
 }
