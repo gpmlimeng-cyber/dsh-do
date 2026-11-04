@@ -175,6 +175,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
   @override
   void dispose() {
     _progressTimer?.cancel();
+    _flashTimer?.cancel();
     _voice.removeListener(_reportVoice);
     _voice.dispose();
     // The page is gone, and its dictation with it.
