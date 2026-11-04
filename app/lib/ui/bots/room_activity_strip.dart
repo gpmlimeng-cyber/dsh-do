@@ -89,15 +89,18 @@ RoomStatus roomStatusOf({
   DsBot? mainBot;
   if (speaker != null) {
     mainBot = speaker;
-    mainWork = _workOf(working, speaker.id);
+    final work = _workOf(working, speaker.id);
+    mainWork = work;
   } else if (working.isNotEmpty) {
-    mainWork = working.first;
+    // Whose step started first: the one that has been going longest.
+    var first = working.first;
     for (final work in working) {
-      final a = mainWork.since ?? DateTime(9999);
+      final a = first.since ?? DateTime(9999);
       final b = work.since ?? DateTime(9999);
-      if (b.isBefore(a)) mainWork = work;
+      if (b.isBefore(a)) first = work;
     }
-    mainBot = team.bot(mainWork.botId);
+    mainWork = first;
+    mainBot = team.bot(first.botId);
   }
   final others = [for (final work in working) if (work.botId != mainWork?.botId) work].length;
   final (String? activity, DateTime? since) = switch (()) {
@@ -238,7 +241,7 @@ class _RoomActivityBarState extends ConsumerState<_RoomActivityBar> {
         child: DockRow(
           // The member doing it, as its face; the group itself has no face.
           leading: bot == null
-              ? DockGlyph.icon(AppIcons.groupChat, color: waiting ? ink : colors.primary)
+              ? DockGlyph.icon(AppIcons.groupChat, color: waiting ? (ink ?? colors.primary) : colors.primary)
               : BotAvatar(bot: bot, size: DockMetrics.glyph),
           content: Text.rich(line, maxLines: 1, overflow: TextOverflow.ellipsis),
           accessory: showStats || waiting
