@@ -181,7 +181,9 @@ class _RoomFilesTabState extends State<_RoomFilesTab> {
   /// directory the group writes to by default.
   String? _initial() {
     if (_shared) return widget.roomSession;
-    return widget.team.bot(widget.room.admin)?.sessionId ?? widget.roomSession;
+    final admin = widget.team.bot(widget.room.admin);
+    if (admin == null) return widget.roomSession;
+    return memberSessionFor(widget.room, admin) ?? widget.roomSession;
   }
 
   @override
@@ -213,8 +215,8 @@ class _RoomFilesTabState extends State<_RoomFilesTab> {
                   key: const ValueKey('room-files-admin'),
                   label: admin.name,
                   avatar: BotAvatar(bot: admin, size: 20),
-                  selected: sessionId == admin.sessionId,
-                  onTap: () => setState(() => _sessionId = admin.sessionId),
+                  selected: sessionId == memberSessionFor(widget.room, admin),
+                  onTap: () => setState(() => _sessionId = memberSessionFor(widget.room, admin)),
                 ),
                 const SizedBox(width: 8),
               ],
@@ -223,8 +225,8 @@ class _RoomFilesTabState extends State<_RoomFilesTab> {
                   key: ValueKey('room-files-${bot.id}'),
                   label: bot.name,
                   avatar: BotAvatar(bot: bot, size: 20),
-                  selected: sessionId == bot.sessionId,
-                  onTap: () => setState(() => _sessionId = bot.sessionId),
+                  selected: sessionId == memberSessionFor(widget.room, bot),
+                  onTap: () => setState(() => _sessionId = memberSessionFor(widget.room, bot)),
                 ),
                 const SizedBox(width: 8),
               ],
@@ -278,6 +280,14 @@ class _Chip extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The Session that holds a member's work in this group: `room.sessions` when the
+/// Host sends it (plugin 0.2.7+), the Bot's own Session otherwise — an older Host
+/// has no group Session to name, and a member who has not spoken here yet has none.
+String? memberSessionFor(DsBotRoom room, DsBot bot) {
+  final inRoom = room.sessions[bot.id];
+  return inRoom == null || inRoom.isEmpty ? bot.sessionId : inRoom;
 }
 
 /// One member's figures, as the two summed tabs show them.
@@ -372,7 +382,9 @@ Future<RoomMembersActivity> loadRoomMembersActivity(DsBotApi? api, DsBotRoom roo
     for (final bot in bots)
       () async {
         try {
-          return _member(bot, await api.runStats(bot.id));
+          // A member's figures are the ones from their Session *in this group*
+          // when the Host names it; the Bot's own Session is the fallback.
+          return _member(bot, await api.runStats(bot.id, sessionId: room.sessions[bot.id]));
         } catch (_) {
           return RoomMemberActivity(bot: bot);
         }

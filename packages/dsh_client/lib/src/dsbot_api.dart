@@ -439,6 +439,7 @@ class DsBotRoom {
     this.workDir,
     this.parts = const [],
     this.permission,
+    this.sessions = const {},
   });
 
   factory DsBotRoom.fromJson(Object? json) {
@@ -462,6 +463,12 @@ class DsBotRoom {
       workDir: asString(map['workDir']),
       parts: asStringList(map['parts']),
       permission: asString(map['permission']),
+      // Each member's Session *in this group* (plugin 0.2.7+): what a group's
+      // figures and files must be read from, not the member's own chat.
+      sessions: {
+        for (final entry in asMapOrEmpty(map['sessions']).entries)
+          if (entry.value is String) entry.key: entry.value as String,
+      },
     );
   }
 
@@ -502,6 +509,10 @@ class DsBotRoom {
   /// null means each member's own. Clearing sends '', never null (null = leave
   /// the setting alone).
   final String? permission;
+
+  /// Member id → the Session that member works in **for this group**. Empty on a
+  /// Host older than plugin 0.2.7, and until a member first speaks here.
+  final Map<String, String> sessions;
 
   bool get adminFirst => mode != 'everyone';
 }
@@ -1764,8 +1775,17 @@ class DsBotApi {
   /// DSH's own figures for a Bot's current part (`run-stats`): `sessionStats`
   /// (turns, decode time and tokens), `tokenUsage`, `contextPressure`. Empty on a
   /// Host that does not answer them.
-  Future<Map<String, Object?>> runStats(String botId) async =>
-      asMapOrEmpty(await call('run-stats', {'botId': botId}));
+  /// DSH's own figures for a conversation (`run-stats`).
+  ///
+  /// [botId] is the member's own Session; pass [sessionId] to read another one
+  /// instead — a member's Session *in a group* is a different Session, and its
+  /// figures are the ones a group's sums need.
+  Future<Map<String, Object?>> runStats(String botId, {String? sessionId}) async {
+    final session = sessionId ?? '';
+    return asMapOrEmpty(
+      await call('run-stats', {if (session.isNotEmpty) 'sessionId': session else 'botId': botId}),
+    );
+  }
 
   Future<void> answerApproval(String id, {required bool allow}) =>
       call('approval-answer', {'id': id, 'choice': allow ? 'allow' : 'reject'});
