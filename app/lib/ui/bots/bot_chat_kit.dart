@@ -1023,7 +1023,8 @@ class BotReplyText extends StatelessWidget {
         // The sheet renders it: the Markdown, as the reply reads.
         await showSelectTextSheet(context, text, markdown: true);
       case MessageAction.share:
-        await shareText(context, text);
+        // As 复制: a view's JSON is not what the reply says.
+        await shareText(context, plain);
       case MessageAction.quote:
         onQuote?.call(plain);
       case MessageAction.edit || MessageAction.regenerate || MessageAction.branch:
