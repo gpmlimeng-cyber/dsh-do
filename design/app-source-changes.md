@@ -42,3 +42,4 @@ Upstream: `ccch1mneyyy/dsh-Go`, against `v1.0.10` (fork branch `ci/room-progress
 | `53b0ef9` | `app/lib/state/bots_state.dart` | v1.0.10 | The pairing record carries `seq`, so the comparison compiles. |
 | `50ee102` | `app/lib/ui/bots/bot_chat_kit.dart`, `app/lib/ui/bots/room_chat_page.dart`, `app/lib/ui/bots/room_aggregate_details_page.dart` | v1.0.10 | Where a group's cards hang and what its context tab draws are Flutter layout; no seam owns either. |
 | `1f0adb1` | `app/lib/ui/bots/room_activity_strip.dart`, `app/lib/ui/bots/room_chat_page.dart`, `app/lib/l10n/` | v1.0.10 | The line's contents and the composer's hint are Flutter widget work; no seam draws the group's deck. |
+| `0f92d62` | `app/lib/ui/bots/room_aggregate_details_page.dart` | v1.0.10 | Pinning is a sliver layout in the page itself; no seam owns a page's scroll structure. |
