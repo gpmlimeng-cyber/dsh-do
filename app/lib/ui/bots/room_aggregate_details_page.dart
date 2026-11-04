@@ -183,8 +183,11 @@ class _RoomTrajectoryTabState extends ConsumerState<_RoomTrajectoryTab> {
       _memberId = null;
       return;
     }
-    // The member was removed from the group: fall back to the group's Session.
-    if (_memberId case final id? when !widget.room.members.contains(id)) _memberId = null;
+    // The member was removed from the group, or no longer resolves to a Bot:
+    // fall back to the group's Session rather than an empty, unselected tab.
+    if (_memberId case final id? when !widget.room.members.contains(id) || widget.team.bot(id) == null) {
+      _memberId = null;
+    }
   }
 
   /// The Session the chips point at: the group's own, or a member's for this
