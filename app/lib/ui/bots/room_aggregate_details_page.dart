@@ -156,12 +156,15 @@ class _Empty extends StatelessWidget {
   );
 }
 
-/// 轨迹 for a group: the group Session's own turns, with a member summary on top.
+/// 轨迹 for a group: one trajectory, chosen from the group Session or a member.
 ///
-/// The group Session shows every relay, but not what each member did inside their
-/// own Session — so a card at the top states each member's turns, tool calls and
-/// time, and the trajectory below stays exactly the single-conversation one.
-class _RoomTrajectoryTab extends ConsumerWidget {
+/// The group Session shows every relay, but not what each member did inside
+/// their own Session, so the chips above the list switch which Session the
+/// single-conversation trajectory reads: the group first, then the members in
+/// the order the group states them. A member who has not spoken here yet falls
+/// back to their own conversation (see [memberSessionFor]) — its turns are then
+/// shown, and nothing says they happened in this group.
+class _RoomTrajectoryTab extends ConsumerStatefulWidget {
   const _RoomTrajectoryTab({required this.room, required this.team, required this.roomSession});
 
   final DsBotRoom room;
@@ -169,51 +172,80 @@ class _RoomTrajectoryTab extends ConsumerWidget {
   final String? roomSession;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = context.l10n;
-    final sessionId = roomSession;
-    final body = sessionId == null ? const _Empty() : TrajectoryTab(sessionId: sessionId);
-    // Each member's turns from their Session for this group; a member with none
-    // yet simply has no line.
-    final rows = <(DsBot, List<TurnTrace>)>[];
-    final seen = <String>{};
-    for (final id in room.members) {
-      final bot = team.bot(id);
-      if (bot == null) continue;
-      final memberSession = memberSessionFor(room, bot);
-      if (memberSession == null || memberSession.isEmpty || !seen.add(memberSession)) continue;
-      final turns = ref.watch(chatProvider(memberSession).select((s) => s.turns));
-      if (turns.isNotEmpty) rows.add((bot, turns));
+  State<_RoomTrajectoryTab> createState() => _RoomTrajectoryTabState();
+}
+
+class _RoomTrajectoryTabState extends ConsumerState<_RoomTrajectoryTab> {
+  /// The member whose Session is on screen; null is the group's own. Kept as an
+  /// id, not as a Session: the group's runs in another Session after a part
+  /// change, and the page follows it without being reopened.
+  String? _memberId;
+
+  @override
+  void didUpdateWidget(_RoomTrajectoryTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Another group: back to its own Session.
+    if (oldWidget.room.id != widget.room.id) {
+      _memberId = null;
+      return;
     }
-    if (rows.isEmpty) return body;
+    // The member was removed from the group: fall back to the group's Session.
+    if (_memberId case final id? when !widget.room.members.contains(id)) _memberId = null;
+  }
+
+  /// The Session the chips point at: the group's own, or a member's for this
+  /// group. Null means there is nothing to read — a group without a Session of
+  /// its own, or a member the team no longer has.
+  String? _sessionFor(DsBotRoom room) {
+    if (_memberId case final id?) {
+      final bot = widget.team.bot(id);
+      return bot == null ? null : memberSessionFor(room, bot);
+    }
+    return widget.roomSession;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final room = widget.room;
+    // Members are filtered like the files tab does it: an id that no longer
+    // resolves to a Bot is skipped rather than drawn as a nameless chip.
+    final members = [
+      for (final id in room.members) widget.team.bot(id),
+    ].whereType<DsBot>().toList();
+    final sessionId = _sessionFor(room);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-          child: ListPageCard(
-            title: l10n.botsMembers,
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          child: Row(
             children: [
-              for (final (bot, turns) in rows)
-                ListPageRow(
-                  key: ValueKey('member-trajectory-${bot.id}'),
-                  leading: BotAvatar(bot: bot, size: 28),
-                  title: bot.name,
-                  // Turns, tool calls and seconds: figures only, no words to
-                  // translate.
-                  subtitle: [
-                    '${turns.length}×',
-                    '${turns.fold<int>(0, (sum, turn) => sum + turn.spans.where((span) => span.kind == TraceKind.tool).length)}',
-                    '${turns.fold<Duration>(Duration.zero, (sum, turn) => sum + (turn.duration ?? Duration.zero)).inSeconds}s',
-                  ].join(' · '),
-                  subtitleMaxLines: 1,
-                  chevron: false,
+              _Chip(
+                key: const ValueKey('room-trajectory-group'),
+                label: l10n.botsGroupChat,
+                selected: _memberId == null,
+                onTap: () => setState(() => _memberId = null),
+              ),
+              for (final member in members) ...[
+                const SizedBox(width: 8),
+                _Chip(
+                  key: ValueKey('room-trajectory-${member.id}'),
+                  label: member.name,
+                  avatar: BotAvatar(bot: member, size: 20),
+                  selected: _memberId == member.id,
+                  onTap: () => setState(() => _memberId = member.id),
                 ),
+              ],
             ],
           ),
         ),
-        const SizedBox(height: 8),
-        Expanded(child: body),
+        Expanded(
+          child: sessionId == null
+              ? const _Empty()
+              : TrajectoryTab(key: ValueKey('room-trajectory-session-$sessionId'), sessionId: sessionId),
+        ),
       ],
     );
   }
