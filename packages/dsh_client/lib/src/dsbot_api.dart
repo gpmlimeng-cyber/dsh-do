@@ -820,7 +820,9 @@ class DsBotTeam {
   /// Sessions and members' hidden group Sessions.
   Set<String> get sessionIds => {
     for (final bot in bots) ...[bot.id, bot.sessionId, ...bot.parts],
-    for (final room in rooms) ...[room.id, ...room.parts],
+    // A group that moved its Session on runs in `sessionId`, which `parts`
+    // does not carry: hiding only the old ids lists its row twice.
+    for (final room in rooms) ...[room.id, if (room.sessionId case final id?) id, ...room.parts],
   };
 
   DsBotQuestion? questionOf(DsBot bot) => questions[bot.sessionId] ?? questions[bot.id];
