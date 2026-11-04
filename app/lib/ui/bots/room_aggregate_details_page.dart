@@ -4,14 +4,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
 import '../../state/bots_state.dart';
+import '../../state/chat_state.dart';
 import '../../state/usage_state.dart';
 import '../common/list_page_row.dart';
+import '../chat/diff_page.dart' show ChangeDiffPage;
+import '../chat/turn_summary.dart' show FileChange, fileChangesOf;
 import '../chat/usage_sheet.dart' show formatTokens;
+import '../chat/widgets/change_card.dart' show DiffCounts;
 import '../common/page_hero.dart';
-import '../session/session_detail_page.dart' show ChangesTab, GlassSegments, ProgressTab, TrajectoryTab;
+import '../session/session_detail_page.dart' show GlassSegments, ProgressTab, TrajectoryTab;
 import '../session/session_tab.dart';
 import '../session/workspace_files.dart' show WorkspaceFilesTab;
 import '../shell/page_frame.dart';
+import '../theme/semantic_colors.dart' show DshColors;
 import 'bot_action_scope.dart';
 import 'bot_avatar.dart';
 
@@ -117,7 +122,7 @@ class _RoomAggregateDetailsPageState extends ConsumerState<RoomAggregateDetailsP
               // The group's own conversation: relays, replies, tools and steps,
               // exactly as the single-conversation page draws them.
               if (roomSession != null) TrajectoryTab(sessionId: roomSession) else const _Empty(),
-              if (roomSession != null) ChangesTab(sessionId: roomSession) else const _Empty(),
+              _RoomChangesTab(room: room, team: team, roomSession: roomSession),
               _RoomFilesTab(room: room, team: team, roomSession: roomSession),
               if (roomSession != null) ProgressTab(sessionId: roomSession) else const _Empty(),
               _MemberContextTab(room: room, activity: activity, roomSession: roomSession),
@@ -144,6 +149,118 @@ class _Empty extends StatelessWidget {
       ),
     ),
   );
+}
+
+/// 改动 for a group.
+///
+/// A group's own Session barely changes files: the work happens in each member's
+/// Session for this group. So every member's tool calls are read where they
+/// happened and shown as one block per member — the same path twice stays two
+/// rows, because "who changed it" is the point here.
+class _RoomChangesTab extends ConsumerWidget {
+  const _RoomChangesTab({required this.room, required this.team, required this.roomSession});
+
+  final DsBotRoom room;
+  final DsBotTeam team;
+  final String? roomSession;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final dsh = DshColors.of(context);
+    // The group's own Session first, then each member's Session for this group;
+    // one Session is read once even if two rows name it.
+    final sessions = <String, DsBot?>{};
+    if (roomSession != null && roomSession!.isNotEmpty) sessions[roomSession!] = null;
+    for (final id in room.members) {
+      final bot = team.bot(id);
+      if (bot == null) continue;
+      final sessionId = memberSessionFor(room, bot);
+      if (sessionId != null && sessionId.isNotEmpty) sessions[sessionId] = bot;
+    }
+    final blocks = <(DsBot?, List<FileChange>)>[];
+    for (final entry in sessions.entries) {
+      final items = ref.watch(chatProvider(entry.key).select((s) => s.items));
+      final files = fileChangesOf(items.whereType<ToolChatItem>());
+      if (files.isNotEmpty) blocks.add((entry.value, files));
+    }
+    if (blocks.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(32),
+        child: Center(
+          child: Text(
+            l10n.hubSessionNoChanges,
+            style: theme.textTheme.bodyMedium?.copyWith(color: dsh.textTertiary),
+          ),
+        ),
+      );
+    }
+    final total = blocks.fold<int>(0, (sum, block) => sum + block.$2.length);
+    final added = blocks.fold<int>(0, (sum, block) => sum + block.$2.fold<int>(0, (s, f) => s + f.added));
+    final removed = blocks.fold<int>(0, (sum, block) => sum + block.$2.fold<int>(0, (s, f) => s + f.removed));
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+          child: Row(
+            children: [
+              Text(
+                l10n.hubSessionFileCount(total),
+                style: theme.textTheme.labelLarge?.copyWith(color: dsh.textTertiary),
+              ),
+              const Spacer(),
+              DiffCounts(added: added, removed: removed),
+            ],
+          ),
+        ),
+        for (final (bot, files) in blocks) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+            child: Row(
+              children: [
+                if (bot != null) ...[BotAvatar(bot: bot, size: 20), const SizedBox(width: 8)],
+                Text(
+                  bot?.name ?? l10n.botsGroupChat,
+                  style: theme.textTheme.labelLarge,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  l10n.hubSessionFileCount(files.length),
+                  style: theme.textTheme.labelSmall?.copyWith(color: dsh.textTertiary),
+                ),
+                const Spacer(),
+                DiffCounts(
+                  added: files.fold<int>(0, (s, f) => s + f.added),
+                  removed: files.fold<int>(0, (s, f) => s + f.removed),
+                ),
+              ],
+            ),
+          ),
+          ListPageCard(
+            children: [
+              for (final (i, file) in files.indexed)
+                ListPageRow(
+                  icon: file.created ? Icons.note_add_outlined : Icons.description_outlined,
+                  title: file.fileName,
+                  subtitle: [
+                    if (file.directory.isNotEmpty) file.directory,
+                    if (file.edits > 1) l10n.hubSessionEditCount(file.edits),
+                  ].join(' · '),
+                  trailing: DiffCounts(added: file.added, removed: file.removed),
+                  chevron: true,
+                  onTap: () => Navigator.of(context).push(
+                    ChangeDiffPage.route(files, initialIndex: i, title: l10n.hubSessionChanges),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+        ],
+      ],
+    );
+  }
 }
 
 /// 文件 for a group.
