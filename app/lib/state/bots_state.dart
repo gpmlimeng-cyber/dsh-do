@@ -631,7 +631,7 @@ NotifyPost dsBotPost(HostRef host, DsBotNotice notice) {
 /// A message sent from here that the chat does not show yet.
 @immutable
 class DsBotPending {
-  const DsBotPending(this.text, this.at, {this.failed = false, this.drafts = const []});
+  const DsBotPending(this.text, this.at, {this.failed = false, this.drafts = const [], this.afterSeq});
   final String text;
   final DateTime at;
   final bool failed;
@@ -639,6 +639,10 @@ class DsBotPending {
   /// The pictures and files still being uploaded with this line: drawn as they
   /// will look once the host echoes them, so a photo shows the moment it is sent.
   final List<DraftAttachment> drafts;
+
+  /// The newest line the chat held when this bubble was made: a line with no text
+  /// pairs only with what came after, never with an older picture message.
+  final int? afterSeq;
 }
 
 @immutable
@@ -705,7 +709,10 @@ List<DsBotPending> settlePending(List<DsBotPending> pending, Iterable<DsBotItem>
     // A line that was only pictures carries no text to compare: it pairs with a
     // user line of the same attachment count, never with the first empty one.
     final at = wanted.isEmpty
-        ? texts.indexWhere((item) => item.text.isEmpty && item.attachments == entry.drafts.length)
+        ? texts.indexWhere((item) =>
+            item.text.isEmpty &&
+            item.attachments == entry.drafts.length &&
+            (entry.afterSeq == null || (item.seq != null && item.seq! > entry.afterSeq!)))
         : texts.indexWhere((item) => item.text == wanted);
     if (at >= 0 && !entry.failed) {
       texts.removeAt(at);
@@ -862,7 +869,11 @@ class BotChatController extends Notifier<BotChatState> {
   /// Puts the sending bubble on screen before its upload starts: a message that
   /// is only pictures would otherwise show nothing until the host logs it.
   DsBotPending beginPending(String text, {List<DraftAttachment> drafts = const []}) {
-    final entry = DsBotPending(text.trim(), DateTime.now(), drafts: drafts);
+    int? newest;
+    for (final item in state.items) {
+      if (item.seq case final seq? when newest == null || seq > newest) newest = seq;
+    }
+    final entry = DsBotPending(text.trim(), DateTime.now(), drafts: drafts, afterSeq: newest);
     state = state.copyWith(pending: [...state.pending, entry], error: () => null);
     return entry;
   }

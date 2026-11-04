@@ -258,6 +258,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
             mode: botSendMode(mode),
             pending: pending,
           );
+          if (!sent) controller.dropPending(pending);
           if (sent && mounted) {
             setState(() {
               _drafts = const [];
