@@ -449,8 +449,14 @@ List<DsBotItem> botTranscriptItems(List<DsBotItem> items, {required bool running
 /// (that is what [attachArtifacts] does for one conversation). It goes under the
 /// last line the member spoke instead — where a reader looks for "what did they
 /// deliver". One card per member; a member with nothing delivered is skipped.
-List<BotRow> attachMemberArtifacts(List<BotRow> rows, Map<String, ({String sessionId, TurnArtifacts group})> byBot) {
-  if (byBot.isEmpty) return rows;
+List<BotRow> attachMemberArtifacts(
+  List<BotRow> rows,
+  Map<String, ({String sessionId, TurnArtifacts group})> byBot, {
+  int roundStart = -1,
+}) {
+  // No user line on this page (or only a history page): no card at all — the
+  // round that delivered cannot be told apart from the past.
+  if (byBot.isEmpty || roundStart < 0) return rows;
   final lastAt = <String, int>{};
   for (var i = 0; i < rows.length; i++) {
     final row = rows[i];
@@ -458,7 +464,7 @@ List<BotRow> attachMemberArtifacts(List<BotRow> rows, Map<String, ({String sessi
     final item = row.item;
     if (item.kind != DsBotItemKind.bot) continue;
     final botId = item.botId;
-    if (botId == null || !byBot.containsKey(botId)) continue;
+    if (botId == null || !byBot.containsKey(botId) || i <= roundStart) continue;
     lastAt[botId] = i;
   }
   if (lastAt.isEmpty) return rows;

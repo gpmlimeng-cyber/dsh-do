@@ -276,6 +276,17 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
     );
   }
 
+  /// The last user line on the page: the round that may still be delivering
+  /// starts after it. -1 when the page holds no user line.
+  int _lastUserRow(List<BotRow> rows) {
+    var at = -1;
+    for (var i = 0; i < rows.length; i++) {
+      final row = rows[i];
+      if (row is BotItemRow && row.item.kind == DsBotItemKind.user) at = i;
+    }
+    return at;
+  }
+
   /// The Session the round runs in now, not the group's first part.
   String _roomSession() => ref.read(dsBotProvider).team?.room(widget.roomId)?.sessionId ?? widget.roomId;
 
@@ -467,13 +478,15 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
     ref.listen(roomChatProvider(widget.roomId).select((s) => s.items), (_, _) {
       if (mounted) _rememberFlash(room, team, mode, names);
     });
+    final transcript = transcriptRows(withoutDoneEchoes(visible), pending: chat.pending, typing: typing);
     final rows = attachMemberArtifacts(
       attachArtifacts(
-        transcriptRows(withoutDoneEchoes(visible), pending: chat.pending, typing: typing),
+        transcript,
         groupArtifacts == null || groupArtifacts.isEmpty ? null : groupArtifacts.last,
         atOldestEnd: !chat.hasEarlier,
       ),
       deliveredByBot,
+      roundStart: _lastUserRow(transcript),
     );
     final topInset = BotChatHeader.heightOf(context);
     final readOnly = status.readOnly != null;

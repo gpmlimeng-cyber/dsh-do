@@ -751,57 +751,7 @@ class _RoomContextTab extends ConsumerWidget {
         // The group Session's last turns, as the single-conversation page draws
         // them. Member turns only come as sums, so they are not plotted here.
         TurnUsageCard(turns: turns),
-        if (total != null) ...[
-          const SizedBox(height: 8),
-          Text(
-            l10n.activityUsageContext,
-            style: theme.textTheme.labelMedium?.copyWith(color: dsh.textTertiary),
-          ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              Text(
-                total.maxContextShare == null
-                    ? '—'
-                    : '${(total.maxContextShare! * 100).round()}% · ${formatTokens(total.contextTokens)}',
-                style: theme.textTheme.titleMedium,
-              ),
-              const Spacer(),
-              if (total.fullest case final fullest?) ...[
-                Text(
-                  fullest.bot.name,
-                  style: theme.textTheme.labelSmall?.copyWith(color: dsh.textTertiary),
-                ),
-                const SizedBox(width: 8),
-              ],
-              Text(
-                '${l10n.activityCacheHit} ${(total.cacheHit * 100).round()}%',
-                style: theme.textTheme.labelSmall?.copyWith(color: dsh.textTertiary),
-              ),
-            ],
-          ),
-          const SizedBox(height: 2),
-          Text(
-            // 合计 = N 位成员 + 群会话, as the page states it.
-            '${l10n.botsMembers} ${total.members.length} + ${l10n.botsGroupChat}',
-            style: theme.textTheme.labelSmall?.copyWith(color: dsh.textTertiary),
-          ),
-          const SizedBox(height: 8),
-          for (final member in total.members)
-            ListPageRow(
-              key: ValueKey('member-context-${member.bot.id}'),
-              leading: BotAvatar(bot: member.bot, size: 32),
-              title: member.bot.name,
-              subtitle: [
-                if (member.contextShare != null) '${(member.contextShare! * 100).round()}%',
-                if (member.contextTokens != null) formatTokens(member.contextTokens!),
-                if (member.turns > 0) '${member.turns}×',
-                if (member.speed != null) '${member.speed!.round()} tok/s',
-              ].join(' · '),
-              subtitleMaxLines: 1,
-              chevron: false,
-            ),
-        ] else if (activity.isLoading) ...[
+        if (total == null && activity.isLoading) ...[
           // Only the detail waits; the cards above already show what is known.
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 16),
