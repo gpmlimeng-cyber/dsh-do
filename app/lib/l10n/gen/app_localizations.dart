@@ -33102,6 +33102,9 @@ abstract class L10n {
   /// No description provided for @botsMessageModeEmptyRelevant.
   String get botsMessageModeEmptyRelevant;
 
+  /// **'{name} 已完成'**
+  String botsNamedDone(String name);
+
 }
 
 class _L10nDelegate extends LocalizationsDelegate<L10n> {

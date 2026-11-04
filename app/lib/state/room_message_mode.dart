@@ -150,6 +150,23 @@ List<DsBotItem> visibleRoomItems(
   return kept;
 }
 
+/// [items] without a `done` line whose previous line is the same member's own
+/// words: the words already say it finished. A `done` line is kept when it is
+/// the only trace — the member answered PASS or only ran tools — and the data
+/// itself is never dropped, only not drawn.
+List<DsBotItem> withoutDoneEchoes(List<DsBotItem> items) {
+  final kept = <DsBotItem>[];
+  for (final item in items) {
+    if (item.kind == DsBotItemKind.event && item.event == 'done' && kept.isNotEmpty) {
+      final previous = kept.last;
+      final words = previous.kind == DsBotItemKind.bot || previous.kind == DsBotItemKind.answer;
+      if (words && previous.botId == item.botId && previous.text.trim().isNotEmpty) continue;
+    }
+    kept.add(item);
+  }
+  return kept;
+}
+
 bool _mentionsMember(String text, List<String> names) {
   for (final name in names) {
     if (name.isNotEmpty && text.contains('@$name')) return true;

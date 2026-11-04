@@ -1898,6 +1898,14 @@
   "botsMessageModeRelevant": "仅与我相关",
   "botsMessageModeEmpty": "该成员在本群还没有发言",
   "botsMessageModeEmptyRelevant": "这里没有与你相关的消息",
+  "botsNamedDone": "{name} 已完成",
+  "@botsNamedDone": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "brandXiaomi": "小米 / Redmi",
   "brandHuawei": "华为",
   "brandHonor": "荣耀",

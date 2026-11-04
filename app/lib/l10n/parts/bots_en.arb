@@ -410,5 +410,7 @@
   "botsMessageMode": "Message mode",
   "botsMessageModeRelevant": "Only what involves me",
   "botsMessageModeEmpty": "This member has not spoken in this group yet",
-  "botsMessageModeEmptyRelevant": "No messages involve you yet"
+  "botsMessageModeEmptyRelevant": "No messages involve you yet",
+  "botsNamedDone": "{name} is done",
+  "@botsNamedDone": {"placeholders": {"name": {"type": "String"}}}
 }

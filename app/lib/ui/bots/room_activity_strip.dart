@@ -43,6 +43,7 @@ RoomStatus roomStatusOf({
   required bool running,
   required String? speaking,
   required DsBotRoomProgress? progress,
+  ({String label, StatusTone tone})? flash,
 }) {
   final working = live.rooms[room.id] ?? const <DsBotWork>[];
   final approvals = [
@@ -65,6 +66,9 @@ RoomStatus roomStatusOf({
   final (String label, StatusTone tone) = switch (()) {
     _ when waiting => (l10n.botsMemberNeedsApproval, StatusTone.warn),
     _ when speaker != null || working.isNotEmpty || running => (l10n.botsDiscussing, StatusTone.busy),
+    // A round just finished (or failed): said once, briefly, instead of the
+    // member's own line in the flow. Never over a run or a pending approval.
+    _ when flash != null => (flash.label, flash.tone),
     _ when room.paused => (l10n.commonPaused, StatusTone.warn),
     _ => (l10n.botsMemberCount(room.members.length), StatusTone.ok),
   };

@@ -18252,4 +18252,9 @@ class L10nZh extends L10n {
 
   @override
   String get botsMessageModeEmptyRelevant => '这里没有与你相关的消息';
+
+  @override
+  String botsNamedDone(String name) {
+    return '$name 已完成';
+  }
 }

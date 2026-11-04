@@ -867,6 +867,7 @@
   "botsMessageModeRelevant": "Only what involves me",
   "botsMessageModeEmpty": "This member has not spoken in this group yet",
   "botsMessageModeEmptyRelevant": "No messages involve you yet",
+  "botsNamedDone": "{name} is done",
   "brandXiaomi": "Xiaomi / Redmi",
   "brandHuawei": "Huawei",
   "brandHonor": "Honor",

@@ -952,5 +952,7 @@
   "botsMessageMode": "消息模式",
   "botsMessageModeRelevant": "仅与我相关",
   "botsMessageModeEmpty": "该成员在本群还没有发言",
-  "botsMessageModeEmptyRelevant": "这里没有与你相关的消息"
+  "botsMessageModeEmptyRelevant": "这里没有与你相关的消息",
+  "botsNamedDone": "{name} \u5df2\u5b8c\u6210",
+  "@botsNamedDone": {"placeholders": {"name": {"type": "String"}}}
 }

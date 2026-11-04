@@ -19269,4 +19269,9 @@ class L10nEn extends L10n {
 
   @override
   String get botsMessageModeEmptyRelevant => 'No messages involve you yet';
+
+  @override
+  String botsNamedDone(String name) {
+    return '$name is done';
+  }
 }

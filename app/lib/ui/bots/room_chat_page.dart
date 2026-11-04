@@ -24,6 +24,7 @@ import '../chat/voice/voice_controller.dart';
 import '../chat/widgets/attachments.dart';
 import '../chat/widgets/quote_chip.dart' show ComposerTrayStack, QuoteChip;
 import '../chat/widgets/chat_card.dart';
+import '../common/status_dot.dart' show StatusTone;
 import '../features/feature_kit.dart';
 import '../shell/page_frame.dart';
 import 'bot_stop_guard.dart';
@@ -80,6 +81,51 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
   /// The running round's progress, read once a second while the page is up.
   DsBotRoomProgress? _progress;
   Timer? _progressTimer;
+  /// The round that just finished, said once in the header for six seconds —
+  /// the flow no longer draws a `done` line when the words already say it.
+  String? _flash;
+  StatusTone? _flashTone;
+  Timer? _flashTimer;
+
+  /// The last `done`/`failed` line seen, so only a new one flashes.
+  String? _lastFlashKey;
+  bool _flashPrimed = false;
+
+  ({String key, String event, DsBotItem item})? _latestFlash(List<DsBotItem> items) {
+    for (final item in items.reversed) {
+      if (item.kind != DsBotItemKind.event) continue;
+      if (item.event != 'done' && item.event != 'failed') continue;
+      return (key: '${item.seq ?? item.id}', event: item.event!, item: item);
+    }
+    return null;
+  }
+
+  void _rememberFlash(DsBotRoom room, DsBotTeam team, RoomMessageMode mode, List<String> names) {
+    final items = ref.read(roomChatProvider(widget.roomId)).items;
+    final latest = _latestFlash(items);
+    if (latest == null) return;
+    if (!_flashPrimed) {
+      // The first page of a conversation already has its history: only a new
+      // line afterwards flashes.
+      _flashPrimed = true;
+      _lastFlashKey = latest.key;
+      return;
+    }
+    if (latest.key == _lastFlashKey) return;
+    _lastFlashKey = latest.key;
+    // A line the current mode filters out must not speak either.
+    if (visibleRoomItems([latest.item], mode, memberNames: names).isEmpty) return;
+    final name = team.bot(latest.item.botId)?.name;
+    if (name == null) return;
+    final warn = latest.event == 'failed';
+    setState(() {
+      // One string for both: the tone says whether it finished or failed.
+      _flash = appL10n.botsNamedDone(name);
+      _flashTone = warn ? StatusTone.warn : StatusTone.busy;
+      _flashTimer?.cancel();
+      _flashTimer = null;
+    });
+  }
   late final VoiceInputController _voice;
   late final VoiceInputActiveController _voiceFlag;
 
@@ -365,7 +411,23 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
       running: chat.running,
       speaking: chat.speaking,
       progress: _progress,
+      flash: _flash == null ? null : (label: _flash!, tone: _flashTone ?? StatusTone.busy),
     );
+    // The six seconds start when the line can actually be seen: a run or a
+    // pending approval keeps the header's own state first.
+    if (_flash != null &&
+        _flashTimer == null &&
+        statusLine.activity == null &&
+        !statusLine.waiting) {
+      _flashTimer = Timer(const Duration(seconds: 6), () {
+        if (!mounted) return;
+        setState(() {
+          _flash = null;
+          _flashTone = null;
+          _flashTimer = null;
+        });
+      });
+    }
     final speaker = statusLine.bot;
 
     final typing = speaker == null
@@ -389,9 +451,16 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
     }
     final groupArtifacts = room.sessionId == null ? null : ref.watch(sessionArtifactsProvider(room.sessionId!));
     final visible = visibleRoomItems(chat.items, mode, memberNames: [for (final bot in members) bot.name]);
+    final names = [for (final bot in members) bot.name];
+    if (!_flashPrimed) {
+      _rememberFlash(room, team, mode, names);
+    }
+    ref.listen(roomChatProvider(widget.roomId).select((s) => s.items), (_, _) {
+      if (mounted) _rememberFlash(room, team, mode, names);
+    });
     final rows = attachMemberArtifacts(
       attachArtifacts(
-        transcriptRows(visible, pending: chat.pending, typing: typing),
+        transcriptRows(withoutDoneEchoes(visible), pending: chat.pending, typing: typing),
         groupArtifacts == null || groupArtifacts.isEmpty ? null : groupArtifacts.last,
         atOldestEnd: !chat.hasEarlier,
       ),
