@@ -16,6 +16,7 @@ import '../../state/bots_state.dart';
 import '../chat/render/markdown_body.dart';
 import '../chat/widgets/chat_card.dart';
 import '../chat/dsh_ui/dsh_ui.dart';
+import '../chat/secret_mask.dart';
 import '../chat/widgets/message_actions.dart';
 import '../share/share_entry.dart' show shareText;
 import '../chat/widgets/notice_row.dart';
@@ -1188,20 +1189,23 @@ class BotTypingLine extends StatelessWidget {
   }
 }
 
-/// 复制 / 引用 / 分享 for a line outside a conversation (a Bot's or a group's):
-/// the actions that make sense without the chat's own semantics.
+/// 复制 / 选择文字 / 引用 for a person's line outside a conversation (a Bot's or
+/// a group's): what makes sense without the chat's own semantics. 分享 is not
+/// one of them — a person's bubbles have none — and the preview is masked so a
+/// pasted key never shows in the sheet, while 复制 takes the text as typed.
 Future<void> botLineMenu(BuildContext context, String text, {ValueChanged<String>? onQuote}) async {
   final action = await showMessageMenu(
     context,
-    text: text,
-    actions: [MessageAction.copy, if (onQuote != null) MessageAction.quote, MessageAction.share],
+    text: maskSecrets(text, mark: '•'),
+    actions: [MessageAction.copy, MessageAction.selectText, if (onQuote != null) MessageAction.quote],
   );
   if (!context.mounted || action == null) return;
   switch (action) {
     case MessageAction.copy:
       await copyMessage(context, text);
-    case MessageAction.share:
-      await shareText(context, text);
+    case MessageAction.selectText:
+      // Plain text: a person's message is not rendered as Markdown.
+      await showSelectTextSheet(context, text, markdown: false);
     case MessageAction.quote:
       onQuote?.call(text);
     default:
