@@ -108,10 +108,21 @@ class _RoomAggregateDetailsPageState extends ConsumerState<RoomAggregateDetailsP
         ),
       ),
       slivers: [
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: GlassSegments(controller: _controller, labels: labels),
+        // The tabs stay at the top once the hero scrolls away, as the single
+        // conversation's details page does; each tab's own list keeps scrolling
+        // underneath. The band behind them keeps the text from running through
+        // the glass.
+        SliverPersistentHeader(
+          pinned: true,
+          delegate: _PinnedBox(
+            extent: 60,
+            child: ColoredBox(
+              color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.96),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                child: GlassSegments(controller: _controller, labels: labels),
+              ),
+            ),
           ),
         ),
         SliverFillRemaining(
@@ -131,6 +142,28 @@ class _RoomAggregateDetailsPageState extends ConsumerState<RoomAggregateDetailsP
       ],
     );
   }
+}
+
+/// A fixed-height sliver header that stays put while the page scrolls: the tab
+/// strip's own box. (The single chat's page keeps a private copy; sharing one
+/// would mean touching it for no gain here.)
+class _PinnedBox extends SliverPersistentHeaderDelegate {
+  const _PinnedBox({required this.extent, required this.child});
+
+  final double extent;
+  final Widget child;
+
+  @override
+  double get minExtent => extent;
+
+  @override
+  double get maxExtent => extent;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) => SizedBox.expand(child: child);
+
+  @override
+  bool shouldRebuild(_PinnedBox oldDelegate) => oldDelegate.extent != extent || oldDelegate.child != child;
 }
 
 class _Empty extends StatelessWidget {
