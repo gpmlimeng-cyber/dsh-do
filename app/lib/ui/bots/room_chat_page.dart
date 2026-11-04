@@ -139,6 +139,36 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
     super.dispose();
   }
 
+  /// The composer's right side: the group's context ring, and — while a turn
+  /// runs with an empty field — a microphone. Idle, the send key is the
+  /// microphone already; in dictation the Composer shows the waveform here.
+  Widget _composerAccessory({required DsBotRoom room, required bool running}) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        RoomContextRing(roomId: room.id),
+        ListenableBuilder(
+          listenable: _input,
+          builder: (context, _) {
+            final voice = _voice;
+            final empty = _input.text.trim().isEmpty && _drafts.isEmpty;
+            if (!running || !empty || !voice.available || voice.active) return const SizedBox.shrink();
+            return Padding(
+              padding: const EdgeInsetsDirectional.only(start: 2),
+              child: _ComposerMicKey(
+                onPressed: () {
+                  // As Composer._startVoice: the keyboard covers the field.
+                  _focus.unfocus();
+                  voice.start();
+                },
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
   Future<void> _send(BotActionScope target, {SendMode mode = SendMode.queue}) async {
     if (!mounted || target.roomId != widget.roomId || !target.current(context, ref)) return;
     if (!ref.read(dsBotProvider).ready) return;
@@ -564,6 +594,9 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
           onSendOptions: () => _sendOptions(sendTarget, room, running: chat.running),
           onStop: _stopGuard.action(roomId: room.id),
           onKeyEvent: _mentions.handleKey,
+          // The ring is the group's total; the microphone appears only while a
+          // run holds the send key and the field is empty.
+          accessory: _composerAccessory(room: room, running: chat.running),
           // 写 `@` 仍会按光标弹出成员候选；＋ 占住左边那颗键，附件优先。
           // A host that speaks API 2 is the one that takes attachments on `send`.
           leading: (status.hello?.api ?? 0) >= 2
@@ -581,6 +614,36 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
           hasAttachments: _drafts.isNotEmpty,
         ),
       ],
+    );
+  }
+}
+
+/// The microphone a group needs while a run holds the send key: the same quiet
+/// circle the Composer draws when that key is the microphone, so the row looks
+/// unchanged from the conversation's side.
+class _ComposerMicKey extends StatelessWidget {
+  const _ComposerMicKey({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  static const size = 40.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final colors = Theme.of(context).colorScheme;
+    return Semantics(
+      button: true,
+      label: l10n.chatVoiceInput,
+      child: GestureDetector(
+        onTap: onPressed,
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(color: colors.onSurface.withValues(alpha: 0.06), shape: BoxShape.circle),
+          child: Icon(AppIcons.voice, size: 22, color: colors.onSurface),
+        ),
+      ),
     );
   }
 }

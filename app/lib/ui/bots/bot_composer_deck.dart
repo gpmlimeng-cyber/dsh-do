@@ -9,8 +9,10 @@ import 'package:dsh_client/dsh_client.dart' show ModelSelection;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../state/bots_state.dart';
 import '../../state/chat_state.dart';
 import '../../state/connection_state.dart';
+import '../../state/room_activity_state.dart' show roomMembersActivityProvider, roomUsageTotal;
 import '../../state/session_modes.dart';
 import '../../state/usage_state.dart';
 import '../../state/voice_model_state.dart';
@@ -23,6 +25,7 @@ import '../common/sheet_title_bar.dart' show SheetTitleBar;
 import '../chat/dock/chat_dock.dart';
 import '../chat/dock/dock_stack.dart';
 import '../chat/usage_sheet.dart' show ContextRing, showUsageSheet;
+import '../session/session_tab.dart';
 import '../chat/voice/voice_controller.dart';
 import '../chat/widgets/activity_strip.dart';
 import '../chat/widgets/permission_pill.dart';
@@ -33,6 +36,7 @@ import '../safe_mode/safe_mode_banner.dart';
 import '../settings/settings_widgets.dart' show SettingsTile;
 import '../theme/app_icons.dart';
 import 'room_activity_strip.dart' show RoomActivityStrip, RoomStatus;
+import 'room_aggregate_details_page.dart';
 
 /// Everything the native composer carries above itself: the safe-mode banner,
 /// the permission pill, the status deck (todo, goal, activity, a plugin's status
@@ -113,6 +117,34 @@ class BotComposerDeck extends ConsumerWidget {
         // The status line already rides in the deck as a card; not twice.
         NativeComposerBar(sessionId: sessionId, visible: !running, strip: false, leading: shownCapsule),
       ],
+    );
+  }
+}
+
+/// The context ring beside a group's send key: the share of the group's *total*
+/// window, the same figures the 上下文 tab shows. Nothing until those figures
+/// arrive — a ring must not flicker — and nothing when no window is known.
+class RoomContextRing extends ConsumerWidget {
+  const RoomContextRing({super.key, required this.roomId});
+
+  final String roomId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final team = ref.watch(dsBotProvider.select((s) => s.team));
+    final room = team?.room(roomId);
+    if (room == null) return const SizedBox.shrink();
+    final sessionId = room.sessionId;
+    final usage = sessionId == null ? SessionUsage.empty : ref.watch(sessionUsageProvider(sessionId));
+    final members = ref.watch(roomMembersActivityProvider(roomId)).valueOrNull;
+    if (members == null) return const SizedBox.shrink();
+    final fraction = roomUsageTotal(usage, members).contextFraction;
+    if (fraction == null) return const SizedBox.shrink();
+    return ContextRing(
+      fraction: fraction,
+      onTap: () => Navigator.of(context).push(
+        RoomAggregateDetailsPage.route(roomId, initialTab: SessionTab.context),
+      ),
     );
   }
 }

@@ -34,12 +34,15 @@ import 'bot_avatar.dart';
 /// Session itself is stated on the page so the totals are not read as the whole
 /// story.
 class RoomAggregateDetailsPage extends ConsumerStatefulWidget {
-  const RoomAggregateDetailsPage({super.key, required this.roomId});
+  const RoomAggregateDetailsPage({super.key, required this.roomId, this.initialTab = SessionTab.trajectory});
 
   final String roomId;
 
-  static Route<void> route(String roomId) =>
-      MaterialPageRoute<void>(builder: (_) => RoomAggregateDetailsPage(roomId: roomId));
+  /// Which tab opens first — the composer's context ring lands on 上下文.
+  final SessionTab initialTab;
+
+  static Route<void> route(String roomId, {SessionTab initialTab = SessionTab.trajectory}) =>
+      MaterialPageRoute<void>(builder: (_) => RoomAggregateDetailsPage(roomId: roomId, initialTab: initialTab));
 
   @override
   ConsumerState<RoomAggregateDetailsPage> createState() => _RoomAggregateDetailsPageState();
@@ -47,7 +50,20 @@ class RoomAggregateDetailsPage extends ConsumerStatefulWidget {
 
 class _RoomAggregateDetailsPageState extends ConsumerState<RoomAggregateDetailsPage>
     with TickerProviderStateMixin {
-  late final TabController _controller = TabController(length: 5, vsync: this);
+  /// The page's tabs, in order; [SessionTab.plugins] and 子代理 stay out.
+  static const _tabs = [
+    SessionTab.trajectory,
+    SessionTab.changes,
+    SessionTab.files,
+    SessionTab.progress,
+    SessionTab.context,
+  ];
+
+  late final TabController _controller = TabController(
+    length: _tabs.length,
+    vsync: this,
+    initialIndex: _tabs.contains(widget.initialTab) ? _tabs.indexOf(widget.initialTab) : 0,
+  );
 
   @override
   void dispose() {
@@ -75,13 +91,7 @@ class _RoomAggregateDetailsPageState extends ConsumerState<RoomAggregateDetailsP
     }
     final roomSession = room.sessionId;
     final activity = ref.watch(roomMembersActivityProvider(room.id));
-    final labels = [
-      SessionTab.trajectory.label,
-      SessionTab.changes.label,
-      SessionTab.files.label,
-      SessionTab.progress.label,
-      SessionTab.context.label,
-    ];
+    final labels = [for (final tab in _tabs) tab.label];
     return AppPage(
       // The tab bar says what the page is; the hero below keeps the group's
       // name, so the group is still what the page is about.
