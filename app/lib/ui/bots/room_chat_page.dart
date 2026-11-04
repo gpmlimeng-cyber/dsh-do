@@ -23,6 +23,7 @@ import '../chat/widgets/quote_chip.dart' show ComposerTrayStack, QuoteChip;
 import '../chat/widgets/chat_card.dart';
 import '../common/status_dot.dart';
 import '../features/feature_kit.dart';
+import '../session/session_detail_page.dart';
 import '../shell/page_frame.dart';
 import 'bot_stop_guard.dart';
 import 'bot_action_scope.dart';
@@ -356,7 +357,11 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
         tone: tone,
         scrolledUnder: _scrolled,
         onLeading: () => openDrawerOverShell(context, ref),
+        // The title capsule is the group's own details; the key on the right is
+        // this conversation's — trajectory, files, progress, context — the same
+        // page a Bot's chat shows, read from the Session the group runs in.
         onDetails: () => Navigator.of(context).push(RoomDetailsPage.route(room.id)),
+        onInfo: () => SessionDetailPage.open(context, roomSession),
       ),
       body: chat.loading && chat.items.isEmpty
           ? Padding(
