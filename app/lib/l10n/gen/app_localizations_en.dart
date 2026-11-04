@@ -19274,4 +19274,7 @@ class L10nEn extends L10n {
   String botsNamedDone(String name) {
     return '$name is done';
   }
+
+  @override
+  String get chatGeneratingQueueHint => 'Working · queued sends wait';
 }

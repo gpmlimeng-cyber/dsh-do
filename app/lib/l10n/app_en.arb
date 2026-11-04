@@ -1291,6 +1291,7 @@
   "chatMentionSemantics": "{kind}: {label}",
   "chatArtifactSemantics": "{name}, {description}",
   "chatNewContentCount": "{count} new",
+  "chatGeneratingQueueHint": "Working · queued sends wait",
   "commonCancel": "Cancel",
   "commonRetry": "Retry",
   "commonClose": "Close",

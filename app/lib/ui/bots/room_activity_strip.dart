@@ -7,8 +7,14 @@
 // The header and this line read the same state; [roomStatusOf] works the words
 // out once, so the two cannot say different things about the same round.
 
+import 'dart:async';
+
 import 'package:dsh_client/dsh_client.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../state/run_pulse.dart';
 
 import '../../l10n/l10n.dart';
 import '../chat/dock/dock_pill.dart';
@@ -32,6 +38,9 @@ typedef RoomStatus = ({
   DsBot? bot,
   int spoken,
   bool waiting,
+  DsBotWork? work,
+  int others,
+  String? sessionId,
 });
 
 /// The header's line and the deck's activity line, from the group's live state.
@@ -73,21 +82,59 @@ RoomStatus roomStatusOf({
     _ => (l10n.botsMemberCount(room.members.length), StatusTone.ok),
   };
   final spoken = [for (final id in progress?.spokenBy ?? const <String>[]) ?team.bot(id)?.name].length;
-  // The deck's line: what is happening now, never an idle state.
-  final (String? activity, DateTime? since, DsBot? bot) = switch (()) {
-    _ when speaker != null => (l10n.botsNamedSpeaking(speaker.name), _since(working, speaker.id), speaker),
+  // The deck's line: what is happening now, never an idle state. The main seat
+  // is whoever speaks, else the member whose step started first; the rest fold
+  // into 「+N」.
+  DsBotWork? mainWork;
+  DsBot? mainBot;
+  if (speaker != null) {
+    mainBot = speaker;
+    mainWork = _workOf(working, speaker.id);
+  } else if (working.isNotEmpty) {
+    mainWork = working.first;
+    for (final work in working) {
+      final a = mainWork.since ?? DateTime(9999);
+      final b = work.since ?? DateTime(9999);
+      if (b.isBefore(a)) mainWork = work;
+    }
+    mainBot = team.bot(mainWork.botId);
+  }
+  final others = [for (final work in working) if (work.botId != mainWork?.botId) work].length;
+  final (String? activity, DateTime? since) = switch (()) {
+    _ when speaker != null => (l10n.botsNamedSpeaking(speaker.name), mainWork?.since),
     _ when working.isNotEmpty => (
-      l10n.botsNamedActivity(
-        team.bot(working.first.botId)?.name ?? 'Bot',
-        workPhrase(working.first) ?? l10n.botsWorking,
-      ),
-      working.first.since,
-      team.bot(working.first.botId),
+      l10n.botsNamedActivity(mainBot?.name ?? 'Bot', workPhrase(mainWork) ?? l10n.botsWorking),
+      mainWork?.since,
     ),
-    _ when running => (l10n.botsDiscussing, null, null),
-    _ => (null, null, null),
+    _ when running => (l10n.botsDiscussing, null),
+    _ => (null, null),
   };
-  return (label: label, tone: tone, activity: activity, since: since, bot: bot, spoken: spoken, waiting: waiting);
+  return (
+    label: label,
+    tone: tone,
+    activity: activity,
+    since: since,
+    bot: mainBot,
+    spoken: spoken,
+    waiting: waiting,
+    work: mainWork,
+    others: others,
+    sessionId: mainBot == null ? null : _memberSession(room, mainBot),
+  );
+}
+
+/// The step of [botId], when the host names one.
+DsBotWork? _workOf(List<DsBotWork> working, String botId) {
+  for (final work in working) {
+    if (work.botId == botId) return work;
+  }
+  return null;
+}
+
+/// The Session that holds a member's work here (its group Session, else its own).
+String? _memberSession(DsBotRoom room, DsBot bot) {
+  final inRoom = room.sessions[bot.id];
+  return inRoom == null || inRoom.isEmpty ? bot.sessionId : inRoom;
 }
 
 DateTime? _since(List<DsBotWork> working, String botId) {
@@ -106,43 +153,125 @@ class RoomActivityStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activity = status.activity;
+    final visible = status.activity != null || status.waiting;
     return DockSlot(
       key: const ValueKey('room-activity'),
-      child: activity == null ? null : _RoomActivityBar(status: status, text: activity),
+      child: visible ? _RoomActivityBar(status: status) : null,
     );
   }
 }
 
-class _RoomActivityBar extends StatelessWidget {
-  const _RoomActivityBar({required this.status, required this.text});
+class _RoomActivityBar extends ConsumerStatefulWidget {
+  const _RoomActivityBar({required this.status});
 
   final RoomStatus status;
-  final String text;
+
+  @override
+  ConsumerState<_RoomActivityBar> createState() => _RoomActivityBarState();
+}
+
+class _RoomActivityBarState extends ConsumerState<_RoomActivityBar> {
+  /// How long the step's figures stay up, as the single chat's strip does.
+  static const statsFor = Duration(seconds: 4);
+
+  Timer? _stats;
+
+  @override
+  void dispose() {
+    _stats?.cancel();
+    super.dispose();
+  }
+
+  void _showStats() {
+    HapticFeedback.selectionClick();
+    _stats?.cancel();
+    _stats = Timer(statsFor, () {
+      if (mounted) setState(() => _stats = null);
+    });
+    setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
+    final status = widget.status;
     final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final l10n = context.l10n;
+    final waiting = status.waiting;
     final bot = status.bot;
+    final sessionId = status.sessionId;
+    final pulse = sessionId == null ? null : ref.watch(runPulseProvider(sessionId));
+    final ink = waiting ? DshColors.of(context).warning : null;
+    final showStats = _stats != null && !waiting;
+
+    final TextSpan line;
+    if (waiting) {
+      line = TextSpan(text: l10n.botsMemberNeedsApproval, style: DockText.title(context, color: ink));
+    } else if (showStats) {
+      final speed = pulse == null ? null : pulse.tokensPerSecond;
+      line = TextSpan(
+        text: speed == null ? l10n.botsWorking : '${speed.round()} tok/s',
+        style: AppType.tabular(DockText.detail(context, color: colors.onSurface)),
+      );
+    } else {
+      final target = status.work?.target;
+      line = TextSpan(
+        children: [
+          TextSpan(
+            text: bot == null ? l10n.botsGroupChat : bot.name,
+            style: DockText.title(context, color: ink),
+          ),
+          TextSpan(
+            text: '  ${workPhrase(status.work) ?? l10n.botsWorking}',
+            style: DockText.detail(context, color: ink),
+          ),
+          if (target != null && target.isNotEmpty)
+            TextSpan(
+              text: '  $target',
+              style: AppType.tabular(DockText.detail(context, color: DshColors.of(context).textTertiary)),
+            ),
+        ],
+      );
+    }
+
     return Semantics(
       liveRegion: true,
-      label: text,
+      label: status.activity ?? (waiting ? l10n.botsMemberNeedsApproval : ''),
       excludeSemantics: true,
       child: GlassSurface(
         tier: GlassTier.chrome,
         stadium: true,
+        onLongPress: waiting ? null : _showStats,
         child: DockRow(
           // The member doing it, as its face; the group itself has no face.
           leading: bot == null
-              ? DockGlyph.icon(AppIcons.groupChat, color: theme.colorScheme.primary)
+              ? DockGlyph.icon(AppIcons.groupChat, color: waiting ? ink : colors.primary)
               : BotAvatar(bot: bot, size: DockMetrics.glyph),
-          content: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: DockText.title(context)),
-          accessory: LiveElapsed(
-            since: status.since,
-            builder: (context, elapsed) => elapsed == null
-                ? const SizedBox.shrink()
-                : Text(formatClock(elapsed), style: AppType.tabular(DockText.detail(context))),
-          ),
+          content: Text.rich(line, maxLines: 1, overflow: TextOverflow.ellipsis),
+          accessory: showStats || waiting
+              ? (showStats && status.since != null
+                  ? LiveElapsed(
+                      since: status.since,
+                      builder: (context, elapsed) => elapsed == null
+                          ? const SizedBox.shrink()
+                          : Text(formatClock(elapsed), style: AppType.tabular(DockText.detail(context))),
+                    )
+                  : null)
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (status.others > 0) ...[
+                      Text('+${status.others}', style: AppType.tabular(DockText.detail(context))),
+                      const SizedBox(width: 6),
+                    ],
+                    LiveElapsed(
+                      since: status.since,
+                      builder: (context, elapsed) => elapsed == null
+                          ? const SizedBox.shrink()
+                          : Text(formatClock(elapsed), style: AppType.tabular(DockText.detail(context))),
+                    ),
+                  ],
+                ),
         ),
       ),
     );

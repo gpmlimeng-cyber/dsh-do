@@ -2785,6 +2785,7 @@
       }
     }
   },
+  "chatGeneratingQueueHint": "生成中 · 可排队",
   "commonCancel": "取消",
   "commonRetry": "重试",
   "commonClose": "关闭",

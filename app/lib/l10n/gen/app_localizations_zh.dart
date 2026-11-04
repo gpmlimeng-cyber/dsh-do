@@ -18257,4 +18257,7 @@ class L10nZh extends L10n {
   String botsNamedDone(String name) {
     return '$name 已完成';
   }
+
+  @override
+  String get chatGeneratingQueueHint => '生成中 · 可排队';
 }

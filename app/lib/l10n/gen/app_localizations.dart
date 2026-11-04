@@ -33105,6 +33105,9 @@ abstract class L10n {
   /// **'{name} 已完成'**
   String botsNamedDone(String name);
 
+  /// No description provided for @chatGeneratingQueueHint.
+  String get chatGeneratingQueueHint;
+
 }
 
 class _L10nDelegate extends LocalizationsDelegate<L10n> {
