@@ -40,3 +40,4 @@ Upstream: `ccch1mneyyy/dsh-Go`, against `v1.0.10` (fork branch `ci/room-progress
 | `a497863` | `app/lib/ui/bots/room_chat_page.dart` | v1.0.10 | The finished-round flash's timer is page state; it is cancelled with the page, as the progress timer is. |
 | `8e13cad` | `app/lib/state/bots_state.dart`, `app/lib/ui/bots/room_chat_page.dart` | v1.0.10 | An empty-text bubble pairs only with lines past the seq it was made at; a send that could not start takes it back. |
 | `53b0ef9` | `app/lib/state/bots_state.dart` | v1.0.10 | The pairing record carries `seq`, so the comparison compiles. |
+| `50ee102` | `app/lib/ui/bots/bot_chat_kit.dart`, `app/lib/ui/bots/room_chat_page.dart`, `app/lib/ui/bots/room_aggregate_details_page.dart` | v1.0.10 | Where a group's cards hang and what its context tab draws are Flutter layout; no seam owns either. |
