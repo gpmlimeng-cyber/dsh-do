@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
+import '../../state/room_activity_state.dart' show roomMembersActivityProvider, roomUsageTotal;
 import '../../state/settings_state.dart';
 import '../../state/attachments.dart';
 import '../../state/bots_state.dart';
@@ -17,6 +18,7 @@ import '../chat/composer.dart';
 import '../../state/voice_model_state.dart';
 import '../../state/voice_state.dart';
 import '../../state/chat_state.dart' show SendMode;
+import '../../state/usage_state.dart' show SessionUsage, sessionUsageProvider;
 import '../chat/voice/voice_controller.dart';
 import '../chat/widgets/attachments.dart';
 import '../chat/widgets/quote_chip.dart' show ComposerTrayStack, QuoteChip;
@@ -140,31 +142,33 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
   }
 
   /// The composer's right side: the group's context ring, and — while a turn
-  /// runs with an empty field — a microphone. Idle, the send key is the
-  /// microphone already; in dictation the Composer shows the waveform here.
-  Widget _composerAccessory({required DsBotRoom room, required bool running}) {
+  /// runs with an empty field — a microphone. Both may hide; then there is no
+  /// accessory at all, so the send key keeps its place (the Composer adds 2dp
+  /// before any accessory it is given).
+  Widget? _composerAccessory({required DsBotRoom room, required bool running}) {
+    final voice = _voice;
+    final empty = _input.text.trim().isEmpty && _drafts.isEmpty;
+    final mic = running && empty && voice.available && !voice.active;
+    final sessionId = room.sessionId;
+    final usage = sessionId == null ? SessionUsage.empty : ref.watch(sessionUsageProvider(sessionId));
+    final members = ref.watch(roomMembersActivityProvider(room.id)).value;
+    final ring = members == null ? null : roomUsageTotal(usage, members).contextFraction;
+    if (ring == null && !mic) return null;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        RoomContextRing(roomId: room.id),
-        ListenableBuilder(
-          listenable: _input,
-          builder: (context, _) {
-            final voice = _voice;
-            final empty = _input.text.trim().isEmpty && _drafts.isEmpty;
-            if (!running || !empty || !voice.available || voice.active) return const SizedBox.shrink();
-            return Padding(
-              padding: const EdgeInsetsDirectional.only(start: 2),
-              child: _ComposerMicKey(
-                onPressed: () {
-                  // As Composer._startVoice: the keyboard covers the field.
-                  _focus.unfocus();
-                  voice.start();
-                },
-              ),
-            );
-          },
-        ),
+        if (ring != null) RoomContextRing(roomId: room.id),
+        if (mic)
+          Padding(
+            padding: const EdgeInsetsDirectional.only(start: 2),
+            child: _ComposerMicKey(
+              onPressed: () {
+                // As Composer._startVoice: the keyboard covers the field.
+                _focus.unfocus();
+                voice.start();
+              },
+            ),
+          ),
       ],
     );
   }
@@ -582,36 +586,41 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
           showSessionBars: false,
           roomActivity: statusLine,
         ),
-        Composer(
-          hardwareEnterSends: ref.watch(settingsProvider.select((s) => s.hardwareEnterSends)),
-          voice: _voice,
-          controller: _input,
-          placeholder: l10n.botsGroupComposerHint,
-          focusNode: _focus,
-          connected: api != null && !readOnly,
-          running: chat.running,
-          onSend: () => _send(sendTarget),
-          onSendOptions: () => _sendOptions(sendTarget, room, running: chat.running),
-          onStop: _stopGuard.action(roomId: room.id),
-          onKeyEvent: _mentions.handleKey,
-          // The ring is the group's total; the microphone appears only while a
-          // run holds the send key and the field is empty.
-          accessory: _composerAccessory(room: room, running: chat.running),
-          // 写 `@` 仍会按光标弹出成员候选；＋ 占住左边那颗键，附件优先。
-          // A host that speaks API 2 is the one that takes attachments on `send`.
-          leading: (status.hello?.api ?? 0) >= 2
-              ? AttachButton(key: const ValueKey('attach-key'), onPressed: api == null || readOnly ? null : _attach)
-              : null,
-          tray: ComposerTrayStack.maybe(
-            quote: _quote == null ? null : QuoteChip(quote: _quote!, onRemove: () => setState(() => _quote = null)),
-            attachments: _drafts.isEmpty
-                ? null
-                : ComposerTray(
-                    items: _drafts,
-                    onRemove: (gone) => setState(() => _drafts = [for (final draft in _drafts) if (draft != gone) draft]),
-                  ),
+        // The accessory shows while the field is empty, so the field's text is
+        // listened to here (the Composer listens to it anyway).
+        ListenableBuilder(
+          listenable: _input,
+          builder: (context, _) => Composer(
+            hardwareEnterSends: ref.watch(settingsProvider.select((s) => s.hardwareEnterSends)),
+            voice: _voice,
+            controller: _input,
+            placeholder: l10n.botsGroupComposerHint,
+            focusNode: _focus,
+            connected: api != null && !readOnly,
+            running: chat.running,
+            onSend: () => _send(sendTarget),
+            onSendOptions: () => _sendOptions(sendTarget, room, running: chat.running),
+            onStop: _stopGuard.action(roomId: room.id),
+            onKeyEvent: _mentions.handleKey,
+            // The ring is the group's total; the microphone appears only while a
+            // run holds the send key and the field is empty.
+            accessory: _composerAccessory(room: room, running: chat.running),
+            // 写 `@` 仍会按光标弹出成员候选；＋ 占住左边那颗键，附件优先。
+            // A host that speaks API 2 is the one that takes attachments on `send`.
+            leading: (status.hello?.api ?? 0) >= 2
+                ? AttachButton(key: const ValueKey('attach-key'), onPressed: api == null || readOnly ? null : _attach)
+                : null,
+            tray: ComposerTrayStack.maybe(
+              quote: _quote == null ? null : QuoteChip(quote: _quote!, onRemove: () => setState(() => _quote = null)),
+              attachments: _drafts.isEmpty
+                  ? null
+                  : ComposerTray(
+                      items: _drafts,
+                      onRemove: (gone) => setState(() => _drafts = [for (final draft in _drafts) if (draft != gone) draft]),
+                    ),
+            ),
+            hasAttachments: _drafts.isNotEmpty,
           ),
-          hasAttachments: _drafts.isNotEmpty,
         ),
       ],
     );

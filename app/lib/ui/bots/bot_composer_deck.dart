@@ -136,7 +136,7 @@ class RoomContextRing extends ConsumerWidget {
     if (room == null) return const SizedBox.shrink();
     final sessionId = room.sessionId;
     final usage = sessionId == null ? SessionUsage.empty : ref.watch(sessionUsageProvider(sessionId));
-    final members = ref.watch(roomMembersActivityProvider(roomId)).valueOrNull;
+    final members = ref.watch(roomMembersActivityProvider(roomId)).value;
     if (members == null) return const SizedBox.shrink();
     final fraction = roomUsageTotal(usage, members).contextFraction;
     if (fraction == null) return const SizedBox.shrink();
