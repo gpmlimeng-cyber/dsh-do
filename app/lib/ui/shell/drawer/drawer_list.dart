@@ -69,6 +69,9 @@ class DrawerConversationList extends ConsumerWidget {
     final selecting = !readOnly && selection != null;
     final filter = ref.watch(drawerFilterProvider);
     final current = ref.watch(currentSessionProvider);
+    // A Bot's or a group's chat is a pushed page, not a Session here: its row
+    // lights up from the page that is showing it.
+    final viewing = ref.watch(dsBotViewingProvider);
     final pending = ref.watch(pendingInteractionsProvider);
     final unread = ref.watch(unreadSessionIdsProvider);
     final pinned = ref.watch(workspacesProvider.select((s) => s.pinnedSessionIds)).toSet();
@@ -120,8 +123,7 @@ class DrawerConversationList extends ConsumerWidget {
       key: ValueKey('bot-${row.id}'),
       title: row.title,
       running: row.running,
-      // A pushed route is not `currentSessionProvider`'s session.
-      current: false,
+      current: viewing == row.id,
       pending: readOnly ? null : row.pending,
       unread: !readOnly && row.unread,
       pinned: false,
