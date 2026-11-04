@@ -39,6 +39,20 @@ class _RoomAggregateDetailsPageState extends ConsumerState<RoomAggregateDetailsP
     with TickerProviderStateMixin {
   late final TabController _controller = TabController(length: 5, vsync: this);
 
+  /// One read per room, not one per build: `run-stats` is a round trip per
+  /// member, and the page rebuilds on every scroll and tab change.
+  Future<RoomMembersActivity>? _activity;
+  String? _activityKey;
+
+  Future<RoomMembersActivity> _activityFor(DsBotApi? api, DsBotRoom room, DsBotTeam team) {
+    final key = '${room.id}|${room.members.join(',')}|${api == null}';
+    if (_activity == null || _activityKey != key) {
+      _activityKey = key;
+      _activity = loadRoomMembersActivity(api, room, team);
+    }
+    return _activity!;
+  }
+
   @override
   void dispose() {
     _controller.dispose();
@@ -65,7 +79,7 @@ class _RoomAggregateDetailsPageState extends ConsumerState<RoomAggregateDetailsP
     }
     final api = BotActionScope(ref, roomId: room.id).api;
     final roomSession = room.sessionId;
-    final activity = loadRoomMembersActivity(api, room, team);
+    final activity = _activityFor(api, room, team);
     final labels = [
       SessionTab.trajectory.label,
       SessionTab.changes.label,
