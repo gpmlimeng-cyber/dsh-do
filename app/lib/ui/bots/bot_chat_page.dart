@@ -43,6 +43,7 @@ import 'bot_draft_send.dart';
 import 'bot_avatar.dart';
 import 'unavailable_message.dart';
 import 'bot_chat_kit.dart';
+import 'bot_links.dart' show openLinkedFile;
 import 'bot_details_page.dart';
 import 'bot_format.dart';
 import 'bot_pending_card.dart';
@@ -373,7 +374,12 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
                           shown,
                           const SizedBox(height: 6),
                         ],
-                        BotReplyText(text: botLineText(item), onQuote: _setQuote),
+                        BotReplyText(
+                          text: botLineText(item),
+                          onQuote: _setQuote,
+                          // A path in the reply is a file in this Bot's Session.
+                          onLinkTap: (href) => openLinkedFile(context, sessionId: bot.sessionId, href: href),
+                        ),
                       ],
                     ),
                     DsBotItemKind.event => BotEventLine(
