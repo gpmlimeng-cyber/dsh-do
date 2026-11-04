@@ -243,15 +243,20 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
         }
         final client = ref.read(activeConnectionProvider).value?.client;
         if (client == null) return false;
+        final outgoing = withQuote(text, quote);
+        // The bubble shows at once, with the pictures still on this phone; the
+        // host only logs the line once a relay runs, which can take a while.
+        final pending = controller.beginPending(outgoing, drafts: attachments);
         try {
           // The line reaches the round through the group's current Session; a
           // group that moved on has a newer one than its id.
           final staged = await stageBotAttachments(client, _roomSession(), attachments);
           final sent = await controller.send(
-            withQuote(text, quote),
+            outgoing,
             images: staged.images,
             fileReceiptIds: staged.receipts,
             mode: botSendMode(mode),
+            pending: pending,
           );
           if (sent && mounted) {
             setState(() {
@@ -261,6 +266,8 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
           }
           return sent;
         } catch (error) {
+          // The upload failed before `send` could take the bubble back.
+          controller.dropPending(pending);
           if (mounted) messenger?.showSnackBar(SnackBar(content: Text(describeDsBotError(error))));
           return false;
         }
@@ -520,7 +527,12 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
                 padding: rowPadding(row),
                 child: switch (row) {
                   BotTimeRow(:final time) => BotTimeLine(time),
-                  BotPendingRow(:final pending) => BotUserMessage(text: pending.text, pending: true, pendingSince: pending.at),
+                  BotPendingRow(:final pending) => BotUserMessage(
+                    text: pending.text,
+                    pending: true,
+                    pendingSince: pending.at,
+                    attachments: pending.drafts.isEmpty ? null : SentAttachments.pending(pending.drafts),
+                  ),
                   BotStreamingRow() => const SizedBox.shrink(),
                   BotTypingRow(:final bot, :final label) => BotTypingLine(bot: bot, label: label),
                   // A group has no tool events to show; the row exists so the
