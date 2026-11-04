@@ -10,7 +10,6 @@ import '../common/app_sheet.dart';
 import '../common/list_page_row.dart';
 import '../common/sheet_title_bar.dart';
 import '../theme/app_icons.dart';
-import '../theme/theme.dart';
 import 'bot_avatar.dart';
 
 Future<void> showRoomMessageSheet(

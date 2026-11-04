@@ -52,6 +52,11 @@ class RoomMessageMode {
 class RoomMessageModes extends Notifier<Map<String, RoomMessageMode>> {
   static const prefsKey = 'room_message_modes';
 
+  /// Set once the stored modes are in; a pick made before that is kept in
+  /// [_beforeLoad] and wins over the stored value.
+  bool _loaded = false;
+  final _beforeLoad = <String, RoomMessageMode>{};
+
   @override
   Map<String, RoomMessageMode> build() {
     unawaited(_load());
@@ -59,19 +64,36 @@ class RoomMessageModes extends Notifier<Map<String, RoomMessageMode>> {
   }
 
   Future<void> _load() async {
+    var stored = const <String, RoomMessageMode>{};
     try {
       final prefs = await SharedPreferences.getInstance();
       final raw = prefs.getString(prefsKey);
-      if (!ref.mounted || raw == null) return;
-      final stored = (jsonDecode(raw) as Map).cast<String, String>();
-      state = {for (final entry in stored.entries) entry.key: RoomMessageMode.parse(entry.value)};
+      if (!ref.mounted) return;
+      if (raw != null) {
+        final read = (jsonDecode(raw) as Map).cast<String, String>();
+        stored = {for (final entry in read.entries) entry.key: RoomMessageMode.parse(entry.value)};
+      }
     } catch (_) {
       // No preferences backend: every group stays on 「全部」.
     }
+    _loaded = true;
+    final picked = {..._beforeLoad};
+    _beforeLoad.clear();
+    state = {...stored, ...picked};
+    if (picked.isNotEmpty) await _save();
   }
 
   Future<void> set(String roomId, RoomMessageMode mode) async {
     state = {...state, roomId: mode};
+    if (!_loaded) {
+      // The stored modes are still being read: keep this pick for [load].
+      _beforeLoad[roomId] = mode;
+      return;
+    }
+    await _save();
+  }
+
+  Future<void> _save() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(prefsKey, jsonEncode({for (final entry in state.entries) entry.key: entry.value.key}));
@@ -116,7 +138,12 @@ List<DsBotItem> visibleRoomItems(
         kept.add(item);
       case _:
         if (!inMyStretch) continue;
-        if (_mentionsMember(item.text, memberNames)) continue;
+        if (_mentionsMember(item.text, memberNames)) {
+          // The user's stretch ends where another member is addressed: what
+          // follows is that member's conversation, not the user's.
+          inMyStretch = false;
+          continue;
+        }
         kept.add(item);
     }
   }
