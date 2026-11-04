@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
 import '../../state/room_activity_state.dart' show roomMembersActivityProvider, roomUsageTotal;
+import '../../state/room_message_mode.dart';
 import '../../state/settings_state.dart';
 import '../../state/attachments.dart';
 import '../../state/bots_state.dart';
@@ -45,6 +46,7 @@ import 'bot_format.dart';
 import 'bot_mention.dart';
 import 'room_approval_action.dart';
 import 'room_activity_strip.dart' show roomStatusOf;
+import 'room_message_sheet.dart' show showRoomMessageSheet;
 import 'room_aggregate_details_page.dart';
 import 'room_details_page.dart';
 import 'room_full_text_sheet.dart';
@@ -345,6 +347,10 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
     final members = [for (final id in room.members) ?team.bot(id)];
     _mentions.setMembers(members, room.admin);
     final chat = ref.watch(roomChatProvider(widget.roomId));
+    // Which lines this group shows. Filtering is rendering only: pending,
+    // unread counts, 「已说 N」 and the round's progress keep the full list.
+    final mode = ref.watch(roomMessageModeProvider(room.id));
+    final modeBot = mode.memberId == null ? null : team.bot(mode.memberId!);
     final approvals = [
       for (final a in status.live.approvals)
         if (a.roomId == room.id && a.answerable) a,
@@ -382,9 +388,10 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
       deliveredByBot[id] = (sessionId: memberSession, group: artifacts.last);
     }
     final groupArtifacts = room.sessionId == null ? null : ref.watch(sessionArtifactsProvider(room.sessionId!));
+    final visible = visibleRoomItems(chat.items, mode, memberNames: [for (final bot in members) bot.name]);
     final rows = attachMemberArtifacts(
       attachArtifacts(
-        transcriptRows(chat.items, pending: chat.pending, typing: typing),
+        transcriptRows(visible, pending: chat.pending, typing: typing),
         groupArtifacts == null || groupArtifacts.isEmpty ? null : groupArtifacts.last,
         atOldestEnd: !chat.hasEarlier,
       ),
@@ -408,6 +415,14 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
         // page a Bot's chat shows, read from the Session the group runs in.
         onDetails: () => Navigator.of(context).push(RoomDetailsPage.route(room.id)),
         onInfo: () => Navigator.of(context).push(RoomAggregateDetailsPage.route(room.id)),
+        onMessages: () => showRoomMessageSheet(
+          context,
+          room: room,
+          team: team,
+          current: mode,
+          onSelected: (picked) => ref.read(roomMessageModesProvider.notifier).set(room.id, picked),
+        ),
+        messagesBadge: modeBot == null ? null : BotAvatar(bot: modeBot, size: 16),
       ),
       body: chat.loading && chat.items.isEmpty
           ? Padding(
@@ -421,7 +436,16 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
               hasEarlier: chat.hasEarlier,
               loadingEarlier: chat.loadingEarlier,
               onEarlier: () => ref.read(roomChatProvider(widget.roomId).notifier).loadEarlier(),
-              empty: _Members(room: room, team: team),
+              empty: mode.isAll
+                  ? _Members(room: room, team: team)
+                  : Center(
+                      child: Text(
+                        mode.isRelevant ? l10n.botsMessageModeEmptyRelevant : l10n.botsMessageModeEmpty,
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodyMedium?.copyWith(color: DshColors.of(context).textTertiary),
+                      ),
+                    ),
               rowBuilder: (context, row) => Padding(
                 padding: rowPadding(row),
                 child: switch (row) {

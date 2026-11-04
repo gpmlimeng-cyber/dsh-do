@@ -53,6 +53,8 @@ class BotChatHeader extends StatelessWidget {
     this.scrolledUnder,
     this.chip,
     this.onInfo,
+    this.onMessages,
+    this.messagesBadge,
   });
 
   final Widget face;
@@ -71,6 +73,12 @@ class BotChatHeader extends StatelessWidget {
   /// The right key: 对话详情 (trajectory, files, progress). Without it the key
   /// opens the same place as the title capsule.
   final VoidCallback? onInfo;
+
+  /// 消息模式: only a group passes it, and the key sits left of the details one.
+  final VoidCallback? onMessages;
+
+  /// A member's face on the messages key: the mode shows that member only.
+  final Widget? messagesBadge;
 
   static const barHeight = 56.0;
   static const key44 = 44.0;
@@ -193,6 +201,16 @@ class BotChatHeader extends StatelessWidget {
                     const SizedBox(width: 8),
                     chip,
                   ],
+                  if (onMessages case final onMessages?) ...[
+                    const SizedBox(width: 8),
+                    _RoundKey(
+                      key: const ValueKey('bot-messages'),
+                      icon: AppIcons.menu,
+                      tooltip: l10n.botsMessageMode,
+                      onTap: onMessages,
+                      badge: messagesBadge,
+                    ),
+                  ],
                   const SizedBox(width: 8),
                   _RoundKey(
                     key: const ValueKey('bot-details'),
@@ -211,11 +229,14 @@ class BotChatHeader extends StatelessWidget {
 }
 
 class _RoundKey extends StatelessWidget {
-  const _RoundKey({super.key, required this.icon, required this.tooltip, required this.onTap});
+  const _RoundKey({super.key, required this.icon, required this.tooltip, required this.onTap, this.badge});
 
   final IconData icon;
   final String tooltip;
   final VoidCallback onTap;
+
+  /// Pinned to the key's lower right: 消息模式's member, when one is chosen.
+  final Widget? badge;
 
   @override
   Widget build(BuildContext context) => Semantics(
@@ -230,7 +251,13 @@ class _RoundKey extends StatelessWidget {
         onTap: onTap,
         child: Tooltip(
           message: tooltip,
-          child: Center(child: Icon(icon, size: 22, color: Theme.of(context).colorScheme.onSurface)),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Center(child: Icon(icon, size: 22, color: Theme.of(context).colorScheme.onSurface)),
+              if (badge case final badge?) Positioned(right: 1, bottom: 1, child: badge),
+            ],
+          ),
         ),
       ),
     ),

@@ -18240,4 +18240,16 @@ class L10nZh extends L10n {
   String webConnectHostFirst(String name) {
     return '还没连上「$name」，连上后再打开网页版';
   }
+
+  @override
+  String get botsMessageMode => '消息模式';
+
+  @override
+  String get botsMessageModeRelevant => '仅与我相关';
+
+  @override
+  String get botsMessageModeEmpty => '该成员在本群还没有发言';
+
+  @override
+  String get botsMessageModeEmptyRelevant => '这里没有与你相关的消息';
 }
