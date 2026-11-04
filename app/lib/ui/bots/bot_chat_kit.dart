@@ -351,8 +351,12 @@ final class BotTypingRow extends BotRow {
 
 /// What a turn delivered, drawn under the last row of that turn.
 final class BotArtifactsRow extends BotRow {
-  const BotArtifactsRow(this.group);
+  const BotArtifactsRow(this.group, {this.sessionId});
   final TurnArtifacts group;
+
+  /// The Session the artifacts came from when it is not the page's own — a
+  /// member's Session in a group.
+  final String? sessionId;
 }
 
 /// Rows for [items]: a time line before a message more than 15 minutes after
@@ -410,6 +414,37 @@ List<DsBotItem> botTranscriptItems(List<DsBotItem> items, {required bool running
 /// Turn numbers restart with every part, so this only attaches when the newest
 /// row that carries a turn is that same turn: a page read from history never
 /// picks up the current part's card.
+/// Cards for several members at once, each under that member's last line.
+///
+/// A group's lines carry no DSH turn numbers, so a card cannot be placed by turn
+/// (that is what [attachArtifacts] does for one conversation). It goes under the
+/// last line the member spoke instead — where a reader looks for "what did they
+/// deliver". One card per member; a member with nothing delivered is skipped.
+List<BotRow> attachMemberArtifacts(List<BotRow> rows, Map<String, ({String sessionId, TurnArtifacts group})> byBot) {
+  if (byBot.isEmpty) return rows;
+  final lastAt = <String, int>{};
+  for (var i = 0; i < rows.length; i++) {
+    final row = rows[i];
+    if (row is! BotItemRow) continue;
+    final item = row.item;
+    if (item.kind != DsBotItemKind.bot) continue;
+    final botId = item.botId;
+    if (botId == null || !byBot.containsKey(botId)) continue;
+    lastAt[botId] = i;
+  }
+  if (lastAt.isEmpty) return rows;
+  final out = <BotRow>[];
+  for (var i = 0; i < rows.length; i++) {
+    out.add(rows[i]);
+    for (final entry in lastAt.entries) {
+      if (entry.value != i) continue;
+      final delivery = byBot[entry.key]!;
+      out.add(BotArtifactsRow(delivery.group, sessionId: delivery.sessionId));
+    }
+  }
+  return out;
+}
+
 List<BotRow> attachArtifacts(List<BotRow> rows, TurnArtifacts? group, {bool atOldestEnd = true}) {
   if (group == null || group.files.isEmpty) return rows;
   int? turnOf(BotRow row) => switch (row) {
