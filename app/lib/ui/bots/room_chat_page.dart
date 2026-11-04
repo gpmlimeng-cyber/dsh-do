@@ -459,7 +459,10 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
     // What each member delivered in this group, from their Session here; the card
     // goes under their last line. The group Session's own delivery keeps the
     // single-conversation placement by turn.
+    // One card per file, not per member: two members delivering the same file
+    // would otherwise draw it twice. The first member to deliver it keeps it.
     final deliveredByBot = <String, ({String sessionId, TurnArtifacts group})>{};
+    final seenFiles = <String>{};
     for (final id in room.members) {
       final bot = team.bot(id);
       if (bot == null) continue;
@@ -467,7 +470,16 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
       if (memberSession.isEmpty) continue;
       final artifacts = ref.watch(sessionArtifactsProvider(memberSession));
       if (artifacts.isEmpty) continue;
-      deliveredByBot[id] = (sessionId: memberSession, group: artifacts.last);
+      final group = artifacts.last;
+      final fresh = [
+        for (final file in group.files)
+          if (seenFiles.add(file.path)) file,
+      ];
+      if (fresh.isEmpty) continue;
+      deliveredByBot[id] = (
+        sessionId: memberSession,
+        group: TurnArtifacts(turn: group.turn, endSeq: group.endSeq, files: fresh),
+      );
     }
     final groupArtifacts = room.sessionId == null ? null : ref.watch(sessionArtifactsProvider(room.sessionId!));
     final visible = visibleRoomItems(chat.items, mode, memberNames: [for (final bot in members) bot.name]);
