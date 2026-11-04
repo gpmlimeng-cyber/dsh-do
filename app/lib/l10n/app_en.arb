@@ -863,6 +863,10 @@
   "botsStopAllTitle": "Stop what every member is doing this round?",
   "botsStopAllBody": "Members at work stop at once; you can continue again",
   "botsAlreadySpoke": "Spoke",
+  "botsMessageMode": "Message mode",
+  "botsMessageModeRelevant": "Only what involves me",
+  "botsMessageModeEmpty": "This member has not spoken in this group yet",
+  "botsMessageModeEmptyRelevant": "No messages involve you yet",
   "brandXiaomi": "Xiaomi / Redmi",
   "brandHuawei": "Huawei",
   "brandHonor": "Honor",
@@ -5499,9 +5503,5 @@
   "webTargetCordisMissing": "Couldn’t find the Cordis panel. The plugin may have been removed.",
   "webTargetNewChatFailed": "Couldn’t start a chat. You’re on the DSH Web home page.",
   "webTargetPageFailed": "Couldn’t open this page. You’re on the DSH Web home page.",
-  "webConnectHostFirst": "Connect to “{name}” to open DSH Web",
-  "botsMessageMode": "Message mode",
-  "botsMessageModeRelevant": "Only what involves me",
-  "botsMessageModeEmpty": "This member has not spoken in this group yet",
-  "botsMessageModeEmptyRelevant": "No messages involve you yet"
+  "webConnectHostFirst": "Connect to “{name}” to open DSH Web"
 }
