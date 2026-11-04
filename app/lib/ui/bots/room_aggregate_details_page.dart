@@ -939,7 +939,7 @@ class _RoomProgressTab extends ConsumerWidget {
 /// alone runs almost no model. The last turns are the group Session's, because
 /// member turns only come as sums. The member rows below are the detail: a
 /// member without a Session here keeps its row but counts as nothing.
-class _RoomContextTab extends ConsumerWidget {
+class _RoomContextTab extends ConsumerStatefulWidget {
   const _RoomContextTab({required this.room, required this.activity, required this.roomSession});
 
   final DsBotRoom room;
@@ -947,81 +947,110 @@ class _RoomContextTab extends ConsumerWidget {
   final String? roomSession;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_RoomContextTab> createState() => _RoomContextTabState();
+}
+
+class _RoomContextTabState extends ConsumerState<_RoomContextTab> {
+  /// The last members' figures that arrived. A member's first word in the group
+  /// adds their Session to the activity key, so the future is rebuilt; keeping
+  /// what was drawn swaps the numbers in place instead of replacing the tab with
+  /// a spinner and jumping back to the top.
+  RoomMembersActivity? _last;
+
+  @override
+  void didUpdateWidget(_RoomContextTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Another group: its figures are not this one's.
+    if (oldWidget.room.id != widget.room.id) _last = null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final dsh = DshColors.of(context);
-    final sessionId = roomSession;
+    final sessionId = widget.roomSession;
     final usage = sessionId == null ? null : ref.watch(sessionUsageProvider(sessionId));
     final turns = sessionId == null
         ? const <TurnTrace>[]
         : ref.watch(chatProvider(sessionId).select((s) => s.turns));
     return FutureBuilder<RoomMembersActivity>(
-      future: activity,
+      future: widget.activity,
+      initialData: _last,
       builder: (context, snapshot) {
-        final total = snapshot.data;
-        // Both top cards are totals, so they wait for the members' figures: drawn
-        // first, the group Session's own zero would flash before them.
-        if (total == null) return const Center(child: CircularProgressIndicator(strokeWidth: 2));
-        final share = total.maxContextShare;
-        final fullest = total.fullest;
+        if (snapshot.data case final data?) _last = data;
+        final total = snapshot.data ?? _last;
+        // Until the members' figures arrive the group Session's own numbers are
+        // drawn — they are real, and waiting must not blank the tab. A failed
+        // read keeps them instead of spinning forever.
+        final totals = total == null ? (usage ?? SessionUsage.empty) : roomUsageTotal(usage ?? SessionUsage.empty, total);
+        final share = total?.maxContextShare;
+        final fullest = total?.fullest;
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           children: [
             // The group's own Session and every member's Session in this group,
             // added up; the members' rows below are the detail. No price: the
             // members may run different models, so one pricing does not hold.
-            SessionUsageSections(usage: roomUsageTotal(usage ?? SessionUsage.empty, total), pricing: null),
+            SessionUsageSections(usage: totals, pricing: null),
             // The group Session's last turns, as the single-conversation page
             // draws them. Member turns only come as sums, so they are not
             // plotted here.
             TurnUsageCard(turns: turns),
-            const SizedBox(height: 8),
-            Text(
-              l10n.activityUsageContext,
-              style: theme.textTheme.labelMedium?.copyWith(color: dsh.textTertiary),
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Text(
-                  share == null ? '—' : '${(share * 100).round()}% · ${formatTokens(total.contextTokens)}',
-                  style: theme.textTheme.titleMedium,
-                ),
-                const Spacer(),
-                if (fullest != null) ...[
+            if (total != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                l10n.activityUsageContext,
+                style: theme.textTheme.labelMedium?.copyWith(color: dsh.textTertiary),
+              ),
+              const SizedBox(height: 4),
+              Row(
+                children: [
                   Text(
-                    fullest.bot.name,
+                    share == null ? '—' : '${(share * 100).round()}% · ${formatTokens(total.contextTokens)}',
+                    style: theme.textTheme.titleMedium,
+                  ),
+                  const Spacer(),
+                  if (fullest != null) ...[
+                    Text(
+                      fullest.bot.name,
+                      style: theme.textTheme.labelSmall?.copyWith(color: dsh.textTertiary),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  Text(
+                    '${l10n.activityCacheHit} ${(total.cacheHit * 100).round()}%',
                     style: theme.textTheme.labelSmall?.copyWith(color: dsh.textTertiary),
                   ),
-                  const SizedBox(width: 8),
                 ],
-                Text(
-                  '${l10n.activityCacheHit} ${(total.cacheHit * 100).round()}%',
-                  style: theme.textTheme.labelSmall?.copyWith(color: dsh.textTertiary),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                // 合计 = N 位成员 + 群会话, as the page states it.
+                '${l10n.botsMembers} ${total.members.length} + ${l10n.botsGroupChat}',
+                style: theme.textTheme.labelSmall?.copyWith(color: dsh.textTertiary),
+              ),
+              const SizedBox(height: 8),
+              for (final member in total.members)
+                ListPageRow(
+                  key: ValueKey('member-context-${member.bot.id}'),
+                  leading: BotAvatar(bot: member.bot, size: 32),
+                  title: member.bot.name,
+                  subtitle: [
+                    if (member.contextShare != null) '${(member.contextShare! * 100).round()}%',
+                    if (member.contextTokens != null) formatTokens(member.contextTokens!),
+                    if (member.turns > 0) '${member.turns}×',
+                    if (member.speed != null) '${member.speed!.round()} tok/s',
+                  ].join(' · '),
+                  subtitleMaxLines: 1,
+                  chevron: false,
                 ),
-              ],
-            ),
-            const SizedBox(height: 2),
-            Text(
-              // 合计 = N 位成员 + 群会话, as the page states it.
-              '${l10n.botsMembers} ${total.members.length} + ${l10n.botsGroupChat}',
-              style: theme.textTheme.labelSmall?.copyWith(color: dsh.textTertiary),
-            ),
-            const SizedBox(height: 8),
-            for (final member in total.members)
-              ListPageRow(
-                key: ValueKey('member-context-${member.bot.id}'),
-                leading: BotAvatar(bot: member.bot, size: 32),
-                title: member.bot.name,
-                subtitle: [
-                  if (member.contextShare != null) '${(member.contextShare! * 100).round()}%',
-                  if (member.contextTokens != null) formatTokens(member.contextTokens!),
-                  if (member.turns > 0) '${member.turns}×',
-                  if (member.speed != null) '${member.speed!.round()} tok/s',
-                ].join(' · '),
-                subtitleMaxLines: 1,
-                chevron: false,
+            ],
+            // A reload keeps the rows above and marks only the detail as loading.
+            if (snapshot.connectionState == ConnectionState.waiting)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Center(child: SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2))),
               ),
           ],
         );
