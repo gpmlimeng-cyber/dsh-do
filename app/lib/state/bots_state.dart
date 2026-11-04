@@ -684,14 +684,19 @@ class BotChatState {
 }
 
 /// Drops pending sends the chat now shows (the same text, from the user).
+///
+/// An echoed message can carry the note ds-bot writes so a text-only model can
+/// read a posted picture; [withoutImageNotes] takes it off both sides first, so
+/// a send whose echo carries one still settles instead of queueing forever.
 List<DsBotPending> settlePending(List<DsBotPending> pending, Iterable<DsBotItem> shown) {
   final texts = [
     for (final item in shown)
-      if (item.kind == DsBotItemKind.user) item.text.trim(),
+      if (item.kind == DsBotItemKind.user) withoutImageNotes(item.text),
   ];
   final left = <DsBotPending>[];
   for (final entry in pending) {
-    final at = texts.indexOf(entry.text.trim());
+    final wanted = withoutImageNotes(entry.text);
+    final at = texts.indexOf(wanted);
     if (at >= 0 && !entry.failed) {
       texts.removeAt(at);
     } else {
@@ -699,6 +704,16 @@ List<DsBotPending> settlePending(List<DsBotPending> pending, Iterable<DsBotItem>
     }
   }
   return left;
+}
+
+/// [text] without ds-bot's image reading notes: `[Image "…", read by …:] …
+/// [End of image "…"]` and the one-line "could not be read right now" form.
+/// Everything else is left alone, so text a person typed still compares as it
+/// is — a note is the only thing that ever differs between a send and its echo.
+String withoutImageNotes(String text) {
+  final block = RegExp(r'\[Image [^\]]*?[,.][\s\S]*?\[End of image [^\]]*?\]');
+  final line = RegExp(r'\[Image [^\]]*?\]');
+  return text.replaceAll(block, '').replaceAll(line, '').trim();
 }
 
 /// Pages from `chat`, new entries and the reply being written from the feed.

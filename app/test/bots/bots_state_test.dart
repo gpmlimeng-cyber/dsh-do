@@ -395,6 +395,32 @@ void main() {
       expect(left.map((p) => p.text), ['hi', 'other']);
     });
 
+    test('settlePending sees through an image reading note', () {
+      final at = DateTime(2026);
+      final pending = [DsBotPending('look at this', at)];
+      final left = settlePending(pending, const [
+        DsBotItem(
+          kind: DsBotItemKind.user,
+          text: 'look at this\n[Image "shot.jpg", read by a vision model:]\n'
+              'A cat on a sofa.\n[End of image "shot.jpg"]',
+        ),
+      ]);
+      expect(left, isEmpty);
+    });
+
+    test('settlePending sees through a picture that could not be read', () {
+      final at = DateTime(2026);
+      final pending = [DsBotPending('look at this', at)];
+      final left = settlePending(pending, const [
+        DsBotItem(
+          kind: DsBotItemKind.user,
+          text: 'look at this\n[Image "shot.jpg": it could not be read right now. '
+              'Ask the user what it shows if it matters.]',
+        ),
+      ]);
+      expect(left, isEmpty);
+    });
+
     test('transcriptRows marks one speaker\'s runs and puts a time between distant messages', () {
       final t0 = DateTime(2026, 10, 24, 9);
       final rows = transcriptRows([
