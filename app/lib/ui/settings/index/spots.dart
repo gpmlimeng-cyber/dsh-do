@@ -1010,6 +1010,12 @@ abstract final class Spots {
     title: (l) => l.updateCheck,
     keywords: (l) => l.searchKwUpdate,
   );
+  static final updatePreviews = SettingSpot(
+    'update-previews',
+    page: SettingsPageId.about,
+    title: (l) => l.updateIncludePreviews,
+    keywords: (l) => l.searchKwUpdateAuto,
+  );
   static final updateAuto = SettingSpot(
     'update-auto',
     page: SettingsPageId.about,

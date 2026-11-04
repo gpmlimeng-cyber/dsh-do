@@ -48,7 +48,7 @@ class SessionSearchBar extends ConsumerWidget {
     final theme = Theme.of(context);
     final tertiary = DshColors.of(context).textTertiary;
     return Padding(
-      padding: padding,
+      padding: EdgeInsets.zero,
       child: Semantics(
         button: true,
         label: l10n.shellSearchChats,

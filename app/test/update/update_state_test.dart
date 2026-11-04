@@ -13,8 +13,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'support.dart';
 
-const _m1 = UpdateMirror(id: 'm1', label: 'mirror-one.example', prefix: 'https://mirror-one.example/');
-const _sources = UpdateSources(mirrors: [UpdateMirror.github, _m1]);
+final _m1 = UpdateMirror(id: 'm1', label: 'mirror-one.example', prefix: 'https://mirror-one.example/');
+final _sources = UpdateSources(mirrors: [UpdateMirror.github, _m1]);
 final _api = 'https://api.github.com/repos/$updateRepo/releases/latest';
 final _manifest = 'https://github.com/$updateRepo/releases/latest/download/update.json';
 final _apkUrl = 'https://github.com/$updateRepo/releases/download/v1.2.0/dsh-go-1.2.0-arm64.apk';

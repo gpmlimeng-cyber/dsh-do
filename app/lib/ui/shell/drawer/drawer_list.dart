@@ -44,6 +44,9 @@ class DrawerConversationList extends ConsumerWidget {
   /// Closes the drawer after choosing a folder for a new conversation.
   final VoidCallback? onNewChat;
 
+  /// Drawn above the list (a Bot row, upstream's 1.0.10 addition); null hides it.
+  final Widget? leading;
+
   /// A conversation's actions.
   final void Function(SessionSummary session) onLongPress;
 
