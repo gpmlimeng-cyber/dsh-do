@@ -231,6 +231,28 @@ ReleaseInfo parseGithubRelease(Object? json) {
   );
 }
 
+/// The newest release in a GitHub `releases` list (newest first) that may be
+/// taken: drafts and pre-releases are skipped unless [allowPrerelease], and one
+/// bad entry does not fail the list. Null when nothing usable is in it.
+ReleaseInfo? parseGithubReleaseList(Object? json, {bool allowPrerelease = false}) {
+  if (json is! List) return null;
+  ReleaseInfo? best;
+  for (final entry in json) {
+    if (entry is! Map) continue;
+    if (entry['prerelease'] == true && !allowPrerelease) continue;
+    try {
+      final release = parseGithubRelease(entry);
+      // A release whose assets are still uploading (or named another way) has
+      // nothing to install: skip it rather than hide the older one that works.
+      if (release.apks.isEmpty) continue;
+      if (best == null || release.version.isNewerThan(best.version)) best = release;
+    } on FormatException {
+      continue;
+    }
+  }
+  return best;
+}
+
 /// Parses an `update.json` manifest ([ReleaseInfo.toManifestJson]). Relative
 /// asset URLs resolve against [base] (the manifest's own URL); a missing URL
 /// means the GitHub release asset for the tag. Files named anything but a

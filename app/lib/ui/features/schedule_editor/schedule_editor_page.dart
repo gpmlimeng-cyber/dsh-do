@@ -45,13 +45,23 @@ const maxScheduleTitle = 120;
 
 /// Pops with the created or saved task.
 class ScheduleEditorPage extends ConsumerStatefulWidget {
-  const ScheduleEditorPage({super.key, this.task, this.now});
+  const ScheduleEditorPage({super.key, this.task, this.now, this.sessionId, this.sessionLabel});
 
   /// Null for a new task.
   final ScheduleTask? task;
 
   /// Clock override (tests).
   final DateTime? now;
+
+  /// Create only: the conversation a new task belongs to. Null keeps the
+  /// editor's own picker (a new conversation), which is what the 自动化任务
+  /// page does; a Bot's page passes its own Session so the task shows up
+  /// under that Bot.
+  final String? sessionId;
+
+  /// What to call [sessionId] in the run-location row. A Bot's Session is not
+  /// in the conversation list, so the row would otherwise say "just created".
+  final String? sessionLabel;
 
   @override
   ConsumerState<ScheduleEditorPage> createState() => _ScheduleEditorPageState();
@@ -69,8 +79,9 @@ class _ScheduleEditorPageState extends ConsumerState<ScheduleEditorPage> {
   ScheduleDraft? _draft;
   ScheduleDraft? _initial;
 
-  /// Create only: null = a new conversation.
-  String? _sessionId;
+  /// Create only: null = a new conversation; a caller may open the editor on
+  /// one (a Bot's page passes the Bot's Session).
+  late String? _sessionId = widget.sessionId;
   String? _workspaceId;
   ModelSelection? _model;
 
@@ -685,7 +696,7 @@ class _ScheduleEditorPageState extends ConsumerState<ScheduleEditorPage> {
                 ? _sessionTitle(existing)
                 : _sessionId == null
                 ? context.l10n.commonNewChat
-                : context.l10n.featuresJustCreatedChat,
+                : widget.sessionLabel ?? context.l10n.featuresJustCreatedChat,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),

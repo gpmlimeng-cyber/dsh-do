@@ -82,6 +82,8 @@ class SessionDeletionOwner {
   final ProviderContainer container;
   final HostConnection connection;
   final HostRef host;
+  final MuxGeneration generation;
+  final int readyNumber;
   bool _retired = false;
   bool _closed = false;
   late final void Function() _close;

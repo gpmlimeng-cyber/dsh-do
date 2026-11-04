@@ -19,6 +19,7 @@ import '../../launch/launch_state.dart';
 import '../../runtime/runtime_bridge.dart';
 import '../../runtime/runtime_state.dart';
 import '../../state/app_info.dart';
+import '../shell/brand_wordmark.dart';
 import '../theme/theme.dart';
 
 /// Where the launch screen goes: over everything in the app (MaterialApp.builder), for as long
@@ -309,16 +310,11 @@ class LaunchMark extends StatelessWidget {
               key: wordmarkKey,
               opacity: frame.wordmarkOpacity,
               child: Center(
-                child: Text(
-                  AppInfo.name,
-                  maxLines: 1,
-                  softWrap: false,
-                  // A logo, not a line of reading: the same size at every text scale.
-                  textScaler: TextScaler.noScaling,
-                  style: AppType.wordmark(
-                    size: LaunchMotion.wordmarkSize,
-                    color: snapshot.dark ? LaunchColors.paper : LaunchColors.ink,
-                  ).copyWith(height: LaunchMotion.wordmarkLine),
+                // A logo, not a line of reading: the vector wordmark keeps its shape at
+                // every text scale. 18 tall matches what the 26pt word's ink measured.
+                child: BrandWordmark(
+                  height: LaunchMotion.wordmarkMarkSize,
+                  color: snapshot.dark ? LaunchColors.paper : LaunchColors.ink,
                 ),
               ),
             ),

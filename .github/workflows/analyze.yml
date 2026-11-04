@@ -1,0 +1,42 @@
+name: analyze
+
+# Publishes `flutter analyze` output as a release asset. Actions job logs sit
+# behind a storage host some networks cannot reach; release assets do not.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.9'
+          cache: true
+
+      - name: Fetch packages
+        run: flutter pub get
+        working-directory: app
+
+      - name: Analyze
+        continue-on-error: true
+        run: flutter analyze 2>&1 | tee /tmp/analyze.txt
+        working-directory: app
+
+      - name: Publish the output
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="analyze-$(date -u +%Y%m%d-%H%M)-${GITHUB_SHA::7}"
+          # --prerelease: an auxiliary release must never take `releases/latest`
+          # away from the app release the updater reads.
+          gh release create "$tag" /tmp/analyze.txt --prerelease \
+            --title "analyze ${GITHUB_SHA::7}" \
+            --notes "flutter analyze output for ${GITHUB_SHA}"

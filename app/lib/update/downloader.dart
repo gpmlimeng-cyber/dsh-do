@@ -9,6 +9,8 @@ import 'release.dart';
 import 'update_config.dart';
 import 'update_http.dart';
 
+String _prefix(String digest) => digest.length > 12 ? digest.substring(0, 12) : digest;
+
 /// Lowercase hex SHA-256 of a file.
 typedef Sha256Hasher = Future<String> Function(File file);
 
@@ -60,9 +62,13 @@ final class DownloadCancelled extends DownloadOutcome {
 }
 
 final class DownloadFailed extends DownloadOutcome {
-  const DownloadFailed(this.failure);
+  const DownloadFailed(this.failure, [this.detail]);
 
   final DownloadFailure failure;
+
+  /// For [DownloadFailure.checksum]: which source answered and how its digest
+  /// differed. Shown under the message, so a bad mirror is recognisable.
+  final String? detail;
 }
 
 /// Cancels a running [ApkDownloader.download]; the partial file is kept so
@@ -133,6 +139,7 @@ class ApkDownloader {
     }
 
     var failure = DownloadFailure.network;
+    String? checksumDetail;
     for (final url in urls) {
       var attempt = 0;
       while (true) {
@@ -141,16 +148,22 @@ class ApkDownloader {
         if (step == _Step.cancelled) return const DownloadCancelled();
         if (step == _Step.storage) return const DownloadFailed(DownloadFailure.storage);
         if (step == _Step.complete) {
+          var actual = '';
           try {
             await part.rename(target.path);
             onVerifying?.call();
-            if (await hasher(target) == sha256) return DownloadDone(target, url);
-            // Corrupt or tampered: start over from the next source.
+            actual = await hasher(target);
+            if (actual == sha256) return DownloadDone(target, url);
+            // Corrupt or tampered: start over from the next source. The
+            // partial file goes too — resuming it would append good bytes to
+            // bad and fail the same way on every retry.
             await target.delete();
+            await _deleteQuietly(part);
           } on FileSystemException {
             return const DownloadFailed(DownloadFailure.storage);
           }
           failure = DownloadFailure.checksum;
+          checksumDetail = '${url.label}: ${_prefix(sha256)} ≠ ${_prefix(actual)}';
           break;
         }
         if (step == _Step.rejected) {
@@ -161,7 +174,7 @@ class ApkDownloader {
         // _Step.interrupted: resume on the same URL.
       }
     }
-    return DownloadFailed(failure);
+    return DownloadFailed(failure, checksumDetail);
   }
 
   /// [fileName] built from [base] (the installed APK) and [patch], which is

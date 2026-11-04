@@ -1,0 +1,46 @@
+name: l10n
+
+# Regenerates the merged ARBs and the generated L10n class on a runner with
+# Flutter, and hands them back as a release asset: the phone can neither run
+# `flutter gen-l10n` nor download Actions artifacts.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.9'
+          cache: true
+
+      - name: Fetch packages
+        run: flutter pub get
+        working-directory: app
+
+      - name: Merge the parts and generate the L10n class
+        run: python3 tool/l10n_merge.py
+        working-directory: app
+
+      - name: Bundle what changed
+        run: |
+          mkdir -p /tmp/l10n
+          cp --parents app/lib/l10n/app_zh.arb app/lib/l10n/app_en.arb /tmp/l10n/
+          cp -r --parents app/lib/l10n/gen /tmp/l10n/
+          (cd /tmp/l10n && find . -type f | sort > FILES.txt && tar czf /tmp/l10n.tgz .)
+          cat /tmp/l10n/FILES.txt
+
+      - name: Publish the bundle
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="l10n-$(date -u +%Y%m%d-%H%M)-${GITHUB_SHA::7}"
+          # --prerelease: an auxiliary release must never take `releases/latest`
+          gh release create "$tag" /tmp/l10n.tgz --prerelease --title "l10n ${GITHUB_SHA::7}" --notes "Generated L10n class from ${GITHUB_SHA}."

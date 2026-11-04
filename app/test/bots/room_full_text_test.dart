@@ -17,6 +17,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../chat/support/harness.dart';
 import '../shell/golden_harness.dart' show goldenApp;
 import 'support.dart';
+import 'package:dsh_app/state/chat_state.dart' show chatProvider, ChatState;
 
 class _Host extends ActiveHostController {
   @override
@@ -59,6 +60,7 @@ void main() {
         brightness: brightness,
         home: const RoomChatPage(roomId: 'r1'),
         overrides: [
+              chatProvider.overrideWith2((id) => FakeChatController(id, const ChatState(loading: false))),
           activeHostProvider.overrideWith(_Host.new),
           activeConnectionProvider.overrideWith((ref) {
             final h = ref.watch(activeHostProvider);

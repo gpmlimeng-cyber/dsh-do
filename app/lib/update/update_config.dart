@@ -20,12 +20,27 @@
 ///   replaces the public GitHub accelerator list (empty string = none).
 library;
 
-/// GitHub repository the releases live in.
-const updateRepo = 'ccch1mneyyy/dsh-go';
+/// GitHub repository the releases live in. This is the MODO fork: builds here
+/// update from its releases, not from upstream. `--dart-define=DSH_UPDATE_REPO=owner/name`
+/// points a build elsewhere (upstream again, or a test repository).
+const updateRepo = String.fromEnvironment('DSH_UPDATE_REPO', defaultValue: 'gpmlimeng-cyber/dsh-do');
+
+/// The upstream project this line is based on. Star links, the community
+/// feed and the project link in shared messages keep pointing here even
+/// though this build's own updates come from [updateRepo].
+const upstreamRepo = 'ccch1mneyyy/dsh-go';
+
+/// The upstream version this line is based on, for 「2.0.3（基于上游 v1.0.8）」.
+/// One place only: when upstream moves, this and the version's minor change.
+const upstreamBaseline = 'v1.0.8';
 
 /// `releases/latest` of the REST API: tag, notes, assets with sizes and
 /// SHA-256 digests. Unauthenticated: 60 requests per hour per IP.
 final githubLatestApi = Uri.parse('https://api.github.com/repos/$updateRepo/releases/latest');
+
+/// The newest releases, newest first, when the person asked to see previews
+/// too: `releases/latest` never carries a pre-release.
+final githubReleasesApi = Uri.parse('https://api.github.com/repos/$updateRepo/releases?per_page=30');
 
 /// The latest release's page, for "open in browser".
 final githubReleasesPage = Uri.parse('https://github.com/$updateRepo/releases/latest');
@@ -152,12 +167,13 @@ const _betaTokenDefine = String.fromEnvironment('DSH_BETA_CHANNEL_TOKEN');
 const _betaOriginDefine = String.fromEnvironment('DSH_BETA_CHANNEL_ORIGIN', defaultValue: updateMirrorOrigin);
 
 /// The configuration the app ships with (see the library comment for overrides).
-UpdateSources defaultUpdateSources() => buildUpdateSources(
+UpdateSources defaultUpdateSources({bool includePrerelease = false}) => buildUpdateSources(
   mirror: _mirrorDefine,
   feed: _feedDefine == _unset ? null : _feedDefine,
   accelerators: _mirrorsDefine == _unset ? null : _mirrorsDefine,
   channelToken: _betaTokenDefine,
   channelOrigin: _betaOriginDefine,
+  includePrerelease: includePrerelease,
 );
 
 /// [defaultUpdateSources] from the defines' values: [mirror] is the origin of
@@ -171,6 +187,7 @@ UpdateSources buildUpdateSources({
   String? accelerators,
   String channelToken = '',
   String channelOrigin = updateMirrorOrigin,
+  bool includePrerelease = false,
 }) {
   final origin = mirror.trim().replaceFirst(RegExp(r'/+$'), '');
   final own = origin.isEmpty ? null : UpdateMirror.selfHosted(origin);
@@ -184,6 +201,7 @@ UpdateSources buildUpdateSources({
   return UpdateSources(
     channel: UpdateChannel.tryCreate(token: channelToken, origin: channelOrigin),
     feed: feedUrl.isEmpty ? null : Uri.tryParse(feedUrl),
+    includePrerelease: includePrerelease,
     mirrors: [?own, UpdateMirror.github, ...public],
   );
 }
@@ -192,6 +210,9 @@ UpdateSources buildUpdateSources({
 enum EndpointKind {
   /// GitHub REST `releases/latest` JSON.
   githubApi,
+
+  /// GitHub REST `releases` JSON: a list, newest first, pre-releases included.
+  githubApiReleases,
 
   /// An `update.json` manifest (release asset or self-hosted feed).
   manifest,
@@ -234,16 +255,37 @@ class UpdateEndpoint {
 /// API stays last even then: anonymous calls get 60 an hour per IP, shared
 /// IPs often find them spent, and its answer carries no delta patches.
 class UpdateSources {
-  const UpdateSources({this.channel, this.feed, this.useGithubApi = true, this.mirrors = const [UpdateMirror.github]});
+  const UpdateSources({
+    this.channel,
+    this.feed,
+    this.useGithubApi = true,
+    this.includePrerelease = false,
+    this.mirrors = const [UpdateMirror.github],
+  });
 
   final UpdateChannel? channel;
   final Uri? feed;
   final bool useGithubApi;
+
+  /// Ask the releases list instead of `releases/latest`, so a pre-release can
+  /// be picked when the person turned that on.
+  final bool includePrerelease;
   final List<UpdateMirror> mirrors;
+
+  /// The same sources with the preview switch flipped (the update state keeps
+  /// the person's choice; a test may override the sources as a whole).
+  UpdateSources copyWith({bool? includePrerelease}) => UpdateSources(
+    channel: channel,
+    feed: feed,
+    useGithubApi: useGithubApi,
+    includePrerelease: includePrerelease ?? this.includePrerelease,
+    mirrors: mirrors,
+  );
 
   List<UpdateEndpoint> metadataEndpoints({String? preferred}) {
     final manifests = [
       if (feed case final feed?) UpdateEndpoint(id: 'feed', kind: EndpointKind.manifest, url: feed, mirrorId: null),
+
       for (final mirror in mirrors)
         if (mirror.rewrite(githubLatestAsset(updateManifestName)) case final url?)
           UpdateEndpoint(id: 'manifest:${mirror.id}', kind: EndpointKind.manifest, url: url, mirrorId: mirror.id),

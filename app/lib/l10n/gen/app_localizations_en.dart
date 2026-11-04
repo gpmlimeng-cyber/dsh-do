@@ -39,7 +39,7 @@ class L10nEn extends L10n {
   String get a11yRestoreGrantAdb => 'Grant with Direct ADB';
 
   @override
-  String get a11yRestoreRootNote => 'Uses the authorized root connection to grant only this permission.';
+  String get a11yRestoreRootNote => 'Runs pm grant once as root, for this one permission only.';
 
   @override
   String get a11yRestoreSetup => 'Set up Shizuku or wireless debugging';
@@ -3005,6 +3005,28 @@ class L10nEn extends L10n {
   String get botsCreationConnectionChanged => 'The connection changed. Reopen this form to create on the current host.';
 
   @override
+  String get botsPermissionGroupWide => 'One permission preset for this group';
+
+  @override
+  String get botsPermissionGroupWideOn =>
+      'Applies to every member’s sessions here; switching changes the ones already open';
+
+  @override
+  String get botsPermissionGroupWideOff => 'Each member uses their own permission preset';
+
+  @override
+  String get botsStopAll => 'Stop all';
+
+  @override
+  String get botsStopAllTitle => 'Stop what every member is doing this round?';
+
+  @override
+  String get botsStopAllBody => 'Members at work stop at once; you can continue again';
+
+  @override
+  String get botsAlreadySpoke => 'Spoke';
+
+  @override
   String get brandXiaomi => 'Xiaomi / Redmi';
 
   @override
@@ -3391,16 +3413,6 @@ class L10nEn extends L10n {
 
   @override
   String get chatUnsent => 'Not sent';
-
-  @override
-  String get chatFailedSubmission => 'Failed · Input kept';
-
-  @override
-  String get chatEditFailedSubmission => 'Edit and resend';
-
-  @override
-  String get chatErrReasoningEffortUnsupported =>
-      'This model does not support the selected reasoning effort. Change the effort or model.';
 
   @override
   String get chatSteerNextStep => 'Steer · Next step';
@@ -4504,6 +4516,11 @@ class L10nEn extends L10n {
   }
 
   @override
+  String chatNewContentCount(int count) {
+    return '$count new';
+  }
+
+  @override
   String get commonCancel => 'Cancel';
 
   @override
@@ -4750,48 +4767,6 @@ class L10nEn extends L10n {
     });
     return '$_temp0 $day';
   }
-
-  @override
-  String get engineNewChatDefaultsLast => 'New chat defaults (last choice)';
-
-  @override
-  String get engineNewChatDefaultsFixed => 'New chat defaults (fixed)';
-
-  @override
-  String get engineNewChatUseLast => 'Last choice';
-
-  @override
-  String get engineNewChatUseFixed => 'Fixed default';
-
-  @override
-  String get engineNewChatDefaultsHint =>
-      'Saved on the current host; affects only the model and thinking effort of new chats. Permissions keep their separate default and never inherit temporary session grants.';
-
-  @override
-  String get engineNewChatDefaultsLegacy =>
-      'This engine only supports remembering the last choice, not fixed defaults. It cannot confirm whether defaults were saved when switching models.';
-
-  @override
-  String get engineNewChatDefaultsUnsupported => 'This host has no editable default model settings';
-
-  @override
-  String get engineNewChatDefaultsSelectionUnavailable =>
-      'This model or thinking effort is no longer available. Choose again.';
-
-  @override
-  String get engineNewChatDefaultsInheritedEffort =>
-      'Host base settings specify a thinking effort that cannot be cleared here for a non-thinking model. Update the host configuration first.';
-
-  @override
-  String get engineNewChatDefaultsSaving => 'Saving and confirming defaults…';
-
-  @override
-  String get engineNewChatDefaultsUnconfirmed =>
-      'Could not confirm the complete defaults. Refresh and check the model and thinking effort; host base settings or another client may have changed them.';
-
-  @override
-  String get engineModelDefaultSaveFailed =>
-      'The model changed for this chat, but new chat defaults were not saved. Check Settings › Models and retry.';
 
   @override
   String get engineAccountSignedIn => 'Signed in to DeepSeek';
@@ -7273,13 +7248,6 @@ class L10nEn extends L10n {
   String get fileChatFallback => 'chat';
 
   @override
-  String get hostDetailsConnectionType => 'Connection type';
-
-  @override
-  String get hostDetailsSshNetworkHint =>
-      'Uses an SSH tunnel. LAN / P2P route inspection and latency measurements are not available for this connection.';
-
-  @override
   String get hubSessionDetails => 'Chat details';
 
   @override
@@ -7788,18 +7756,6 @@ class L10nEn extends L10n {
   String get hubAbout => 'About DSH Go';
 
   @override
-  String get hubAboutAuthor => 'Original author of DSH Go';
-
-  @override
-  String get hubAboutBilibili => 'Bilibili profile';
-
-  @override
-  String get hubAboutX => 'X profile';
-
-  @override
-  String get hubAboutGithub => 'GitHub profile';
-
-  @override
   String get hubAboutNewVersion => 'Update available';
 
   @override
@@ -7850,22 +7806,6 @@ class L10nEn extends L10n {
   @override
   String get hubHardwareEnterSendsHint =>
       'When on, Shift+Enter inserts a new line. The on-screen keyboard keeps newlines; Ctrl/⌘+Enter always sends.';
-
-  @override
-  String get hubQuickPanel => 'Swipe-left shortcuts';
-
-  @override
-  String get hubQuickPanelSwipe => 'Open with a left swipe';
-
-  @override
-  String get hubQuickPanelSwipeHint =>
-      'Swipe right to left over the chat. Code blocks, tables and other content that scrolls sideways aren’t affected.';
-
-  @override
-  String get hubQuickPanelItems => 'What it lists';
-
-  @override
-  String get hubQuickPanelItemsNone => 'Nothing chosen: a left swipe won\'t open it';
 
   @override
   String get launchScreenTitle => 'Launch screen';
@@ -9354,11 +9294,7 @@ class L10nEn extends L10n {
 
   @override
   String get phoneDndRootConnected =>
-      'Root is connected. If it drops, choose it here again; DSH Go asks for root on its own only with “Keep root channel” on above.';
-
-  @override
-  String get phoneDndRootConnectedKept =>
-      'Root is connected. If it drops, DSH Go asks your root manager again on its own.';
+      'Root is connected. If it drops, choose it here again: DSH Go never asks for root on its own.';
 
   @override
   String get phoneDndRootRetry => 'Ask for root again';
@@ -10443,52 +10379,7 @@ class L10nEn extends L10n {
 
   @override
   String get phonePrivilegedRootRiskBody =>
-      'Your root manager (Magisk, KernelSU or APatch) will ask you. If you allow it, DSH Go runs its own background service as root. It asks again on its own after a disconnect or restart only with “Keep root channel” on.';
-
-  @override
-  String phoneKeepTitle(String mode) {
-    String _temp0 = intl.Intl.selectLogic(mode, {
-      'shizuku': 'Keep Shizuku channel',
-      'sui': 'Keep Sui channel',
-      'root': 'Keep root channel',
-      'adb': 'Keep Direct ADB channel',
-      'other': 'Keep this channel',
-    });
-    return '$_temp0';
-  }
-
-  @override
-  String get phoneKeepRootDescription =>
-      'After a drop, an app restart or a reboot, DSH Go asks your root manager again by itself. The manager still decides.';
-
-  @override
-  String get phoneKeepSharedDescription =>
-      'After a drop, an app restart or a reboot, DSH Go reconnects with the permission it already has. It never asks for permission.';
-
-  @override
-  String get phoneKeepAdbDescription =>
-      'After a drop, an app restart or a reboot, DSH Go reconnects over Wi‑Fi with the existing pairing. With the permission from “Restore accessibility automatically”, it also tries once to turn on wireless debugging.';
-
-  @override
-  String get phoneKeepRestoring => 'Reconnecting';
-
-  @override
-  String get phoneKeepWaiting => 'Waiting for the channel';
-
-  @override
-  String get phoneKeepWaitingService => 'Waiting for the service to run';
-
-  @override
-  String get phoneKeepWaitingPermission => 'Not authorized. Reconnects once you grant it.';
-
-  @override
-  String get phoneKeepWaitingNetwork => 'Waiting for Wi‑Fi';
-
-  @override
-  String get phoneKeepNotPaired => 'Not paired. Pair wireless debugging first.';
-
-  @override
-  String get phoneKeepFailed => 'Couldn’t reconnect. Tries again when you open the app or start a task.';
+      'Your root manager (Magisk, KernelSU or APatch) will ask you. If you allow it, DSH Go runs its own background service as root, and never asks again on its own after a disconnect.';
 
   @override
   String get phoneModeTitle => 'How DSH confirms';
@@ -14184,29 +14075,6 @@ class L10nEn extends L10n {
   String get remoteNetworkObservedAt => 'Last checked';
 
   @override
-  String get stateWorkspaceFilesHint => 'Files uploaded to the current workspace:';
-
-  @override
-  String get stateRemoteUploadNameInvalid =>
-      'The host rejected the filename. Shorten it or remove special characters and try again.';
-
-  @override
-  String get stateRemoteUploadWorkspaceUnavailable => 'This chat has no writable working directory';
-
-  @override
-  String get stateRemoteUploadWorkspaceChanged => 'The working directory changed. Check it before uploading again.';
-
-  @override
-  String get stateRemoteUploadLimit => 'The host refused the upload. Check the file size or try again later.';
-
-  @override
-  String get stateRemoteUploadUnsupported =>
-      'This host does not support file uploads. Update its Remote plugin and reconnect.';
-
-  @override
-  String get stateRemoteUploadTooLarge => 'The file exceeds the remote upload protocol\'s size limit';
-
-  @override
   String get riskDontShowAgain => 'Don’t show again';
 
   @override
@@ -14641,9 +14509,6 @@ class L10nEn extends L10n {
 
   @override
   String get searchKwUsageStats => 'statistics,stats,usage data,analytics,telemetry,anonymous,privacy,data';
-
-  @override
-  String get searchKwQuickPanel => 'swipe,left swipe,shortcuts,gesture,quick panel,quick access';
 
   @override
   String get shellDeletePermanently => 'Delete permanently';
@@ -15739,14 +15604,6 @@ class L10nEn extends L10n {
   }
 
   @override
-  String get shellQuickPanel => 'Shortcuts';
-
-  @override
-  String shellQuickPanelHint(String path) {
-    return 'Change these in $path';
-  }
-
-  @override
   String starPromptTitle(int hours) {
     String _temp0 = intl.Intl.pluralLogic(
       hours,
@@ -16121,14 +15978,13 @@ class L10nEn extends L10n {
 
   @override
   String get stateChatTextOnlyModel =>
-      'Sent as files: this model doesn’t list image input. Switch models or set its Input to Text + image.';
+      'This model reads text only. Images were sent as files. Switch to V4.1 Flash to let AI view them.';
 
   @override
   String get stateAttachmentUploadFailed => 'Couldn’t upload attachment';
 
   @override
-  String get stateChatImageModelRequired =>
-      'This model doesn’t list image input. Switch models or set its Input to Text + image and resend.';
+  String get stateChatImageModelRequired => 'This model can’t view images. Switch to V4.1 Flash and send again.';
 
   @override
   String get stateSendFailed => 'Couldn’t send';
@@ -16837,11 +16693,8 @@ class L10nEn extends L10n {
 
   @override
   String stateAttachmentFileLimit(String name) {
-    return 'File “$name” exceeds 200 MB';
+    return 'File “$name” exceeds 30 MB';
   }
-
-  @override
-  String get stateAttachmentTotalLimit => 'Attachments exceed 400 MB in total';
 
   @override
   String stateBotFinished(String name) {
@@ -17073,6 +16926,14 @@ class L10nEn extends L10n {
   String get updateAutoCheckDaily => 'Once a day';
 
   @override
+  String get updateIncludePreviews => 'Include preview builds when checking';
+
+  @override
+  String updateBasedOn(String version) {
+    return 'Based on upstream $version';
+  }
+
+  @override
   String get updateTileDownloading => 'Downloading';
 
   @override
@@ -17161,13 +17022,6 @@ class L10nEn extends L10n {
 
   @override
   String get updateInstallCancelledMessage => 'The package is saved. You can install it anytime.';
-
-  @override
-  String get updateInstallUnconfirmed => 'Installation result not confirmed';
-
-  @override
-  String get updateInstallUnconfirmedMessage =>
-      'The package is saved. Check any system prompts, then retry or open it with the system installer.';
 
   @override
   String get updateSignatureMismatch => 'App signatures don’t match';

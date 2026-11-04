@@ -426,6 +426,7 @@ class DsBotRoom {
   const DsBotRoom({
     required this.id,
     required this.name,
+    this.sessionId,
     this.members = const [],
     this.admin,
     this.mode = 'admin',
@@ -437,6 +438,8 @@ class DsBotRoom {
     this.createdAt,
     this.workDir,
     this.parts = const [],
+    this.permission,
+    this.sessions = const {},
   });
 
   factory DsBotRoom.fromJson(Object? json) {
@@ -444,6 +447,7 @@ class DsBotRoom {
     return DsBotRoom(
       id: asString(map['id']) ?? '',
       name: asString(map['name']) ?? '',
+      sessionId: asString(map['sessionId']),
       members: asStringList(map['members']),
       admin: asString(map['admin']),
       mode: asString(map['mode']) ?? 'admin',
@@ -458,11 +462,24 @@ class DsBotRoom {
       createdAt: asEpochMs(map['createdAt']),
       workDir: asString(map['workDir']),
       parts: asStringList(map['parts']),
+      permission: asString(map['permission']),
+      // Each member's Session *in this group* (plugin 0.2.7+): what a group's
+      // figures and files must be read from, not the member's own chat.
+      sessions: {
+        for (final entry in asMapOrEmpty(map['sessions']).entries)
+          if (entry.value is String) entry.key: entry.value as String,
+      },
     );
   }
 
   final String id;
   final String name;
+
+  /// The Session the round runs in now. `id` only names its first part, so a
+  /// group whose Session moved on has two different ids; staging a file under
+  /// the old one leaves the receipt in a conversation the prompt never reads.
+  final String? sessionId;
+
   final List<String> members;
   final String? admin;
 
@@ -487,6 +504,15 @@ class DsBotRoom {
 
   /// The members' hidden Sessions in this group (and their earlier parts).
   final List<String> parts;
+
+  /// One preset for every member of this group, in place of each member's own;
+  /// null means each member's own. Clearing sends '', never null (null = leave
+  /// the setting alone).
+  final String? permission;
+
+  /// Member id → the Session that member works in **for this group**. Empty on a
+  /// Host older than plugin 0.2.7, and until a member first speaks here.
+  final Map<String, String> sessions;
 
   bool get adminFirst => mode != 'everyone';
 }
@@ -718,6 +744,7 @@ class DsBotTeam {
     this.modelsKey,
     this.memory = true,
     this.readOnly,
+    this.permissions,
   });
 
   factory DsBotTeam.fromJson(JsonMap map) => DsBotTeam(
@@ -734,6 +761,7 @@ class DsBotTeam {
     modelsKey: asString(map['modelsKey']),
     memory: asBool(map['memory']) ?? true,
     readOnly: asString(map['readOnly']),
+    permissions: map['permissions'] == null ? null : DsBotPermissionCatalog.fromJson(map['permissions']),
   );
 
   final int revision;
@@ -749,6 +777,10 @@ class DsBotTeam {
   final String? modelsKey;
   final bool memory;
   final String? readOnly;
+
+  /// The presets a group may set for all its members; null when the Host has no
+  /// permission service (or an older one without a catalog).
+  final DsBotPermissionCatalog? permissions;
 
   DsBot? bot(String? id) {
     if (id == null) return null;
@@ -772,6 +804,14 @@ class DsBotTeam {
   DsBot? botOfSession(String sessionId) {
     for (final bot in bots) {
       if (bot.id == sessionId || bot.sessionId == sessionId || bot.parts.contains(sessionId)) return bot;
+    }
+    return null;
+  }
+
+  /// The group whose chat Session (any part) is [sessionId].
+  DsBotRoom? roomOfSession(String sessionId) {
+    for (final room in rooms) {
+      if (room.id == sessionId || room.sessionId == sessionId || room.parts.contains(sessionId)) return room;
     }
     return null;
   }
@@ -832,9 +872,77 @@ class DsBotFileText {
   final bool? whole;
 }
 
-enum DsBotItemKind { user, bot, event, answer, divider, unknown }
+enum DsBotItemKind { user, bot, event, answer, divider, tool, thinking, unknown }
 
 /// One entry of a chat or a group chat, ready to draw.
+/// One attachment a line carries: enough to fetch an image by id, and to name
+/// a file. Files have no media type on the host; the name's extension is all.
+class DsBotAttachmentRef {
+  const DsBotAttachmentRef({required this.id, this.name, this.mediaType});
+
+  factory DsBotAttachmentRef.fromJson(Object? json) {
+    final map = asMapOrEmpty(json);
+    return DsBotAttachmentRef(
+      // `id` is what the room and chat pages send today; `attachmentId` is the
+      // same reference under the name the engine's own records use. A Host that
+      // still answers with that one would otherwise leave every file card without
+      // an id, so tapping it could only say it failed.
+      id: asString(map['id']) ?? asString(map['attachmentId']) ?? '',
+      name: asString(map['name']),
+      mediaType: asString(map['mediaType']),
+    );
+  }
+
+  final String id;
+  final String? name;
+  final String? mediaType;
+
+  bool get isImage => mediaType?.startsWith('image/') ?? false;
+}
+
+/// The presets a group may set for all its members (`state.permissions`): DSH's
+/// catalog with the session-only `auto` already filtered out by the Host.
+class DsBotPermissionCatalog {
+  const DsBotPermissionCatalog({this.options = const [], this.defaultPreset});
+
+  factory DsBotPermissionCatalog.fromJson(Object? json) {
+    if (json == null) return const DsBotPermissionCatalog();
+    final map = asMapOrEmpty(json);
+    return DsBotPermissionCatalog(
+      options: [for (final option in asListOrEmpty(map['options'])) DsBotPermissionOption.fromJson(option)],
+      defaultPreset: asString(map['defaultPreset']),
+    );
+  }
+
+  final List<DsBotPermissionOption> options;
+  final String? defaultPreset;
+
+  DsBotPermissionOption? option(String? value) {
+    for (final option in options) {
+      if (option.value == value) return option;
+    }
+    return null;
+  }
+}
+
+/// One selectable preset: the value the Host stores, and its name for display.
+class DsBotPermissionOption {
+  const DsBotPermissionOption({required this.value, required this.name, this.description});
+
+  factory DsBotPermissionOption.fromJson(Object? json) {
+    final map = asMapOrEmpty(json);
+    return DsBotPermissionOption(
+      value: asString(map['value']) ?? '',
+      name: asString(map['name']) ?? '',
+      description: asString(map['description']),
+    );
+  }
+
+  final String value;
+  final String name;
+  final String? description;
+}
+
 class DsBotItem {
   const DsBotItem({
     required this.kind,
@@ -849,6 +957,12 @@ class DsBotItem {
     this.role,
     this.roomId,
     this.images = 0,
+    this.files = const [],
+    this.callId,
+    this.toolName,
+    this.toolStatus,
+    this.turn,
+    this.seq,
     this.duration,
     this.live = false,
     this.whole,
@@ -864,6 +978,8 @@ class DsBotItem {
         'event' => DsBotItemKind.event,
         'answer' => DsBotItemKind.answer,
         'divider' => DsBotItemKind.divider,
+        'tool' => DsBotItemKind.tool,
+        'thinking' => DsBotItemKind.thinking,
         _ => DsBotItemKind.unknown,
       },
       id: asString(map['id']),
@@ -877,6 +993,12 @@ class DsBotItem {
       role: asString(map['role']),
       roomId: asString(map['roomId']),
       images: asInt(map['images']) ?? 0,
+      files: [for (final file in asListOrEmpty(map['files'])) DsBotAttachmentRef.fromJson(file)],
+      callId: asString(map['callId']),
+      toolName: asString(map['name']),
+      toolStatus: asString(map['status']),
+      turn: asInt(map['turn']),
+      seq: asInt(map['seq']),
       duration: asInt(map['duration']) == null ? null : Duration(milliseconds: asInt(map['duration'])!),
       live: asBool(map['live']) ?? false,
       whole: whole == null ? null : DsBotLongText(asInt(whole['length']) ?? 0, asMapOrEmpty(whole['file'])),
@@ -904,6 +1026,21 @@ class DsBotItem {
   final String? role;
   final String? roomId;
   final int images;
+
+  /// The attachments themselves, when the host names them.
+  final List<DsBotAttachmentRef> files;
+
+  /// For [DsBotItemKind.tool]: the call, the tool, and `running` / `done` /
+  /// `failed`. Nothing more is sent, so the row has nothing to expand.
+  final String? callId;
+  final String? toolName;
+  final String? toolStatus;
+
+  /// The session turn this entry belongs to, and the event sequence inside its
+  /// part. Both are per part: a Bot's chat pages through parts. Absent from a
+  /// host older than these fields.
+  final int? turn;
+  final int? seq;
   final Duration? duration;
 
   /// Said in the round still running; replaced by the logged one later.
@@ -937,6 +1074,43 @@ class DsBotChatPage {
 }
 
 /// A page of a group chat.
+/// One round's progress in a group: [replies] mixes member replies with the
+/// round's own lines (folders, pauses, approvals), so the names are taken from
+/// each reply's `botId`, deduped, never from the array's length.
+class DsBotRoomProgress {
+  const DsBotRoomProgress({this.roomId, this.callId, this.speaking = const [], this.replies = const []});
+
+  factory DsBotRoomProgress.fromJson(Object? json) {
+    final map = asMapOrEmpty(json);
+    return DsBotRoomProgress(
+      roomId: asString(map['roomId']),
+      callId: asString(map['callId']),
+      speaking: [for (final id in asListOrEmpty(map['speaking'])) ?asString(id)],
+      replies: [for (final reply in asListOrEmpty(map['replies'])) asMapOrEmpty(reply)],
+    );
+  }
+
+  final String? roomId;
+  final String? callId;
+
+  /// Members speaking right now.
+  final List<String> speaking;
+
+  /// Every entry of the round so far, members and the round's own lines alike.
+  final List<Map<String, dynamic>> replies;
+
+  /// Members that have spoken, in the order they first did.
+  List<String> get spokenBy {
+    final seen = <String>{};
+    return [
+      for (final reply in replies)
+        if (asString(reply['botId']) case final id? when seen.add(id)) id,
+    ];
+  }
+
+  bool get isEmpty => speaking.isEmpty && replies.isEmpty;
+}
+
 class DsBotRoomPage {
   const DsBotRoomPage({required this.roomId, required this.items, this.cursor, this.running = false, this.speaking});
 
@@ -1076,15 +1250,28 @@ class DsBotMemoryEntry {
 
 /// A Bot's or a group's memory, as the memory panel shows it.
 class DsBotMemoryView {
-  const DsBotMemoryView({required this.entries, this.summary, this.summarizing = false, this.error});
+  const DsBotMemoryView({
+    required this.entries,
+    this.summary,
+    this.summarizing = false,
+    this.error,
+    this.sizes = const {},
+    this.limits = const {},
+  });
 
   factory DsBotMemoryView.fromJson(Object? json) {
     final map = asMapOrEmpty(json);
+    Map<String, int> counts(Object? value) => {
+      for (final entry in asMapOrEmpty(value).entries)
+        if (asInt(entry.value) case final count?) entry.key: count,
+    };
     return DsBotMemoryView(
       entries: [for (final entry in asListOrEmpty(map['entries'])) DsBotMemoryEntry.fromJson(entry)],
       summary: asString(asMapOrEmpty(map['summary'])['text']),
       summarizing: asBool(map['summarizing']) ?? false,
       error: asString(map['error']),
+      sizes: counts(map['sizes']),
+      limits: counts(map['limits']),
     );
   }
 
@@ -1092,6 +1279,12 @@ class DsBotMemoryView {
   final String? summary;
   final bool summarizing;
   final String? error;
+
+  /// Characters used per scope (`own`, `team`, `group`), as the host counts them.
+  final Map<String, int> sizes;
+
+  /// The host's caps, in characters: `entry`, `main` (a MEMORY.md), `topic`.
+  final Map<String, int> limits;
 }
 
 /// Token counts.
@@ -1386,7 +1579,9 @@ class DsBotApi {
   }
 
   /// Versions of the mobile API this client speaks.
-  static const supportedApi = [1];
+  /// Host versions this client speaks: 2 is `send` with images and staged
+  /// file receipts; 1 still works for everything else.
+  static const supportedApi = [1, 2];
 
   final DsBotTransport transport;
 
@@ -1422,9 +1617,37 @@ class DsBotApi {
   Future<DsBotRoomPage> roomChat(String roomId, {Object? cursor}) async =>
       DsBotRoomPage.fromJson(await call('room-chat', {'roomId': roomId, 'cursor': ?cursor}));
 
-  /// Sends [text] to a Bot (its id) or a group (its id).
-  Future<void> send(String conversationId, String text) =>
-      call('send', {'sessionId': conversationId, 'text': text}, const Duration(seconds: 40));
+  /// A running round's progress: who has spoken, who is speaking. A read, so
+  /// watching it never starts a turn. Empty when no round is under way.
+  Future<DsBotRoomProgress> roomProgress(String roomId) async {
+    for (final raw in asListOrEmpty(await call('room-progress', {'roomId': roomId}))) {
+      final entry = DsBotRoomProgress.fromJson(raw);
+      if (entry.roomId == null || entry.roomId == roomId) return entry;
+    }
+    return const DsBotRoomProgress();
+  }
+
+  /// Sends [text] to a Bot (its id) or a group (its id), with images inline
+  /// and the receipts of the files already staged in that conversation. Text
+  /// alone is one of the three.
+  Future<void> send(
+    String conversationId,
+    String text, {
+    List<PromptImage> images = const [],
+    List<String> fileReceiptIds = const [],
+    /// How the message reaches a running turn: `steer` joins its next step,
+    /// `queue` waits for it to end. Anything else is the host's default
+    /// (`queue`), which is also what a host without this field does.
+    String? mode,
+
+  }) =>
+      call('send', {
+        'sessionId': conversationId,
+        'text': text,
+        if (images.isNotEmpty) 'images': [for (final image in images) image.toJson()],
+        if (fileReceiptIds.isNotEmpty) 'fileReceiptIds': fileReceiptIds,
+        if (mode != null) 'mode': mode,
+      }, const Duration(seconds: 40));
 
   /// Reads the Host's bounded preview, retaining its completeness metadata.
   Future<DsBotFileText> readFileText(DsBotLongText long) async =>
@@ -1435,6 +1658,15 @@ class DsBotApi {
     final value = await call('file-text', {'file': long.file});
     return asString(asMapOrEmpty(value)['text']) ?? asString(value) ?? '';
   }
+
+  /// The Host's bounded text of a file a message attached (`file-text`), for
+  /// opening the file in place. The Host wants the id and the name; it answers
+  /// `bot/invalid` without an id and `bot/unavailable` when it cannot read it.
+  Future<DsBotFileText> readAttachmentText(DsBotAttachmentRef file) async => DsBotFileText.fromJson(
+    await call('file-text', {
+      'file': {'attachmentId': file.id, 'name': file.name ?? ''},
+    }),
+  );
 
   /// Copies the Bot's settings into a new Session; history and personal memory are fresh.
   Future<DsBot> duplicateBot(String id) async => DsBot.fromJson(await call('duplicate-bot', {'id': id}));
@@ -1503,6 +1735,7 @@ class DsBotApi {
     String? admin,
     List<String>? add,
     List<String>? remove,
+    String? permission,
   }) => call('update-room', {
     'id': id,
     'name': ?name,
@@ -1511,6 +1744,10 @@ class DsBotApi {
     'admin': ?admin,
     'add': ?add,
     'remove': ?remove,
+    // Passing null leaves the group's preset alone; clearing it means an empty
+    // string (the Host reads undefined as "no change" and ''/null as "each member
+    // keeps its own").
+    'permission': ?permission,
   });
 
   /// Explicit null restores the server default; omission would keep the old limit.
@@ -1529,6 +1766,26 @@ class DsBotApi {
   /// Stops what a member works on in a group; false when it was not working.
   Future<bool> stopMemberWork(String roomId, String botId) async =>
       asBool(await call('stop-member-work', {'roomId': roomId, 'botId': botId})) ?? false;
+
+  /// Stops what every member is doing in the group (`stop-room-work`), not just
+  /// the member speaking now.
+  Future<bool> stopRoomWork(String roomId) async =>
+      asBool(await call('stop-room-work', {'roomId': roomId})) ?? false;
+
+  /// DSH's own figures for a Bot's current part (`run-stats`): `sessionStats`
+  /// (turns, decode time and tokens), `tokenUsage`, `contextPressure`. Empty on a
+  /// Host that does not answer them.
+  /// DSH's own figures for a conversation (`run-stats`).
+  ///
+  /// [botId] is the member's own Session; pass [sessionId] to read another one
+  /// instead — a member's Session *in a group* is a different Session, and its
+  /// figures are the ones a group's sums need.
+  Future<Map<String, Object?>> runStats(String botId, {String? sessionId}) async {
+    final session = sessionId ?? '';
+    return asMapOrEmpty(
+      await call('run-stats', {if (session.isNotEmpty) 'sessionId': session else 'botId': botId}),
+    );
+  }
 
   Future<void> answerApproval(String id, {required bool allow}) =>
       call('approval-answer', {'id': id, 'choice': allow ? 'allow' : 'reject'});

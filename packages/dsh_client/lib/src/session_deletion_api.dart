@@ -28,6 +28,7 @@ extension SessionDeletionApi on DshClient {
       throw DshHttpException(response.statusCode, 'session deletion capability is unavailable');
     }
     final body = asMap(tryDecodeJson(response.text));
+    // A login page or an unrelated plugin response is not proof of support.
     return response.contentType == 'application/json' && body?['version'] == 1 && body?['supported'] == true;
   }
 

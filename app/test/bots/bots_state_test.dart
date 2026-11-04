@@ -17,8 +17,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../chat/support/harness.dart' show fakeConnection;
+import '../chat/support/harness.dart' show fakeConnection, FakeChatController;
 import 'support.dart';
+import 'package:dsh_app/state/chat_state.dart' show chatProvider, ChatState;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -61,6 +62,7 @@ void main() {
     test('the relay cannot reach plugin routes', () async {
       final container = ProviderContainer(
         overrides: [
+              chatProvider.overrideWith2((id) => FakeChatController(id, const ChatState(loading: false))),
           activeConnectionProvider.overrideWithValue(AsyncData(fakeConnection)),
           dsBotApiFactoryProvider.overrideWithValue((_) => null),
         ],
@@ -309,6 +311,22 @@ void main() {
       state = container.read(botChatProvider('b2'));
       expect(state.items.map((i) => i.text), ['写个开场白', '各位好']);
       expect(state.streaming, isNull);
+    });
+
+    test('a send carries its mode; without one the payload stays as it was', () async {
+      final transport = FakeDsBotTransport();
+      final container = await start(transport);
+      final sub = container.listen(botChatProvider('b2'), (_, _) {});
+      addTearDown(sub.close);
+      await settle();
+      await container.read(botChatProvider('b2').notifier).send('插一句', mode: 'steer');
+      expect(transport.calls.last.$2, {
+        'sessionId': 'b2',
+        'text': '插一句',
+        'mode': 'steer',
+      });
+      await container.read(botChatProvider('b2').notifier).send('排着');
+      expect(transport.calls.last.$2, {'sessionId': 'b2', 'text': '排着'});
     });
 
     test('a failed send goes back to the draft side and says why', () async {

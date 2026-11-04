@@ -83,6 +83,7 @@ class AppUpdateState {
     required this.current,
     this.loaded = false,
     this.autoCheck = true,
+    this.includePreviews = false,
     this.flavor,
     this.check = UpdateCheckPhase.idle,
     this.checkFailure,
@@ -96,11 +97,16 @@ class AppUpdateState {
     this.problem,
     this.installedSha256,
     this.patchFailedVersion,
+    this.problemDetail,
   });
 
   /// Preferences were read; nothing automatic runs before that.
   final bool loaded;
   final bool autoCheck;
+
+  /// 检查更新时也看预览版: asks the releases list instead of `releases/latest`.
+  /// Off by default — an installed stable build must not silently move to an rc.
+  final bool includePreviews;
 
   /// Installed version (native versionName + versionCode).
   final AppVersion current;
@@ -128,6 +134,10 @@ class AppUpdateState {
   /// The release whose patch failed: its whole APK is downloaded instead.
   final String? patchFailedVersion;
 
+  /// Extra lines under a failure: for a checksum mismatch, which source
+  /// answered and how its digest differed.
+  final String? problemDetail;
+
   bool get hasUpdate => latest != null;
   bool get isSkipped => latest != null && skippedVersion == latest!.version.toString();
   ReleaseAsset? get asset => latest?.apkFor(flavor);
@@ -152,6 +162,7 @@ class AppUpdateState {
   AppUpdateState copyWith({
     bool? loaded,
     bool? autoCheck,
+    bool? includePreviews,
     AppVersion? current,
     ApkFlavor? flavor,
     UpdateCheckPhase? check,
@@ -166,9 +177,11 @@ class AppUpdateState {
     UpdateProblem? Function()? problem,
     String? installedSha256,
     String? Function()? patchFailedVersion,
+    String? Function()? problemDetail,
   }) => AppUpdateState(
     loaded: loaded ?? this.loaded,
     autoCheck: autoCheck ?? this.autoCheck,
+    includePreviews: includePreviews ?? this.includePreviews,
     current: current ?? this.current,
     flavor: flavor ?? this.flavor,
     check: check ?? this.check,
@@ -183,6 +196,7 @@ class AppUpdateState {
     problem: problem == null ? this.problem : problem(),
     installedSha256: installedSha256 ?? this.installedSha256,
     patchFailedVersion: patchFailedVersion == null ? this.patchFailedVersion : patchFailedVersion(),
+    problemDetail: problemDetail == null ? this.problemDetail : problemDetail(),
   );
 }
 
@@ -249,6 +263,7 @@ class _ReadyApk {
 
 class AppUpdateController extends Notifier<AppUpdateState> {
   static const _autoKey = 'update_auto_check';
+  static const _previewsKey = 'update_include_previews';
   static const _skippedKey = 'update_skipped_version';
   static const _checkedKey = 'update_last_checked';
   static const _attemptKey = 'update_last_attempt';
@@ -325,6 +340,7 @@ class AppUpdateController extends Notifier<AppUpdateState> {
     state = state.copyWith(
       loaded: true,
       autoCheck: prefs.getBool(_autoKey) ?? true,
+      includePreviews: prefs.getBool(_previewsKey) ?? false,
       current: current,
       flavor: flavor,
       skippedVersion: () => prefs.getString(_skippedKey),
@@ -404,7 +420,8 @@ class AppUpdateController extends Notifier<AppUpdateState> {
     final run = _run;
     final prefs = _prefs;
     final now = _now();
-    final checker = UpdateChecker(http: _http, sources: ref.read(updateSourcesProvider), userAgent: _userAgent);
+    final sources = ref.read(updateSourcesProvider).copyWith(includePrerelease: state.includePreviews);
+    final checker = UpdateChecker(http: _http, sources: sources, userAgent: _userAgent);
     final result = await checker.check(preferred: prefs?.getString(_endpointKey), installed: state.current);
     if (!ref.mounted) return UpdateCheckPhase.idle;
     unawaited(prefs?.setInt(_attemptKey, now.millisecondsSinceEpoch));
@@ -526,6 +543,13 @@ class AppUpdateController extends Notifier<AppUpdateState> {
   Future<void> setAutoCheck(bool value) async {
     state = state.copyWith(autoCheck: value);
     await _prefs?.setBool(_autoKey, value);
+  }
+
+  /// 预览版：the next check asks the releases list and takes an rc when it is
+  /// newer. Turning it on does not check by itself.
+  Future<void> setIncludePreviews(bool value) async {
+    state = state.copyWith(includePreviews: value);
+    await _prefs?.setBool(_previewsKey, value);
   }
 
   /// 「跳过这个版本」: no automatic prompt until a newer one appears.
@@ -669,13 +693,14 @@ class AppUpdateController extends Notifier<AppUpdateState> {
         state = state.copyWith(task: UpdateTaskPhase.ready);
       case DownloadCancelled():
         state = state.copyWith(task: UpdateTaskPhase.idle, received: 0);
-      case DownloadFailed(:final failure):
+      case DownloadFailed(:final failure, :final detail):
         fail(switch (failure) {
           DownloadFailure.network => UpdateProblem.network,
           DownloadFailure.unavailable => UpdateProblem.unavailable,
           DownloadFailure.checksum => UpdateProblem.checksum,
           DownloadFailure.storage => UpdateProblem.storage,
         });
+        if (detail != null && owns()) state = state.copyWith(problemDetail: () => detail);
     }
   }
 

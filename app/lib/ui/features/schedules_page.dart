@@ -35,10 +35,15 @@ import '../common/brief_notice.dart';
 enum ScheduleFilter { all, active, ended }
 
 class SchedulesPage extends ConsumerStatefulWidget {
-  const SchedulesPage({super.key, this.now});
+  const SchedulesPage({super.key, this.now, this.sessionId});
 
   /// Clock override (tests).
   final DateTime? now;
+
+  /// Show only this conversation's tasks (a Bot's page opens it this way).
+  /// Null keeps the Host-wide catalog the 全部功能 entry shows. The data source
+  /// stays [schedulesProvider] either way, so a delete still refreshes it.
+  final String? sessionId;
 
   @override
   ConsumerState<SchedulesPage> createState() => _SchedulesPageState();
@@ -71,8 +76,9 @@ class _SchedulesPageState extends ConsumerState<SchedulesPage> {
   );
 
   Future<void> _create() async {
-    final created = await Navigator.of(context)
-        .push<ScheduleTask>(MaterialPageRoute(builder: (_) => ScheduleEditorPage(now: widget.now)));
+    final created = await Navigator.of(context).push<ScheduleTask>(
+      MaterialPageRoute(builder: (_) => ScheduleEditorPage(now: widget.now, sessionId: widget.sessionId)),
+    );
     if (created == null || !mounted) return;
     showBriefNotice(context, context.l10n.featuresScheduleCreated);
     unawaited(_open(created));
@@ -83,9 +89,11 @@ class _SchedulesPageState extends ConsumerState<SchedulesPage> {
     final l10n = context.l10n;
     final tasks = ref.watch(schedulesProvider);
     final list = tasks.value;
+    final session = widget.sessionId;
     final shown = [
       for (final t in list ?? const <ScheduleTask>[])
-        if (_matches(t) &&
+        if ((session == null || t.sessionId == session) &&
+            _matches(t) &&
             switch (_filter) {
               ScheduleFilter.all => true,
               ScheduleFilter.active => t.active,
@@ -113,6 +121,15 @@ class _SchedulesPageState extends ConsumerState<SchedulesPage> {
       );
     } else if (shown.isEmpty && _query.trim().isNotEmpty) {
       body = FeatureMessage(icon: AppIcons.noResults, title: l10n.featuresSchedulesNoMatch);
+    } else if (shown.isEmpty && session != null && _filter == ScheduleFilter.all) {
+      // A Bot with no tasks of its own: the Host has some, this conversation
+      // has none, so offer to make one here.
+      body = FeatureMessage(
+        tile: FeatureKind.automation,
+        title: l10n.featuresSchedulesEmpty,
+        body: l10n.featuresSchedulesEmptyHint,
+        action: (l10n.featuresScheduleNewTask, () => unawaited(_create())),
+      );
     } else if (shown.isEmpty) {
       body = FeatureMessage(
         icon: AppIcons.noMatches,

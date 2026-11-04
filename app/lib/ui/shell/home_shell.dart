@@ -17,8 +17,10 @@ import '../../state/drawer_view_state.dart' show drawerSelectionProvider;
 import '../../state/quick_panel_state.dart';
 import '../../state/sessions_state.dart' show currentSessionProvider;
 import '../bots/bot_alerts.dart';
+import '../bots/bot_session_routing.dart';
 import '../chat/chat_screen.dart';
 import '../chat/composer_toast.dart' show composerToastGap;
+import 'drawer/drawer_open_request.dart';
 import '../engine/engine_screen.dart';
 import '../features/all_features_page.dart';
 import '../forum/forum_link_host.dart';
@@ -183,6 +185,8 @@ class _HomeShellState extends ConsumerState<HomeShell> with TickerProviderStateM
   Future<void> _search() async {
     final sessionId = await showSessionSearch(context);
     if (sessionId == null || !mounted) return;
+    // A Bot's or group's chat opens its own page, not the plain conversation.
+    if (await openTeamChatIfOwned(context, ref, sessionId)) return;
     ref.read(currentSessionProvider.notifier).select(sessionId);
   }
 
@@ -277,6 +281,9 @@ class _HomeShellState extends ConsumerState<HomeShell> with TickerProviderStateM
     final width = _drawerWidth(context);
     final sessionId = ref.watch(currentSessionProvider);
     final prefs = ref.watch(layoutPrefsProvider);
+    // A chat pushed over the shell (a Bot's or a group's) asks for the drawer
+    // through its header key; it lands here.
+    ref.listen(drawerOpenRequestProvider, (_, _) => _onMenu());
     // Multi-select in a list on screen (the open drawer, or the sidebar):
     // back ends it before anything else.
     final selecting = ref.watch(drawerSelectionProvider.select((s) => s != null));

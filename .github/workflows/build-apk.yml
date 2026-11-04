@@ -1,0 +1,186 @@
+name: build-apk
+
+# Builds a release APK on x86_64 runners, for phones that cannot build one
+# themselves. The bundled runtime is not in git (runtime/out is ignored); the
+# first step reproduces it from runtime/build-runtime.sh, the second builds the
+# APK exactly as tooling/build-apk.sh does locally.
+on:
+  push:
+    branches:
+      - ci/build-apk
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g. 2.0.0). Empty: a ci- test build.'
+        required: false
+        default: ''
+      prerelease:
+        description: 'Mark the release as a preview (not the latest)'
+        required: false
+        type: boolean
+        default: false
+
+# Publishing a release for each build: Actions artifacts live on a storage
+# host some phone networks cannot reach, release assets on another.
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.9'
+          cache: true
+
+      - name: Host tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends xz-utils unzip zip
+          flutter --version
+          java -version
+          python3 --version
+
+      - name: Build the bundled runtime (arm64)
+        run: runtime/build-runtime.sh arm64-v8a
+
+      - name: Sign with the repository's test key
+        # A throwaway key, committed on purpose: the CI build must install
+        # beside the shipped app and keep one stable signature between runs.
+        run: |
+          cat > app/android/key.properties <<'EOF'
+          storeFile=../ci/test-signing.p12
+          storeType=PKCS12
+          storePassword=dshgoci
+          keyAlias=dshgo-ci
+          keyPassword=dshgoci
+          EOF
+
+      - name: Build the APK
+        # The app id is MODO's own (see build.gradle.kts), so this build cannot
+        # replace the shipped DSH Go; no extra suffix is needed. The log is kept
+        # for the failure step: job logs live where the phone cannot read them.
+        # VERSION names the release *and* the APK's own version name: without
+        # --build-name every build says pubspec's 2.0.0, so an update installs
+        # and then still reports the old version.
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -o pipefail
+          args=(--release -f arm64)
+          if [ -n "$VERSION" ]; then args+=(--build-name "$VERSION"); fi
+          tooling/build-apk.sh "${args[@]}" 2>&1 | tee /tmp/build.log
+
+      - name: List what was built
+        if: always()
+        run: |
+          ls -la app/build/app/outputs/flutter-apk/ || true
+          cat runtime/out/manifest.json 2>/dev/null | head -50 || true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dsh-go-apk
+          path: app/build/app/outputs/flutter-apk/*.apk
+          if-no-files-found: error
+
+      - name: Publish the build log when it fails
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [ -f /tmp/build.log ] || echo "no build log" > /tmp/build.log
+          tag="buildlog-$(date -u +%Y%m%d-%H%M)-${GITHUB_SHA::7}"
+          gh release create "$tag" /tmp/build.log --prerelease --title "Build log ${GITHUB_SHA::7}" --notes "tooling/build-apk.sh output from ${GITHUB_SHA}."
+
+      - name: Publish the APK as a release asset
+        # Two kinds of release: a named one (v2.0.0, or v2.1.0-rc.1 as a
+        # preview) that the app's own updater reads, and a ci- test build that
+        # it ignores. The updater looks for `dsh-go-<version>-arm64.apk` under
+        # `releases/latest`, so a named release carries exactly that file.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+          PREVIEW: ${{ inputs.prerelease }}
+        run: |
+          apk="$(ls app/build/app/outputs/flutter-apk/*.apk | head -1)"
+          echo "apk=$apk version=${VERSION:-<none>} preview=${PREVIEW:-<none>}"
+          if [ -n "$VERSION" ]; then
+            file="dsh-go-${VERSION}-arm64.apk"
+            cp "$apk" "/tmp/$file"
+            # Not `notes="...$( [ "$PREVIEW" = true ] && echo ...)": the runner
+            # uses `bash -e`, a failed command substitution makes the whole
+            # assignment fail, and the step exits 1 with no output at all — that
+            # is how the first 2.0.0 publish died, after a 15-minute build.
+            notes="MODO ${VERSION}. 基于上游 v1.0.8。"
+            # Release notes live in the repository, one file per version, so the
+            # text is reviewed with the code instead of typed into the workflow.
+            notes_file="docs/release-notes/${VERSION}.md"
+            if [ -f "$notes_file" ]; then
+              notes_args=(--notes-file "$notes_file")
+            else
+              notes_args=(--notes "$notes")
+            fi
+            if [ "$PREVIEW" = "true" ]; then
+              gh release create "v${VERSION}" "/tmp/$file" --title "MODO ${VERSION} (preview)" "${notes_args[@]}" --prerelease
+            else
+              gh release create "v${VERSION}" "/tmp/$file" --title "MODO ${VERSION}" "${notes_args[@]}" --latest
+            fi
+          else
+            tag="ci-$(date -u +%Y%m%d-%H%M)-${GITHUB_SHA::7}"
+            gh release create "$tag" "$apk" --prerelease \
+              --title "CI build ${GITHUB_SHA::7}" \
+              --notes "Built from ${GITHUB_SHA}. A test build; the app's updater ignores it."
+          fi
+
+  # Analysis and the test suite. Not yet required by the build: the golden
+  # screenshots are stale until a `goldens` run refreshes them, and a red check
+  # should not hide a working APK. Make this `needs:` once the goldens land.
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.9'
+          cache: true
+
+      - name: Fonts the golden tests render with
+        # The tests read Noto Sans CJK Light, which lives in -extra; the
+        # directory it lands in varies (opentype/noto, noto-cjk), so point the
+        # tests at wherever the font really is.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk fonts-noto-cjk-extra
+          dir="$(dirname "$(find / -name 'NotoSansCJK-Light.ttc' -print -quit 2>/dev/null)")"
+          echo "fonts in $dir"
+          echo "DSH_TEST_FONT_DIR=$dir" >> "$GITHUB_ENV"
+
+      - name: Fetch packages
+        run: flutter pub get
+        working-directory: app
+
+      - name: Analyze
+        run: flutter analyze
+        working-directory: app
+
+      - name: Test
+        run: flutter test
+        working-directory: app
+
+      # The client package carries the DS Bot wire shapes (send, hello);
+      # the app's own tests never load it.
+      - name: Test the client package
+        run: dart test
+        working-directory: packages/dsh_client

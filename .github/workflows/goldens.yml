@@ -1,0 +1,94 @@
+name: goldens
+
+# Regenerates the golden screenshots on a runner with Flutter, and hands them
+# back as an artifact. Goldens are pictures of the interface: a person looks at
+# the changed ones before they are committed.
+on:
+  workflow_dispatch:
+
+# Publishing the bundle needs write access; the default token is read-only.
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.9'
+          cache: true
+
+      - name: Fonts the golden tests render with
+        # The tests read Noto Sans CJK Light, which lives in -extra; the
+        # directory it lands in varies (opentype/noto, noto-cjk), so point the
+        # tests at wherever the font really is.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk fonts-noto-cjk-extra
+          dir="$(dirname "$(find / -name 'NotoSansCJK-Light.ttc' -print -quit 2>/dev/null)")"
+          echo "fonts in $dir"
+          echo "DSH_TEST_FONT_DIR=$dir" >> "$GITHUB_ENV"
+
+      - name: Fetch packages
+        run: flutter pub get
+        working-directory: app
+
+      - name: Regenerate the goldens this change touches
+        # The output is kept even when the run fails: a failing golden test is
+        # what a person needs to read, and job logs live where the phone cannot
+        # reach them.
+        run: |
+          set -o pipefail
+          flutter test --update-goldens \
+            test/launch/launch_golden_test.dart \
+            test/launch/launch_icon_test.dart \
+            test/share/share_card_golden_test.dart \
+            test/shell/shell_golden_test.dart \
+            test/bots/bots_golden_test.dart 2>&1 | tee /tmp/goldens.test.log
+        working-directory: app
+
+      - name: Collect only the pictures that actually changed
+        if: always()
+        run: |
+          git status --porcelain app/test || true
+          git diff --stat -- app/test || true
+          mkdir -p /tmp/goldens
+          git diff --name-only app/test | while read -r file; do
+            [ -f "$file" ] && cp --parents "$file" /tmp/goldens/
+          done
+          cp /tmp/goldens.test.log /tmp/goldens/ 2>/dev/null || true
+          find /tmp/goldens -name '*.png' | wc -l
+
+      - name: Bundle them with a list of what changed
+        if: always()
+        run: |
+          git diff --name-only app/test > /tmp/goldens/CHANGED.txt
+          git diff --stat app/test >> /tmp/goldens/CHANGED.txt
+          cat /tmp/goldens/CHANGED.txt
+          (cd /tmp/goldens && tar czf /tmp/goldens.tgz .)
+          ls -la /tmp/goldens.tgz
+
+      - name: Publish the bundle as a release asset
+        if: always()
+        # Artifact downloads go through Azure, which the phone cannot reach;
+        # a release asset it can fetch with the same token it builds with.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="goldens-$(date -u +%Y%m%d-%H%M)-${GITHUB_SHA::7}"
+          # --prerelease: an auxiliary release must never take `releases/latest`
+          # away from the app release the updater reads.
+          gh release create "$tag" /tmp/goldens.tgz --prerelease \
+            --title "Goldens ${GITHUB_SHA::7}" \
+            --notes "Regenerated golden screenshots from ${GITHUB_SHA}."
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: goldens
+          path: /tmp/goldens/**
+          if-no-files-found: warn

@@ -10,11 +10,14 @@ import '../../state/connection_state.dart';
 import '../../state/hosts_state.dart';
 import '../../state/session_search.dart';
 import '../../state/sessions_state.dart';
+import '../bots/bot_session_routing.dart';
 import '../common/app_sheet.dart';
 import '../common/empty_view.dart';
 import '../common/fade_in.dart';
 import '../common/side_insets.dart';
 import '../common/status_dot.dart';
+import '../../state/bots_state.dart';
+import '../bots/bot_avatar.dart';
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
 import 'page_frame.dart';
@@ -22,16 +25,19 @@ import 'sessions_drawer.dart' show sessionSelectionColor, sessionTitle;
 
 /// "搜索对话" at the top of the sessions drawer. Opens [SessionSearchPage];
 /// picking a result opens that conversation and closes the drawer.
+/// The drawer's search key: the same 36dp chrome key as 网页模式, beside it.
+/// It opens the search page; the row of text it used to take is gone.
 class SessionSearchBar extends ConsumerWidget {
-  const SessionSearchBar({super.key, required this.onClose, this.padding = const EdgeInsets.fromLTRB(10, 2, 10, 6)});
+  const SessionSearchBar({super.key, required this.onClose});
 
   /// Closes the drawer.
   final VoidCallback onClose;
-  final EdgeInsetsGeometry padding;
 
   Future<void> _open(BuildContext context, WidgetRef ref) async {
     final sessionId = await showSessionSearch(context);
     if (sessionId == null || !context.mounted) return;
+    // A Bot's or group's chat opens its page; the drawer closes either way.
+    if (await openTeamChatIfOwned(context, ref, sessionId, beforeOpen: onClose)) return;
     ref.read(currentSessionProvider.notifier).select(sessionId);
     onClose();
   }
@@ -364,14 +370,28 @@ class _SearchBody extends ConsumerWidget {
 
     final current = ref.watch(currentSessionProvider);
     final clock = now ?? DateTime.now();
-    Widget tile(SessionSearchResult r) => SearchResultTile(
-      result: r,
-      terms: results.terms,
-      showFolder: results.showFolders,
-      current: r.session.sessionId == current,
-      now: clock,
-      onTap: () => r.archived ? _openArchived(context, ref, r.session) : onPick(r.session.sessionId),
-    );
+    // A Bot's or group's chat is one of these Sessions: show the name and face
+    // the drawer shows, not the title DSH gave it (any part counts).
+    final team = ref.watch(dsBotProvider).team;
+    Widget tile(SessionSearchResult r) {
+      final id = r.session.sessionId;
+      final bot = team?.botOfSession(id);
+      final room = bot == null ? team?.roomOfSession(id) : null;
+      return SearchResultTile(
+        result: r,
+        terms: results.terms,
+        showFolder: results.showFolders,
+        current: id == current,
+        now: clock,
+        title: bot?.name ?? room?.name,
+        leading: switch ((bot, room)) {
+          (final bot?, _) => BotAvatar(bot: bot, size: 22),
+          (_, final room?) => RoomAvatar(room: room, team: team!, size: 22),
+          _ => null,
+        },
+        onTap: () => r.archived ? _openArchived(context, ref, r.session) : onPick(id),
+      );
+    }
     final side = SessionSearchPage.sideFor(MediaQuery.sizeOf(context).width);
     return ListView(
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
@@ -461,6 +481,8 @@ class SearchResultTile extends StatelessWidget {
     required this.current,
     required this.now,
     required this.onTap,
+    this.title,
+    this.leading,
   });
 
   final SessionSearchResult result;
@@ -470,6 +492,12 @@ class SearchResultTile extends StatelessWidget {
   final DateTime now;
   final VoidCallback onTap;
 
+  /// A Bot's or group's name; null keeps the Session's own title.
+  final String? title;
+
+  /// Their 22 face; null keeps the row as it was.
+  final Widget? leading;
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -478,7 +506,11 @@ class SearchResultTile extends StatelessWidget {
     final colors = DshColors.of(context);
     final shape = Squircle.border(AppShape.md);
     final session = result.session;
-    final title = sessionTitle(session);
+    // The title a match may highlight: the Bot's or group's name, else the
+    // Session's own (null when DSH has none — the fallback wording is not a
+    // title and is never highlighted, exactly as before).
+    final ownTitle = this.title ?? session.title;
+    final title = ownTitle ?? sessionTitle(session);
     final folder = showFolder ? folderLabel(session.cwd) : null;
     final snippet = result.snippet;
     final excerpt = snippet == null || snippet.isEmpty ? null : excerptAround(snippet, matchRanges(snippet, terms));
@@ -513,10 +545,14 @@ class SearchResultTile extends StatelessWidget {
               children: [
                 Row(
                   children: [
+                    if (leading case final face?) ...[
+                      SizedBox.square(dimension: 22, child: face),
+                      const SizedBox(width: 8),
+                    ],
                     Expanded(
                       child: HighlightedText(
                         title,
-                        ranges: session.title == null ? const [] : matchRanges(title, terms),
+                        ranges: ownTitle == null || ownTitle.isEmpty ? const [] : matchRanges(ownTitle, terms),
                         maxLines: 1,
                         style: theme.textTheme.bodyLarge!.copyWith(
                           fontSize: 15,

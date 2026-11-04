@@ -8,6 +8,7 @@ import 'dart:ui' as ui;
 import 'package:dsh_app/launch/launch_motion.dart';
 import 'package:dsh_app/launch/launch_state.dart';
 import 'package:dsh_app/ui/launch/launch_overlay.dart';
+import 'package:dsh_app/ui/shell/brand_wordmark.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -94,9 +95,11 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 700));
       expect(c.phase, LaunchPhase.playing);
-      final text = tester.widget<Text>(find.descendant(of: _wordmark, matching: find.byType(Text)));
-      expect(text.style!.color, const Color(0xFFE6E9F0));
-      expect(text.data, 'DSH Go');
+      final mark = tester.widget<BrandWordmark>(
+        find.descendant(of: _wordmark, matching: find.byType(BrandWordmark)),
+      );
+      expect(mark.color, const Color(0xFFE6E9F0));
+      expect(mark.height, LaunchMotion.wordmarkMarkSize);
     });
   });
 

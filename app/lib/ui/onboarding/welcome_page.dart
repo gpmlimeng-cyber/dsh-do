@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../l10n/l10n.dart';
 import '../../state/app_info.dart';
 import '../common/fade_in.dart';
-import '../shell/brand_mark.dart';
+import '../shell/brand_wordmark.dart';
 import '../theme/theme.dart';
 import 'onboarding_scaffold.dart';
 import 'usage_notice_row.dart';
@@ -26,21 +26,7 @@ class WelcomePage extends StatelessWidget {
       children: [
         const Spacer(flex: 5),
         const Center(child: _BrandArrival()),
-        const SizedBox(height: 36),
-        FadeSlideIn(
-          delay: const Duration(milliseconds: 180),
-          // Letter spacing also trails the last letter: pad the leading side
-          // by the same amount so the word sits on the centre line.
-          child: Padding(
-            padding: const EdgeInsets.only(left: 3),
-            child: Text(
-              AppInfo.wordmark,
-              textAlign: TextAlign.center,
-              style: AppType.wordmark(size: 15, color: colors.textTertiary).copyWith(letterSpacing: 3),
-            ),
-          ),
-        ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 20),
         FadeSlideIn(
           delay: const Duration(milliseconds: 220),
           child: Text(
@@ -67,8 +53,8 @@ class WelcomePage extends StatelessWidget {
   }
 }
 
-/// The brand mark (the colour glyph) over a soft glow, easing in (fade + a slight
-/// grow) the first time the page shows. Still under reduced motion.
+/// The wordmark over a soft glow, easing in (fade + a slight grow) the first time the
+/// page shows. Still under reduced motion.
 class _BrandArrival extends StatefulWidget {
   const _BrandArrival();
 
@@ -80,8 +66,11 @@ class _BrandArrivalState extends State<_BrandArrival> with SingleTickerProviderS
   late final AnimationController _arrive = AnimationController(vsync: this, duration: AppMotion.slow);
   late final Animation<double> _curve = CurvedAnimation(parent: _arrive, curve: AppMotion.enter);
 
-  static const _mark = 60.0;
-  static const _glow = 220.0;
+  /// The hero tier: 44 tall (239 wide), the widest that stays under two thirds of a
+  /// 360dp screen.
+  static const _height = 44.0;
+  static const _glowWidth = 340.0;
+  static const _glowHeight = 150.0;
 
   @override
   void didChangeDependencies() {
@@ -104,9 +93,9 @@ class _BrandArrivalState extends State<_BrandArrival> with SingleTickerProviderS
     final scheme = Theme.of(context).colorScheme;
     final dark = scheme.brightness == Brightness.dark;
     return SizedBox(
-      // Layout keeps the mark's size; the glow spills around it unclipped.
-      width: _mark * BrandMark.aspect,
-      height: _mark,
+      // Layout keeps the wordmark's size; the glow spills around it unclipped.
+      width: _height * BrandWordmark.aspect,
+      height: _height,
       child: AnimatedBuilder(
         animation: _curve,
         builder: (context, child) => Opacity(
@@ -118,24 +107,22 @@ class _BrandArrivalState extends State<_BrandArrival> with SingleTickerProviderS
           alignment: Alignment.center,
           children: [
             Positioned.fill(
-              // The glow centres on the glyph's visual centre, not its box.
-              child: Transform.translate(
-                offset: -BrandMark.opticalShift(_mark),
-                child: OverflowBox(
-                  maxWidth: _glow,
-                  maxHeight: _glow,
-                  child: IgnorePointer(
-                    child: SizedBox.square(
-                      dimension: _glow,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: RadialGradient(
-                            colors: [
-                              scheme.primary.withValues(alpha: dark ? 0.22 : 0.16),
-                              scheme.primary.withValues(alpha: 0),
-                            ],
-                          ),
+              // An oval behind the whole word: a round glow under a wide mark reads as
+              // a smudge.
+              child: OverflowBox(
+                maxWidth: _glowWidth,
+                maxHeight: _glowHeight,
+                child: IgnorePointer(
+                  child: SizedBox(
+                    width: _glowWidth,
+                    height: _glowHeight,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: RadialGradient(
+                          colors: [
+                            scheme.primary.withValues(alpha: dark ? 0.22 : 0.16),
+                            scheme.primary.withValues(alpha: 0),
+                          ],
                         ),
                       ),
                     ),
@@ -143,7 +130,7 @@ class _BrandArrivalState extends State<_BrandArrival> with SingleTickerProviderS
                 ),
               ),
             ),
-            const BrandMark(size: _mark),
+            const BrandWordmark(height: _height),
           ],
         ),
       ),

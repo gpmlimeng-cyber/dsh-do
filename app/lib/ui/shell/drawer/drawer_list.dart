@@ -11,10 +11,16 @@ import '../../../l10n/l10n.dart';
 import '../../../state/drawer_view_state.dart';
 import '../../../state/session_attention_state.dart';
 import '../../../state/session_created_state.dart';
+import '../../../state/bots_state.dart';
 import '../../../state/sessions_state.dart';
 import '../../../state/workspaces_state.dart';
 import '../../common/empty_view.dart';
 import '../../theme/app_icons.dart';
+import '../../bots/bot_avatar.dart';
+import '../../bots/bot_format.dart' show shortTime, workPhrase;
+import '../../theme/theme.dart';
+import '../../bots/bot_chat_page.dart';
+import '../../bots/room_chat_page.dart';
 import '../sessions_drawer.dart' show sessionTitle;
 import 'drawer_actions.dart';
 import 'folder_header.dart';
@@ -27,6 +33,7 @@ class DrawerConversationList extends ConsumerWidget {
     required this.onLongPress,
     this.onNewChat,
     this.leading,
+    required this.onClose,
     this.now,
     this.readOnly = false,
   });
@@ -40,8 +47,8 @@ class DrawerConversationList extends ConsumerWidget {
   /// A conversation's actions.
   final void Function(SessionSummary session) onLongPress;
 
-  /// Above everything when nothing is filtered or chosen (DS Bot's row).
-  final Widget? leading;
+  /// Closes the drawer once a Bot's chat covers it.
+  final VoidCallback onClose;
 
   /// Clock override for the day groups (tests).
   final DateTime? now;
@@ -66,7 +73,8 @@ class DrawerConversationList extends ConsumerWidget {
     if (!readOnly && sort == DrawerSort.created) {
       final ids = [
         for (final block in blocks)
-          for (final s in block.items) s.sessionId,
+          for (final row in block.items)
+            if (row is SessionRow) row.id,
       ];
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (context.mounted) ref.read(sessionCreatedProvider.notifier).ensure(ids);
@@ -100,16 +108,52 @@ class DrawerConversationList extends ConsumerWidget {
     // every conversation makes even a selection change scale with the history.
     final rows = <({Key key, WidgetBuilder builder})>[];
     void add(Key key, WidgetBuilder builder) => rows.add((key: key, builder: builder));
-    void addSessions(List<SessionSummary> items) {
-      for (final s in items) {
-        add(ValueKey('session-${s.sessionId}'), (_) => tile(s));
-      }
-    }
+    // A Bot's own chat or a group chat: same row, its own chat page. Never
+    // selectable, and its only long-press action is the folder.
+    final bots = ref.watch(dsBotProvider);
+    final team = bots.team;
+    final clock = now ?? ref.watch(drawerClockProvider)();
+    Widget botTile(BotDrawerRow row, {bool inFolder = false}) => SessionTile(
+      key: ValueKey('bot-${row.id}'),
+      title: row.title,
+      running: row.running,
+      // A pushed route is not `currentSessionProvider`'s session.
+      current: false,
+      pending: readOnly ? null : row.pending,
+      unread: !readOnly && row.unread,
+      pinned: false,
+      badge: row.badge,
+      note: botRowNote(bots, row, clock),
+      // A face is what tells these rows from the conversations beside them.
+      leading: switch ((row.bot, row.room, team)) {
+        (final bot?, _, _) => BotAvatar(bot: bot, size: 22),
+        (_, final room?, final team?) => RoomAvatar(room: room, team: team, size: 22),
+        _ => null,
+      },
+      indent: inFolder ? SessionTile.folderIndent : 0,
+      selecting: selecting,
+      selected: false,
+      onTap: selecting
+          ? () {}
+          : () {
+              Navigator.of(
+                context,
+              ).push(row.isRoom ? RoomChatPage.route(row.id) : BotChatPage.route(row.id));
+              // Close once the page covers us, so "back" lands on the chat.
+              Future<void>.delayed(AppMotion.slow, onClose);
+            },
+      onLongPress: readOnly || selecting ? null : () => moveToFolderFlow(context, ref, [row.id]),
+    );
 
-    final showLeading = leading != null && filter == DrawerFilter.all && !selecting;
-    if (showLeading) {
-      const key = ValueKey('leading');
-      add(key, (_) => KeyedSubtree(key: key, child: leading!));
+    void addRows(List<DrawerRow> items) {
+      for (final row in items) {
+        switch (row) {
+          case SessionRow(:final session):
+            add(ValueKey('session-${row.id}'), (_) => tile(session));
+          case BotDrawerRow():
+            add(ValueKey('bot-${row.id}'), (_) => botTile(row));
+        }
+      }
     }
     var foldersLabelled = false;
     for (final block in blocks) {
@@ -118,11 +162,11 @@ class DrawerConversationList extends ConsumerWidget {
           const key = ValueKey('filter-empty');
           add(key, (_) => _FilterEmpty(matching, key: key));
         case FilteredBlock(:final items):
-          addSessions(items);
+          addRows(items);
         case PinnedBlock(:final items):
           const key = ValueKey('pinned-label');
           add(key, (_) => DrawerEyebrow(l10n.commonPin, key: key));
-          addSessions(items);
+          addRows(items);
         case FolderBlock(:final folder, :final items):
           if (!foldersLabelled) {
             foldersLabelled = true;
@@ -148,13 +192,19 @@ class DrawerConversationList extends ConsumerWidget {
             (_) => DrawerFolderBody(
               key: bodyKey,
               open: !folder.collapsed,
-              childrenBuilder: () => [for (final s in items) tile(s, inFolder: true)],
+              childrenBuilder: () => [
+                for (final row in items)
+                  if (row is SessionRow)
+                    tile(row.session, inFolder: true)
+                  else if (row is BotDrawerRow)
+                    botTile(row, inFolder: true),
+              ],
             ),
           );
         case DayBlock(:final day, :final items):
           final key = ValueKey('day-${day.name}');
           add(key, (_) => DrawerEyebrow(sessionDayLabels[day]!, key: key));
-          addSessions(items);
+          addRows(items);
       }
     }
     // Preserve keyed row/folder state when pinning, sorting or hiding the
@@ -190,4 +240,22 @@ class _FilterEmpty extends StatelessWidget {
       child: EmptyView(compact: true, icon: icon, title: title),
     );
   }
+}
+
+/// What a Bot or group row says on its right: what it is doing now, or when it
+/// last moved. Null when there is nothing to say — and while it waits for an
+/// answer, where the marker already says 待回答 / 待确认.
+String? botRowNote(DsBotStatus status, BotDrawerRow row, DateTime now) {
+  if (row.pending != null) return null;
+  if (row.isRoom) {
+    final works = status.live.rooms[row.id];
+    if (works != null && works.isNotEmpty) return appL10n.botsRoomWorkingCount(works.length);
+  } else {
+    final activity = status.live.activity[row.id];
+    if (row.running || activity == 'thinking') {
+      return workPhrase(status.live.bots[row.id], activity: activity, team: status.team);
+    }
+  }
+  if (!row.activity) return null;
+  return shortTime(row.updatedAt, now: now);
 }

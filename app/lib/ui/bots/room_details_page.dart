@@ -2,6 +2,8 @@
 // the group answers, its notice, members at work (with 「停下」), approvals
 // waiting, the group memory.
 
+import 'dart:async';
+
 import 'package:dsh_client/dsh_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,6 +15,7 @@ import '../common/list_page_row.dart';
 import '../common/page_hero.dart';
 import '../common/segmented_pill.dart';
 import '../common/sheet_title_bar.dart';
+import '../features/feature_format.dart';
 import '../shell/page_frame.dart';
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
@@ -25,6 +28,7 @@ import 'bot_sheets.dart';
 import 'bots_page.dart' show BotTag;
 import 'memory_card.dart';
 import 'working_folder_sheet.dart';
+import 'room_activity_sheet.dart';
 import 'room_relay_limit_sheet.dart';
 import 'room_chat_page.dart' show GroupApprovalCard;
 
@@ -107,6 +111,50 @@ class RoomDetailsPage extends ConsumerWidget {
     }
   }
 
+  /// Picks the preset a group uses for every member's sessions here. Choosing
+  /// one also turns the switch on; the Host applies it to the sessions already open.
+  Future<void> _pickRoomPermission(
+    BuildContext context,
+    WidgetRef ref,
+    BotActionScope scope,
+    DsBotRoom room,
+    DsBotTeam team,
+  ) async {
+    final options = team.permissions?.options ?? const <DsBotPermissionOption>[];
+    if (options.isEmpty) return;
+    final current = room.permission;
+    final picked = await showAppSheet<String>(
+      context,
+      builder: (sheet) => SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SheetTitleBar(context.l10n.catalogPermission),
+            SheetGroup(
+              children: [
+                for (final option in options)
+                  ListPageRow(
+                    icon: option.value == current ? AppIcons.done : null,
+                    title: permissionName(option.value, option.name),
+                    subtitle: permissionHint(option.value, option.description),
+                    subtitleMaxLines: 2,
+                    chevron: false,
+                    onTap: () => Navigator.pop(sheet, option.value),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+    if (!context.mounted || picked == null || picked == current) return;
+    if (!scope.current(context, ref)) return;
+    await _update(context, ref, scope, (api) => api.updateRoom(room.id, permission: picked));
+  }
+
   Future<void> _delete(BuildContext context, WidgetRef ref, DsBotRoom room) async {
     final scope = BotActionScope(ref, roomId: room.id);
     final ok = await confirmDelete(
@@ -151,6 +199,9 @@ class RoomDetailsPage extends ConsumerWidget {
       for (final a in status.live.approvals)
         if (a.roomId == room.id && a.answerable) a,
     ];
+    // Members stopped on a question only this person can answer: that outranks
+    // "working", which can be true at the same time.
+    final awaiting = {for (final approval in approvals) approval.botId};
     final memory = ref.watch(dsBotMemoryProvider((botId: null, roomId: room.id))).value;
     final adminName = team.bot(room.admin)?.name;
     final subtitle = [
@@ -193,6 +244,28 @@ class RoomDetailsPage extends ConsumerWidget {
               ),
               gap,
             ],
+            // 停全部: every member at work in this group, not the speaker alone.
+            // Hidden when nobody is working, so the row never does nothing.
+            if (working.isNotEmpty && writable)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: ListPageRow(
+                  key: const ValueKey('room-stop-all'),
+                  icon: AppIcons.blocked,
+                  title: l10n.botsStopAll,
+                  danger: true,
+                  chevron: false,
+                  onTap: () async {
+                    final ok = await confirmDelete(
+                      context,
+                      title: l10n.botsStopAllTitle,
+                      body: l10n.botsStopAllBody,
+                    );
+                    if (!ok || !context.mounted) return;
+                    await _update(context, ref, scope, (api) => api.stopRoomWork(room.id));
+                  },
+                ),
+              ),
             ListPageCard(
               title: l10n.botsMembersCountTitle(members.length),
               children: [
@@ -201,10 +274,16 @@ class RoomDetailsPage extends ConsumerWidget {
                     leading: BotAvatar(bot: bot, size: 32, working: working.containsKey(bot.id)),
                     title: bot.name,
                     badge: room.admin == bot.id ? BotTag(l10n.botsAdmin) : null,
-                    subtitle: working.containsKey(bot.id)
+                    subtitle: awaiting.contains(bot.id)
+                        ? l10n.botsMemberNeedsApproval
+                        : working.containsKey(bot.id)
                         ? workPhrase(working[bot.id]) ?? l10n.botsWorking
                         : (bot.role.isEmpty ? null : bot.role),
-                    subtitleColor: working.containsKey(bot.id) ? dsh.info : null,
+                    subtitleColor: awaiting.contains(bot.id)
+                        ? Theme.of(context).colorScheme.error
+                        : working.containsKey(bot.id)
+                        ? dsh.info
+                        : null,
                     trailing: working.containsKey(bot.id) && writable
                         ? TextButton(
                             onPressed: () => _update(context, ref, scope, (api) => api.stopMemberWork(room.id, bot.id)),
@@ -257,6 +336,46 @@ class RoomDetailsPage extends ConsumerWidget {
                         : (_) {},
                   ),
                 ),
+                // 本群统一权限: one preset for every member's sessions here, in
+                // place of each member's own. The Host has always supported it;
+                // this is the entry it was missing.
+                if (team.permissions?.options.isNotEmpty ?? false) ...[
+                  ListPageRow(
+                    key: const ValueKey('room-permission-toggle'),
+                    icon: AppIcons.redacted,
+                    title: l10n.botsPermissionGroupWide,
+                    trailing: Switch(
+                      value: room.permission != null,
+                      onChanged: !writable
+                          ? null
+                          : (on) => on
+                                ? unawaited(_pickRoomPermission(context, ref, scope, room, team))
+                                // '' is how a group goes back to each member's own
+                                // preset; null would mean "leave it alone".
+                                : unawaited(
+                                    _update(context, ref, scope, (api) => api.updateRoom(room.id, permission: '')),
+                                  ),
+                    ),
+                  ),
+                  if (room.permission case final preset?)
+                    ListPageRow(
+                      key: const ValueKey('room-permission-preset'),
+                      title: l10n.catalogPermission,
+                      value: permissionName(preset, team.permissions?.option(preset)?.name),
+                      onTap: writable
+                          ? () => unawaited(_pickRoomPermission(context, ref, scope, room, team))
+                          : null,
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                    child: Text(
+                      room.permission == null
+                          ? l10n.botsPermissionGroupWideOff
+                          : l10n.botsPermissionGroupWideOn,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: dsh.textTertiary),
+                    ),
+                  ),
+                ],
                 if (room.relayLimitDefault != null)
                   ListPageRow(
                     key: const ValueKey('room-relay-limit'),
@@ -315,6 +434,17 @@ class RoomDetailsPage extends ConsumerWidget {
                       : null,
                 ),
               ],
+            ),
+            ListPageRow(
+              key: const ValueKey('room-activity'),
+              icon: AppIcons.chart,
+              title: l10n.botsUsage,
+              chevron: false,
+              onTap: scope.api == null
+                  ? null
+                  : () => unawaited(
+                      showRoomActivitySheet(context, room: room, team: team, api: scope.api!),
+                    ),
             ),
             gap,
             BotMemoryCard(roomId: room.id),

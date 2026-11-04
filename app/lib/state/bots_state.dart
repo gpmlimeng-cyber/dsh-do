@@ -29,6 +29,10 @@ final dsBotApiFactoryProvider = Provider<DsBotApi? Function(HostConnection conne
 /// The npm package the app installs.
 const dsBotPackage = 'ds-bot';
 
+/// Where it comes from: this fork, which carries the mobile API the app talks
+/// to. The npm release does not have it yet.
+const dsBotSpec = 'github:gpmlimeng-cyber/dsh-bot';
+
 enum DsBotAvailability {
   /// No host connected.
   offline,
@@ -828,17 +832,22 @@ class BotChatController extends Notifier<BotChatState> {
     }
   }
 
-  /// Sends [text]; it shows at once and leaves the pending list when the
-  /// chat echoes it.
-  Future<bool> send(String text) async {
+  /// Sends [text] with [images] inline and [fileReceiptIds] already staged;
+  /// it shows at once and leaves the pending list when the chat echoes it.
+  Future<bool> send(
+    String text, {
+    List<PromptImage> images = const [],
+    List<String> fileReceiptIds = const [],
+    String? mode,
+  }) async {
     final api = _api;
     final trimmed = text.trim();
-    if (api == null || trimmed.isEmpty) return false;
+    if (api == null || (trimmed.isEmpty && images.isEmpty && fileReceiptIds.isEmpty)) return false;
     final generation = _generation;
     final entry = DsBotPending(trimmed, DateTime.now());
     state = state.copyWith(pending: [...state.pending, entry], error: () => null);
     try {
-      await api.send(botId, trimmed);
+      await api.send(botId, trimmed, images: images, fileReceiptIds: fileReceiptIds, mode: mode);
       return true;
     } catch (error) {
       if (!_current(generation)) return false;
@@ -1045,15 +1054,20 @@ class RoomChatController extends Notifier<RoomChatState> {
     }
   }
 
-  Future<bool> send(String text) async {
+  Future<bool> send(
+    String text, {
+    List<PromptImage> images = const [],
+    List<String> fileReceiptIds = const [],
+    String? mode,
+  }) async {
     final api = _api;
     final trimmed = text.trim();
-    if (api == null || trimmed.isEmpty) return false;
+    if (api == null || (trimmed.isEmpty && images.isEmpty && fileReceiptIds.isEmpty)) return false;
     final generation = _generation;
     final entry = DsBotPending(trimmed, DateTime.now());
     state = state.copyWith(pending: [...state.pending, entry], error: () => null);
     try {
-      await api.send(roomId, trimmed);
+      await api.send(roomId, trimmed, images: images, fileReceiptIds: fileReceiptIds, mode: mode);
       return true;
     } catch (error) {
       if (!_current(generation)) return false;

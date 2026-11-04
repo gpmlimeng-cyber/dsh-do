@@ -384,6 +384,29 @@ void main() {
       });
       expect(await api.stopMemberWork('r1', 'b2'), isTrue);
     });
+
+    test('send carries inline images and staged file receipts', () async {
+      host.handlers['send'] = (_) => true;
+      await api.send(
+        'm1',
+        '',
+        images: [PromptImage(mediaType: 'image/png', base64Data: 'AAAA', name: 'shot.png')],
+        fileReceiptIds: ['r1'],
+      );
+      // An image-only message has no text block, and each file is a receipt the
+      // host resolves in this same conversation.
+      expect(host.calls.last['payload'], {
+        'sessionId': 'm1',
+        'text': '',
+        'images': [
+          {'type': 'image', 'mediaType': 'image/png', 'data': 'AAAA', 'name': 'shot.png'},
+        ],
+        'fileReceiptIds': ['r1'],
+      });
+      // Text alone keeps the old shape: no empty fields a host would have to read around.
+      await api.send('m1', 'plain');
+      expect(host.calls.last['payload'], {'sessionId': 'm1', 'text': 'plain'});
+    });
   });
 
   group('feed', () {

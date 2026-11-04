@@ -399,5 +399,12 @@
   "botsMobileUnsupportedTitle": "DS Bot isn't on mobile yet",
   "botsMobileApiRequired": "Use it in DSH Web for now",
   "botsMobileApiMissing": "Not on mobile yet. Use it in DSH Web for now",
-  "botsCreationConnectionChanged": "The connection changed. Reopen this form to create on the current host."
+  "botsCreationConnectionChanged": "The connection changed. Reopen this form to create on the current host.",
+  "botsPermissionGroupWide": "One permission preset for this group",
+  "botsPermissionGroupWideOn": "Applies to every member’s sessions here; switching changes the ones already open",
+  "botsPermissionGroupWideOff": "Each member uses their own permission preset",
+  "botsStopAll": "Stop all",
+  "botsStopAllTitle": "Stop what every member is doing this round?",
+  "botsStopAllBody": "Members at work stop at once; you can continue again",
+  "botsAlreadySpoke": "Spoke"
 }

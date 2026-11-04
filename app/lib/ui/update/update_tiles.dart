@@ -44,6 +44,17 @@ class AppUpdateTiles extends ConsumerWidget {
           value: update.autoCheck,
           onChanged: (v) => unawaited(controller.setAutoCheck(v)),
         ),
+        const SizedBox(height: 2),
+        // 预览版: the same check, asked of the releases list, so an rc can be
+        // picked. Off by default.
+        SettingsSwitchTile(
+          icon: tint == null ? null : AppIcons.autoUpdate,
+          tint: tint ?? 0,
+          spot: Spots.updatePreviews,
+          title: l10n.updateIncludePreviews,
+          value: update.includePreviews,
+          onChanged: (v) => unawaited(controller.setIncludePreviews(v)),
+        ),
       ],
     );
   }
