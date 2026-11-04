@@ -44,3 +44,4 @@ Upstream: `ccch1mneyyy/dsh-Go`, against `v1.0.10` (fork branch `ci/room-progress
 | `1f0adb1` | `app/lib/ui/bots/room_activity_strip.dart`, `app/lib/ui/bots/room_chat_page.dart`, `app/lib/l10n/` | v1.0.10 | The line's contents and the composer's hint are Flutter widget work; no seam draws the group's deck. |
 | `0f92d62` | `app/lib/ui/bots/room_aggregate_details_page.dart` | v1.0.10 | Pinning is a sliver layout in the page itself; no seam owns a page's scroll structure. |
 | `e6dcfb6` | `app/lib/ui/shell/drawer/drawer_list.dart` | v1.0.10 | The drawer row's current flag is Flutter widget state; no seam marks a Bot chat open. |
+| `01c9054` | `app/lib/ui/bots/room_aggregate_details_page.dart`, `app/lib/ui/bots/room_activity_strip.dart`, `app/lib/ui/chat/composer.dart`, `app/lib/ui/bots/room_chat_page.dart` | v1.0.10 | A separate running hint is a new parameter on the shared composer; the other three are unused locals and a replaced helper. |
