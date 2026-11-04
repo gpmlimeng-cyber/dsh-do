@@ -1,0 +1,12 @@
+# 修改声明 / Modification notice
+
+本项目是 [dsh-go](https://github.com/ccch1mneyyy/dsh-go)（作者 ccch1mneyyy）的修改版，
+基于上游 tag `v1.0.10` 修改，以 `MODO` 名称发布。
+
+主要修改：
+- 品牌名与图标换为 MODO（见 ASSETS.md，未使用上游受保护的名称与形象素材）；
+- 新增 DS Bot 原生客户端（Bot 对话页、群聊页、群详情与活动面板、交付物卡片等）；
+- 更新源指向本仓库的发布，版本号为 `2.x`；
+- 补丁与二开记录见 `design/` 与 `tools/patch-ledger.mjs`。
+
+代码仍按 AGPL-3.0 授权（见 LICENSE），上游版权与许可声明全部保留。
