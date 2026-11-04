@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/l10n.dart';
 import '../../state/bots_state.dart';
 import '../../state/chat_state.dart';
+import '../../state/session_detail_state.dart';
 import '../../state/usage_state.dart';
 import '../common/list_page_row.dart';
 import '../chat/diff_page.dart' show ChangeDiffPage;
@@ -13,12 +14,14 @@ import '../chat/trajectory_sheet.dart' show TimelineBar;
 import '../chat/usage_sheet.dart' show SessionUsageSections, formatPercent, formatTokens;
 import '../chat/widgets/change_card.dart' show DiffCounts;
 import '../common/page_hero.dart';
-import '../session/session_detail_page.dart' show GlassSegments, ProgressTab, TrajectoryTab;
+import '../chat/widgets/activity_strip.dart' show TodoProgress;
+import '../session/session_detail_page.dart' show GlassSegments, TrajectoryTab;
 import '../session/session_tab.dart';
 import '../session/workspace_files.dart' show WorkspaceFilesTab;
 import '../shell/page_frame.dart';
 import '../theme/semantic_colors.dart' show DshColors;
 import 'bot_action_scope.dart';
+import 'bot_format.dart' show workPhrase;
 import 'bot_avatar.dart';
 
 /// 对话详情 for a group.
@@ -125,7 +128,7 @@ class _RoomAggregateDetailsPageState extends ConsumerState<RoomAggregateDetailsP
               if (roomSession != null) TrajectoryTab(sessionId: roomSession) else const _Empty(),
               _RoomChangesTab(room: room, team: team, roomSession: roomSession),
               _RoomFilesTab(room: room, team: team, roomSession: roomSession),
-              if (roomSession != null) ProgressTab(sessionId: roomSession) else const _Empty(),
+              _RoomProgressTab(room: room, team: team, roomSession: roomSession),
               _RoomContextTab(room: room, activity: activity, roomSession: roomSession),
             ],
           ),
@@ -551,6 +554,208 @@ RoomMemberActivity _member(DsBot bot, Map<String, Object?> json) {
     cacheRead: cacheRead,
     inputTokens: cacheRead + uncached + cacheWrite,
   );
+}
+
+/// 进度 for a group: what is still open here.
+///
+/// A group Session rarely has a todo list of its own — each member keeps theirs —
+/// so this states the group's live situation first, then every member's open items
+/// with their own progress, and finally the group Session's own goal and todos
+/// when it has any.
+class _RoomProgressTab extends ConsumerWidget {
+  const _RoomProgressTab({required this.room, required this.team, required this.roomSession});
+
+  final DsBotRoom room;
+  final DsBotTeam team;
+  final String? roomSession;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final dsh = DshColors.of(context);
+    final status = ref.watch(dsBotProvider);
+
+    // 1. The group's live situation.
+    final working = status.live.rooms[room.id] ?? const <DsBotWork>[];
+    final approvals = [
+      for (final approval in status.live.approvals)
+        if (approval.roomId == room.id && approval.answerable) approval,
+    ];
+
+    // 2. Each member's open todos, from their Session for this group.
+    final openByBot = <(DsBot, List<TodoItem>, int)>[];
+    final seen = <String>{};
+    for (final id in room.members) {
+      final bot = team.bot(id);
+      if (bot == null) continue;
+      final sessionId = memberSessionFor(room, bot);
+      if (sessionId == null || sessionId.isEmpty || !seen.add(sessionId)) continue;
+      final panels = ref.watch(sessionPanelsProvider(sessionId));
+      final logged = ref.watch(chatProvider(sessionId).select((s) => s.todos));
+      final todos = panels.todos ?? logged ?? const <TodoItem>[];
+      final open = [for (final todo in todos) if (todo.status != 'completed') todo];
+      if (open.isNotEmpty) openByBot.add((bot, open, todos.length));
+    }
+
+    // 3. The group Session's own goal and todos, when it has them.
+    final groupPanels = roomSession == null ? null : ref.watch(sessionPanelsProvider(roomSession!));
+    final goal = groupPanels?.goal;
+    final groupTodos = roomSession == null
+        ? const <TodoItem>[]
+        : (groupPanels?.todos ?? ref.watch(chatProvider(roomSession!).select((s) => s.todos)) ?? const <TodoItem>[]);
+    final groupDone = groupTodos.where((todo) => todo.status == 'completed').length;
+
+    if (working.isEmpty &&
+        approvals.isEmpty &&
+        !room.paused &&
+        openByBot.isEmpty &&
+        goal == null &&
+        groupTodos.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(32),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(l10n.hubSessionNoGoal, style: theme.textTheme.bodyMedium),
+              const SizedBox(height: 6),
+              Text(
+                l10n.hubSessionGoalHint,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodySmall?.copyWith(color: dsh.textTertiary),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final phaseText = switch (goal?.phase) {
+      'complete' => l10n.commonCompleted,
+      'blocked' => l10n.hubSessionBlocked,
+      'paused' => l10n.commonPaused,
+      _ => l10n.commonInProgress,
+    };
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      children: [
+        if (working.isNotEmpty || approvals.isNotEmpty || room.paused)
+          ListPageCard(
+            title: l10n.hubTabProgress,
+            children: [
+              if (room.paused)
+                ListPageRow(
+                  key: const ValueKey('room-progress-paused'),
+                  icon: AppIcons.paused,
+                  title: l10n.commonPaused,
+                  chevron: false,
+                ),
+              for (final work in working)
+                if (team.bot(work.botId) case final bot?)
+                  ListPageRow(
+                    key: ValueKey('room-progress-work-${bot.id}'),
+                    leading: BotAvatar(bot: bot, size: 28),
+                    title: bot.name,
+                    subtitle: workPhrase(work, team: team) ?? l10n.botsWorking,
+                    subtitleMaxLines: 1,
+                    chevron: false,
+                  ),
+              for (final approval in approvals)
+                if (team.bot(approval.botId) case final bot?)
+                  ListPageRow(
+                    key: ValueKey('room-progress-approval-${bot.id}'),
+                    leading: BotAvatar(bot: bot, size: 28),
+                    title: bot.name,
+                    subtitle: l10n.botsMemberNeedsApproval,
+                    subtitleMaxLines: 1,
+                    chevron: false,
+                  ),
+            ],
+          ),
+        for (final (bot, open, total) in openByBot) ...[
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 0, 8, 6),
+            child: Row(
+              children: [
+                BotAvatar(bot: bot, size: 20),
+                const SizedBox(width: 8),
+                Text(bot.name, style: theme.textTheme.labelLarge),
+                const Spacer(),
+                Text(
+                  '${total - open.length}/$total',
+                  style: theme.textTheme.labelSmall?.copyWith(color: dsh.textTertiary),
+                ),
+                const SizedBox(width: 8),
+                TodoProgress(done: total - open.length, total: total, barWidth: 56, showLabel: false),
+              ],
+            ),
+          ),
+          ListPageCard(
+            children: [
+              for (final (i, todo) in open.indexed)
+                ListPageRow(
+                  key: ValueKey('room-todo-${bot.id}-$i'),
+                  icon: AppIcons.todo,
+                  title: todo.content,
+                  subtitleMaxLines: 2,
+                  chevron: false,
+                ),
+            ],
+          ),
+        ],
+        if (goal != null) ...[
+          const SizedBox(height: 16),
+          ListPageCard(
+            title: l10n.hubSessionGoal,
+            children: [
+              ListPageRow(
+                key: const ValueKey('room-goal-objective'),
+                icon: AppIcons.goal,
+                title: goal.objective,
+                subtitleMaxLines: 3,
+                chevron: false,
+              ),
+              ListPageRow(
+                key: const ValueKey('room-goal-state'),
+                title: phaseText,
+                meta: goal.maxRounds == null
+                    ? l10n.hubSessionTurn(goal.roundsStarted)
+                    : l10n.hubSessionTurnOf(goal.roundsStarted, goal.maxRounds!),
+                chevron: false,
+              ),
+            ],
+          ),
+        ],
+        if (groupTodos.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 0, 8, 6),
+            child: Row(
+              children: [
+                Text(l10n.hubSessionTodos, style: theme.textTheme.labelLarge?.copyWith(color: dsh.textTertiary)),
+                const Spacer(),
+                TodoProgress(done: groupDone, total: groupTodos.length, barWidth: 56, showLabel: false),
+              ],
+            ),
+          ),
+          ListPageCard(
+            children: [
+              for (final (i, todo) in groupTodos.indexed)
+                ListPageRow(
+                  key: ValueKey('room-group-todo-$i'),
+                  icon: todo.status == 'completed' ? AppIcons.done : AppIcons.todo,
+                  title: todo.content,
+                  subtitleMaxLines: 2,
+                  chevron: false,
+                ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
 }
 
 /// 上下文 for a group.
