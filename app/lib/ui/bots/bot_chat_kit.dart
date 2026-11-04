@@ -986,6 +986,7 @@ class BotReplyText extends StatelessWidget {
     this.streaming = false,
     this.actions = const [MessageAction.copy, MessageAction.selectText, MessageAction.share],
     this.onQuote,
+    this.onLinkTap,
   });
 
   final String text;
@@ -997,6 +998,10 @@ class BotReplyText extends StatelessWidget {
 
   /// 引用: puts this line above the composer. Null where引用 does not apply.
   final ValueChanged<String>? onQuote;
+
+  /// A link in the reply that the page can open itself (a file in the workspace);
+  /// null keeps every link on its default path.
+  final bool Function(String href)? onLinkTap;
 
   Future<void> _menu(BuildContext context) async {
     if (actions.isEmpty) return;
@@ -1023,7 +1028,13 @@ class BotReplyText extends StatelessWidget {
   @override
   Widget build(BuildContext context) => GestureDetector(
     onLongPress: streaming || actions.isEmpty ? null : () => _menu(context),
-    child: MarkdownBody(text: text, streaming: streaming, selectable: false, repairBareViews: true),
+    child: MarkdownBody(
+      text: text,
+      streaming: streaming,
+      selectable: false,
+      repairBareViews: true,
+      onLinkTap: onLinkTap,
+    ),
   );
 }
 
@@ -1045,6 +1056,7 @@ class GroupMessage extends StatelessWidget {
     this.onOpenBot,
     this.onShowAll,
     this.onQuote,
+    this.onLinkTap,
   });
 
   final DsBotItem item;
@@ -1060,6 +1072,10 @@ class GroupMessage extends StatelessWidget {
 
   /// 引用 on a group line (not offered on a line with no text).
   final ValueChanged<String>? onQuote;
+
+  /// A link in the line that the page opens itself (the speaker's Session resolves
+  /// the path); null keeps the default link behaviour.
+  final bool Function(String href)? onLinkTap;
 
   static const face = 28.0;
   static const gap = 10.0;
@@ -1109,6 +1125,7 @@ class GroupMessage extends StatelessWidget {
           // A file-only line has no text worth copying or sharing.
           actions: text.isEmpty ? const [] : const [MessageAction.copy, MessageAction.share],
           onQuote: onQuote,
+          onLinkTap: onLinkTap,
         ),
         if (onShowAll != null)
           TextButton(

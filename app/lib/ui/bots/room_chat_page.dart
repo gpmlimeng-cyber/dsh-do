@@ -38,6 +38,7 @@ import 'unavailable_message.dart';
 import '../../state/artifacts.dart' show TurnArtifacts, sessionArtifactsProvider;
 import '../chat/widgets/artifact_card.dart';
 import 'bot_chat_kit.dart';
+import 'bot_links.dart' show openLinkedFile;
 import 'bot_chat_page.dart';
 import 'bot_format.dart';
 import 'bot_mention.dart';
@@ -408,8 +409,9 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
                   BotTypingRow(:final bot, :final label) => BotTypingLine(bot: bot, label: label),
                   // A group has no tool events to show; the row exists so the
                   // switch stays exhaustive, and the same widget keeps it honest.
-                  // A group does not carry turn-level deliverables: its rows come
-                  // from the group's own record, not from one conversation's turns.
+                  // A group's delivered cards come from each member's Session for
+                  // this group (see attachMemberArtifacts), not from the group's
+                  // own turns — a group line carries no DSH turn to place them by.
                   BotArtifactsRow(:final group, :final sessionId) =>
                     ArtifactCard(sessionId: sessionId ?? roomSession, group: group),
                   BotToolGroupRow(:final items) => BotToolGroup(items: items),
@@ -454,6 +456,15 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
                           ? null
                           : () => Navigator.of(context).push(BotChatPage.route(item.botId!)),
                       onShowAll: item.whole == null ? null : () => _showAll(item, fullTextScope),
+                      // A path is a file in the speaker's Session here; fall back
+                      // to the group Session when the speaker is unknown.
+                      onLinkTap: (href) => openLinkedFile(
+                        context,
+                        sessionId: item.botId == null
+                            ? roomSession
+                            : (room.sessions[item.botId!] ?? team.bot(item.botId!)?.sessionId ?? roomSession),
+                        href: href,
+                      ),
                           onQuote: _setQuote,
                         ),
                       ],

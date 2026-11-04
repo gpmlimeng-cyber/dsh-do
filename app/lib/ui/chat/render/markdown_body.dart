@@ -58,6 +58,7 @@ class MarkdownBody extends StatefulWidget {
     this.selectable = true,
     this.secondary = false,
     this.repairBareViews = false,
+    this.onLinkTap,
   });
 
   final String text;
@@ -66,6 +67,11 @@ class MarkdownBody extends StatefulWidget {
 
   /// 次级排版(思考过程):小一号、次级文字色,标题也不抢眼。
   final bool secondary;
+
+  /// A caller that can open a link itself: return true when it handled the link,
+  /// false to run the default action. Null — every caller before this — leaves
+  /// links exactly as they were.
+  final bool Function(String href)? onLinkTap;
 
   /// 助手回复:模型把 `dsh-ui` 的 JSON 裸着写进正文时,也当成视图画
   /// (见 [fenceBareDshUiViews])。别的 Markdown(文档、说明页)不开。
@@ -598,7 +604,10 @@ class _MarkdownBodyState extends State<MarkdownBody> {
       // the package must not complete open `\(` / `\[` on its own.
       isStreaming: false,
       inlinePatterns: widget.streaming ? MarkdownBody._streamingPatterns : null,
-      onLinkTap: (url, title) => MarkdownBody._onLinkTap(context, url, title),
+      onLinkTap: (url, title) {
+        if (widget.onLinkTap?.call(url) ?? false) return;
+        MarkdownBody._onLinkTap(context, url, title);
+      },
       codeBuilder: MarkdownBody._codeBuilder,
       inlineCodeBuilder: MarkdownBody._inlineCodeBuilder,
       checkboxBuilder: MarkdownBody._checkboxBuilder,
