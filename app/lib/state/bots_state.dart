@@ -866,41 +866,18 @@ class BotChatController extends Notifier<BotChatState> {
 
   /// Sends [text] with [images] inline and [fileReceiptIds] already staged;
   /// it shows at once and leaves the pending list when the chat echoes it.
-  /// Puts the sending bubble on screen before its upload starts: a message that
-  /// is only pictures would otherwise show nothing until the host logs it.
-  DsBotPending beginPending(String text, {List<DraftAttachment> drafts = const []}) {
-    int? newest;
-    for (final item in state.items) {
-      if (item.seq case final seq? when newest == null || seq > newest) newest = seq;
-    }
-    final entry = DsBotPending(text.trim(), DateTime.now(), drafts: drafts, afterSeq: newest);
-    state = state.copyWith(pending: [...state.pending, entry], error: () => null);
-    return entry;
-  }
-
-  /// Takes a bubble back when the upload failed before [send] was reached.
-  void dropPending(DsBotPending entry) {
-    state = state.copyWith(
-      pending: [
-        for (final p in state.pending)
-          if (!identical(p, entry)) p,
-      ],
-    );
-  }
-
   Future<bool> send(
     String text, {
     List<PromptImage> images = const [],
     List<String> fileReceiptIds = const [],
     String? mode,
-    DsBotPending? pending,
   }) async {
     final api = _api;
     final trimmed = text.trim();
     if (api == null || (trimmed.isEmpty && images.isEmpty && fileReceiptIds.isEmpty)) return false;
     final generation = _generation;
-    final entry = pending ?? DsBotPending(trimmed, DateTime.now());
-    if (pending == null) state = state.copyWith(pending: [...state.pending, entry], error: () => null);
+    final entry = DsBotPending(trimmed, DateTime.now());
+    state = state.copyWith(pending: [...state.pending, entry], error: () => null);
     try {
       await api.send(botId, trimmed, images: images, fileReceiptIds: fileReceiptIds, mode: mode);
       return true;
@@ -1109,18 +1086,41 @@ class RoomChatController extends Notifier<RoomChatState> {
     }
   }
 
+  /// Puts the sending bubble on screen before its upload starts: a message that
+  /// is only pictures would otherwise show nothing until the host logs it.
+  DsBotPending beginPending(String text, {List<DraftAttachment> drafts = const []}) {
+    int? newest;
+    for (final item in state.items) {
+      if (item.seq case final seq? when newest == null || seq > newest) newest = seq;
+    }
+    final entry = DsBotPending(text.trim(), DateTime.now(), drafts: drafts, afterSeq: newest);
+    state = state.copyWith(pending: [...state.pending, entry], error: () => null);
+    return entry;
+  }
+
+  /// Takes a bubble back when the upload failed before [send] was reached.
+  void dropPending(DsBotPending entry) {
+    state = state.copyWith(
+      pending: [
+        for (final p in state.pending)
+          if (!identical(p, entry)) p,
+      ],
+    );
+  }
+
   Future<bool> send(
     String text, {
     List<PromptImage> images = const [],
     List<String> fileReceiptIds = const [],
     String? mode,
+    DsBotPending? pending,
   }) async {
     final api = _api;
     final trimmed = text.trim();
     if (api == null || (trimmed.isEmpty && images.isEmpty && fileReceiptIds.isEmpty)) return false;
     final generation = _generation;
-    final entry = DsBotPending(trimmed, DateTime.now());
-    state = state.copyWith(pending: [...state.pending, entry], error: () => null);
+    final entry = pending ?? DsBotPending(trimmed, DateTime.now());
+    if (pending == null) state = state.copyWith(pending: [...state.pending, entry], error: () => null);
     try {
       await api.send(roomId, trimmed, images: images, fileReceiptIds: fileReceiptIds, mode: mode);
       return true;
