@@ -517,24 +517,45 @@ class RoomMemberActivity {
   const RoomMemberActivity({
     required this.bot,
     this.turns = 0,
-    this.contextTokens,
+    this.pressureTokens,
+    this.projectedTokens,
     this.window,
     this.speed,
     this.decodeMs = 0,
     this.cacheRead = 0,
-    this.inputTokens = 0,
+    this.uncachedInput = 0,
+    this.cacheWrite = 0,
+    this.output = 0,
+    this.llmMs = 0,
+    this.toolMs = 0,
+    this.inGroup = false,
   });
 
   final DsBot bot;
   final int turns;
-  final int? contextTokens;
+
+  /// Tokens the member's last request occupied, and the estimate for the next
+  /// one. The group's totals prefer the measured value, like the group Session.
+  final int? pressureTokens;
+  final int? projectedTokens;
   final int? window;
 
   /// Output tokens per second: `decodeTokens / (decodeMs / 1000)`.
   final double? speed;
   final num decodeMs;
   final int cacheRead;
-  final int inputTokens;
+  final int uncachedInput;
+  final int cacheWrite;
+  final int output;
+  final int llmMs;
+  final int toolMs;
+
+  /// Whether the member has a Session *in this group* (`room.sessions`): only
+  /// those add up into the group's totals. A member read from their own
+  /// conversation keeps its figures on its row but stays out of the sum.
+  final bool inGroup;
+
+  int? get contextTokens => projectedTokens ?? pressureTokens;
 
   double? get contextShare {
     final used = contextTokens;
@@ -553,7 +574,7 @@ class RoomMembersActivity {
   int get turns => members.fold(0, (sum, m) => sum + m.turns);
   int get contextTokens => members.fold(0, (sum, m) => sum + (m.contextTokens ?? 0));
   int get cacheRead => members.fold(0, (sum, m) => sum + m.cacheRead);
-  int get inputTokens => members.fold(0, (sum, m) => sum + m.inputTokens);
+  int get inputTokens => members.fold(0, (sum, m) => sum + m.cacheRead + m.uncachedInput + m.cacheWrite);
   num get decodeMs => members.fold<num>(0, (sum, m) => sum + m.decodeMs);
 
   /// The largest share of a member's own window: "who is closest to full".
@@ -595,6 +616,55 @@ class RoomMembersActivity {
   double get cacheHit => inputTokens == 0 ? 0 : cacheRead / inputTokens;
 }
 
+/// The group's two top cards: its own Session plus every member's Session *in
+/// this group*. A member without one counts as nothing — a private
+/// conversation's spend is not the group's.
+///
+/// The window pair takes only Sessions that report both numbers: a missing
+/// window would shrink the total and read as a fuller context than there is.
+/// The system/tools/messages split is left out — `run-stats` does not return
+/// it, so it stays hidden rather than borrowing the group Session's.
+SessionUsage roomUsageTotal(SessionUsage group, RoomMembersActivity activity) {
+  var uncachedInput = group.uncachedInput;
+  var output = group.output;
+  var cacheRead = group.cacheRead;
+  var cacheWrite = group.cacheWrite;
+  var turns = group.turns ?? 0;
+  var llmMs = group.llmMs ?? 0;
+  var toolMs = group.toolMs ?? 0;
+  var used = 0;
+  var window = 0;
+  void addWindow(int? usedTokens, int? size) {
+    if (usedTokens == null || size == null || size <= 0) return;
+    used += usedTokens;
+    window += size;
+  }
+
+  addWindow(group.pressureTokens ?? group.projectedTokens, group.contextWindow);
+  for (final member in activity.members) {
+    if (!member.inGroup) continue;
+    uncachedInput += member.uncachedInput;
+    output += member.output;
+    cacheRead += member.cacheRead;
+    cacheWrite += member.cacheWrite;
+    turns += member.turns;
+    llmMs += member.llmMs;
+    toolMs += member.toolMs;
+    addWindow(member.pressureTokens ?? member.projectedTokens, member.window);
+  }
+  return SessionUsage(
+    uncachedInput: uncachedInput,
+    output: output,
+    cacheRead: cacheRead,
+    cacheWrite: cacheWrite,
+    pressureTokens: window > 0 ? used : null,
+    contextWindow: window > 0 ? window : null,
+    turns: turns,
+    llmMs: llmMs,
+    toolMs: toolMs,
+  );
+}
+
 /// Reads every member's `run-stats`, one per member. A member the Host cannot
 /// answer keeps a row with no figures; the page never fails as a whole.
 Future<RoomMembersActivity> loadRoomMembersActivity(DsBotApi? api, DsBotRoom room, DsBotTeam team) async {
@@ -603,10 +673,12 @@ Future<RoomMembersActivity> loadRoomMembersActivity(DsBotApi? api, DsBotRoom roo
   final read = await Future.wait([
     for (final bot in bots)
       () async {
+        final inGroup = room.sessions[bot.id];
         try {
           // A member's figures are the ones from their Session *in this group*
-          // when the Host names it; the Bot's own Session is the fallback.
-          return _member(bot, await api.runStats(bot.id, sessionId: room.sessions[bot.id]));
+          // when the Host names it; the Bot's own Session is the fallback, and
+          // `inGroup` keeps that fallback out of the group's totals.
+          return _member(bot, await api.runStats(bot.id, sessionId: inGroup), inGroupSession: inGroup);
         } catch (_) {
           return RoomMemberActivity(bot: bot);
         }
@@ -630,7 +702,7 @@ num? _num(Object? value) => switch (value) {
 Map<String, Object?> _map(Object? value) =>
     value is Map ? {for (final entry in value.entries) '${entry.key}': entry.value} : const {};
 
-RoomMemberActivity _member(DsBot bot, Map<String, Object?> json) {
+RoomMemberActivity _member(DsBot bot, Map<String, Object?> json, {String? inGroupSession}) {
   final stats = _map(json['sessionStats']);
   final pressure = _map(json['contextPressure']);
   final usage = _map(json['tokenUsage']);
@@ -643,14 +715,18 @@ RoomMemberActivity _member(DsBot bot, Map<String, Object?> json) {
   return RoomMemberActivity(
     bot: bot,
     turns: _int(stats['turns']) ?? 0,
-    // `projectedTokens` is what the next turn would carry; fall back to the
-    // measured pressure when the Host only sends that.
-    contextTokens: _int(pressure['projectedTokens']) ?? _int(pressure['pressureTokens']),
+    pressureTokens: _int(pressure['pressureTokens']),
+    projectedTokens: _int(pressure['projectedTokens']),
     window: _int(pressure['contextWindow']),
     speed: speed,
     decodeMs: decodeMs ?? 0,
     cacheRead: cacheRead,
-    inputTokens: cacheRead + uncached + cacheWrite,
+    uncachedInput: uncached,
+    cacheWrite: cacheWrite,
+    output: _int(usage['outputTokens']) ?? 0,
+    llmMs: _int(stats['llmMs']) ?? 0,
+    toolMs: _int(stats['toolMs']) ?? 0,
+    inGroup: (inGroupSession ?? '').isNotEmpty,
   );
 }
 
@@ -856,13 +932,13 @@ class _RoomProgressTab extends ConsumerWidget {
   }
 }
 
-/// 上下文 for a group.
+/// 上下文 for a group: what the whole group is spending, then the detail.
 ///
-/// Three of the four blocks are the single-conversation page's: the group
-/// Session's usage summary and its last turns are read from `room.sessionId`,
-/// because every relay and reply lands there. The member sums are a fourth block,
-/// read from each member's own Session for this group. Without a group Session
-/// the two conversation blocks are hidden rather than faked.
+/// The two top cards add up the group's own Session and every member's Session
+/// *in this group*, so they state the group's real spend — the group Session
+/// alone runs almost no model. The last turns are the group Session's, because
+/// member turns only come as sums. The member rows below are the detail: a
+/// member without a Session here keeps its row but counts as nothing.
 class _RoomContextTab extends ConsumerWidget {
   const _RoomContextTab({required this.room, required this.activity, required this.roomSession});
 
@@ -877,86 +953,79 @@ class _RoomContextTab extends ConsumerWidget {
     final dsh = DshColors.of(context);
     final sessionId = roomSession;
     final usage = sessionId == null ? null : ref.watch(sessionUsageProvider(sessionId));
-    final model = sessionId == null ? null : ref.watch(chatProvider(sessionId).select((s) => s.model));
     final turns = sessionId == null
         ? const <TurnTrace>[]
         : ref.watch(chatProvider(sessionId).select((s) => s.turns));
-    final pricing = model == null ? null : knownPricing['${model.provider}/${model.model}'];
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-      children: [
-        // The group Session's own summary: what the relays cost.
-        if (usage != null) SessionUsageSections(usage: usage, pricing: pricing),
-        // The group Session's last turns, as the single-conversation page draws
-        // them. Member turns only come as sums, so they are not plotted here.
-        TurnUsageCard(turns: turns),
-        FutureBuilder<RoomMembersActivity>(
-          future: activity,
-          builder: (context, snapshot) {
-            final total = snapshot.data;
-            if (total == null) {
-              return const Padding(
-                padding: EdgeInsets.symmetric(vertical: 24),
-                child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-              );
-            }
-            final share = total.maxContextShare;
-            final fullest = total.fullest;
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+    return FutureBuilder<RoomMembersActivity>(
+      future: activity,
+      builder: (context, snapshot) {
+        final total = snapshot.data;
+        // Both top cards are totals, so they wait for the members' figures: drawn
+        // first, the group Session's own zero would flash before them.
+        if (total == null) return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+        final share = total.maxContextShare;
+        final fullest = total.fullest;
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          children: [
+            // The group's own Session and every member's Session in this group,
+            // added up; the members' rows below are the detail. No price: the
+            // members may run different models, so one pricing does not hold.
+            SessionUsageSections(usage: roomUsageTotal(usage ?? SessionUsage.empty, total), pricing: null),
+            // The group Session's last turns, as the single-conversation page
+            // draws them. Member turns only come as sums, so they are not
+            // plotted here.
+            TurnUsageCard(turns: turns),
+            const SizedBox(height: 8),
+            Text(
+              l10n.activityUsageContext,
+              style: theme.textTheme.labelMedium?.copyWith(color: dsh.textTertiary),
+            ),
+            const SizedBox(height: 4),
+            Row(
               children: [
-                const SizedBox(height: 8),
                 Text(
-                  l10n.activityUsageContext,
-                  style: theme.textTheme.labelMedium?.copyWith(color: dsh.textTertiary),
+                  share == null ? '—' : '${(share * 100).round()}% · ${formatTokens(total.contextTokens)}',
+                  style: theme.textTheme.titleMedium,
                 ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Text(
-                      share == null ? '—' : '${(share * 100).round()}% · ${formatTokens(total.contextTokens)}',
-                      style: theme.textTheme.titleMedium,
-                    ),
-                    const Spacer(),
-                    if (fullest != null) ...[
-                      Text(
-                        fullest.bot.name,
-                        style: theme.textTheme.labelSmall?.copyWith(color: dsh.textTertiary),
-                      ),
-                      const SizedBox(width: 8),
-                    ],
-                    Text(
-                      '${l10n.activityCacheHit} ${(total.cacheHit * 100).round()}%',
-                      style: theme.textTheme.labelSmall?.copyWith(color: dsh.textTertiary),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 2),
+                const Spacer(),
+                if (fullest != null) ...[
+                  Text(
+                    fullest.bot.name,
+                    style: theme.textTheme.labelSmall?.copyWith(color: dsh.textTertiary),
+                  ),
+                  const SizedBox(width: 8),
+                ],
                 Text(
-                  // 合计 = N 位成员 + 群会话, as the page states it.
-                  '${l10n.botsMembers} ${total.members.length} + ${l10n.botsGroupChat}',
+                  '${l10n.activityCacheHit} ${(total.cacheHit * 100).round()}%',
                   style: theme.textTheme.labelSmall?.copyWith(color: dsh.textTertiary),
                 ),
-                const SizedBox(height: 8),
-                for (final member in total.members)
-                  ListPageRow(
-                    key: ValueKey('member-context-${member.bot.id}'),
-                    leading: BotAvatar(bot: member.bot, size: 32),
-                    title: member.bot.name,
-                    subtitle: [
-                      if (member.contextShare != null) '${(member.contextShare! * 100).round()}%',
-                      if (member.contextTokens != null) formatTokens(member.contextTokens!),
-                      if (member.turns > 0) '${member.turns}×',
-                      if (member.speed != null) '${member.speed!.round()} tok/s',
-                    ].join(' · '),
-                    subtitleMaxLines: 1,
-                    chevron: false,
-                  ),
               ],
-            );
-          },
-        ),
-      ],
+            ),
+            const SizedBox(height: 2),
+            Text(
+              // 合计 = N 位成员 + 群会话, as the page states it.
+              '${l10n.botsMembers} ${total.members.length} + ${l10n.botsGroupChat}',
+              style: theme.textTheme.labelSmall?.copyWith(color: dsh.textTertiary),
+            ),
+            const SizedBox(height: 8),
+            for (final member in total.members)
+              ListPageRow(
+                key: ValueKey('member-context-${member.bot.id}'),
+                leading: BotAvatar(bot: member.bot, size: 32),
+                title: member.bot.name,
+                subtitle: [
+                  if (member.contextShare != null) '${(member.contextShare! * 100).round()}%',
+                  if (member.contextTokens != null) formatTokens(member.contextTokens!),
+                  if (member.turns > 0) '${member.turns}×',
+                  if (member.speed != null) '${member.speed!.round()} tok/s',
+                ].join(' · '),
+                subtitleMaxLines: 1,
+                chevron: false,
+              ),
+          ],
+        );
+      },
     );
   }
 }
