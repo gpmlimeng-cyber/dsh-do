@@ -127,7 +127,7 @@ void main() {
     });
 
     test('daily auto check: offers once, then waits a day; remembers the endpoint that answered', () async {
-      const m1 = 'https://mirror-one.example/$_manifest';
+      final m1 = 'https://mirror-one.example/$_manifest';
       http.routes[m1] = (_, _) => textResponse(jsonEncode(_release()));
       final c = container();
       final controller = await ready(c);
