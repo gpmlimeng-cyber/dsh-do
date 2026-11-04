@@ -31,3 +31,4 @@ Upstream: `ccch1mneyyy/dsh-Go`, against `v1.0.10` (fork branch `ci/room-progress
 | `be0e1b6` | `app/lib/ui/bots/room_aggregate_details_page.dart`, `app/lib/ui/bots/bot_composer_deck.dart`, `app/lib/ui/bots/room_chat_page.dart` | v1.0.10 | riverpod 3 removed `valueOrNull`; the composer's accessory must answer null so the send key keeps its place. |
 | `1b0bd63` | `app/lib/ui/bots/bot_chat_kit.dart` | v1.0.10 | A message's long-press menu is built by the widget that draws the bubble; no seam changes its actions or preview. |
 | `8a99834` | `app/lib/ui/bots/bot_chat_kit.dart` | v1.0.10 | The person's bubble menu is the same widget's other path: no 分享, masked preview, 选择文字 as plain text. |
+| `51c56b0` | `app/lib/ui/bots/room_aggregate_details_page.dart`, `app/lib/ui/bots/bot_chat_kit.dart` | v1.0.10 | Restores the trajectory tab's fallback that a stale copy had dropped, and shares a Bot reply's plain text (the view JSON is not what sharing means). |
