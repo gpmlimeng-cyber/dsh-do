@@ -12,7 +12,7 @@ import '../common/list_page_row.dart';
 import '../chat/diff_page.dart' show ChangeDiffPage;
 import '../chat/turn_summary.dart' show FileChange, fileChangesOf;
 import '../chat/turn_usage.dart' show TurnUsageCard;
-import '../chat/usage_sheet.dart' show SessionUsageSections, formatTokens;
+import '../chat/usage_sheet.dart' show SessionUsageSections;
 import '../chat/widgets/change_card.dart' show DiffCounts;
 import '../common/page_hero.dart';
 import '../chat/widgets/activity_strip.dart' show TodoProgress;
@@ -744,8 +744,7 @@ class _RoomProgressTab extends ConsumerWidget {
 /// The two top cards add up the group's own Session and every member's Session
 /// *in this group*, so they state the group's real spend — the group Session
 /// alone runs almost no model. The last turns are the group Session's, because
-/// member turns only come as sums. The member rows below are the detail: a
-/// member without a Session here keeps its row but counts as nothing.
+/// member turns only come as sums.
 class _RoomContextTab extends ConsumerWidget {
   const _RoomContextTab({required this.room, required this.activity, required this.roomSession});
 
@@ -760,9 +759,6 @@ class _RoomContextTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = context.l10n;
-    final theme = Theme.of(context);
-    final dsh = DshColors.of(context);
     final sessionId = roomSession;
     final usage = sessionId == null ? null : ref.watch(sessionUsageProvider(sessionId));
     final turns = sessionId == null

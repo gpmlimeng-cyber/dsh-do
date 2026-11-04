@@ -52,6 +52,7 @@ class Composer extends StatefulWidget {
     this.placeholder,
     this.waiting = false,
     this.waitHint,
+    this.runningHint,
     this.onContentInserted,
     this.maxLines = 6,
     this.hardwareEnterSends = false,
@@ -111,6 +112,10 @@ class Composer extends StatefulWidget {
   /// What the placeholder says while [waiting] (「等你回答」); null keeps the
   /// plain one.
   final String? waitHint;
+
+  /// The placeholder while a round runs, when the send key really means 「排队」
+  /// (a group, where 插话 is not offered). Null keeps 可直接插话.
+  final String? runningHint;
 
   /// Images from the keyboard (screenshots, stickers); null takes none.
   final ValueChanged<KeyboardInsertedContent>? onContentInserted;
@@ -309,7 +314,7 @@ class _ComposerState extends State<Composer> {
                     ? l10n.stateChatSynchronizing
                     : widget.waitHint ??
                           (widget.running && !waiting
-                              ? l10n.chatGeneratingSteerHint
+                              ? (widget.runningHint ?? l10n.chatGeneratingSteerHint)
                               : widget.placeholder ?? l10n.chatComposerHint),
             };
             final leading = dictating

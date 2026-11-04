@@ -137,13 +137,6 @@ String? _memberSession(DsBotRoom room, DsBot bot) {
   return inRoom == null || inRoom.isEmpty ? bot.sessionId : inRoom;
 }
 
-DateTime? _since(List<DsBotWork> working, String botId) {
-  for (final work in working) {
-    if (work.botId == botId) return work.since;
-  }
-  return null;
-}
-
 /// The deck's status line: a dock slot that is zero high while nobody runs, and
 /// rises into place while a member does — the same motion as the todo bar.
 class RoomActivityStrip extends StatelessWidget {

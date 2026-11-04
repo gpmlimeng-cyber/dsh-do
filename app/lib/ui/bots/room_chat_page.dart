@@ -729,7 +729,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
             placeholder: l10n.botsGroupComposerHint,
             // A group's 插话 only affects the relay Session and is unverified:
             // name what the send key really does — queued until this round ends.
-            waitHint: chat.running ? l10n.chatGeneratingQueueHint : null,
+            runningHint: chat.running ? l10n.chatGeneratingQueueHint : null,
             focusNode: _focus,
             connected: api != null && !readOnly,
             running: chat.running,
