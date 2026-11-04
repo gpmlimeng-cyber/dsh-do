@@ -38,3 +38,5 @@ Upstream: `ccch1mneyyy/dsh-Go`, against `v1.0.10` (fork branch `ci/room-progress
 | `f75a828` | `app/lib/ui/bots/room_chat_page.dart`, `app/lib/ui/bots/room_activity_strip.dart`, `app/lib/state/room_message_mode.dart`, `app/lib/l10n/` | v1.0.10 | The finished-round flash is page-local state and Flutter timing; the flow's `done` echo and the mode coupling live in the derived list, which no seam owns. |
 | `44c665b` | `app/lib/state/bots_state.dart`, `app/lib/ui/bots/room_chat_page.dart` | v1.0.10 | The sending bubble is the chat's own state machine: pending entries and their local drafts — no seam sees or draws them. |
 | `a497863` | `app/lib/ui/bots/room_chat_page.dart` | v1.0.10 | The finished-round flash's timer is page state; it is cancelled with the page, as the progress timer is. |
+| `8e13cad` | `app/lib/state/bots_state.dart`, `app/lib/ui/bots/room_chat_page.dart` | v1.0.10 | An empty-text bubble pairs only with lines past the seq it was made at; a send that could not start takes it back. |
+| `53b0ef9` | `app/lib/state/bots_state.dart` | v1.0.10 | The pairing record carries `seq`, so the comparison compiles. |
