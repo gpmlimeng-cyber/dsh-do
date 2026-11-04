@@ -23,7 +23,6 @@ import '../chat/widgets/quote_chip.dart' show ComposerTrayStack, QuoteChip;
 import '../chat/widgets/chat_card.dart';
 import '../common/status_dot.dart';
 import '../features/feature_kit.dart';
-import '../session/session_detail_page.dart';
 import '../shell/page_frame.dart';
 import 'bot_stop_guard.dart';
 import 'bot_action_scope.dart';
@@ -41,6 +40,7 @@ import 'bot_chat_page.dart';
 import 'bot_format.dart';
 import 'bot_mention.dart';
 import 'room_approval_action.dart';
+import 'room_aggregate_details_page.dart';
 import 'room_details_page.dart';
 import 'room_full_text_sheet.dart';
 
@@ -361,7 +361,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
         // this conversation's — trajectory, files, progress, context — the same
         // page a Bot's chat shows, read from the Session the group runs in.
         onDetails: () => Navigator.of(context).push(RoomDetailsPage.route(room.id)),
-        onInfo: () => SessionDetailPage.open(context, roomSession),
+        onInfo: () => Navigator.of(context).push(RoomAggregateDetailsPage.route(room.id)),
       ),
       body: chat.loading && chat.items.isEmpty
           ? Padding(
