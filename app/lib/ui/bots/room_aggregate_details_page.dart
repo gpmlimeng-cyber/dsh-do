@@ -125,7 +125,7 @@ class _RoomAggregateDetailsPageState extends ConsumerState<RoomAggregateDetailsP
             children: [
               // The group's own conversation: relays, replies, tools and steps,
               // exactly as the single-conversation page draws them.
-              if (roomSession != null) TrajectoryTab(sessionId: roomSession) else const _Empty(),
+              _RoomTrajectoryTab(room: room, team: team, roomSession: roomSession),
               _RoomChangesTab(room: room, team: team, roomSession: roomSession),
               _RoomFilesTab(room: room, team: team, roomSession: roomSession),
               _RoomProgressTab(room: room, team: team, roomSession: roomSession),
@@ -153,6 +153,69 @@ class _Empty extends StatelessWidget {
       ),
     ),
   );
+}
+
+/// 轨迹 for a group: the group Session's own turns, with a member summary on top.
+///
+/// The group Session shows every relay, but not what each member did inside their
+/// own Session — so a card at the top states each member's turns, tool calls and
+/// time, and the trajectory below stays exactly the single-conversation one.
+class _RoomTrajectoryTab extends ConsumerWidget {
+  const _RoomTrajectoryTab({required this.room, required this.team, required this.roomSession});
+
+  final DsBotRoom room;
+  final DsBotTeam team;
+  final String? roomSession;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
+    final sessionId = roomSession;
+    final body = sessionId == null ? const _Empty() : TrajectoryTab(sessionId: sessionId);
+    // Each member's turns from their Session for this group; a member with none
+    // yet simply has no line.
+    final rows = <(DsBot, List<TurnTrace>)>[];
+    final seen = <String>{};
+    for (final id in room.members) {
+      final bot = team.bot(id);
+      if (bot == null) continue;
+      final memberSession = memberSessionFor(room, bot);
+      if (memberSession == null || memberSession.isEmpty || !seen.add(memberSession)) continue;
+      final turns = ref.watch(chatProvider(memberSession).select((s) => s.turns));
+      if (turns.isNotEmpty) rows.add((bot, turns));
+    }
+    if (rows.isEmpty) return body;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: ListPageCard(
+            title: l10n.botsMembers,
+            children: [
+              for (final (bot, turns) in rows)
+                ListPageRow(
+                  key: ValueKey('member-trajectory-${bot.id}'),
+                  leading: BotAvatar(bot: bot, size: 28),
+                  title: bot.name,
+                  // Turns, tool calls and seconds: figures only, no words to
+                  // translate.
+                  subtitle: [
+                    '${turns.length}×',
+                    '${turns.fold<int>(0, (sum, turn) => sum + turn.spans.where((span) => span.kind == TraceKind.tool).length)}',
+                    '${turns.fold<Duration>(Duration.zero, (sum, turn) => sum + (turn.duration ?? Duration.zero)).inSeconds}s',
+                  ].join(' · '),
+                  subtitleMaxLines: 1,
+                  chevron: false,
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Expanded(child: body),
+      ],
+    );
+  }
 }
 
 /// 改动 for a group.
