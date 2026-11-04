@@ -87,7 +87,10 @@ class BotComposerDeck extends ConsumerWidget {
       return StripRiskChip.permission(context, preset: preset, onTap: openPermissions);
     }
 
-    final pillsInCapsules = !running;
+    // The capsule row gives way to the deck while anything is happening: a
+    // member running, or a member waiting for an answer. Idle, it leads.
+    final busy = running || roomActivity?.waiting == true || roomActivity?.activity != null;
+    final pillsInCapsules = !busy;
     final shownCapsule = pillsInCapsules ? capsule() : null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -115,7 +118,7 @@ class BotComposerDeck extends ConsumerWidget {
         // The capsules (ui.json's and plugins') and, while idle, the permission
         // chip as their leading: one row, as the chat page has it.
         // The status line already rides in the deck as a card; not twice.
-        NativeComposerBar(sessionId: sessionId, visible: !running, strip: false, leading: shownCapsule),
+        NativeComposerBar(sessionId: sessionId, visible: !busy, strip: false, leading: shownCapsule),
       ],
     );
   }

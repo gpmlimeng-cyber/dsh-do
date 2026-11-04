@@ -31,6 +31,7 @@ typedef RoomStatus = ({
   DateTime? since,
   DsBot? bot,
   int spoken,
+  bool waiting,
 });
 
 /// The header's line and the deck's activity line, from the group's live state.
@@ -58,17 +59,12 @@ RoomStatus roomStatusOf({
     }
   }
   final speaker = team.bot(speaking ?? speakingWorkId);
+  // The header states the moment, never the tool: who runs what and for how
+  // long is the deck's line below, and saying it twice reads as two events.
+  final waiting = approvals.isNotEmpty;
   final (String label, StatusTone tone) = switch (()) {
-    _ when approvals.isNotEmpty => (l10n.botsMemberNeedsApproval, StatusTone.warn),
-    _ when speaker != null => (l10n.botsNamedSpeaking(speaker.name), StatusTone.busy),
-    _ when working.isNotEmpty => (
-      l10n.botsNamedActivity(
-        team.bot(working.first.botId)?.name ?? 'Bot',
-        workPhrase(working.first) ?? l10n.botsWorking,
-      ),
-      StatusTone.busy,
-    ),
-    _ when running => (l10n.botsDiscussing, StatusTone.busy),
+    _ when waiting => (l10n.botsMemberNeedsApproval, StatusTone.warn),
+    _ when speaker != null || working.isNotEmpty || running => (l10n.botsDiscussing, StatusTone.busy),
     _ when room.paused => (l10n.commonPaused, StatusTone.warn),
     _ => (l10n.botsMemberCount(room.members.length), StatusTone.ok),
   };
@@ -87,7 +83,7 @@ RoomStatus roomStatusOf({
     _ when running => (l10n.botsDiscussing, null, null),
     _ => (null, null, null),
   };
-  return (label: label, tone: tone, activity: activity, since: since, bot: bot, spoken: spoken);
+  return (label: label, tone: tone, activity: activity, since: since, bot: bot, spoken: spoken, waiting: waiting);
 }
 
 DateTime? _since(List<DsBotWork> working, String botId) {
