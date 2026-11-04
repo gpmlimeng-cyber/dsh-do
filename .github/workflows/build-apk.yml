@@ -120,7 +120,7 @@ jobs:
             # uses `bash -e`, a failed command substitution makes the whole
             # assignment fail, and the step exits 1 with no output at all — that
             # is how the first 2.0.0 publish died, after a 15-minute build.
-            notes="MODO ${VERSION}. 基于上游 v1.0.8。"
+            notes="MODO ${VERSION}. 基于上游 v1.0.10。"
             # Release notes live in the repository, one file per version, so the
             # text is reviewed with the code instead of typed into the workflow.
             notes_file="docs/release-notes/${VERSION}.md"
