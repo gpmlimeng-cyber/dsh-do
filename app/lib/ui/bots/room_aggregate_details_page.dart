@@ -19,6 +19,7 @@ import '../session/session_detail_page.dart' show GlassSegments, TrajectoryTab;
 import '../session/session_tab.dart';
 import '../session/workspace_files.dart' show WorkspaceFilesTab;
 import '../shell/page_frame.dart';
+import '../theme/app_icons.dart';
 import '../theme/semantic_colors.dart' show DshColors;
 import 'bot_action_scope.dart';
 import 'bot_format.dart' show workPhrase;
@@ -57,7 +58,7 @@ class _RoomAggregateDetailsPageState extends ConsumerState<RoomAggregateDetailsP
     // The group's Sessions join the key: a member's first word here adds one, and
     // the totals must switch from their own chat to it without reopening the page.
     final sessions = [for (final id in room.members) '${id}:${room.sessions[id] ?? ''}'].join(',');
-    final key = '${room.id}|${room.members.join(',')}|$sessions|${api == null}';
+    final key = '${room.id}|${room.members.join(',')}|$sessions|$api';
     if (_activity == null || _activityKey != key) {
       _activityKey = key;
       _activity = loadRoomMembersActivity(api, room, team);

@@ -356,7 +356,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
       final bot = team.bot(id);
       if (bot == null) continue;
       final memberSession = room.sessions[bot.id] ?? bot.sessionId;
-      if (memberSession == null || memberSession.isEmpty) continue;
+      if (memberSession.isEmpty) continue;
       final artifacts = ref.watch(sessionArtifactsProvider(memberSession));
       if (artifacts.isEmpty) continue;
       deliveredByBot[id] = (sessionId: memberSession, group: artifacts.last);
