@@ -263,10 +263,12 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
         ? ref.watch(localRuntimeProvider.select((s) => s.status.phase == RuntimePhase.running))
         : ref.watch(activeConnectionProvider.select((c) => c.value != null));
     final visible = _resumed && (ModalRoute.of(context)?.isCurrent ?? true);
-    final artifacts = visible && engineUp
-        ? ref.watch(sessionArtifactsProvider(bot.sessionId))
-        : const <TurnArtifacts>[];
-    final delivered = artifacts.isEmpty ? null : artifacts.last;
+    // Watched on every build: the first watch builds this Session's chat and its
+    // connection, and a delivered card is derived from that chat. The gate decides
+    // only what is drawn, so a card that lands after the first frame is not lost by
+    // a rebuild that happens to fall on an invisible moment.
+    final artifacts = ref.watch(sessionArtifactsProvider(bot.sessionId));
+    final delivered = !(visible && engineUp) || artifacts.isEmpty ? null : artifacts.last;
     final rows = attachArtifacts(
       groupToolRows(
         transcriptRows(
@@ -329,7 +331,8 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
                         ? const Align(alignment: Alignment.centerLeft, child: _Thinking())
                         : BotReplyText(text: text, streaming: true),
                   BotTypingRow() => const SizedBox.shrink(),
-                  BotArtifactsRow(:final group) => ArtifactCard(sessionId: bot.sessionId, group: group),
+                  BotArtifactsRow(:final group, :final sessionId) =>
+                    ArtifactCard(sessionId: sessionId ?? bot.sessionId, group: group),
                   BotToolGroupRow(:final items) => BotToolGroup(
                     // A stable key: paging in older rows must not hand this
                     // group's open state to the one that lands on its index.

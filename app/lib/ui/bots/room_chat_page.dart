@@ -35,6 +35,8 @@ import 'bot_composer_deck.dart';
 import 'bot_draft_send.dart';
 import 'bot_avatar.dart';
 import 'unavailable_message.dart';
+import '../../state/artifacts.dart' show TurnArtifacts, sessionArtifactsProvider;
+import '../chat/widgets/artifact_card.dart';
 import 'bot_chat_kit.dart';
 import 'bot_chat_page.dart';
 import 'bot_format.dart';
@@ -345,7 +347,28 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
             speaker,
             l10n.botsNamedActivity(speaker.name, workPhrase(status.live.bots[speaker.id]) ?? l10n.botsTyping),
           );
-    final rows = transcriptRows(chat.items, pending: chat.pending, typing: typing);
+    // What each member delivered in this group, from their Session here; the card
+    // goes under their last line. The group Session's own delivery keeps the
+    // single-conversation placement by turn.
+    final deliveredByBot = <String, ({String sessionId, TurnArtifacts group})>{};
+    for (final id in room.members) {
+      final bot = team.bot(id);
+      if (bot == null) continue;
+      final memberSession = room.sessions[bot.id] ?? bot.sessionId;
+      if (memberSession == null || memberSession.isEmpty) continue;
+      final artifacts = ref.watch(sessionArtifactsProvider(memberSession));
+      if (artifacts.isEmpty) continue;
+      deliveredByBot[id] = (sessionId: memberSession, group: artifacts.last);
+    }
+    final groupArtifacts = room.sessionId == null ? null : ref.watch(sessionArtifactsProvider(room.sessionId!));
+    final rows = attachMemberArtifacts(
+      attachArtifacts(
+        transcriptRows(chat.items, pending: chat.pending, typing: typing),
+        groupArtifacts == null || groupArtifacts.isEmpty ? null : groupArtifacts.last,
+        atOldestEnd: !chat.hasEarlier,
+      ),
+      deliveredByBot,
+    );
     final topInset = BotChatHeader.heightOf(context);
     final readOnly = status.readOnly != null;
 
@@ -387,7 +410,8 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
                   // switch stays exhaustive, and the same widget keeps it honest.
                   // A group does not carry turn-level deliverables: its rows come
                   // from the group's own record, not from one conversation's turns.
-                  BotArtifactsRow() => const SizedBox.shrink(),
+                  BotArtifactsRow(:final group, :final sessionId) =>
+                    ArtifactCard(sessionId: sessionId ?? roomSession, group: group),
                   BotToolGroupRow(:final items) => BotToolGroup(items: items),
                   BotItemRow(:final item, :final continued) => switch (item.kind) {
                     DsBotItemKind.user => BotUserMessage(
