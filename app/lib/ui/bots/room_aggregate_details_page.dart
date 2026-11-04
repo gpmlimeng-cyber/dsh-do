@@ -101,7 +101,9 @@ class _RoomAggregateDetailsPageState extends ConsumerState<RoomAggregateDetailsP
       SessionTab.context.label,
     ];
     return AppPage(
-      title: room.name,
+      // The tab bar says what the page is; the hero below keeps the group's
+      // name, so the group is still what the page is about.
+      title: l10n.hubSessionDetails,
       hero: PageHero(
         leading: RoomAvatar(room: room, team: team, size: 56),
         title: room.name,
