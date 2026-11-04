@@ -10,8 +10,8 @@ import '../../state/usage_state.dart';
 import '../common/list_page_row.dart';
 import '../chat/diff_page.dart' show ChangeDiffPage;
 import '../chat/turn_summary.dart' show FileChange, fileChangesOf;
-import '../chat/trajectory_sheet.dart' show TimelineBar;
-import '../chat/usage_sheet.dart' show SessionUsageSections, formatPercent, formatTokens;
+import '../chat/turn_usage.dart' show TurnUsageCard;
+import '../chat/usage_sheet.dart' show SessionUsageSections, formatTokens;
 import '../chat/widgets/change_card.dart' show DiffCounts;
 import '../common/page_hero.dart';
 import '../chat/widgets/activity_strip.dart' show TodoProgress;
@@ -848,16 +848,14 @@ class _RoomContextTab extends ConsumerWidget {
         ? const <TurnTrace>[]
         : ref.watch(chatProvider(sessionId).select((s) => s.turns));
     final pricing = model == null ? null : knownPricing['${model.provider}/${model.model}'];
-    final recent = [
-      for (final trace in turns.reversed)
-        if (!trace.usage.isEmpty) trace,
-    ].take(12).toList();
-    final peak = recent.fold<int>(0, (most, trace) => trace.usage.total > most ? trace.usage.total : most);
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
       children: [
         // The group Session's own summary: what the relays cost.
         if (usage != null) SessionUsageSections(usage: usage, pricing: pricing),
+        // The group Session's last turns, as the single-conversation page draws
+        // them. Member turns only come as sums, so they are not plotted here.
+        TurnUsageCard(turns: turns),
         FutureBuilder<RoomMembersActivity>(
           future: activity,
           builder: (context, snapshot) {
@@ -924,58 +922,6 @@ class _RoomContextTab extends ConsumerWidget {
             );
           },
         ),
-        // The group Session's last turns, as the single-conversation page draws
-        // them. Member turns only come as sums, so they are not plotted here.
-        if (recent.isNotEmpty)
-          ListPageCard(
-            title: l10n.hubSessionTurnUsage,
-            margin: const EdgeInsets.fromLTRB(16, 6, 16, 6),
-            children: [
-              for (final trace in recent)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 9, 16, 9),
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: 52,
-                        child: Text(
-                          l10n.hubSessionTurn(trace.turn),
-                          style: theme.textTheme.bodySmall?.copyWith(color: dsh.textTertiary),
-                        ),
-                      ),
-                      Expanded(
-                        child: TimelineBar(
-                          start: Duration.zero,
-                          duration: Duration(milliseconds: trace.usage.total),
-                          total: Duration(milliseconds: peak <= 0 ? 1 : peak),
-                          color: theme.colorScheme.primary.withValues(alpha: 0.75),
-                          height: 6,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      SizedBox(
-                        width: 52,
-                        child: Text(
-                          formatTokens(trace.usage.total),
-                          textAlign: TextAlign.right,
-                          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                        ),
-                      ),
-                      SizedBox(
-                        width: 64,
-                        child: Text(
-                          trace.usage.cacheHitRate == null
-                              ? ''
-                              : l10n.hubSessionCacheHit(formatPercent(trace.usage.cacheHitRate!)),
-                          textAlign: TextAlign.right,
-                          style: theme.textTheme.bodySmall?.copyWith(color: dsh.textTertiary),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
       ],
     );
   }
