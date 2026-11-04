@@ -4,11 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
 import '../../state/bots_state.dart';
+import '../../state/usage_state.dart';
 import '../common/list_page_row.dart';
 import '../chat/usage_sheet.dart' show formatTokens;
 import '../common/page_hero.dart';
-import '../session/session_detail_page.dart' show ChangesTab, GlassSegments, TrajectoryTab;
+import '../session/session_detail_page.dart' show ChangesTab, GlassSegments, ProgressTab, TrajectoryTab;
 import '../session/session_tab.dart';
+import '../session/workspace_files.dart' show WorkspaceFilesTab;
 import '../shell/page_frame.dart';
 import 'bot_action_scope.dart';
 import 'bot_avatar.dart';
@@ -35,7 +37,7 @@ class RoomAggregateDetailsPage extends ConsumerStatefulWidget {
 
 class _RoomAggregateDetailsPageState extends ConsumerState<RoomAggregateDetailsPage>
     with TickerProviderStateMixin {
-  late final TabController _controller = TabController(length: 4, vsync: this);
+  late final TabController _controller = TabController(length: 5, vsync: this);
 
   @override
   void dispose() {
@@ -67,8 +69,9 @@ class _RoomAggregateDetailsPageState extends ConsumerState<RoomAggregateDetailsP
     final labels = [
       SessionTab.trajectory.label,
       SessionTab.changes.label,
+      SessionTab.files.label,
+      SessionTab.progress.label,
       SessionTab.context.label,
-      l10n.botsUsage,
     ];
     return AppPage(
       title: room.name,
@@ -98,8 +101,9 @@ class _RoomAggregateDetailsPageState extends ConsumerState<RoomAggregateDetailsP
               // exactly as the single-conversation page draws them.
               if (roomSession != null) TrajectoryTab(sessionId: roomSession) else const _Empty(),
               if (roomSession != null) ChangesTab(sessionId: roomSession) else const _Empty(),
-              _MemberContextTab(room: room, activity: activity),
-              _MemberUsageTab(room: room, activity: activity),
+              _RoomFilesTab(room: room, team: team, roomSession: roomSession),
+              if (roomSession != null) ProgressTab(sessionId: roomSession) else const _Empty(),
+              _MemberContextTab(room: room, activity: activity, roomSession: roomSession),
             ],
           ),
         ),
@@ -123,6 +127,143 @@ class _Empty extends StatelessWidget {
       ),
     ),
   );
+}
+
+/// 文件 for a group.
+///
+/// A shared directory makes the group's own Session the right one to read, so the
+/// single-conversation tab is used as is. Without one, the real files live in the
+/// members' own directories: the strip switches the Session the tab reads, and
+/// starts on the admin — the directory the group usually writes to.
+class _RoomFilesTab extends StatefulWidget {
+  const _RoomFilesTab({required this.room, required this.team, required this.roomSession});
+
+  final DsBotRoom room;
+  final DsBotTeam team;
+  final String? roomSession;
+
+  @override
+  State<_RoomFilesTab> createState() => _RoomFilesTabState();
+}
+
+class _RoomFilesTabState extends State<_RoomFilesTab> {
+  String? _sessionId;
+
+  @override
+  void initState() {
+    super.initState();
+    _sessionId = _initial();
+  }
+
+  @override
+  void didUpdateWidget(_RoomFilesTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.room.id != widget.room.id) _sessionId = _initial();
+  }
+
+  bool get _shared => (widget.room.workDir ?? '').isNotEmpty;
+
+  /// A shared directory: the group's own Session. Otherwise the admin's, whose
+  /// directory the group writes to by default.
+  String? _initial() {
+    if (_shared) return widget.roomSession;
+    return widget.team.bot(widget.room.admin)?.sessionId ?? widget.roomSession;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final sessionId = _sessionId;
+    if (sessionId == null) return const _Empty();
+    final browser = WorkspaceFilesTab(key: ValueKey('room-files-$sessionId'), sessionId: sessionId);
+    if (_shared) return browser;
+    final admin = widget.team.bot(widget.room.admin);
+    final others = [
+      for (final id in widget.room.members)
+        if (id != admin?.id) widget.team.bot(id),
+    ].whereType<DsBot>().toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(child: browser),
+        // Which directory is on screen. Only without a shared directory: there is
+        // nothing to choose between otherwise. Admin first, then the members,
+        // then the group itself.
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          child: Row(
+            children: [
+              if (admin != null) ...[
+                _Chip(
+                  key: const ValueKey('room-files-admin'),
+                  label: admin.name,
+                  avatar: BotAvatar(bot: admin, size: 20),
+                  selected: sessionId == admin.sessionId,
+                  onTap: () => setState(() => _sessionId = admin.sessionId),
+                ),
+                const SizedBox(width: 8),
+              ],
+              for (final bot in others) ...[
+                _Chip(
+                  key: ValueKey('room-files-${bot.id}'),
+                  label: bot.name,
+                  avatar: BotAvatar(bot: bot, size: 20),
+                  selected: sessionId == bot.sessionId,
+                  onTap: () => setState(() => _sessionId = bot.sessionId),
+                ),
+                const SizedBox(width: 8),
+              ],
+              _Chip(
+                key: const ValueKey('room-files-group'),
+                label: l10n.botsGroupChat,
+                selected: sessionId == widget.roomSession,
+                onTap: () => setState(() => _sessionId = widget.roomSession),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _Chip extends StatelessWidget {
+  const _Chip({super.key, required this.label, required this.selected, required this.onTap, this.avatar});
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final Widget? avatar;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    return Material(
+      color: selected ? colors.secondaryContainer : Colors.transparent,
+      shape: const StadiumBorder(),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (avatar != null) ...[avatar!, const SizedBox(width: 6)],
+              Text(
+                label,
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: selected ? colors.onSecondaryContainer : colors.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// One member's figures, as the two summed tabs show them.
@@ -265,22 +406,26 @@ RoomMemberActivity _member(DsBot bot, Map<String, Object?> json) {
   );
 }
 
-class _MemberContextTab extends StatelessWidget {
-  const _MemberContextTab({required this.room, required this.activity});
+class _MemberContextTab extends ConsumerWidget {
+  const _MemberContextTab({required this.room, required this.activity, required this.roomSession});
 
   final DsBotRoom room;
   final Future<RoomMembersActivity> activity;
+  final String? roomSession;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
+    final group = roomSession == null ? null : ref.watch(sessionUsageProvider(roomSession!));
+    final groupShare = group?.contextFraction;
     return FutureBuilder<RoomMembersActivity>(
       future: activity,
       builder: (context, snapshot) {
         final total = snapshot.data;
         if (total == null) return const Center(child: CircularProgressIndicator(strokeWidth: 2));
         final share = total.maxContextShare;
+        final fullest = total.fullest;
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           children: [
@@ -297,7 +442,7 @@ class _MemberContextTab extends StatelessWidget {
                       : '${(share * 100).round()}% · ${formatTokens(total.contextTokens)}',
                   style: theme.textTheme.titleMedium,
                 ),
-                if (total.fullest case final fullest?) ...[
+                if (fullest != null) ...[
                   const SizedBox(width: 8),
                   Text(
                     fullest.bot.name,
@@ -306,7 +451,23 @@ class _MemberContextTab extends StatelessWidget {
                 ],
               ],
             ),
+            const SizedBox(height: 4),
+            Text(
+              // 合计 = N 位成员 + 群会话, as the page states it.
+              '${l10n.botsMembers} ${total.members.length} + ${l10n.botsGroupChat}',
+              style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
             const SizedBox(height: 12),
+            // The group's own Session: the relays' context, the one figure it has.
+            if (groupShare != null)
+              ListPageRow(
+                key: const ValueKey('member-context-group'),
+                icon: Icons.groups_outlined,
+                title: l10n.botsGroupChat,
+                subtitle: '${(groupShare * 100).round()}%',
+                subtitleMaxLines: 1,
+                chevron: false,
+              ),
             for (final member in total.members)
               ListPageRow(
                 key: ValueKey('member-context-${member.bot.id}'),
@@ -316,66 +477,6 @@ class _MemberContextTab extends StatelessWidget {
                   if (member.contextShare != null) '${(member.contextShare! * 100).round()}%',
                   if (member.contextTokens != null) formatTokens(member.contextTokens!),
                   if (member.turns > 0) '${member.turns}×',
-                ].join(' · '),
-                subtitleMaxLines: 1,
-                chevron: false,
-              ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _MemberUsageTab extends StatelessWidget {
-  const _MemberUsageTab({required this.room, required this.activity});
-
-  final DsBotRoom room;
-  final Future<RoomMembersActivity> activity;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final theme = Theme.of(context);
-    return FutureBuilder<RoomMembersActivity>(
-      future: activity,
-      builder: (context, snapshot) {
-        final total = snapshot.data;
-        if (total == null) return const Center(child: CircularProgressIndicator(strokeWidth: 2));
-        final speed = total.speed;
-        final hit = total.cacheHit;
-        return ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-          children: [
-            Row(
-              children: [
-                Text(
-                  l10n.botsUsage,
-                  style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                ),
-                const Spacer(),
-                Text(
-                  '${total.turns}× · ${l10n.activityCacheHit} ${(hit * 100).round()}%',
-                  style: theme.textTheme.titleMedium,
-                ),
-                if (speed != null) ...[
-                  const SizedBox(width: 8),
-                  Text(
-                    '${speed.round()} tok/s',
-                    style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                  ),
-                ],
-              ],
-            ),
-            const SizedBox(height: 12),
-            for (final member in total.members)
-              ListPageRow(
-                key: ValueKey('member-usage-${member.bot.id}'),
-                leading: BotAvatar(bot: member.bot, size: 32),
-                title: member.bot.name,
-                subtitle: [
-                  if (member.turns > 0) '${member.turns}×',
-                  if (member.speed != null) '${member.speed!.round()} tok/s',
                 ].join(' · '),
                 subtitleMaxLines: 1,
                 chevron: false,
