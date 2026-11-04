@@ -15,6 +15,7 @@ import '../../state/artifacts.dart' show TurnArtifacts;
 import '../../state/bots_state.dart';
 import '../chat/render/markdown_body.dart';
 import '../chat/widgets/chat_card.dart';
+import '../chat/dsh_ui/dsh_ui.dart';
 import '../chat/widgets/message_actions.dart';
 import '../share/share_entry.dart' show shareText;
 import '../chat/widgets/notice_row.dart';
@@ -992,8 +993,8 @@ class BotReplyText extends StatelessWidget {
   final String text;
   final bool streaming;
 
-  /// What its long-press menu offers. A group line passes 复制 / 分享 only:
-  /// selecting text is the chat's own reading tool.
+  /// What its long-press menu offers; 引用 is added in [_menu] where it applies.
+  /// A group member's line offers the same set as the Bot's own.
   final List<MessageAction> actions;
 
   /// 引用: puts this line above the composer. Null where引用 does not apply.
@@ -1005,21 +1006,25 @@ class BotReplyText extends StatelessWidget {
 
   Future<void> _menu(BuildContext context) async {
     if (actions.isEmpty) return;
+    // A Bot's reply carries ```dsh-ui JSON for the phone to draw: the preview,
+    // 复制 and 引用 show the words instead, as the chat's own menu does.
+    final plain = dshUiPlainText(text);
     final action = await showMessageMenu(
       context,
-      text: text,
+      text: plain,
       actions: [...actions, if (onQuote != null) MessageAction.quote],
     );
     if (!context.mounted || action == null) return;
     switch (action) {
       case MessageAction.copy:
-        await copyMessage(context, text);
+        await copyMessage(context, plain);
       case MessageAction.selectText:
+        // The sheet renders it: the Markdown, as the reply reads.
         await showSelectTextSheet(context, text, markdown: true);
       case MessageAction.share:
         await shareText(context, text);
       case MessageAction.quote:
-        onQuote?.call(text);
+        onQuote?.call(plain);
       case MessageAction.edit || MessageAction.regenerate || MessageAction.branch:
         break;
     }
@@ -1122,8 +1127,10 @@ class GroupMessage extends StatelessWidget {
         BotReplyText(
           text: text,
           // One menu, not two: the inner one wins the gesture arena anyway.
-          // A file-only line has no text worth copying or sharing.
-          actions: text.isEmpty ? const [] : const [MessageAction.copy, MessageAction.share],
+          // A file-only line has no text worth copying, selecting or sharing.
+          actions: text.isEmpty
+              ? const []
+              : const [MessageAction.copy, MessageAction.selectText, MessageAction.share],
           onQuote: onQuote,
           onLinkTap: onLinkTap,
         ),
