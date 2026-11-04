@@ -9,10 +9,11 @@ import '../../state/usage_state.dart';
 import '../common/list_page_row.dart';
 import '../chat/diff_page.dart' show ChangeDiffPage;
 import '../chat/turn_summary.dart' show FileChange, fileChangesOf;
-import '../chat/usage_sheet.dart' show formatTokens;
+import '../chat/trajectory_sheet.dart' show TimelineBar;
+import '../chat/usage_sheet.dart' show formatPercent, formatTokens;
 import '../chat/widgets/change_card.dart' show DiffCounts;
 import '../common/page_hero.dart';
-import '../session/session_detail_page.dart' show GlassSegments, ProgressTab, TrajectoryTab;
+import '../session/session_detail_page.dart' show GlassSegments, ProgressTab, SessionUsageSections, TrajectoryTab;
 import '../session/session_tab.dart';
 import '../session/workspace_files.dart' show WorkspaceFilesTab;
 import '../shell/page_frame.dart';
@@ -125,7 +126,7 @@ class _RoomAggregateDetailsPageState extends ConsumerState<RoomAggregateDetailsP
               _RoomChangesTab(room: room, team: team, roomSession: roomSession),
               _RoomFilesTab(room: room, team: team, roomSession: roomSession),
               if (roomSession != null) ProgressTab(sessionId: roomSession) else const _Empty(),
-              _MemberContextTab(room: room, activity: activity, roomSession: roomSession),
+              _RoomContextTab(room: room, activity: activity, roomSession: roomSession),
             ],
           ),
         ),
@@ -552,8 +553,15 @@ RoomMemberActivity _member(DsBot bot, Map<String, Object?> json) {
   );
 }
 
-class _MemberContextTab extends ConsumerWidget {
-  const _MemberContextTab({required this.room, required this.activity, required this.roomSession});
+/// 上下文 for a group.
+///
+/// Three of the four blocks are the single-conversation page's: the group
+/// Session's usage summary and its last turns are read from `room.sessionId`,
+/// because every relay and reply lands there. The member sums are a fourth block,
+/// read from each member's own Session for this group. Without a group Session
+/// the two conversation blocks are hidden rather than faked.
+class _RoomContextTab extends ConsumerWidget {
+  const _RoomContextTab({required this.room, required this.activity, required this.roomSession});
 
   final DsBotRoom room;
   final Future<RoomMembersActivity> activity;
@@ -563,73 +571,143 @@ class _MemberContextTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
-    final group = roomSession == null ? null : ref.watch(sessionUsageProvider(roomSession!));
-    final groupShare = group?.contextFraction;
-    return FutureBuilder<RoomMembersActivity>(
-      future: activity,
-      builder: (context, snapshot) {
-        final total = snapshot.data;
-        if (total == null) return const Center(child: CircularProgressIndicator(strokeWidth: 2));
-        final share = total.maxContextShare;
-        final fullest = total.fullest;
-        return ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-          children: [
-            Row(
+    final dsh = DshColors.of(context);
+    final sessionId = roomSession;
+    final usage = sessionId == null ? null : ref.watch(sessionUsageProvider(sessionId));
+    final model = sessionId == null ? null : ref.watch(chatProvider(sessionId).select((s) => s.model));
+    final turns = sessionId == null
+        ? const <TurnTrace>[]
+        : ref.watch(chatProvider(sessionId).select((s) => s.turns));
+    final pricing = model == null ? null : knownPricing['${model.provider}/${model.model}'];
+    final recent = [
+      for (final trace in turns.reversed)
+        if (!trace.usage.isEmpty) trace,
+    ].take(12).toList();
+    final peak = recent.fold<int>(0, (most, trace) => trace.usage.total > most ? trace.usage.total : most);
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      children: [
+        // The group Session's own summary: what the relays cost.
+        if (usage != null) SessionUsageSections(usage: usage, pricing: pricing),
+        FutureBuilder<RoomMembersActivity>(
+          future: activity,
+          builder: (context, snapshot) {
+            final total = snapshot.data;
+            if (total == null) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+              );
+            }
+            final share = total.maxContextShare;
+            final fullest = total.fullest;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                const SizedBox(height: 8),
                 Text(
                   l10n.activityUsageContext,
-                  style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  style: theme.textTheme.labelMedium?.copyWith(color: dsh.textTertiary),
                 ),
-                const Spacer(),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Text(
+                      share == null ? '—' : '${(share * 100).round()}% · ${formatTokens(total.contextTokens)}',
+                      style: theme.textTheme.titleMedium,
+                    ),
+                    const Spacer(),
+                    if (fullest != null) ...[
+                      Text(
+                        fullest.bot.name,
+                        style: theme.textTheme.labelSmall?.copyWith(color: dsh.textTertiary),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    Text(
+                      '${l10n.activityCacheHit} ${(total.cacheHit * 100).round()}%',
+                      style: theme.textTheme.labelSmall?.copyWith(color: dsh.textTertiary),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
                 Text(
-                  share == null
-                      ? '—'
-                      : '${(share * 100).round()}% · ${formatTokens(total.contextTokens)}',
-                  style: theme.textTheme.titleMedium,
+                  // 合计 = N 位成员 + 群会话, as the page states it.
+                  '${l10n.botsMembers} ${total.members.length} + ${l10n.botsGroupChat}',
+                  style: theme.textTheme.labelSmall?.copyWith(color: dsh.textTertiary),
                 ),
-                if (fullest != null) ...[
-                  const SizedBox(width: 8),
-                  Text(
-                    fullest.bot.name,
-                    style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                const SizedBox(height: 8),
+                for (final member in total.members)
+                  ListPageRow(
+                    key: ValueKey('member-context-${member.bot.id}'),
+                    leading: BotAvatar(bot: member.bot, size: 32),
+                    title: member.bot.name,
+                    subtitle: [
+                      if (member.contextShare != null) '${(member.contextShare! * 100).round()}%',
+                      if (member.contextTokens != null) formatTokens(member.contextTokens!),
+                      if (member.turns > 0) '${member.turns}×',
+                      if (member.speed != null) '${member.speed!.round()} tok/s',
+                    ].join(' · '),
+                    subtitleMaxLines: 1,
+                    chevron: false,
                   ),
-                ],
               ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              // 合计 = N 位成员 + 群会话, as the page states it.
-              '${l10n.botsMembers} ${total.members.length} + ${l10n.botsGroupChat}',
-              style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            ),
-            const SizedBox(height: 12),
-            // The group's own Session: the relays' context, the one figure it has.
-            if (groupShare != null)
-              ListPageRow(
-                key: const ValueKey('member-context-group'),
-                icon: Icons.groups_outlined,
-                title: l10n.botsGroupChat,
-                subtitle: '${(groupShare * 100).round()}%',
-                subtitleMaxLines: 1,
-                chevron: false,
-              ),
-            for (final member in total.members)
-              ListPageRow(
-                key: ValueKey('member-context-${member.bot.id}'),
-                leading: BotAvatar(bot: member.bot, size: 32),
-                title: member.bot.name,
-                subtitle: [
-                  if (member.contextShare != null) '${(member.contextShare! * 100).round()}%',
-                  if (member.contextTokens != null) formatTokens(member.contextTokens!),
-                  if (member.turns > 0) '${member.turns}×',
-                ].join(' · '),
-                subtitleMaxLines: 1,
-                chevron: false,
-              ),
-          ],
-        );
-      },
+            );
+          },
+        ),
+        // The group Session's last turns, as the single-conversation page draws
+        // them. Member turns only come as sums, so they are not plotted here.
+        if (recent.isNotEmpty)
+          ListPageCard(
+            title: l10n.hubSessionTurnUsage,
+            margin: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+            children: [
+              for (final trace in recent)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 9, 16, 9),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 52,
+                        child: Text(
+                          l10n.hubSessionTurn(trace.turn),
+                          style: theme.textTheme.bodySmall?.copyWith(color: dsh.textTertiary),
+                        ),
+                      ),
+                      Expanded(
+                        child: TimelineBar(
+                          start: Duration.zero,
+                          duration: Duration(milliseconds: trace.usage.total),
+                          total: Duration(milliseconds: peak <= 0 ? 1 : peak),
+                          color: theme.colorScheme.primary.withValues(alpha: 0.75),
+                          height: 6,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      SizedBox(
+                        width: 52,
+                        child: Text(
+                          formatTokens(trace.usage.total),
+                          textAlign: TextAlign.right,
+                          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                        ),
+                      ),
+                      SizedBox(
+                        width: 64,
+                        child: Text(
+                          trace.usage.cacheHitRate == null
+                              ? ''
+                              : l10n.hubSessionCacheHit(formatPercent(trace.usage.cacheHitRate!)),
+                          textAlign: TextAlign.right,
+                          style: theme.textTheme.bodySmall?.copyWith(color: dsh.textTertiary),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+      ],
     );
   }
 }
