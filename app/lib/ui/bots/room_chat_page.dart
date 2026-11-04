@@ -21,7 +21,6 @@ import '../chat/voice/voice_controller.dart';
 import '../chat/widgets/attachments.dart';
 import '../chat/widgets/quote_chip.dart' show ComposerTrayStack, QuoteChip;
 import '../chat/widgets/chat_card.dart';
-import '../common/status_dot.dart';
 import '../features/feature_kit.dart';
 import '../shell/page_frame.dart';
 import 'bot_stop_guard.dart';
@@ -43,6 +42,7 @@ import 'bot_chat_page.dart';
 import 'bot_format.dart';
 import 'bot_mention.dart';
 import 'room_approval_action.dart';
+import 'room_activity_strip.dart' show roomStatusOf;
 import 'room_aggregate_details_page.dart';
 import 'room_details_page.dart';
 import 'room_full_text_sheet.dart';
@@ -311,36 +311,22 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
     final members = [for (final id in room.members) ?team.bot(id)];
     _mentions.setMembers(members, room.admin);
     final chat = ref.watch(roomChatProvider(widget.roomId));
-    final working = status.live.rooms[room.id] ?? const <DsBotWork>[];
     final approvals = [
       for (final a in status.live.approvals)
         if (a.roomId == room.id && a.answerable) a,
     ];
-    final speakingId = chat.speaking ?? working.where((w) => w.speaking).firstOrNull?.botId;
-    final speaker = team.bot(speakingId);
-    final (String label, StatusTone tone) = switch (()) {
-      _ when approvals.isNotEmpty => (l10n.botsMemberNeedsApproval, StatusTone.warn),
-      _ when speaker != null => (l10n.botsNamedSpeaking(speaker.name), StatusTone.busy),
-      _ when working.isNotEmpty => (
-        l10n.botsNamedActivity(
-          team.bot(working.first.botId)?.name ?? 'Bot',
-          workPhrase(working.first) ?? l10n.botsWorking,
-        ),
-        StatusTone.busy,
-      ),
-      _ when chat.running => (l10n.botsDiscussing, StatusTone.busy),
-      _ when room.paused => (l10n.commonPaused, StatusTone.warn),
-      _ => (l10n.botsMemberCount(room.members.length), StatusTone.ok),
-    };
-    final progress = _progress;
-    final spokenNames = [
-      for (final id in progress?.spokenBy ?? const <String>[]) ?team.bot(id)?.name,
-    ];
-    // Only the count: the status line above already names whoever is speaking,
-    // and repeating it there read as「Chief 正在发言 · … · 某甲 正在发言」.
-    final progressText = progress == null || progress.isEmpty || spokenNames.isEmpty
-        ? null
-        : '${l10n.botsAlreadySpoke} ${spokenNames.length}';
+    // The header's line and the deck's line are worked out once, so the two
+    // cannot say different things about the same round.
+    final statusLine = roomStatusOf(
+      l10n: l10n,
+      team: team,
+      room: room,
+      live: status.live,
+      running: chat.running,
+      speaking: chat.speaking,
+      progress: _progress,
+    );
+    final speaker = statusLine.bot;
 
     final typing = speaker == null
         ? null
@@ -377,8 +363,10 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
       header: BotChatHeader(
         face: RoomAvatar(room: room, team: team, size: BotChatHeader.faceSize),
         title: room.name,
-        status: progressText == null ? label : '$label · $progressText',
-        tone: tone,
+        status: statusLine.spoken == 0
+            ? statusLine.label
+            : '${statusLine.label} · ${l10n.botsAlreadySpoke} ${statusLine.spoken}',
+        tone: statusLine.tone,
         scrolledUnder: _scrolled,
         onLeading: () => openDrawerOverShell(context, ref),
         // The title capsule is the group's own details; the key on the right is
@@ -558,7 +546,12 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
         ),
         // A group has no single conversation behind it: the todo, goal and
         // permission parts stay off; the activity and plugin strips still apply.
-        BotComposerDeck(sessionId: roomSession, running: chat.running, showSessionBars: false),
+        BotComposerDeck(
+          sessionId: roomSession,
+          running: chat.running,
+          showSessionBars: false,
+          roomActivity: statusLine,
+        ),
         Composer(
           hardwareEnterSends: ref.watch(settingsProvider.select((s) => s.hardwareEnterSends)),
           voice: _voice,

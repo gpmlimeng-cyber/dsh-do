@@ -32,6 +32,7 @@ import '../plugins/native/native_composer_bar.dart';
 import '../safe_mode/safe_mode_banner.dart';
 import '../settings/settings_widgets.dart' show SettingsTile;
 import '../theme/app_icons.dart';
+import 'room_activity_strip.dart' show RoomActivityStrip, RoomStatus;
 
 /// Everything the native composer carries above itself: the safe-mode banner,
 /// the permission pill, the status deck (todo, goal, activity, a plugin's status
@@ -42,6 +43,7 @@ class BotComposerDeck extends ConsumerWidget {
     required this.sessionId,
     required this.running,
     this.showSessionBars = true,
+    this.roomActivity,
   });
 
   final String sessionId;
@@ -49,7 +51,12 @@ class BotComposerDeck extends ConsumerWidget {
 
   /// The todo, goal and permission parts speak of one conversation. A group has
   /// no single one of those, so its deck keeps the activity and plugin strips.
+  /// (The activity strip used to be gated by this too, which contradicted it.)
   final bool showSessionBars;
+
+  /// A group's own status line. Null in a Bot's chat, where the activity strip
+  /// reads a single turn; a group has no single turn to read.
+  final RoomStatus? roomActivity;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -89,8 +96,11 @@ class BotComposerDeck extends ConsumerWidget {
               if (showSessionBars) ...[
                 TodoDockSlot(sessionId: sessionId),
                 GoalDockSlot(sessionId: sessionId),
-                ActivityStripSlot(sessionId: sessionId),
               ],
+              if (roomActivity case final status?)
+                RoomActivityStrip(status: status)
+              else
+                ActivityStripSlot(sessionId: sessionId),
               ComposerStripSlot(sessionId: sessionId, visible: !running),
             ],
             // Running: the permission chip rides beside the activity strip,
