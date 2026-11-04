@@ -701,7 +701,7 @@ List<DsBotPending> settlePending(List<DsBotPending> pending, Iterable<DsBotItem>
   final texts = [
     for (final item in shown)
       if (item.kind == DsBotItemKind.user)
-        (text: withoutImageNotes(item.text), attachments: item.images + item.files.length),
+        (text: withoutImageNotes(item.text), attachments: item.images + item.files.length, seq: item.seq),
   ];
   final left = <DsBotPending>[];
   for (final entry in pending) {
