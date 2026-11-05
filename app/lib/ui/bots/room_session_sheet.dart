@@ -4,6 +4,8 @@
 // reads as the other.
 
 import 'package:dsh_client/dsh_client.dart';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../l10n/l10n.dart';
@@ -24,6 +26,7 @@ Future<void> showRoomSessionSheet(
   required RoomChatTarget target,
   required RoomMessageMode mode,
   required List<DsBotItem> items,
+  required String? Function(DsBotItem item) speakerOf,
   required ValueChanged<RoomChatTarget> onTarget,
   required ValueChanged<RoomMessageMode> onMode,
 }) {
@@ -36,6 +39,7 @@ Future<void> showRoomSessionSheet(
       target: target,
       mode: mode,
       items: items,
+      speakerOf: speakerOf,
       onTarget: onTarget,
       onMode: onMode,
     ),
@@ -49,6 +53,7 @@ class _RoomSessionSheet extends StatefulWidget {
     required this.target,
     required this.mode,
     required this.items,
+    required this.speakerOf,
     required this.onTarget,
     required this.onMode,
   });
@@ -58,6 +63,9 @@ class _RoomSessionSheet extends StatefulWidget {
   final RoomChatTarget target;
   final RoomMessageMode mode;
   final List<DsBotItem> items;
+
+  /// Which member a line came from (a sender Session on this Host).
+  final String? Function(DsBotItem item) speakerOf;
   final ValueChanged<RoomChatTarget> onTarget;
   final ValueChanged<RoomMessageMode> onMode;
 
@@ -68,7 +76,7 @@ class _RoomSessionSheet extends StatefulWidget {
 class _RoomSessionSheetState extends State<_RoomSessionSheet> {
   late RoomChatTarget _target = widget.target;
   late RoomMessageMode _mode = widget.mode;
-  final _membersScroll = ScrollController();
+  final _scroll = ScrollController();
   final _search = TextEditingController();
   String _query = '';
 
@@ -86,16 +94,18 @@ class _RoomSessionSheetState extends State<_RoomSessionSheet> {
 
   @override
   void dispose() {
-    _membersScroll.dispose();
+    _scroll.dispose();
     _search.dispose();
     super.dispose();
   }
 
   /// Newest line per member, read from the group's own messages: no extra RPC.
+  /// The speaker is resolved through the page's resolver — the Host's `botId`
+  /// on a member's line is that member's Session id.
   Map<String, DateTime> get _lastSpoken {
     final out = <String, DateTime>{};
     for (final item in widget.items) {
-      final id = item.botId;
+      final id = widget.speakerOf(item);
       final time = item.time;
       if (id == null || time == null) continue;
       final seen = out[id];
@@ -132,12 +142,13 @@ class _RoomSessionSheetState extends State<_RoomSessionSheet> {
   int get _memberCount => widget.room.members.length;
 
   void _revealCurrent() {
-    if (!mounted || !_membersScroll.hasClients) return;
+    if (!mounted || !_scroll.hasClients) return;
     final index = _orderedMembers.indexWhere((bot) => bot.id == widget.target.memberId);
     if (index < 0) return;
-    const rowHeight = 52.0;
-    final position = _membersScroll.position;
-    _membersScroll.jumpTo((index * rowHeight).clamp(0.0, position.maxScrollExtent));
+    // Title bar, the group row and the member section's own title above it.
+    const above = 56.0 + 64.0 + 24.0;
+    final position = _scroll.position;
+    _scroll.jumpTo((above + index * 52.0).clamp(0.0, position.maxScrollExtent));
   }
 
   void _pickTarget(RoomChatTarget next) {
@@ -211,6 +222,12 @@ class _RoomSessionSheetState extends State<_RoomSessionSheet> {
     final filtering = _filtering;
     final filtersEnabled = _filtersEnabled;
     final searchable = _memberCount >= 8;
+    final size = MediaQuery.sizeOf(context);
+    final insets = MediaQuery.paddingOf(context);
+    final available = size.height - insets.top - insets.bottom;
+    // A short window (a phone on its side) cannot keep the filters fixed at the
+    // bottom: everything scrolls together there, or they are cut off.
+    final compact = available < 420;
 
     Widget memberRow(DsBot bot) {
       final time = spoken[bot.id];
@@ -234,88 +251,120 @@ class _RoomSessionSheetState extends State<_RoomSessionSheet> {
       );
     }
 
+    final middle = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SheetGroup(
+          children: [
+            ListPageRow(
+              key: const ValueKey('room-target-all'),
+              icon: AppIcons.groupChat,
+              title: l10n.botsGroupChat,
+              meta: _target.isAll ? l10n.botsRoomWatching : null,
+              chevron: !_target.isAll,
+              onTap: () => _pickTarget(RoomChatTarget.all),
+            ),
+          ],
+        ),
+        SheetGroup(
+          title: filtering ? l10n.botsRoomOnlyWhose : l10n.botsRoomMemberChats,
+          children: [
+            if (members.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Text(
+                  l10n.botsRoomNeverSpoke,
+                  style: theme.textTheme.bodySmall?.copyWith(color: dsh.textTertiary),
+                ),
+              )
+            else
+              // One scroll region for the panel: the member rows are plain
+              // children here, not a second list with a height of its own.
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [for (final bot in members) memberRow(bot)],
+              ),
+          ],
+        ),
+      ],
+    );
+
+    final filters = SheetGroup(
+      title: l10n.botsRoomFilter,
+      children: [
+        if (!filtersEnabled)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+            child: Text(
+              l10n.botsRoomFilterGroupOnly,
+              style: theme.textTheme.bodySmall?.copyWith(color: dsh.textTertiary),
+            ),
+          ),
+        ListPageRow(
+          key: const ValueKey('room-filter-relevant'),
+          title: l10n.botsMessageModeRelevant,
+          trailing: Switch(
+            value: _mode.isRelevant,
+            onChanged: filtersEnabled ? (_) => _toggleRelevant() : null,
+          ),
+          onTap: filtersEnabled ? _toggleRelevant : null,
+        ),
+        ListPageRow(
+          key: const ValueKey('room-filter-member'),
+          title: l10n.botsRoomOnlyThisMember,
+          subtitle: filtersEnabled ? null : l10n.botsRoomFilterGroupOnly,
+          subtitleColor: dsh.textTertiary,
+          trailing: Switch(
+            value: _mode.memberId != null,
+            onChanged: filtersEnabled ? (_) => _toggleMemberOnly() : null,
+          ),
+          onTap: filtersEnabled ? _toggleMemberOnly : null,
+        ),
+      ],
+    );
+
     return SafeArea(
       top: false,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SheetTitleBar(l10n.botsRoomSwitchChat),
-          if (searchable)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(SheetTitleBar.inset, 0, SheetTitleBar.inset, 8),
-              child: _searchField(l10n, theme, dsh),
-            ),
-          SheetGroup(
+      child: Center(
+        child: ConstrainedBox(
+          // The panel never grows past the window: the title stays, the middle
+          // takes what is left, and the filters stay reachable.
+          constraints: BoxConstraints(maxHeight: math.max(0, available * 0.9), maxWidth: 480),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              ListPageRow(
-                key: const ValueKey('room-target-all'),
-                icon: AppIcons.groupChat,
-                title: l10n.botsGroupChat,
-                meta: _target.isAll ? l10n.botsRoomWatching : null,
-                chevron: !_target.isAll,
-                onTap: () => _pickTarget(RoomChatTarget.all),
-              ),
-            ],
-          ),
-          SheetGroup(
-            title: filtering ? l10n.botsRoomOnlyWhose : l10n.botsRoomMemberChats,
-            children: [
-              if (members.isEmpty)
+              SheetTitleBar(l10n.botsRoomSwitchChat),
+              if (searchable)
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Text(
-                    l10n.botsRoomNeverSpoke,
-                    style: theme.textTheme.bodySmall?.copyWith(color: dsh.textTertiary),
+                  padding: const EdgeInsets.fromLTRB(SheetTitleBar.inset, 0, SheetTitleBar.inset, 8),
+                  child: _searchField(l10n, theme, dsh),
+                ),
+              if (compact)
+                Flexible(
+                  fit: FlexFit.loose,
+                  child: SingleChildScrollView(
+                    controller: _scroll,
+                    padding: const EdgeInsets.only(bottom: 20),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [middle, filters],
+                    ),
                   ),
                 )
-              else
-                ConstrainedBox(
-                  constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.55),
-                  child: ListView.builder(
-                    key: const ValueKey('room-member-list'),
-                    controller: _membersScroll,
-                    shrinkWrap: true,
-                    itemCount: members.length,
-                    itemBuilder: (context, index) => memberRow(members[index]),
-                  ),
+              else ...[
+                Flexible(
+                  fit: FlexFit.loose,
+                  child: SingleChildScrollView(controller: _scroll, child: middle),
                 ),
+                filters,
+                const SizedBox(height: 20),
+              ],
             ],
           ),
-          SheetGroup(
-            title: l10n.botsRoomFilter,
-            children: [
-              if (!filtersEnabled)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-                  child: Text(
-                    l10n.botsRoomFilterGroupOnly,
-                    style: theme.textTheme.bodySmall?.copyWith(color: dsh.textTertiary),
-                  ),
-                ),
-              ListPageRow(
-                key: const ValueKey('room-filter-relevant'),
-                title: l10n.botsMessageModeRelevant,
-                trailing: Switch(
-                  value: _mode.isRelevant,
-                  onChanged: filtersEnabled ? (_) => _toggleRelevant() : null,
-                ),
-                onTap: filtersEnabled ? _toggleRelevant : null,
-              ),
-              ListPageRow(
-                key: const ValueKey('room-filter-member'),
-                title: l10n.botsRoomOnlyThisMember,
-                subtitle: filtersEnabled ? null : l10n.botsRoomFilterGroupOnly,
-                subtitleColor: dsh.textTertiary,
-                trailing: Switch(
-                  value: _mode.memberId != null,
-                  onChanged: filtersEnabled ? (_) => _toggleMemberOnly() : null,
-                ),
-                onTap: filtersEnabled ? _toggleMemberOnly : null,
-              ),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }

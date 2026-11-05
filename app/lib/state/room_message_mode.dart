@@ -122,10 +122,16 @@ List<DsBotItem> visibleRoomItems(
   List<DsBotItem> items,
   RoomMessageMode mode, {
   required List<String> memberNames,
+  String? Function(DsBotItem item)? speakerOf,
 }) {
   if (mode.isAll) return items;
   if (mode.memberId case final id?) {
-    return [for (final item in items) if (item.botId == id) item];
+    // A member's line carries the sender's Session id on this Host, so the
+    // caller resolves the speaker (state/room_speakers.dart) when it can.
+    return [
+      for (final item in items)
+        if ((speakerOf?.call(item) ?? item.botId) == id) item,
+    ];
   }
   final kept = <DsBotItem>[];
   var inMyStretch = false;
@@ -154,9 +160,13 @@ List<DsBotItem> visibleRoomItems(
 /// user's own. A message sent there is a group message — it must not vanish the
 /// instant it lands — so the person's lines stay, and other members' lines stay
 /// in the group chat.
-List<DsBotItem> memberTargetItems(List<DsBotItem> items, String memberId) => [
+List<DsBotItem> memberTargetItems(
+  List<DsBotItem> items,
+  String memberId, {
+  String? Function(DsBotItem item)? speakerOf,
+}) => [
   for (final item in items)
-    if (item.botId == memberId || item.kind == DsBotItemKind.user) item,
+    if (item.kind == DsBotItemKind.user || (speakerOf?.call(item) ?? item.botId) == memberId) item,
 ];
 
 /// [items] without a `done` line whose previous line is the same member's own

@@ -12,6 +12,7 @@ import '../../l10n/l10n.dart';
 import '../../state/room_activity_state.dart' show roomMembersActivityProvider, roomUsageTotal;
 import '../../state/room_chat_target.dart';
 import '../../state/room_message_mode.dart';
+import '../../state/room_speakers.dart';
 import '../../state/settings_state.dart';
 import '../../state/attachments.dart';
 import '../../state/draft_store.dart';
@@ -135,10 +136,17 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
     if (latest.key == _lastFlashKey) return;
     _lastFlashKey = latest.key;
     // Another member's line is not this conversation's news.
-    if (target.memberId != null && latest.item.botId != target.memberId) return;
+    if (target.memberId != null && roomSpeakerOf(room, team, latest.item) != target.memberId) return;
     // A line the current mode filters out must not speak either.
-    if (visibleRoomItems([latest.item], mode, memberNames: names).isEmpty) return;
-    final name = team.bot(latest.item.botId)?.name;
+    if (visibleRoomItems(
+      [latest.item],
+      mode,
+      memberNames: names,
+      speakerOf: (item) => roomSpeakerOf(room, team, item),
+    ).isEmpty) {
+      return;
+    }
+    final name = team.bot(roomSpeakerOf(room, team, latest.item))?.name;
     if (name == null) return;
     final warn = latest.event == 'failed';
     setState(() {
@@ -305,6 +313,51 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
   /// The conversation in words, for the key's tooltip and its screen-reader
   /// label: 「切换会话：群聊 / 前端工程师」.
   String _targetLabel(L10n l10n, DsBot? bot) => bot?.name ?? l10n.botsGroupChat;
+
+  /// One member's line in the group. The Host names the speaker by its sender
+  /// Session (older hosts by the Bot id), so the face, the admin mark and the
+  /// Session a path opens come from the resolved member.
+  Widget _groupRow(
+    BuildContext context,
+    DsBotItem item, {
+    required bool continued,
+    required DsBotRoom room,
+    required DsBotTeam team,
+    required String? roomSession,
+    required BotActionScope fullTextScope,
+  }) {
+    final speakerId = roomSpeakerId(room, team, item.botId);
+    final speaker = team.bot(speakerId);
+    final speakerSession = speakerId == null
+        ? roomSession
+        : (room.sessions[speakerId] ?? speaker?.sessionId ?? roomSession);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (botLineAttachments(
+              item,
+              roomSession,
+              onOpenFile: (file) => openBotAttachmentFile(context, ref, file: file, roomId: room.id),
+            )
+            case final shown?) ...[
+          shown,
+          const SizedBox(height: 6),
+        ],
+        GroupMessage(
+          item: item,
+          bot: speaker,
+          continued: continued,
+          admin: speakerId != null && speakerId == room.admin,
+          onOpenBot: speaker == null ? null : () => Navigator.of(context).push(BotChatPage.route(speaker.id)),
+          onShowAll: item.whole == null ? null : () => _showAll(item, fullTextScope),
+          // A path is a file in the speaker's Session here; fall back to the
+          // group Session when the speaker is unknown.
+          onLinkTap: (href) => openLinkedFile(context, sessionId: speakerSession, href: href),
+          onQuote: _setQuote,
+        ),
+      ],
+    );
+  }
 
   /// The composer's right side: the group's context ring, and — while a turn
   /// runs with an empty field — a microphone. Both may hide; then there is no
@@ -585,7 +638,10 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
     }
     final speaker = statusLine.bot;
 
-    final typing = speaker == null || (target.memberId != null && speaker.id != target.memberId)
+    // The deck's status line already says what the speaker is doing; the
+    // transcript must not repeat it as its last row.
+    final typing =
+        speaker == null || (target.memberId != null && speaker.id != target.memberId) || statusLine.activity != null
         ? null
         : BotTypingRow(
             speaker,
@@ -627,8 +683,17 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
         ? null
         : unclaimedArtifacts(relayArtifacts == null || relayArtifacts.isEmpty ? null : relayArtifacts.last, seenFiles);
     final visible = target.memberId == null
-        ? visibleRoomItems(chat.items, mode, memberNames: [for (final bot in members) bot.name])
-        : memberTargetItems(chat.items, target.memberId!);
+        ? visibleRoomItems(
+            chat.items,
+            mode,
+            memberNames: [for (final bot in members) bot.name],
+            speakerOf: (item) => roomSpeakerOf(room, team, item),
+          )
+        : memberTargetItems(
+            chat.items,
+            target.memberId!,
+            speakerOf: (item) => roomSpeakerOf(room, team, item),
+          );
     final names = [for (final bot in members) bot.name];
     if (!_flashPrimed) {
       _rememberFlash(room, team, mode, names, target);
@@ -694,6 +759,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
           target: target,
           mode: mode,
           items: chat.items,
+          speakerOf: (item) => roomSpeakerOf(room, team, item),
           onTarget: _switchTarget,
           onMode: (picked) => ref.read(roomMessageModesProvider.notifier).set(room.id, picked),
         ),
@@ -772,43 +838,14 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
                       ),
                       onQuote: _setQuote,
                     ),
-                    DsBotItemKind.bot => Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (botLineAttachments(
-                        item,
-                        roomSession,
-                        onOpenFile: (file) => openBotAttachmentFile(
-                          context,
-                          ref,
-                          file: file,
-                          roomId: room.id,
-                        ),
-                      ) case final shown?) ...[
-                          shown,
-                          const SizedBox(height: 6),
-                        ],
-                        GroupMessage(
-                      item: item,
-                      bot: team.bot(item.botId),
+                    DsBotItemKind.bot => _groupRow(
+                      context,
+                      item,
                       continued: continued,
-                      admin: item.botId != null && item.botId == room.admin,
-                      onOpenBot: team.bot(item.botId) == null
-                          ? null
-                          : () => Navigator.of(context).push(BotChatPage.route(item.botId!)),
-                      onShowAll: item.whole == null ? null : () => _showAll(item, fullTextScope),
-                      // A path is a file in the speaker's Session here; fall back
-                      // to the group Session when the speaker is unknown.
-                      onLinkTap: (href) => openLinkedFile(
-                        context,
-                        sessionId: item.botId == null
-                            ? roomSession
-                            : (room.sessions[item.botId!] ?? team.bot(item.botId!)?.sessionId ?? roomSession),
-                        href: href,
-                      ),
-                          onQuote: _setQuote,
-                        ),
-                      ],
+                      room: room,
+                      team: team,
+                      roomSession: roomSession,
+                      fullTextScope: fullTextScope,
                     ),
                     DsBotItemKind.event => BotEventLine(
                       text: roomEventText(item),
