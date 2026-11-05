@@ -3455,6 +3455,9 @@ class L10nEn extends L10n {
   String get chatSwitchToSteer => 'Steer instead';
 
   @override
+  String get chatQueueGone => 'That message is no longer in the queue';
+
+  @override
   String get chatWithdraw => 'Undo';
 
   @override

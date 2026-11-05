@@ -2126,6 +2126,8 @@
   "chatSending": "发送中",
   "chatSendNow": "立即发送",
   "chatSwitchToSteer": "改为插话",
+  "chatQueueGone": "这条已经不在队列里了",
+  "chatQueueGone": "这条已经不在队列里了",
   "chatWithdraw": "撤回",
   "chatContinuedInNewChat": "已在新对话中继续",
   "chatReadOriginalImageFailed": "读取原图失败，请重试",

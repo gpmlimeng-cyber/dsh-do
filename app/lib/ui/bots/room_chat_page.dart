@@ -172,6 +172,53 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
     _input.value = TextEditingValue(text: text, selection: TextSelection.collapsed(offset: text.length));
   }
 
+  /// One send bubble: the Host's queue words and actions when its inbox holds
+  /// this message, otherwise the local 发送中 / 没能发送 note.
+  Widget _pendingBubble(DsBotPending pending, DsBotInbox? inbox) {
+    final item = inbox?.byRpc(pending.requestId);
+    final inStep = item != null && inbox!.nextStep.any((e) => e.itemId == item.itemId);
+    final queue = item == null
+        ? null
+        : (
+            label: inStep ? context.l10n.chatSteerNextStep : context.l10n.chatQueuedAfterTurn,
+            icon: inStep ? AppIcons.steer : AppIcons.queued,
+          );
+    return BotUserMessage(
+      text: pending.text,
+      pending: true,
+      pendingSince: pending.at,
+      pendingStatus: pending.status,
+      attachments: pending.drafts.isEmpty ? null : SentAttachments.pending(pending.drafts),
+      onRetry: () => _retryPending(pending),
+      onWithdraw: () => _withdrawPending(pending),
+      queueLabel: queue?.label,
+      queueIcon: queue?.icon,
+      queueActions: [
+        if (item != null && !inStep && item.canSteer)
+          (context.l10n.chatSwitchToSteer, () => _queueAction(pending, inbox!, item)),
+        if (item != null) (context.l10n.chatWithdraw, () => _queueAction(pending, inbox!, item, remove: true)),
+      ],
+    );
+  }
+
+  /// 改为插话 / 撤回 on a message the Host still holds: `session/updateQueue`,
+  /// the same call the app's own chat uses. The inbox push is the truth after.
+  Future<void> _queueAction(
+    DsBotPending pending,
+    DsBotInbox inbox,
+    DsBotInboxItem item, {
+    bool remove = false,
+  }) async {
+    final client = ref.read(activeConnectionProvider).value?.client;
+    if (client == null) return;
+    try {
+      await client.updateQueue(inbox.sessionId, item.itemId, steer: !remove, remove: remove);
+      if (remove) ref.read(roomChatProvider(widget.roomId).notifier).dropPending(pending);
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.maybeOf(context)?.showBriefNotice(context.l10n.chatQueueGone);
+    }
+  }
+
   /// 重试 a failed send: the same request id, the staged attachments again.
   Future<void> _retryPending(DsBotPending pending) async {
     final client = ref.read(activeConnectionProvider).value?.client;
@@ -840,15 +887,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
                 padding: rowPadding(row),
                 child: switch (row) {
                   BotTimeRow(:final time) => BotTimeLine(time),
-                  BotPendingRow(:final pending) => BotUserMessage(
-                    text: pending.text,
-                    pending: true,
-                    pendingSince: pending.at,
-                    pendingStatus: pending.status,
-                    attachments: pending.drafts.isEmpty ? null : SentAttachments.pending(pending.drafts),
-                    onRetry: () => _retryPending(pending),
-                    onWithdraw: () => _withdrawPending(pending),
-                  ),
+                  BotPendingRow(:final pending) => _pendingBubble(pending, chat.inbox),
                   BotStreamingRow() => const SizedBox.shrink(),
                   BotTypingRow(:final bot, :final label) => BotTypingLine(bot: bot, label: label),
                   // A group has no tool events to show; the row exists so the

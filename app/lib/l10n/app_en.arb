@@ -1025,6 +1025,7 @@
   "chatSending": "Sending",
   "chatSendNow": "Send now",
   "chatSwitchToSteer": "Steer instead",
+  "chatQueueGone": "That message is no longer in the queue",
   "chatWithdraw": "Undo",
   "chatContinuedInNewChat": "Continued in a new chat",
   "chatReadOriginalImageFailed": "Couldn’t read the original image. Try again.",

@@ -3293,6 +3293,9 @@ class L10nZh extends L10n {
   String get chatSwitchToSteer => '改为插话';
 
   @override
+  String get chatQueueGone => '这条已经不在队列里了';
+
+  @override
   String get chatWithdraw => '撤回';
 
   @override

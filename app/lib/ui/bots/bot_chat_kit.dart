@@ -1374,7 +1374,16 @@ class BotUserMessage extends StatelessWidget {
     this.onQuote,
     this.onRetry,
     this.onWithdraw,
+    this.queueLabel,
+    this.queueIcon,
+    this.queueActions = const [],
   });
+
+  /// Set when the Host's inbox holds this message: its slot's words, icon and
+  /// actions, which replace the sending/failed note.
+  final String? queueLabel;
+  final IconData? queueIcon;
+  final List<(String, VoidCallback)> queueActions;
 
   /// Failed only: 重试 reuses the same request id, 撤回 puts the text back.
   final VoidCallback? onRetry;
@@ -1430,6 +1439,9 @@ class BotUserMessage extends StatelessWidget {
                 since: pendingSince,
                 onRetry: onRetry,
                 onWithdraw: onWithdraw,
+                label: queueLabel,
+                icon: queueIcon,
+                actions: queueActions,
               ),
             ],
           ],
@@ -1441,12 +1453,25 @@ class BotUserMessage extends StatelessWidget {
 
 /// 发送中 (with a small clock), 还在等服务器确认 after 8 s, or 没能发送.
 class _PendingNote extends StatelessWidget {
-  const _PendingNote({required this.failed, this.since, this.onRetry, this.onWithdraw});
+  const _PendingNote({
+    required this.failed,
+    this.since,
+    this.onRetry,
+    this.onWithdraw,
+    this.label,
+    this.icon,
+    this.actions = const [],
+  });
 
   final bool failed;
   final DateTime? since;
   final VoidCallback? onRetry;
   final VoidCallback? onWithdraw;
+
+  /// From the Host's inbox when it holds this message (排队 / 插话).
+  final String? label;
+  final IconData? icon;
+  final List<(String, VoidCallback)> actions;
 
   @override
   Widget build(BuildContext context) {
@@ -1454,11 +1479,11 @@ class _PendingNote extends StatelessWidget {
     final theme = Theme.of(context);
     final colors = DshColors.of(context);
     final waited = since == null ? Duration.zero : DateTime.now().difference(since!);
-    final label = failed
+    final label = this.label ?? (failed
         ? l10n.botsSendFailed
         : waited > const Duration(seconds: 8)
         ? l10n.botsSendStillWaiting
-        : l10n.botsSending;
+        : l10n.botsSending);
     final tone = failed ? colors.danger : colors.textTertiary;
     Widget action(String text, Color color, VoidCallback? onTap) => Padding(
       padding: const EdgeInsets.only(left: 4),
@@ -1477,11 +1502,16 @@ class _PendingNote extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(failed ? AppIcons.error : AppIcons.time, size: 13, color: tone),
+        Icon(failed ? AppIcons.error : (icon ?? AppIcons.time), size: 13, color: tone),
         const SizedBox(width: 4),
         Text(label, style: theme.textTheme.labelSmall?.copyWith(color: tone)),
-        if (failed && onRetry != null) action(l10n.commonRetry, Theme.of(context).colorScheme.primary, onRetry),
-        if (failed && onWithdraw != null) action(l10n.chatWithdraw, colors.textTertiary, onWithdraw),
+        if (this.actions.isNotEmpty)
+          for (final (text, onTap) in this.actions)
+            action(text, Theme.of(context).colorScheme.primary, onTap)
+        else ...[
+          if (failed && onRetry != null) action(l10n.commonRetry, Theme.of(context).colorScheme.primary, onRetry),
+          if (failed && onWithdraw != null) action(l10n.chatWithdraw, colors.textTertiary, onWithdraw),
+        ],
       ],
     );
   }

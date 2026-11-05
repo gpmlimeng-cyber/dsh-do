@@ -6092,6 +6092,9 @@ abstract class L10n {
   /// **'改为插话'**
   String get chatSwitchToSteer;
 
+  /// No description provided for @chatQueueGone.
+  String get chatQueueGone;
+
   /// No description provided for @chatWithdraw.
   ///
   /// In zh, this message translates to:

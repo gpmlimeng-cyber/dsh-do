@@ -1060,8 +1060,88 @@ class DsBotItem {
 }
 
 /// A page of a Bot's own chat, newest page first, oldest first within it.
+/// One message still in the Host's inbox: not part of the round yet.
+@immutable
+class DsBotInboxItem {
+  const DsBotInboxItem({required this.itemId, this.rpcId, this.text = '', this.time, this.canSteer = false});
+
+  factory DsBotInboxItem.fromJson(Object? json) {
+    final map = asMapOrEmpty(json);
+    return DsBotInboxItem(
+      itemId: asString(map['itemId']) ?? '',
+      rpcId: asString(map['rpcId']),
+      text: asString(map['text']) ?? '',
+      time: asEpochMs(map['time']),
+      canSteer: asBool(map['canSteer']) ?? false,
+    );
+  }
+
+  /// `session/updateQueue`'s item id.
+  final String itemId;
+  final String? rpcId;
+  final String text;
+  final DateTime? time;
+
+  /// The Host says this one may move into the running turn.
+  final bool canSteer;
+}
+
+/// The Host's inbox for one conversation: the two queues and the session they
+/// belong to (a Bot or group may have moved to another part).
+@immutable
+class DsBotInbox {
+  const DsBotInbox({required this.sessionId, this.nextTurn = const [], this.nextStep = const []});
+
+  factory DsBotInbox.fromJson(Object? json) {
+    final map = asMapOrEmpty(json);
+    return DsBotInbox(
+      sessionId: asString(map['sessionId']) ?? '',
+      nextTurn: [for (final item in asListOrEmpty(map['nextTurn'])) DsBotInboxItem.fromJson(item)],
+      nextStep: [for (final item in asListOrEmpty(map['nextStep'])) DsBotInboxItem.fromJson(item)],
+    );
+  }
+
+  final String sessionId;
+  final List<DsBotInboxItem> nextTurn;
+  final List<DsBotInboxItem> nextStep;
+
+  DsBotInboxItem? byRpc(String rpcId) {
+    for (final item in nextTurn) {
+      if (item.rpcId == rpcId) return item;
+    }
+    for (final item in nextStep) {
+      if (item.rpcId == rpcId) return item;
+    }
+    return null;
+  }
+
+  bool get isEmpty => nextTurn.isEmpty && nextStep.isEmpty;
+}
+
+/// `send`'s answer: the name it went under, and the inbox entry when the Host
+/// could find it at once (null is a normal race: the inbox push fills it in).
+@immutable
+class DsBotSendResult {
+  const DsBotSendResult({this.requestId, this.itemId, this.slot});
+
+  factory DsBotSendResult.fromJson(Object? json) {
+    final map = asMapOrEmpty(json);
+    return DsBotSendResult(
+      requestId: asString(map['requestId']),
+      itemId: asString(map['itemId']),
+      slot: asString(map['slot']),
+    );
+  }
+
+  final String? requestId;
+  final String? itemId;
+
+  /// `next-turn` / `next-step` / null.
+  final String? slot;
+}
+
 class DsBotChatPage {
-  const DsBotChatPage({required this.sessionId, required this.items, this.cursor});
+  const DsBotChatPage({required this.sessionId, required this.items, this.cursor, this.inbox});
 
   factory DsBotChatPage.fromJson(Object? json) {
     final map = asMapOrEmpty(json);
@@ -1069,8 +1149,13 @@ class DsBotChatPage {
       sessionId: asString(map['sessionId']) ?? '',
       items: [for (final item in asListOrEmpty(map['items'])) DsBotItem.fromJson(item)],
       cursor: map['cursor'],
+      inbox: map['inbox'] == null ? null : DsBotInbox.fromJson(map['inbox']),
     );
   }
+
+  /// The Host's queue for this conversation; null on a Host that sends none
+  /// (the app then keeps its own send bubbles).
+  final DsBotInbox? inbox;
 
   /// The current part, which the feed's `message` events name.
   final String sessionId;
@@ -1125,6 +1210,7 @@ class DsBotRoomPage {
     this.cursor,
     this.sessionItems,
     this.sessionCursor,
+    this.inbox,
     this.running = false,
     this.speaking,
   });
@@ -1140,6 +1226,7 @@ class DsBotRoomPage {
       cursor: map['cursor'],
       sessionItems: sessionItems,
       sessionCursor: map['sessionCursor'],
+      inbox: map['inbox'] == null ? null : DsBotInbox.fromJson(map['inbox']),
       running: asBool(map['running']) ?? false,
       speaking: asString(map['speaking']),
     );
@@ -1155,6 +1242,9 @@ class DsBotRoomPage {
   /// times. Null on an older host, which leaves [items] the only source.
   final List<DsBotItem>? sessionItems;
   final Object? sessionCursor;
+
+  /// The Host's queue for this group; null on a Host that sends none.
+  final DsBotInbox? inbox;
 
   /// A round is under way.
   final bool running;
@@ -1657,7 +1747,7 @@ class DsBotApi {
   /// Sends [text] to a Bot (its id) or a group (its id), with images inline
   /// and the receipts of the files already staged in that conversation. Text
   /// alone is one of the three.
-  Future<void> send(
+  Future<DsBotSendResult> send(
     String conversationId,
     String text, {
     List<PromptImage> images = const [],
@@ -1670,15 +1760,16 @@ class DsBotApi {
     /// The client's name for this message: the echo carries it back, so a
     /// retry with the same id is the same message, not a second one.
     String? requestId,
-  }) =>
-      call('send', {
-        'sessionId': conversationId,
-        'text': text,
-        if (images.isNotEmpty) 'images': [for (final image in images) image.toJson()],
-        if (fileReceiptIds.isNotEmpty) 'fileReceiptIds': fileReceiptIds,
-        if (mode != null) 'mode': mode,
-        if (requestId != null && requestId.isNotEmpty) 'requestId': requestId,
-      }, const Duration(seconds: 40));
+  }) async => DsBotSendResult.fromJson(
+    await call('send', {
+      'sessionId': conversationId,
+      'text': text,
+      if (images.isNotEmpty) 'images': [for (final image in images) image.toJson()],
+      if (fileReceiptIds.isNotEmpty) 'fileReceiptIds': fileReceiptIds,
+      if (mode != null) 'mode': mode,
+      if (requestId != null && requestId.isNotEmpty) 'requestId': requestId,
+    }, const Duration(seconds: 40)),
+  );
 
   /// Reads the Host's bounded preview, retaining its completeness metadata.
   Future<DsBotFileText> readFileText(DsBotLongText long) async =>

@@ -676,6 +676,7 @@ class BotChatState {
     this.pending = const [],
     this.streaming,
     this.sessionId,
+    this.inbox,
   });
 
   final List<DsBotItem> items;
@@ -689,6 +690,9 @@ class BotChatState {
   final String? streaming;
   final String? sessionId;
 
+  /// The Host's queue for this conversation; null on a Host that sends none.
+  final DsBotInbox? inbox;
+
   bool get hasEarlier => cursor != null;
 
   BotChatState copyWith({
@@ -700,6 +704,7 @@ class BotChatState {
     List<DsBotPending>? pending,
     String? Function()? streaming,
     String? sessionId,
+    DsBotInbox? Function()? inbox,
   }) => BotChatState(
     items: items ?? this.items,
     cursor: cursor == null ? this.cursor : cursor(),
@@ -709,6 +714,7 @@ class BotChatState {
     pending: pending ?? this.pending,
     streaming: streaming == null ? this.streaming : streaming(),
     sessionId: sessionId ?? this.sessionId,
+    inbox: inbox == null ? this.inbox : inbox(),
   );
 }
 
@@ -871,6 +877,7 @@ class BotChatController extends Notifier<BotChatState> {
         error: () => null,
         sessionId: page.sessionId,
         pending: settlePending(state.pending, items),
+        inbox: () => page.inbox,
       );
     } catch (error) {
       if (!_current(generation) || load != _load) return;
@@ -1012,10 +1019,14 @@ class RoomChatState {
     this.speaking,
     this.error,
     this.pending = const [],
+    this.inbox,
   });
 
   final List<DsBotItem> items;
   final Object? cursor;
+
+  /// The Host's queue for this group; null on a Host that sends none.
+  final DsBotInbox? inbox;
 
   /// The group Session's own messages, when the host sends them (plugin
   /// 0.2.8+): the whole history, with times. [items] is the old `room.log`
@@ -1045,6 +1056,7 @@ class RoomChatState {
     String? Function()? speaking,
     String? Function()? error,
     List<DsBotPending>? pending,
+    DsBotInbox? Function()? inbox,
   }) => RoomChatState(
     items: items ?? this.items,
     cursor: cursor == null ? this.cursor : cursor(),
@@ -1056,6 +1068,7 @@ class RoomChatState {
     speaking: speaking == null ? this.speaking : speaking(),
     error: error == null ? this.error : error(),
     pending: pending ?? this.pending,
+    inbox: inbox == null ? this.inbox : inbox(),
   );
 }
 
@@ -1159,6 +1172,7 @@ class RoomChatController extends Notifier<RoomChatState> {
         speaking: () => page.speaking,
         error: () => null,
         pending: settlePending(state.pending, page.items),
+        inbox: () => page.inbox,
       );
       _armPoll(page.running);
     } catch (error) {
