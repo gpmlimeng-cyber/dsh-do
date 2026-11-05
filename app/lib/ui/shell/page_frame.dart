@@ -285,7 +285,19 @@ class _AppPageState extends State<AppPage> {
                       height: top,
                       child: Stack(
                         children: [
-                          Positioned.fill(child: veil()),
+                          // The bar and the tab strip below it are one surface:
+                          // the same flat colour, ramped in by the same offset
+                          // the strip uses, so nothing reads as a second layer.
+                          Positioned.fill(
+                            child: ValueListenableBuilder<double>(
+                              valueListenable: _offset,
+                              builder: (context, offset, child) => Opacity(
+                                opacity: (offset / 24).clamp(0.0, 1.0),
+                                child: child,
+                              ),
+                              child: SolidTopFill(height: top, color: DshSurfaces.of(context).backdropTop),
+                            ),
+                          ),
                           Positioned(
                             left: 0,
                             right: 0,
@@ -411,6 +423,26 @@ class DetailsTabBand extends StatelessWidget {
       );
     },
     child: child,
+  );
+}
+
+/// The page's own colour under a pinned bar: **one** flat surface, so a bar
+/// and the tab strip pinned under it read as one piece. The single
+/// conversation's details page has always drawn its bar this way; a details
+/// page that gave the bar the backdrop veil and the tab strip a flat colour
+/// showed two materials stacked (a colour step and a seam between them).
+class SolidTopFill extends StatelessWidget {
+  const SolidTopFill({super.key, required this.height, required this.color});
+
+  final double height;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+    child: ColoredBox(
+      color: color.withValues(alpha: color.a * 0.96),
+      child: SizedBox(height: height),
+    ),
   );
 }
 

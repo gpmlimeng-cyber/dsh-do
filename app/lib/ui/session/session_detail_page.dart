@@ -346,7 +346,7 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> with Tick
                       valueListenable: _offset,
                       builder: (context, offset, child) =>
                           Opacity(opacity: (offset / 24).clamp(0.0, 1.0), child: child),
-                      child: _SolidTop(height: barTop, color: band),
+                      child: SolidTopFill(height: barTop, color: band),
                     ),
                   ),
                   Positioned(left: 0, right: 0, top: padding.top, child: bar),
@@ -449,21 +449,6 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> with Tick
 
 /// The page colour behind the bar once the hero slides under it: solid
 /// enough to read the bar over, and continuous with the tabs strip below.
-class _SolidTop extends StatelessWidget {
-  const _SolidTop({required this.height, required this.color});
-
-  final double height;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) => IgnorePointer(
-    child: ColoredBox(
-      color: color.withValues(alpha: color.a * 0.96),
-      child: SizedBox(height: height),
-    ),
-  );
-}
-
 /// Content fades out over its top 12dp instead of being cut by the tabs.
 class _FadeTop extends StatelessWidget {
   const _FadeTop({required this.child});
