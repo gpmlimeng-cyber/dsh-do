@@ -71,3 +71,4 @@ Upstream: `ccch1mneyyy/dsh-Go`, against `v1.0.10` (fork branch `ci/room-progress
 | `55ceb8b` | `app/lib/state/voice_model_state.dart`, `app/lib/ui/settings/voice_settings_page.dart`, `app/lib/l10n/` | v1.0.10 | Telling a missing model from an engine without the voice plugin is client state over the Host's own answer; no seam owns it. |
 | `e25f1da` | `app/lib/ui/update/update_row.dart` (new), `app/lib/ui/shell/sessions_drawer.dart` | v1.0.10 | A drawer row for the app's own update is Flutter UI over the existing update state; no plugin seam owns it. |
 | `0d594bb` | `app/lib/ui/chat/model_sheet.dart` | v1.0.10 | Making the model picker's pieces reusable is Flutter UI; no plugin seam owns it. |
+| `028e023` | `app/lib/state/bots_state.dart` | v1.0.10 | What a failed bubble pairing saw is client diagnostics; no seam owns it. |
