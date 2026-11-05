@@ -815,7 +815,7 @@ List<DsBotPending> pendingWithInbox(List<DsBotPending> pending, DsBotQueue? inbo
     for (final entry in pending)
       if (entry.requestId.isNotEmpty) entry.requestId,
     for (final item in shown)
-      if (item.kind == DsBotItemKind.user && item.rpcId case final rpc?) rpc,
+      if (item.kind == DsBotItemKind.user && item.rpcId != null) item.rpcId!,
   };
   final out = [...pending];
   for (final item in [...inbox.nextStep, ...inbox.nextTurn]) {
