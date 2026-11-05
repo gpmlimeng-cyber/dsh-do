@@ -21,6 +21,7 @@ import '../chat/widgets/message_actions.dart';
 import '../share/share_entry.dart' show shareText;
 import '../chat/widgets/notice_row.dart';
 import '../chat/widgets/user_bubble.dart';
+import '../shell/session_drawer_host.dart';
 import '../common/capsule_chip.dart';
 import '../common/side_insets.dart';
 import '../common/smooth_size.dart';
@@ -269,15 +270,20 @@ class _RoundKey extends StatelessWidget {
 /// The page: the transcript fills the space between the header (floating
 /// over it) and the bottom column (cards, error, composer).
 class BotChatFrame extends StatelessWidget {
-  const BotChatFrame({super.key, required this.header, required this.body, required this.bottom});
+  const BotChatFrame({super.key, required this.header, required this.body, required this.bottom, this.drawer});
 
   final Widget header;
   final Widget body;
   final List<Widget> bottom;
 
+  /// The sessions drawer this page pulls over itself; null (a test stand-in)
+  /// hides the header's ≡. The page under it is never left: opening the drawer
+  /// keeps the conversation, its draft and its scroll offset.
+  final SessionDrawerConfig? drawer;
+
   @override
   Widget build(BuildContext context) {
-    return AnnotatedRegion<SystemUiOverlayStyle>(
+    final frame = AnnotatedRegion<SystemUiOverlayStyle>(
       value: dshSystemOverlay(Theme.of(context).brightness),
       child: AppBackdrop(
         child: Scaffold(
@@ -318,6 +324,8 @@ class BotChatFrame extends StatelessWidget {
         ),
       ),
     );
+    final drawer = this.drawer;
+    return drawer == null ? frame : SessionDrawerHost(config: drawer, child: frame);
   }
 }
 

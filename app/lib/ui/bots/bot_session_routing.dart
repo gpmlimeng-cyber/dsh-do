@@ -57,6 +57,15 @@ Future<bool> openTeamChatIfOwned(
   return false;
 }
 
+/// Opens a Bot's or a group's own chat from a row that already knows which one
+/// it is (the sessions drawer's). [beforeOpen] runs first — the drawer closes
+/// itself there. The stack keeps one chat page: one that is already open is
+/// replaced, so "back" goes to the shell and never to a chat underneath.
+void openTeamChat(BuildContext context, String id, {bool room = false, VoidCallback? beforeOpen}) {
+  beforeOpen?.call();
+  _open(context, room ? RoomChatPage.route(id) : BotChatPage.route(id));
+}
+
 void _open(BuildContext context, Route<void> route) {
   final navigator = Navigator.of(context);
   // The search page can be opened from a feature page: land on the shell first,

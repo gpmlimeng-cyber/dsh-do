@@ -79,12 +79,19 @@ class SessionsDrawer extends ConsumerWidget {
     super.key,
     required this.onClose,
     required this.onOpen,
+    this.onChosen,
     this.now,
     this.identityBarHeight,
     this.drawerMotion,
   });
 
   final VoidCallback onClose;
+
+  /// A conversation or a new chat was chosen: the drawer is done with, and a
+  /// page that is not the shell (a Bot's or a group's chat) leaves for the
+  /// shell here. Closing the drawer without choosing ([onClose]) stays local.
+  final VoidCallback? onChosen;
+
   final ValueChanged<DrawerDestination> onOpen;
 
   /// Clock override for grouping (tests).
@@ -109,7 +116,7 @@ class SessionsDrawer extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     void newChat() {
       ref.read(currentSessionProvider.notifier).select(null);
-      onClose();
+      (onChosen ?? onClose)();
     }
 
     void manageWorkspaces() {
@@ -477,7 +484,7 @@ class _SessionList extends ConsumerWidget {
     }
     return DrawerConversationList(
       now: now,
-      onNewChat: onClose,
+      onNewChat: onChosen ?? onClose,
       readOnly: scope.readOnly,
       onClose: onClose,
       onOpen: (id) {
@@ -486,7 +493,7 @@ class _SessionList extends ConsumerWidget {
           return;
         }
         ref.read(currentSessionProvider.notifier).select(id);
-        onClose();
+        (onChosen ?? onClose)();
       },
       onLongPress: (s) {
         final current = ref.read(drawerScopeProvider);

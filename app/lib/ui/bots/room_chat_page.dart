@@ -29,7 +29,8 @@ import '../features/feature_kit.dart';
 import '../shell/page_frame.dart';
 import 'bot_stop_guard.dart';
 import 'bot_action_scope.dart';
-import '../shell/drawer/drawer_open_request.dart';
+import '../shell/drawer/drawer_destination.dart';
+import '../shell/session_drawer_host.dart';
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
 import 'bot_attachment_open.dart';
@@ -63,7 +64,7 @@ class RoomChatPage extends ConsumerStatefulWidget {
   ConsumerState<RoomChatPage> createState() => _RoomChatPageState();
 }
 
-class _RoomChatPageState extends ConsumerState<RoomChatPage> {
+class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProviderStateMixin {
   Object? _continueScope;
   int _continueRequest = 0;
   bool _continuing = false;
@@ -73,6 +74,8 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
   final _focus = FocusNode();
   final _scrolled = ValueNotifier(0.0);
   late final DsBotViewingController _viewing;
+  /// This page's own drawer: it opens over the chat instead of leaving it.
+  late final SessionDrawerController _drawer = SessionDrawerController(vsync: this);
   late final BotMentionController _mentions = BotMentionController(input: _input);
   /// Picked but unsent: shown above the composer, cleared when the send lands.
   List<DraftAttachment> _drafts = const [];
@@ -183,12 +186,35 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
     scheduleMicrotask(() => flag.set(false));
     _stopGuard.dispose();
     _viewing.leave(widget.roomId);
+    _drawer.dispose();
     _mentions.dispose();
     _input.dispose();
     _focus.dispose();
     _scrolled.dispose();
     super.dispose();
   }
+
+  /// A settings-like destination opens above this page: the chat stays under it
+  /// and "back" lands here again. The drawer closes once the page covers it.
+  void _openDestination(DrawerDestination destination) {
+    openDrawerDestination(context, destination);
+    Future<void>.delayed(AppMotion.slow, () {
+      if (mounted) _drawer.close(context);
+    });
+  }
+
+  /// A conversation (or a new chat) was picked in the drawer: it is already
+  /// selected, so close the drawer and step back to the shell showing it.
+  void _chosen() {
+    _drawer.close(context);
+    Navigator.of(context).popUntil((route) => route.isFirst);
+  }
+
+  SessionDrawerConfig get _drawerConfig => SessionDrawerConfig(
+    controller: _drawer,
+    onDestination: _openDestination,
+    onChosen: _chosen,
+  );
 
   /// The composer's right side: the group's context ring, and — while a turn
   /// runs with an empty field — a microphone. Both may hide; then there is no
@@ -512,7 +538,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
             : '${statusLine.label} · ${l10n.botsAlreadySpoke} ${statusLine.spoken}',
         tone: statusLine.tone,
         scrolledUnder: _scrolled,
-        onLeading: () => openDrawerOverShell(context, ref),
+        onLeading: () => _drawer.toggle(context),
         // The title capsule is the group's own details; the key on the right is
         // this conversation's — trajectory, files, progress, context — the same
         // page a Bot's chat shows, read from the Session the group runs in.
@@ -758,6 +784,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> {
           ),
         ),
       ],
+      drawer: _drawerConfig,
     );
   }
 }

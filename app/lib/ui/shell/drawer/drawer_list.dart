@@ -18,9 +18,7 @@ import '../../common/empty_view.dart';
 import '../../theme/app_icons.dart';
 import '../../bots/bot_avatar.dart';
 import '../../bots/bot_format.dart' show shortTime, workPhrase;
-import '../../theme/theme.dart';
-import '../../bots/bot_chat_page.dart';
-import '../../bots/room_chat_page.dart';
+import '../../bots/bot_session_routing.dart' show openTeamChat;
 import '../sessions_drawer.dart' show sessionTitle;
 import 'drawer_actions.dart';
 import 'folder_header.dart';
@@ -68,10 +66,14 @@ class DrawerConversationList extends ConsumerWidget {
     final selection = ref.watch(drawerSelectionProvider);
     final selecting = !readOnly && selection != null;
     final filter = ref.watch(drawerFilterProvider);
-    final current = ref.watch(currentSessionProvider);
-    // A Bot's or a group's chat is a pushed page, not a Session here: its row
-    // lights up from the page that is showing it.
+    final sessionCurrent = ref.watch(currentSessionProvider);
+    // A Bot's or a group's chat is a pushed page, not a Session here: its own
+    // row lights up from the page that is showing it, and while it covers the
+    // list no Session row is current — the Session underneath is not the one
+    // being looked at. Closing that page clears `viewing`, and the Session
+    // being looked at lights up again.
     final viewing = ref.watch(dsBotViewingProvider);
+    final current = viewing == null ? sessionCurrent : null;
     final pending = ref.watch(pendingInteractionsProvider);
     final unread = ref.watch(unreadSessionIdsProvider);
     final pinned = ref.watch(workspacesProvider.select((s) => s.pinnedSessionIds)).toSet();
@@ -138,15 +140,11 @@ class DrawerConversationList extends ConsumerWidget {
       indent: inFolder ? SessionTile.folderIndent : 0,
       selecting: selecting,
       selected: false,
+      // One chat page on the stack: this closes the drawer and replaces an
+      // open Bot/group page instead of stacking another one on it.
       onTap: selecting
           ? () {}
-          : () {
-              Navigator.of(
-                context,
-              ).push(row.isRoom ? RoomChatPage.route(row.id) : BotChatPage.route(row.id));
-              // Close once the page covers us, so "back" lands on the chat.
-              Future<void>.delayed(AppMotion.slow, onClose);
-            },
+          : () => openTeamChat(context, row.id, room: row.isRoom, beforeOpen: onClose),
       onLongPress: readOnly || selecting ? null : () => moveToFolderFlow(context, ref, [row.id]),
     );
 

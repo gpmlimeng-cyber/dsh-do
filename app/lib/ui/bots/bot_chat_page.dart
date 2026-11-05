@@ -33,7 +33,8 @@ import '../features/feature_kit.dart';
 import '../shell/page_frame.dart';
 import 'bot_stop_guard.dart';
 import 'bot_action_scope.dart';
-import '../shell/drawer/drawer_open_request.dart';
+import '../shell/drawer/drawer_destination.dart';
+import '../shell/session_drawer_host.dart';
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
 import 'bot_attachment_open.dart';
@@ -59,12 +60,14 @@ class BotChatPage extends ConsumerStatefulWidget {
   ConsumerState<BotChatPage> createState() => _BotChatPageState();
 }
 
-class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingObserver {
+class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingObserver, TickerProviderStateMixin {
   late final BotStopGuard _stopGuard;
   final _input = TextEditingController();
   final _focus = FocusNode();
   final _scrolled = ValueNotifier(0.0);
   late final DsBotViewingController _viewing;
+  /// This page's own drawer: it opens over the chat instead of leaving it.
+  late final SessionDrawerController _drawer = SessionDrawerController(vsync: this);
   /// Picked but unsent: shown above the composer, cleared when the send lands.
   List<DraftAttachment> _drafts = const [];
   /// 引用 for the next message only; the host builds the quoted body.
@@ -115,11 +118,34 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
     scheduleMicrotask(() => flag.set(false));
     _stopGuard.dispose();
     _viewing.leave(widget.botId);
+    _drawer.dispose();
     _input.dispose();
     _focus.dispose();
     _scrolled.dispose();
     super.dispose();
   }
+
+  /// A settings-like destination opens above this page: the chat stays under it
+  /// and "back" lands here again. The drawer closes once the page covers it.
+  void _openDestination(DrawerDestination destination) {
+    openDrawerDestination(context, destination);
+    Future<void>.delayed(AppMotion.slow, () {
+      if (mounted) _drawer.close(context);
+    });
+  }
+
+  /// A conversation (or a new chat) was picked in the drawer: it is already
+  /// selected, so close the drawer and step back to the shell showing it.
+  void _chosen() {
+    _drawer.close(context);
+    Navigator.of(context).popUntil((route) => route.isFirst);
+  }
+
+  SessionDrawerConfig get _drawerConfig => SessionDrawerConfig(
+    controller: _drawer,
+    onDestination: _openDestination,
+    onChosen: _chosen,
+  );
 
   Future<void> _send(BotActionScope target, String part, {SendMode mode = SendMode.queue}) async {
     if (!mounted || target.botId != widget.botId || !target.current(context, ref)) return;
@@ -297,7 +323,7 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
         status: label,
         tone: tone,
         scrolledUnder: _scrolled,
-        onLeading: () => openDrawerOverShell(context, ref),
+        onLeading: () => _drawer.toggle(context),
         // The title capsule opens the Bot's own details; the key on the right
         // opens the conversation's (trajectory, files, progress).
         onDetails: () => Navigator.of(context).push(BotDetailsPage.route(bot.id)),
@@ -462,6 +488,7 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
           placeholder: l10n.botsComposerHint(bot.name),
         ),
       ],
+      drawer: _drawerConfig,
     );
   }
 }
