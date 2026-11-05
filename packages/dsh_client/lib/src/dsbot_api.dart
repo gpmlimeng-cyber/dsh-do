@@ -31,6 +31,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:meta/meta.dart';
+
 import 'carrier.dart';
 import 'connection.dart';
 import 'errors.dart';

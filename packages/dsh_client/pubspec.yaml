@@ -13,6 +13,11 @@ environment:
 executables:
   dsh_probe: probe
 
+dependencies:
+  # @immutable on the queue/item value types; the package had no runtime
+  # dependency before, and this one is already in the lock as a transitive.
+  meta: ^1.16.0
+
 dev_dependencies:
   fake_async: ^1.3.3
   lints: ^6.0.0
