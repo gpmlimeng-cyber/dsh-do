@@ -261,8 +261,17 @@ class _AppPageState extends State<AppPage> {
             sliver: SliverToBoxAdapter(
               child: ValueListenableBuilder<double>(
                 valueListenable: _offset,
-                builder: (context, offset, child) =>
-                    Opacity(opacity: _headerOpacity(offset), alwaysIncludeSemantics: true, child: child),
+                // Pulled past the top (only the fluid tier's lists go there), the
+                // headline swells a little with the pull.
+                builder: (context, offset, child) => Opacity(
+                  opacity: _headerOpacity(offset),
+                  alwaysIncludeSemantics: true,
+                  child: Transform.scale(
+                    scale: 1 + (-offset / 900).clamp(0.0, 1.0) / 10,
+                    alignment: AlignmentDirectional.topStart,
+                    child: child,
+                  ),
+                ),
                 child: KeyedSubtree(key: _headerKey, child: header),
               ),
             ),
@@ -453,6 +462,7 @@ class GlassIconButton extends StatelessWidget {
     required this.onPressed,
     this.tooltip,
     this.grouped = true,
+    this.tier = GlassTier.chrome,
     this.size = 44,
     this.badge,
   });
@@ -461,6 +471,9 @@ class GlassIconButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final String? tooltip;
   final bool grouped;
+
+  /// On glass already (the drawer), [GlassTier.pill]: a blur over a blur shows bands.
+  final GlassTier tier;
   final double size;
 
   /// Small widget pinned to the top-right corner (e.g. a status dot).
@@ -473,7 +486,7 @@ class GlassIconButton extends StatelessWidget {
     Widget button = SizedBox.square(
       dimension: size,
       child: GlassSurface(
-        tier: GlassTier.chrome,
+        tier: tier,
         circle: true,
         grouped: grouped,
         onTap: onPressed,

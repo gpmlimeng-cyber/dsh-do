@@ -7,6 +7,7 @@ import '../../l10n/l10n.dart';
 import '../../state/engine_control.dart';
 import '../../state/voice_model_state.dart';
 import '../../state/voice_settings.dart';
+import '../common/app_dialog.dart';
 import '../shell/page_frame.dart';
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
@@ -46,7 +47,7 @@ Future<void> downloadVoiceModel(BuildContext context, WidgetRef ref, {bool again
     final model = ref.read(voiceModelProvider);
     final left = again ? model.totalBytes : (model.totalBytes - model.doneBytes).clamp(0, model.totalBytes);
     final l10n = context.l10n;
-    final ok = await showDialog<bool>(
+    final ok = await showAppDialog<bool>(
       context: context,
       builder: (dialog) => AlertDialog(
         title: Text(l10n.voiceModelMeteredTitle),
@@ -298,7 +299,7 @@ class VoiceModelCard extends ConsumerWidget {
 
   static Future<void> _delete(BuildContext context, WidgetRef ref) async {
     final l10n = context.l10n;
-    final ok = await showDialog<bool>(
+    final ok = await showAppDialog<bool>(
       context: context,
       builder: (dialog) => AlertDialog(
         title: Text(l10n.voiceModelDeleteTitle),

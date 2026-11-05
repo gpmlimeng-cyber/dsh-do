@@ -275,8 +275,7 @@ jq --slurpfile n "$TMP/notes.json" --arg page "https://github.com/$REPO/releases
 MODE=unknown
 REDIRECT=
 if [[ $DRY == 0 && $VERIFY == 1 && $LATEST == 1 ]]; then
-  read -r code REDIRECT < <(curl -sS -o /dev/null -w '%{http_code} %{redirect_url}\n' "$ORIGIN/download" || echo 000)
-  case "$code" in
+  case "$(curl -sS --retry 5 --retry-all-errors -o /dev/null -w '%{http_code}' "$ORIGIN/download" || echo 000)" in
     200) MODE=public ;;
     302) MODE=redirect ;;
     404) MODE=key ;;
@@ -286,22 +285,16 @@ if [[ $DRY == 0 && $VERIFY == 1 && $LATEST == 1 ]]; then
   [[ $MODE != key || -s "${BETA_KEY_FILE:-}" ]] || die "the page wants a key: set BETA_KEY_FILE to a file holding a live access key"
 fi
 
-# ── 1. R2 ────────────────────────────────────────────────────────────────
-step "1/5 R2 $BUCKET/beta/$VERSION/"
-# Already up? Same size: skip it. Different: refuse.
-declare -A SKIP
-if [[ $DRY == 1 ]]; then
-  plan "HEAD $ORIGIN/beta/$VERSION/<apk> with the channel token: same size → skip, other size → stop"
-elif [[ -s "$TMP/auth" ]]; then
-  for name in "${APKS[@]}"; do
-    read -r code length < <(curl -sS --retry 3 -o /dev/null -I -H @"$TMP/auth" -w '%{http_code} %header{content-length}\n' "$ORIGIN/beta/$VERSION/$name" || echo "000 -")
-    if [[ "$code" == 200 ]]; then
-      [[ "$length" == "${SIZE[$name]}" ]] || die "beta/$VERSION/$name is already up with another size; publish a new version"
-      SKIP[$name]=1
-      note "already there: $name"
-    fi
-  done
-fi
+# ── 1. R2: dshgo-share, dshgo-dl ─────────────────────────────────────────
+step "1/5 R2 $BUCKET/beta/$VERSION/$([[ $DL_ON == 1 ]] && echo ", $DL_BUCKET/download/$VERSION/")"
+# Already up? Same size: skip it (step 4 still checks the bytes). Another size: refuse.
+up() { # URL NAME [curl args…]
+  local code length
+  read -r code length < <(curl -sS --retry 5 --retry-all-errors -o /dev/null -I "${@:3}" -w '%{http_code} %header{content-length}\n' "$1" || echo "000 -")
+  [[ "$code" == 200 ]] || return 1
+  [[ "$length" == "${SIZE[$2]}" ]] || die "$1 is already up with another size; publish a new version"
+  note "already there: $2"
+}
 
 # Uploads go through R2's S3 API with rclone when it's there: files over 8 MiB
 # in parts, every request retried on its own (one 180 MB request over a slow
@@ -451,12 +444,17 @@ check() { # LABEL NAME (curl args…) → dies unless the bytes match dist
   local label=$1 name=$2 got got_size attempt
   shift 2
   if [[ $DRY == 1 ]]; then plan "download $label $name, expect ${SIZE[$name]} bytes, sha256 ${SHA[$name]:0:12}…"; return; fi
-  # Whole downloads, retried here: curl's own --retry appends the retried body to what it
-  # already sent down the pipe, so a dropped connection looked like a wrong file.
-  for attempt in 1 2 3 4; do
-    read -r got got_size < <(curl -fsS "$@" | hash_stream || echo "- -")
+  # To a file that resumes: on a line that drops connections, a 194 MB file never made it
+  # in one go. HTTP/1.1 because the HTTP/2 stream resets came with the same drops.
+  local part="$TMP/check.part"
+  rm -f "$part"
+  for attempt in 1 2 3 4 5 6 7 8 9 10; do
+    curl -fsS --http1.1 -C - --speed-time 60 --speed-limit 1000 -o "$part" "$@" || true
+    read -r got got_size < <(hash_stream <"$part" 2>/dev/null || echo "- -")
     [[ "$got" == "${SHA[$name]}" && "$got_size" == "${SIZE[$name]}" ]] && break
-    [[ $attempt == 4 ]] && die "$label $name doesn't match ($got_size bytes, sha256 $got)"
+    [[ $attempt == 10 ]] && die "$label $name doesn't match ($got_size bytes, sha256 $got)"
+    # All of it and still wrong: resuming can't help.
+    [[ "$got_size" =~ ^[0-9]+$ ]] && ((got_size >= SIZE[$name])) && rm -f "$part"
     echo "  $label $name: got $got_size bytes, downloading again"
     sleep 5
   done

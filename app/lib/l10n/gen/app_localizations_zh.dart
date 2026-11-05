@@ -6270,6 +6270,9 @@ class L10nZh extends L10n {
   String get featuresRepeatAdvanced => '高级';
 
   @override
+  String get featuresRepeatCustom => '自定义';
+
+  @override
   String get featuresIntervalSeconds => '秒';
 
   @override
@@ -8433,6 +8436,12 @@ class L10nZh extends L10n {
 
   @override
   String get performanceSystemMotion => '同时遵循系统的移除动画设置';
+
+  @override
+  String get performanceFluid => '灵动动效';
+
+  @override
+  String get performanceFluidHint => '弹性回弹、按压光晕、卡片展开成页面。几乎不增加耗电';
 
   @override
   String get performanceFollowMode => '效果跟随性能模式';
@@ -11623,6 +11632,15 @@ class L10nZh extends L10n {
   String get pluginsLoadRemoteLogs => '请在这台主机上查看引擎日志。';
 
   @override
+  String get plugslotsSurfaceComposerTools => '加号面板';
+
+  @override
+  String get plugslotsSurfaceSessionActions => '对话操作';
+
+  @override
+  String get plugslotsSurfaceTurnNote => '回合尾注';
+
+  @override
   String get plugslotsSurfaceComposerActions => '输入框按钮';
 
   @override
@@ -13517,6 +13535,30 @@ class L10nZh extends L10n {
   String get remoteNetworkObservedAt => '最近观测';
 
   @override
+  String get remoteNetworkLocalIpVersion => '手机 ICE IP 版本';
+
+  @override
+  String get remoteNetworkRemoteIpVersion => '主机 ICE IP 版本';
+
+  @override
+  String get remoteNetworkIceProtocol => 'ICE 协议';
+
+  @override
+  String get remoteTransferSettings => '远程传输';
+
+  @override
+  String get remoteCompactHistory => '精简历史';
+
+  @override
+  String get remoteErrHistoryModeChanged => '主机已不支持精简历史，请切换到其他主机后再连回来，或重启 App，重新加载历史';
+
+  @override
+  String get remoteCompactHistoryHint => '支持的 DSH Remote 主机会精简历史工具详情，实时回复和审批不变。切换主机或重启 App 后生效；旧主机仍传输完整历史。';
+
+  @override
+  String get searchKwRemoteCompactHistory => '精简 简洁 历史 工具 传输 流量 远程 compact slim lite';
+
+  @override
   String get stateWorkspaceFilesHint => '已上传到当前工作区的文件：';
 
   @override
@@ -13652,6 +13694,9 @@ class L10nZh extends L10n {
 
   @override
   String get searchNeedsEngineField => '当前主机提供时可用';
+
+  @override
+  String get searchNeedsAnimations => '开启动画时可用';
 
   @override
   String get searchNeedsChat => '打开对话时可用';
@@ -13826,6 +13871,9 @@ class L10nZh extends L10n {
 
   @override
   String get searchKwAnimations => '动画,动效,减少动画';
+
+  @override
+  String get searchKwFluidMotion => '灵动,弹性,回弹,光晕,丝滑';
 
   @override
   String get searchKwNotifyEnabled => '通知开关,关闭通知';
@@ -14980,6 +15028,24 @@ class L10nZh extends L10n {
   String shellChatsArchivedPartial(int count, int failed) {
     return '已归档 $count 个对话，$failed 个没能归档';
   }
+
+  @override
+  String get shellPanelOverview => '信息';
+
+  @override
+  String get shellPanelWorkspace => '工作区';
+
+  @override
+  String get shellPanelModel => '模型';
+
+  @override
+  String get shellPanelHost => '主机';
+
+  @override
+  String get shellPanelOpenFull => '打开完整页面';
+
+  @override
+  String get shellPanelNoPlugins => '这段对话还没有插件面板';
 
   @override
   String get shellQuickPanel => '快捷入口';

@@ -19,6 +19,7 @@ import '../../theme/app_icons.dart';
 import '../../bots/bot_avatar.dart';
 import '../../bots/bot_format.dart' show shortTime, workPhrase;
 import '../../bots/bot_session_routing.dart' show openTeamChat;
+import '../../theme/motion.dart';
 import '../sessions_drawer.dart' show sessionTitle;
 import 'drawer_actions.dart';
 import 'folder_header.dart';
@@ -218,6 +219,7 @@ class DrawerConversationList extends ConsumerWidget {
     final indices = {for (var i = 0; i < rows.length; i++) rows[i].key: i};
     return ListView.builder(
       key: ValueKey(filter),
+      physics: AppMotion.scrollPhysics(context),
       padding: padding,
       itemCount: rows.length,
       itemBuilder: (context, index) => rows[index].builder(context),

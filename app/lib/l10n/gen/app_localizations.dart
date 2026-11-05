@@ -11507,6 +11507,12 @@ abstract class L10n {
   /// **'高级'**
   String get featuresRepeatAdvanced;
 
+  /// No description provided for @featuresRepeatCustom.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义'**
+  String get featuresRepeatCustom;
+
   /// No description provided for @featuresIntervalSeconds.
   ///
   /// In zh, this message translates to:
@@ -15478,6 +15484,18 @@ abstract class L10n {
   /// In zh, this message translates to:
   /// **'同时遵循系统的移除动画设置'**
   String get performanceSystemMotion;
+
+  /// No description provided for @performanceFluid.
+  ///
+  /// In zh, this message translates to:
+  /// **'灵动动效'**
+  String get performanceFluid;
+
+  /// No description provided for @performanceFluidHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'弹性回弹、按压光晕、卡片展开成页面。几乎不增加耗电'**
+  String get performanceFluidHint;
 
   /// No description provided for @performanceFollowMode.
   ///
@@ -21383,6 +21401,24 @@ abstract class L10n {
   /// **'请在这台主机上查看引擎日志。'**
   String get pluginsLoadRemoteLogs;
 
+  /// No description provided for @plugslotsSurfaceComposerTools.
+  ///
+  /// In zh, this message translates to:
+  /// **'加号面板'**
+  String get plugslotsSurfaceComposerTools;
+
+  /// No description provided for @plugslotsSurfaceSessionActions.
+  ///
+  /// In zh, this message translates to:
+  /// **'对话操作'**
+  String get plugslotsSurfaceSessionActions;
+
+  /// No description provided for @plugslotsSurfaceTurnNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'回合尾注'**
+  String get plugslotsSurfaceTurnNote;
+
   /// No description provided for @plugslotsSurfaceComposerActions.
   ///
   /// In zh, this message translates to:
@@ -24695,6 +24731,54 @@ abstract class L10n {
   /// **'最近观测'**
   String get remoteNetworkObservedAt;
 
+  /// No description provided for @remoteNetworkLocalIpVersion.
+  ///
+  /// In zh, this message translates to:
+  /// **'手机 ICE IP 版本'**
+  String get remoteNetworkLocalIpVersion;
+
+  /// No description provided for @remoteNetworkRemoteIpVersion.
+  ///
+  /// In zh, this message translates to:
+  /// **'主机 ICE IP 版本'**
+  String get remoteNetworkRemoteIpVersion;
+
+  /// No description provided for @remoteNetworkIceProtocol.
+  ///
+  /// In zh, this message translates to:
+  /// **'ICE 协议'**
+  String get remoteNetworkIceProtocol;
+
+  /// No description provided for @remoteTransferSettings.
+  ///
+  /// In zh, this message translates to:
+  /// **'远程传输'**
+  String get remoteTransferSettings;
+
+  /// No description provided for @remoteCompactHistory.
+  ///
+  /// In zh, this message translates to:
+  /// **'精简历史'**
+  String get remoteCompactHistory;
+
+  /// No description provided for @remoteErrHistoryModeChanged.
+  ///
+  /// In zh, this message translates to:
+  /// **'主机已不支持精简历史，请切换到其他主机后再连回来，或重启 App，重新加载历史'**
+  String get remoteErrHistoryModeChanged;
+
+  /// No description provided for @remoteCompactHistoryHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'支持的 DSH Remote 主机会精简历史工具详情，实时回复和审批不变。切换主机或重启 App 后生效；旧主机仍传输完整历史。'**
+  String get remoteCompactHistoryHint;
+
+  /// No description provided for @searchKwRemoteCompactHistory.
+  ///
+  /// In zh, this message translates to:
+  /// **'精简 简洁 历史 工具 传输 流量 远程 compact slim lite'**
+  String get searchKwRemoteCompactHistory;
+
   /// No description provided for @stateWorkspaceFilesHint.
   ///
   /// In zh, this message translates to:
@@ -24952,6 +25036,12 @@ abstract class L10n {
   /// In zh, this message translates to:
   /// **'当前主机提供时可用'**
   String get searchNeedsEngineField;
+
+  /// No description provided for @searchNeedsAnimations.
+  ///
+  /// In zh, this message translates to:
+  /// **'开启动画时可用'**
+  String get searchNeedsAnimations;
 
   /// No description provided for @searchNeedsChat.
   ///
@@ -25300,6 +25390,12 @@ abstract class L10n {
   /// In zh, this message translates to:
   /// **'动画,动效,减少动画'**
   String get searchKwAnimations;
+
+  /// No description provided for @searchKwFluidMotion.
+  ///
+  /// In zh, this message translates to:
+  /// **'灵动,弹性,回弹,光晕,丝滑'**
+  String get searchKwFluidMotion;
 
   /// No description provided for @searchKwNotifyEnabled.
   ///
@@ -27370,6 +27466,42 @@ abstract class L10n {
   /// In zh, this message translates to:
   /// **'已归档 {count} 个对话，{failed} 个没能归档'**
   String shellChatsArchivedPartial(int count, int failed);
+
+  /// No description provided for @shellPanelOverview.
+  ///
+  /// In zh, this message translates to:
+  /// **'信息'**
+  String get shellPanelOverview;
+
+  /// No description provided for @shellPanelWorkspace.
+  ///
+  /// In zh, this message translates to:
+  /// **'工作区'**
+  String get shellPanelWorkspace;
+
+  /// No description provided for @shellPanelModel.
+  ///
+  /// In zh, this message translates to:
+  /// **'模型'**
+  String get shellPanelModel;
+
+  /// No description provided for @shellPanelHost.
+  ///
+  /// In zh, this message translates to:
+  /// **'主机'**
+  String get shellPanelHost;
+
+  /// No description provided for @shellPanelOpenFull.
+  ///
+  /// In zh, this message translates to:
+  /// **'打开完整页面'**
+  String get shellPanelOpenFull;
+
+  /// No description provided for @shellPanelNoPlugins.
+  ///
+  /// In zh, this message translates to:
+  /// **'这段对话还没有插件面板'**
+  String get shellPanelNoPlugins;
 
   /// No description provided for @shellQuickPanel.
   ///
