@@ -86,6 +86,11 @@ final class VoiceEnd extends VoiceEvent {
 abstract class VoiceBridge {
   Future<VoiceCapabilities> capabilities();
   Future<VoicePermission> requestPermission();
+
+  /// The microphone grant as it stands, without asking for it. A probe of why
+  /// dictation fell back needs it: 「recorder 可用」 and 「已授权」 are two
+  /// different facts.
+  Future<VoicePermission> permission();
   Future<void> openSettings();
 
   /// Live events of the current session.
@@ -140,6 +145,21 @@ class MethodChannelVoiceBridge implements VoiceBridge {
       'blocked' => VoicePermission.blocked,
       _ => VoicePermission.denied,
     };
+  }
+
+  @override
+  Future<VoicePermission> permission() async {
+    try {
+      return switch (await _methods.invokeMethod<String>('permission')) {
+        'granted' => VoicePermission.granted,
+        'blocked' => VoicePermission.blocked,
+        _ => VoicePermission.denied,
+      };
+    } on MissingPluginException {
+      return VoicePermission.denied;
+    } on PlatformException {
+      return VoicePermission.denied;
+    }
   }
 
   @override

@@ -113,6 +113,8 @@ class _FallbackRecorder implements VoiceBridge {
   @override
   Future<VoicePermission> requestPermission() async => VoicePermission.granted;
   @override
+  Future<VoicePermission> permission() async => VoicePermission.granted;
+  @override
   Future<void> openSettings() async {}
   @override
   Future<void> startRecognizer({String? language}) async => throw UnsupportedError('No system recognizer fixture');

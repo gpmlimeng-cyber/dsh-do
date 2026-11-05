@@ -159,6 +159,31 @@ class VoiceInputController extends ChangeNotifier with WidgetsBindingObserver {
   /// The probe's own words, for the diagnostics bundle. Never shown to a user.
   String? _probeDetail;
 
+  /// The catalog as the last probe saw it (providers, phase, selection).
+  String? _catalogSummary;
+
+  /// The microphone grant, read without asking; for the diagnostics bundle.
+  String _micPermission = '?';
+
+  /// Writes down what a tap of the voice key acted on, and which way it went.
+  ///
+  /// Unconditional: a fall to the phone's recognizer that leaves nothing
+  /// behind cannot be told apart from a broken model or a missing grant.
+  void _diag(String branch) {
+    final detail = (_probeDetail ?? '-').replaceAll('\n', ' ');
+    final short = detail.length > 300 ? detail.substring(0, 300) : detail;
+    appErrorLog.record(
+      AppErrorSource.platform,
+      'voice: branch=$branch '
+          'recorder=${_caps.recorder} recognizer=${_caps.recognizer} '
+          'systemUnreliable=${_caps.systemUnreliable} mic=$_micPermission '
+          'hostIsLocal=${_hostIsLocal()} modelReady=${_modelReady()} '
+          'mode=${_runMode.name} probe=${_probeFailure?.name ?? 'ok'} '
+          'detail=$short catalog=${_catalogSummary ?? '-'}',
+      StackTrace.current,
+    );
+  }
+
   TextEditingValue? _base;
   int _anchorStart = 0;
   int _anchorEnd = 0;
@@ -220,6 +245,7 @@ class VoiceInputController extends ChangeNotifier with WidgetsBindingObserver {
     _VoiceTarget? target;
     var failure = VoiceProbeFailure.noModel;
     String? detail;
+    String? summary;
     try {
       // A busy engine (a long round streaming) answers late; 4 s called that
       // a missing model. The model is local, so waiting is cheap.
@@ -244,6 +270,7 @@ class VoiceInputController extends ChangeNotifier with WidgetsBindingObserver {
           );
         }
       }
+      summary = _summarize(catalog);
       if (catalog?.selected?.usable ?? false) target = _VoiceTarget(c, generation, catalog!);
       if (target == null && detail == null) {
         final selectedId = catalog?.selected?.id;
@@ -260,6 +287,8 @@ class VoiceInputController extends ChangeNotifier with WidgetsBindingObserver {
     }
     if (_disposed || !identical(client(), c) || !identical(c.mux.generation, generation)) return null;
     if (probe == _catalogProbe) {
+      // A probe that never answered keeps the last catalog we saw.
+      _catalogSummary = summary ?? _catalogSummary;
       if (target != null) {
         _catalog = target;
         _probeFailure = null;
@@ -273,6 +302,27 @@ class VoiceInputController extends ChangeNotifier with WidgetsBindingObserver {
       }
     }
     return target;
+  }
+
+  /// `id(phase)` per provider plus the selection, short enough for a log line.
+  static String _summarize(SpeechCatalog? catalog) {
+    if (catalog == null) return 'none';
+    final providers = [
+      for (final p in catalog.providers) '${p.id}(${p.phase}${p.usable ? ',usable' : ''})',
+    ].join(' ');
+    return 'selected=${catalog.providerId ?? '-'} providers=[${providers.isEmpty ? '-' : providers}]';
+  }
+
+  Future<String> _readPermission() async {
+    try {
+      return switch (await bridge.permission()) {
+        VoicePermission.granted => 'granted',
+        VoicePermission.denied => 'denied',
+        VoicePermission.blocked => 'blocked',
+      };
+    } catch (_) {
+      return 'unknown';
+    }
   }
 
   void ensureFresh() {
@@ -318,6 +368,7 @@ class VoiceInputController extends ChangeNotifier with WidgetsBindingObserver {
       return;
     }
     if (permission != VoicePermission.granted) {
+      _diag('permission-${permission.name}');
       _finish();
       _say(
         permission == VoicePermission.blocked
@@ -338,6 +389,7 @@ class VoiceInputController extends ChangeNotifier with WidgetsBindingObserver {
     }
     if (!_current(operation)) return;
     _runMode = mode;
+    _micPermission = await _readPermission();
     await refresh();
     if (!_current(operation)) return;
     if (!_hostCurrent) {
@@ -347,6 +399,7 @@ class VoiceInputController extends ChangeNotifier with WidgetsBindingObserver {
     final system =
         _runMode == VoiceMode.system || (_runMode == VoiceMode.auto && _caps.recognizer && !_caps.systemUnreliable);
     if (system && !_caps.recognizer) {
+      _diag('no-system-recognizer');
       _finish();
       _say(VoiceMessage(appL10n.voiceChooseSystem, change: true));
       return;
@@ -356,7 +409,9 @@ class VoiceInputController extends ChangeNotifier with WidgetsBindingObserver {
     _anchorStart = value.selection.isValid ? value.selection.start : value.text.length;
     _anchorEnd = value.selection.isValid ? value.selection.end : value.text.length;
     _heard = '';
-    if (system && _runMode == VoiceMode.auto && _caps.recorder && (_modelReady() || _hostIsLocal())) {
+    final asked = system && _runMode == VoiceMode.auto && _caps.recorder && (_modelReady() || _hostIsLocal());
+    if (system && _runMode == VoiceMode.auto && !asked) _diag('system-no-probe');
+    if (asked) {
       // The voice model first: phone services on Chinese ROMs report
       // themselves available and then fail. The engine has the last word; a
       // stale "ready" leaves the phone service as it was.
@@ -376,21 +431,14 @@ class VoiceInputController extends ChangeNotifier with WidgetsBindingObserver {
         _probeFailure = null;
       }
       if (target != null) {
+        _diag('engine');
         await _startRecorder(operation, target);
         return;
       }
-      // Every failed probe keeps its words in the diagnostics bundle, whether
-      // or not the download page agrees: a silent fall to the phone's service
-      // reads as 「系统识别用不了」 and leaves nothing to look at.
-      appErrorLog.record(
-        AppErrorSource.platform,
-        'voice: engine voice model probe failed (${_probeFailure?.name ?? 'unknown'}): '
-            '${_probeDetail ?? 'no detail'}',
-        StackTrace.current,
-      );
       // The engine was asked and did not answer in time: 「系统识别用不了」 is a
       // wrong answer, and the phone's service is not what the user chose.
       if (_probeFailure == VoiceProbeFailure.timeout || _probeFailure == VoiceProbeFailure.failed) {
+        _diag('engine-busy');
         _finish();
         _say(VoiceMessage(appL10n.voiceEngineBusy, change: true));
         return;
@@ -400,22 +448,19 @@ class VoiceInputController extends ChangeNotifier with WidgetsBindingObserver {
       // side — say what the probe found instead.
       final engineMissing = _probeFailure == VoiceProbeFailure.noApi || _probeFailure == VoiceProbeFailure.noModel;
       if (engineMissing && _modelReady()) {
+        _diag('engine-missing');
         _finish();
         _say(VoiceMessage(appL10n.voiceEngineModelMissing, change: true));
         return;
       }
+      _diag('system-after-probe');
     }
     if (!system) {
       final target = await _readCatalog(_runClient, _runGeneration);
       if (!_current(operation)) return;
       if (target == null) {
+        _diag('engine-mode-failed');
         _finish();
-        appErrorLog.record(
-          AppErrorSource.platform,
-          'voice: engine voice model probe failed (${_probeFailure?.name ?? 'unknown'}): '
-              '${_probeDetail ?? 'no detail'}',
-          StackTrace.current,
-        );
         final busy = _probeFailure == VoiceProbeFailure.timeout || _probeFailure == VoiceProbeFailure.failed;
         final engineMissing =
             _modelReady() && _probeFailure != null && _probeFailure != VoiceProbeFailure.host && !busy;
@@ -433,10 +478,12 @@ class VoiceInputController extends ChangeNotifier with WidgetsBindingObserver {
         );
         return;
       }
+      _diag('engine-mode');
       await _startRecorder(operation, target);
       return;
     }
     _engine = VoiceEngine.system;
+    _diag('system');
     _listen(operation);
     try {
       await bridge.startRecognizer();

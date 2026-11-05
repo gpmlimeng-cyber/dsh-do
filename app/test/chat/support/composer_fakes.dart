@@ -172,6 +172,9 @@ class FakeVoiceBridge implements VoiceBridge {
   }
 
   @override
+  Future<VoicePermission> permission() async => permission;
+
+  @override
   Future<void> openSettings() async => calls.add('settings');
 
   @override
