@@ -62,3 +62,4 @@ Upstream: `ccch1mneyyy/dsh-Go`, against `v1.0.10` (fork branch `ci/room-progress
 | `ff82c38` | `app/lib/ui/shell/page_frame.dart`, `app/lib/ui/session/session_detail_page.dart` | v1.0.10 | What material a pinned bar paints is Flutter layout; no seam owns a page's header surface. |
 | `d06e954` | `app/lib/ui/chat/voice/voice_controller.dart`, `app/lib/l10n/` | v1.0.10 | Why a voice probe failed, and which message the tap shows, is client-side dialogue over the same Host answer; no seam owns it. |
 | `2886bb9` | `app/lib/ui/chat/voice/voice_controller.dart`, `app/lib/ui/chat/chat_screen.dart`, `app/lib/ui/bots/bot_composer_deck.dart` | v1.0.10 | Whether the app asks the engine or trusts its own model page is a client-side probe; no seam owns voice readiness. |
+| `b03a8f4` | `app/lib/ui/chat/voice/voice_controller.dart`, `app/lib/l10n/` | v1.0.10 | A slow engine answer, the cached one and the words shown for it are client-side dialogue; no seam owns voice readiness. |
