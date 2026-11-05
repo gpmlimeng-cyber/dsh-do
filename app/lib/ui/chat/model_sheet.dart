@@ -533,7 +533,7 @@ class _ModelSheetState extends ConsumerState<_ModelSheet> {
         if (groups.length > 1)
           Padding(
             padding: const EdgeInsets.only(top: 4, bottom: 16),
-            child: _ChannelBar(groups: groups, shown: shown.id, onChanged: (id) => setState(() => _channel = id)),
+            child: ModelChannelBar(groups: groups, shown: shown.id, onChanged: (id) => setState(() => _channel = id)),
           )
         else
           SheetSectionLabel(shown.name),
@@ -549,7 +549,7 @@ class _ModelSheetState extends ConsumerState<_ModelSheet> {
               switchOutCurve: AppMotion.exit,
               layoutBuilder: (current, previous) =>
                   Stack(alignment: Alignment.topCenter, children: [...previous, ?current]),
-              child: _ModelGrid(
+              child: ModelGrid(
                 key: ValueKey(shown.id),
                 models: shown.models,
                 selected: selected,
@@ -629,8 +629,10 @@ class ManageModelsLink extends StatelessWidget {
 
 /// 渠道筛选:放得下就是一条整宽的 [SegmentedPill];渠道多、放不下时换成
 /// 横向可滑的一排胶囊(两端与内容对齐,滑动时可以出到弹层边缘)。
-class _ChannelBar extends StatelessWidget {
-  const _ChannelBar({required this.groups, required this.shown, required this.onChanged});
+/// 渠道横条: chat models here, transcription providers in 语音输入's picker.
+/// Public so both pickers are the same bar, not a copy of one.
+class ModelChannelBar extends StatelessWidget {
+  const ModelChannelBar({required this.groups, required this.shown, required this.onChanged});
 
   final List<ProviderGroup> groups;
   final String shown;
@@ -732,8 +734,11 @@ class _ChannelChip extends StatelessWidget {
 }
 
 /// 两列等宽的模型卡,同一行等高、间距 12;单数时最后一张占满整行。
-class _ModelGrid extends StatelessWidget {
-  const _ModelGrid({super.key, required this.models, required this.selected, required this.onPick});
+///
+/// Public: 语音输入's transcription-model picker shows its models in the same
+/// grid, so the two cannot drift apart.
+class ModelGrid extends StatelessWidget {
+  const ModelGrid({super.key, required this.models, required this.selected, required this.onPick});
 
   final List<ModelInfo> models;
   final ModelInfo? selected;
