@@ -32296,6 +32296,12 @@ abstract class L10n {
   /// **'系统识别用不了，可以在语音设置里下载语音模型'**
   String get voiceConfigureEither;
 
+  /// No description provided for @voiceEngineModelMissing.
+  ///
+  /// In zh, this message translates to:
+  /// **'语音模型已下载，但引擎没有加载它；请重启 App，或在语音设置里检查插件'**
+  String get voiceEngineModelMissing;
+
   /// No description provided for @voiceErrorNetworkTimeout.
   ///
   /// In zh, this message translates to:

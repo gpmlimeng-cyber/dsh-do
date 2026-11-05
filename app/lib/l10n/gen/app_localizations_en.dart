@@ -18834,6 +18834,10 @@ class L10nEn extends L10n {
   String get voiceConfigureEither => 'The phone’s service isn’t available. Download the voice model in voice settings.';
 
   @override
+  String get voiceEngineModelMissing =>
+      'The voice model is downloaded, but the engine has not loaded it. Restart the app, or check the voice plugin in settings.';
+
+  @override
   String get voiceErrorNetworkTimeout => 'Speech recognition timed out. Check your connection.';
 
   @override

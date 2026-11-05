@@ -20,6 +20,29 @@ enum VoicePhase { idle, starting, listening, transcribing }
 
 enum VoiceEngine { system, engine }
 
+/// Why a probe of the engine's voice model found nothing usable. The tap that
+/// made the probe says which one it was: 「系统识别用不了」 is a wrong answer
+/// when the model is on the phone and the engine has simply not loaded it.
+enum VoiceProbeFailure {
+  /// The host changed under the probe, or no client was there yet.
+  host,
+
+  /// The phone cannot record for the engine.
+  recorder,
+
+  /// The engine answers without a speech API at all (its plugin is not loaded).
+  noApi,
+
+  /// The speech API answered, but no provider is usable.
+  noModel,
+
+  /// The probe ran out of time.
+  timeout,
+
+  /// The probe failed for another reason.
+  failed,
+}
+
 class VoiceMessage {
   const VoiceMessage(this.text, {this.openSettings = false, this.change = false});
   final String text;
@@ -122,6 +145,9 @@ class VoiceInputController extends ChangeNotifier with WidgetsBindingObserver {
   StreamSubscription<VoiceEvent>? _events;
   Timer? _finalTimeout;
 
+  /// Why the last probe found no engine model; null when it found one.
+  VoiceProbeFailure? _probeFailure;
+
   TextEditingValue? _base;
   int _anchorStart = 0;
   int _anchorEnd = 0;
@@ -170,29 +196,45 @@ class VoiceInputController extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<_VoiceTarget?> _readCatalog(DshClient? c, MuxGeneration? generation) async {
     if (c == null || !_caps.recorder || !identical(client(), c) || !identical(c.mux.generation, generation)) {
+      _probeFailure = c == null || !identical(client(), c) ? VoiceProbeFailure.host : VoiceProbeFailure.recorder;
       return null;
     }
     final probe = ++_catalogProbe;
     _VoiceTarget? target;
+    var failure = VoiceProbeFailure.noModel;
     try {
       var catalog = await c.speechCatalog().timeout(const Duration(seconds: 4));
-      if (requiredProviderId case final id?) {
-        final provider = catalog?.providers.where((p) => p.id == id && p.location == 'host-local').firstOrNull;
-        if (provider == null || !provider.usable) return null;
-        catalog = SpeechCatalog(
-          providers: catalog!.providers,
-          providerId: id,
-          language: catalog.language,
-          maxAudioBytes: catalog.maxAudioBytes,
-          maxDurationSeconds: catalog.maxDurationSeconds,
-        );
+      if (catalog == null) {
+        // No speech API on this host: its plugin is not loaded, or it is older
+        // than the API. A different failure from "no provider is usable".
+        failure = VoiceProbeFailure.noApi;
+      } else if (requiredProviderId case final id?) {
+        final provider = catalog.providers.where((p) => p.id == id && p.location == 'host-local').firstOrNull;
+        if (provider == null || !provider.usable) {
+          failure = VoiceProbeFailure.noModel;
+          catalog = null;
+        } else {
+          catalog = SpeechCatalog(
+            providers: catalog.providers,
+            providerId: id,
+            language: catalog.language,
+            maxAudioBytes: catalog.maxAudioBytes,
+            maxDurationSeconds: catalog.maxDurationSeconds,
+          );
+        }
       }
       if (catalog?.selected?.usable ?? false) target = _VoiceTarget(c, generation, catalog!);
+    } on TimeoutException {
+      failure = VoiceProbeFailure.timeout;
     } catch (_) {
       // Missing speech bundle, unavailable provider, or disconnected host.
+      failure = VoiceProbeFailure.failed;
     }
     if (_disposed || !identical(client(), c) || !identical(c.mux.generation, generation)) return null;
-    if (probe == _catalogProbe) _catalog = target;
+    if (probe == _catalogProbe) {
+      _catalog = target;
+      _probeFailure = target == null ? failure : null;
+    }
     return target;
   }
 
@@ -287,15 +329,29 @@ class VoiceInputController extends ChangeNotifier with WidgetsBindingObserver {
         await _startRecorder(operation, target);
         return;
       }
+      // The model is on this phone and the user pointed the app at it, but the
+      // engine does not have it: saying 「系统识别用不了」 here blames the wrong
+      // side — say what the probe found instead.
+      if (_probeFailure case VoiceProbeFailure.noApi || VoiceProbeFailure.noModel) {
+        _finish();
+        _say(VoiceMessage(appL10n.voiceEngineModelMissing, change: true));
+        return;
+      }
     }
     if (!system) {
       final target = await _readCatalog(_runClient, _runGeneration);
       if (!_current(operation)) return;
       if (target == null) {
         _finish();
+        final engineMissing =
+            _modelReady() && _probeFailure != null && _probeFailure != VoiceProbeFailure.host && _probeFailure != VoiceProbeFailure.timeout;
         _say(
           VoiceMessage(
-            _runMode == VoiceMode.engine ? appL10n.voiceConfigureEngine : appL10n.voiceConfigureEither,
+            engineMissing
+                ? appL10n.voiceEngineModelMissing
+                : _runMode == VoiceMode.engine
+                ? appL10n.voiceConfigureEngine
+                : appL10n.voiceConfigureEither,
             change: true,
           ),
         );
