@@ -130,6 +130,11 @@ jobs:
             # Release notes live in the repository, one file per version, so the
             # text is reviewed with the code instead of typed into the workflow.
             notes_file="docs/release-notes/${VERSION}.md"
+            # An rc reuses the release it leads to: 2.1.4-rc.2 → 2.1.4.md.
+            if [ ! -f "$notes_file" ]; then
+              base="${VERSION%%-*}"
+              if [ -f "docs/release-notes/${base}.md" ]; then notes_file="docs/release-notes/${base}.md"; fi
+            fi
             if [ -f "$notes_file" ]; then
               notes_args=(--notes-file "$notes_file")
             else
