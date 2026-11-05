@@ -11,6 +11,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../../diagnostics/app_error_log.dart';
 import '../../../l10n/l10n.dart';
 import '../../../state/voice_settings.dart';
 import '../mention/mention_text_controller.dart';
@@ -93,11 +94,13 @@ class VoiceInputController extends ChangeNotifier with WidgetsBindingObserver {
     required this.client,
     Future<VoiceMode> Function()? mode,
     bool Function()? modelReady,
+    bool Function()? hostIsLocal,
     this.onRecognized,
     this.requiredProviderId,
     bool observeLifecycle = true,
   }) : _mode = mode ?? _automatic,
        _modelReady = modelReady ?? _noModel,
+       _hostIsLocal = hostIsLocal ?? _notLocal,
        _observing = observeLifecycle {
     if (_observing) WidgetsBinding.instance.addObserver(this);
     unawaited(refresh());
@@ -105,6 +108,7 @@ class VoiceInputController extends ChangeNotifier with WidgetsBindingObserver {
 
   static Future<VoiceMode> _automatic() async => VoiceMode.auto;
   static bool _noModel() => false;
+  static bool _notLocal() => false;
 
   /// Optional strict offline provider for the pet foreground fallback.
   final String? requiredProviderId;
@@ -116,6 +120,10 @@ class VoiceInputController extends ChangeNotifier with WidgetsBindingObserver {
   /// The on-device voice model is ready for this host (voice settings):
   /// automatic mode then records for it instead of trying the phone service.
   final bool Function() _modelReady;
+
+  /// The engine runs on this phone, where asking it costs nothing: the model's
+  /// readiness is the engine's answer, not the download page's memory of it.
+  final bool Function() _hostIsLocal;
   final bool _observing;
   void Function(VoiceMessage message)? onMessage;
 
@@ -147,6 +155,9 @@ class VoiceInputController extends ChangeNotifier with WidgetsBindingObserver {
 
   /// Why the last probe found no engine model; null when it found one.
   VoiceProbeFailure? _probeFailure;
+
+  /// The probe's own words, for the diagnostics bundle. Never shown to a user.
+  String? _probeDetail;
 
   TextEditingValue? _base;
   int _anchorStart = 0;
@@ -190,7 +201,7 @@ class VoiceInputController extends ChangeNotifier with WidgetsBindingObserver {
     // A working system service must not wait for a slow engine probe. The
     // fallback and explicit Engine mode probe on demand, including on ROMs
     // that report a system service which fails as soon as it is called.
-    if (!caps.recognizer && caps.recorder) await _readCatalog(c, generation);
+    if (caps.recorder && (!caps.recognizer || _hostIsLocal())) await _readCatalog(c, generation);
     if (!_disposed) notifyListeners();
   }
 
@@ -202,12 +213,14 @@ class VoiceInputController extends ChangeNotifier with WidgetsBindingObserver {
     final probe = ++_catalogProbe;
     _VoiceTarget? target;
     var failure = VoiceProbeFailure.noModel;
+    String? detail;
     try {
       var catalog = await c.speechCatalog().timeout(const Duration(seconds: 4));
       if (catalog == null) {
         // No speech API on this host: its plugin is not loaded, or it is older
         // than the API. A different failure from "no provider is usable".
         failure = VoiceProbeFailure.noApi;
+        detail = 'speech/catalog answered null (no speech API on this host)';
       } else if (requiredProviderId case final id?) {
         final provider = catalog.providers.where((p) => p.id == id && p.location == 'host-local').firstOrNull;
         if (provider == null || !provider.usable) {
@@ -224,16 +237,24 @@ class VoiceInputController extends ChangeNotifier with WidgetsBindingObserver {
         }
       }
       if (catalog?.selected?.usable ?? false) target = _VoiceTarget(c, generation, catalog!);
-    } on TimeoutException {
+      if (target == null && detail == null) {
+        final selectedId = catalog?.selected?.id;
+        final phase = catalog?.providers.where((p) => p.id == selectedId).firstOrNull?.phase;
+        detail = 'selected=${selectedId ?? '-'} phase=${phase ?? '-'}';
+      }
+    } on TimeoutException catch (error) {
       failure = VoiceProbeFailure.timeout;
-    } catch (_) {
+      detail = '$error';
+    } catch (error) {
       // Missing speech bundle, unavailable provider, or disconnected host.
       failure = VoiceProbeFailure.failed;
+      detail = '$error';
     }
     if (_disposed || !identical(client(), c) || !identical(c.mux.generation, generation)) return null;
     if (probe == _catalogProbe) {
       _catalog = target;
       _probeFailure = target == null ? failure : null;
+      _probeDetail = target == null ? detail : null;
     }
     return target;
   }
@@ -319,7 +340,7 @@ class VoiceInputController extends ChangeNotifier with WidgetsBindingObserver {
     _anchorStart = value.selection.isValid ? value.selection.start : value.text.length;
     _anchorEnd = value.selection.isValid ? value.selection.end : value.text.length;
     _heard = '';
-    if (system && _runMode == VoiceMode.auto && _caps.recorder && _modelReady()) {
+    if (system && _runMode == VoiceMode.auto && _caps.recorder && (_modelReady() || _hostIsLocal())) {
       // The voice model first: phone services on Chinese ROMs report
       // themselves available and then fail. The engine has the last word; a
       // stale "ready" leaves the phone service as it was.
@@ -332,7 +353,15 @@ class VoiceInputController extends ChangeNotifier with WidgetsBindingObserver {
       // The model is on this phone and the user pointed the app at it, but the
       // engine does not have it: saying 「系统识别用不了」 here blames the wrong
       // side — say what the probe found instead.
-      if (_probeFailure case VoiceProbeFailure.noApi || VoiceProbeFailure.noModel) {
+      final engineMissing = _probeFailure == VoiceProbeFailure.noApi || _probeFailure == VoiceProbeFailure.noModel;
+      if (engineMissing && _modelReady()) {
+        // The download page says the model is here and the engine cannot see
+        // it: keep the engine's own words in the diagnostics bundle.
+        appErrorLog.record(
+          AppErrorSource.platform,
+          'voice: engine voice model unavailable (${_probeFailure!.name}): ${_probeDetail ?? 'no detail'}',
+          StackTrace.current,
+        );
         _finish();
         _say(VoiceMessage(appL10n.voiceEngineModelMissing, change: true));
         return;

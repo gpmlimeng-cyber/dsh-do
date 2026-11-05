@@ -256,6 +256,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
           mounted &&
           (ref.read(activeConnectionProvider).value?.isLocal ?? false) &&
           ref.read(voiceModelProvider).status == VoiceModelStatus.ready,
+      hostIsLocal: () => mounted && (ref.read(activeConnectionProvider).value?.isLocal ?? false),
       // The capability probe is async and can finish after this page is gone.
       client: () => mounted ? ref.read(activeConnectionProvider).value?.client : null,
       onRecognized: () {

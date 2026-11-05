@@ -186,6 +186,7 @@ VoiceInputController createBotVoice(
       alive() &&
       (ref.read(activeConnectionProvider).value?.isLocal ?? false) &&
       ref.read(voiceModelProvider).status == VoiceModelStatus.ready,
+  hostIsLocal: () => alive() && (ref.read(activeConnectionProvider).value?.isLocal ?? false),
   client: () => alive() ? ref.read(activeConnectionProvider).value?.client : null,
   onRecognized: () {
     if (alive()) ref.read(usageStatsProvider.notifier).count(UsageCount.voice);
