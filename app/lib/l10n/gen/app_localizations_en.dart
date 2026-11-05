@@ -19262,6 +19262,11 @@ class L10nEn extends L10n {
   String get botsMessageMode => 'Message mode';
 
   @override
+  String botsMessageModeWith(String mode) {
+    return 'Message mode: $mode';
+  }
+
+  @override
   String get botsMessageModeRelevant => 'Only what involves me';
 
   @override

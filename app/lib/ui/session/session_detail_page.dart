@@ -111,8 +111,8 @@ class SessionDetailPage extends ConsumerStatefulWidget {
 }
 
 class _SessionDetailPageState extends ConsumerState<SessionDetailPage> with TickerProviderStateMixin {
-  static const _pageBarHeight = 56.0;
-  static const _tabsHeight = 52.0;
+  static const _pageBarHeight = AppPage.barHeight;
+  static const _tabsHeight = AppPage.tabsHeight;
 
   /// The tabs but 插件, decided when the page opens.
   late final List<SessionTab> _baseTabs;
@@ -319,7 +319,7 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> with Tick
         if (bar != null)
           SliverPersistentHeader(
             pinned: true,
-            delegate: _PinnedBox(
+            delegate: PinnedBox(
               extent: barTop,
               child: Stack(
                 children: [
@@ -361,30 +361,11 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> with Tick
         ),
         SliverPersistentHeader(
           pinned: true,
-          delegate: _PinnedBox(
+          delegate: PinnedBox(
             extent: _tabsHeight,
-            child: ValueListenableBuilder<double>(
-              valueListenable: _offset,
-              builder: (context, offset, child) {
-                // Continues the bar's band, then feathers out so
-                // the strip has no hard bottom edge.
-                final a = 0.96 * (offset / 24).clamp(0.0, 1.0);
-                return DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        band.withValues(alpha: band.a * a),
-                        band.withValues(alpha: band.a * a),
-                        band.withValues(alpha: 0),
-                      ],
-                      stops: const [0, 0.7, 1],
-                    ),
-                  ),
-                  child: child,
-                );
-              },
+            child: DetailsTabBand(
+              offset: _offset,
+              color: band,
               child: Padding(
                 padding: EdgeInsets.fromLTRB(gutter + column, 4, gutter + column, 12),
                 child: GlassSegments(controller: _controller, labels: [for (final tab in _tabs) tab.label]),
@@ -445,26 +426,6 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> with Tick
         );
     }
   }
-}
-
-/// A fixed-height pinned header.
-class _PinnedBox extends SliverPersistentHeaderDelegate {
-  _PinnedBox({required this.extent, required this.child});
-
-  final double extent;
-  final Widget child;
-
-  @override
-  double get minExtent => extent;
-
-  @override
-  double get maxExtent => extent;
-
-  @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlaps) => SizedBox.expand(child: child);
-
-  @override
-  bool shouldRebuild(_PinnedBox old) => old.extent != extent || old.child != child;
 }
 
 /// The page colour behind the bar once the hero slides under it: solid

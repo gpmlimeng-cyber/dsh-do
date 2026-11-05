@@ -1895,6 +1895,14 @@
   "botsStopAllBody": "正在工作的成员会立刻停下，可以再继续",
   "botsAlreadySpoke": "已说",
   "botsMessageMode": "消息模式",
+  "botsMessageModeWith": "消息模式：{mode}",
+  "@botsMessageModeWith": {
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      }
+    }
+  },
   "botsMessageModeRelevant": "仅与我相关",
   "botsMessageModeEmpty": "该成员在本群还没有发言",
   "botsMessageModeEmptyRelevant": "这里没有与你相关的消息",

@@ -92,7 +92,7 @@ class _RoomAggregateDetailsPageState extends ConsumerState<RoomAggregateDetailsP
     final roomSession = room.sessionId;
     final activity = ref.watch(roomMembersActivityProvider(room.id));
     final labels = [for (final tab in _tabs) tab.label];
-    return AppPage(
+    return AppPage.nested(
       // The tab bar says what the page is; the hero below keeps the group's
       // name, so the group is still what the page is about.
       title: l10n.hubSessionDetails,
@@ -107,63 +107,25 @@ class _RoomAggregateDetailsPageState extends ConsumerState<RoomAggregateDetailsP
           style: Theme.of(context).textTheme.bodySmall,
         ),
       ),
-      slivers: [
-        // The tabs stay at the top once the hero scrolls away, as the single
-        // conversation's details page does; each tab's own list keeps scrolling
-        // underneath. The band behind them keeps the text from running through
-        // the glass.
-        SliverPersistentHeader(
-          pinned: true,
-          delegate: _PinnedBox(
-            extent: 60,
-            child: ColoredBox(
-              color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.96),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                child: GlassSegments(controller: _controller, labels: labels),
-              ),
-            ),
-          ),
-        ),
-        SliverFillRemaining(
-          child: TabBarView(
-            controller: _controller,
-            children: [
-              // The group's own conversation: relays, replies, tools and steps,
-              // exactly as the single-conversation page draws them.
-              _RoomTrajectoryTab(room: room, team: team, roomSession: roomSession),
-              _RoomChangesTab(room: room, team: team, roomSession: roomSession),
-              _RoomFilesTab(room: room, team: team, roomSession: roomSession),
-              _RoomProgressTab(room: room, team: team, roomSession: roomSession),
-              _RoomContextTab(room: room, activity: activity, roomSession: roomSession),
-            ],
-          ),
-        ),
-      ],
+      // The same pinned bar and tab strip the single conversation's details
+      // page pins, and the same band under it. The tab lists drive the page
+      // scroll (NestedScrollView), so the strip freezes wherever the finger
+      // starts — not only when the drag hits the hero.
+      tabs: GlassSegments(controller: _controller, labels: labels),
+      body: TabBarView(
+        controller: _controller,
+        children: [
+          // The group's own conversation: relays, replies, tools and steps,
+          // exactly as the single-conversation page draws them.
+          _RoomTrajectoryTab(room: room, team: team, roomSession: roomSession),
+          _RoomChangesTab(room: room, team: team, roomSession: roomSession),
+          _RoomFilesTab(room: room, team: team, roomSession: roomSession),
+          _RoomProgressTab(room: room, team: team, roomSession: roomSession),
+          _RoomContextTab(room: room, activity: activity, roomSession: roomSession),
+        ],
+      ),
     );
   }
-}
-
-/// A fixed-height sliver header that stays put while the page scrolls: the tab
-/// strip's own box. (The single chat's page keeps a private copy; sharing one
-/// would mean touching it for no gain here.)
-class _PinnedBox extends SliverPersistentHeaderDelegate {
-  const _PinnedBox({required this.extent, required this.child});
-
-  final double extent;
-  final Widget child;
-
-  @override
-  double get minExtent => extent;
-
-  @override
-  double get maxExtent => extent;
-
-  @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) => SizedBox.expand(child: child);
-
-  @override
-  bool shouldRebuild(_PinnedBox oldDelegate) => oldDelegate.extent != extent || oldDelegate.child != child;
 }
 
 class _Empty extends StatelessWidget {

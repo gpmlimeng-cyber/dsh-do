@@ -18245,6 +18245,11 @@ class L10nZh extends L10n {
   String get botsMessageMode => '消息模式';
 
   @override
+  String botsMessageModeWith(String mode) {
+    return '消息模式：$mode';
+  }
+
+  @override
   String get botsMessageModeRelevant => '仅与我相关';
 
   @override

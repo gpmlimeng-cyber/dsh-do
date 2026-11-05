@@ -606,7 +606,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
           onSelected: (picked) => ref.read(roomMessageModesProvider.notifier).set(room.id, picked),
         ),
         messagesIcon: _modeIcon(context, mode, modeBot),
-        messagesTooltip: '${l10n.botsMessageMode} · ${_modeLabel(l10n, mode, modeBot)}',
+        messagesTooltip: l10n.botsMessageModeWith(_modeLabel(l10n, mode, modeBot)),
       ),
       body: chat.loading && chat.items.isEmpty
           ? Padding(

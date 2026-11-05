@@ -408,6 +408,7 @@
   "botsStopAllBody": "Members at work stop at once; you can continue again",
   "botsAlreadySpoke": "Spoke",
   "botsMessageMode": "Message mode",
+  "botsMessageModeWith": "Message mode: {mode}",
   "botsMessageModeRelevant": "Only what involves me",
   "botsMessageModeEmpty": "This member has not spoken in this group yet",
   "botsMessageModeEmptyRelevant": "No messages involve you yet",

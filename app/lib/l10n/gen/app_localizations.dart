@@ -33094,6 +33094,11 @@ abstract class L10n {
 
   /// No description provided for @botsMessageMode.
   String get botsMessageMode;
+  /// No description provided for @botsMessageModeWith.
+  ///
+  /// In zh, this message translates to:
+  /// **'消息模式：{mode}'**
+  String botsMessageModeWith(String mode);
   /// No description provided for @botsMessageModeRelevant.
   String get botsMessageModeRelevant;
   /// No description provided for @botsMessageModeEmpty.
