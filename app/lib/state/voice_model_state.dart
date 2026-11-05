@@ -59,6 +59,7 @@ class VoiceModelState {
     this.neededBytes,
     this.wanted = false,
     this.filesMissing = false,
+    this.engineMissing = false,
   });
 
   final VoiceModelStatus status;
@@ -79,6 +80,10 @@ class VoiceModelState {
   /// settings row says that, rather than only dropping to 未下载.
   final bool filesMissing;
 
+  /// The engine answers with no speech provider at all: the voice plugin is
+  /// not loaded, which restarting the engine fixes (a missing model does not).
+  final bool engineMissing;
+
   bool get busy => status == VoiceModelStatus.downloading || status == VoiceModelStatus.preparing;
 
   /// 0–1; null while the amount is unknown.
@@ -93,6 +98,7 @@ class VoiceModelState {
     int? neededBytes,
     bool? wanted,
     bool? filesMissing,
+    bool? engineMissing,
   }) => VoiceModelState(
     status: status ?? this.status,
     doneBytes: doneBytes ?? this.doneBytes,
@@ -101,6 +107,7 @@ class VoiceModelState {
     neededBytes: clearFailure ? null : (neededBytes ?? this.neededBytes),
     wanted: wanted ?? this.wanted,
     filesMissing: filesMissing ?? this.filesMissing,
+    engineMissing: engineMissing ?? this.engineMissing,
   );
 }
 
@@ -445,6 +452,7 @@ class VoiceModelController extends Notifier<VoiceModelState> {
       doneBytes: present,
       totalBytes: total,
       filesMissing: !onDisk && total > 0,
+      engineMissing: provider == null,
     );
     if (state.wanted && !_cancelled && !failed) unawaited(_start(announce: true));
   }
@@ -973,7 +981,14 @@ class VoiceModelController extends Notifier<VoiceModelState> {
 
   void _settledReady(int total) {
     _poll?.cancel();
-    state = state.copyWith(status: VoiceModelStatus.ready, doneBytes: total, totalBytes: total, clearFailure: true);
+    state = state.copyWith(
+      status: VoiceModelStatus.ready,
+      doneBytes: total,
+      totalBytes: total,
+      clearFailure: true,
+      filesMissing: false,
+      engineMissing: false,
+    );
     if (state.wanted) unawaited(_setWanted(false));
   }
 

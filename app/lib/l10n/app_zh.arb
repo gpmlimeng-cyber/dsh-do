@@ -11922,6 +11922,9 @@
   "voiceModelFailServer": "下载源暂时不可用",
   "voiceModelFailLost": "语音模型文件不在了，请重新下载",
   "voiceModelLostNote": "本地模型已丢失，重新下载后可用",
+  "voiceModelEngineMissing": "引擎没加载语音插件",
+  "voiceModelEngineMissingNote": "语音插件没在引擎里，重启引擎后再试",
+  "voiceModelRestartEngine": "重启引擎",
   "voiceModelFailIntegrity": "文件校验没有通过",
   "voiceModelFailStorage": "存储空间不足，还需要约 {size}",
   "@voiceModelFailStorage": {

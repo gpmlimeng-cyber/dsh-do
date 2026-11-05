@@ -19004,6 +19004,15 @@ class L10nEn extends L10n {
   String get voiceModelLostNote => 'The local model is gone. Download it again to use it.';
 
   @override
+  String get voiceModelEngineMissing => 'The engine has not loaded the voice plugin';
+
+  @override
+  String get voiceModelEngineMissingNote => 'The voice plugin is not in the engine. Restart the engine and try again.';
+
+  @override
+  String get voiceModelRestartEngine => 'Restart engine';
+
+  @override
   String get voiceModelFailIntegrity => 'The files didn’t pass verification';
 
   @override

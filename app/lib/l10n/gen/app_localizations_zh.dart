@@ -17989,6 +17989,15 @@ class L10nZh extends L10n {
   String get voiceModelLostNote => '本地模型已丢失，重新下载后可用';
 
   @override
+  String get voiceModelEngineMissing => '引擎没加载语音插件';
+
+  @override
+  String get voiceModelEngineMissingNote => '语音插件没在引擎里，重启引擎后再试';
+
+  @override
+  String get voiceModelRestartEngine => '重启引擎';
+
+  @override
   String get voiceModelFailIntegrity => '文件校验没有通过';
 
   @override

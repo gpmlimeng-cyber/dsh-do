@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
+import '../../state/engine_control.dart';
 import '../../state/voice_model_state.dart';
 import '../../state/voice_settings.dart';
 import '../shell/page_frame.dart';
@@ -160,7 +161,9 @@ class VoiceModelCard extends ConsumerWidget {
 
     final (status, statusColor) = switch (model.status) {
       VoiceModelStatus.waiting => (l10n.voiceModelWaiting, colors.textTertiary),
+      VoiceModelStatus.unsupported when model.engineMissing => (l10n.voiceModelEngineMissing, colors.textTertiary),
       VoiceModelStatus.unsupported => (l10n.voiceModelUnsupported, colors.textTertiary),
+      VoiceModelStatus.absent when model.engineMissing => (l10n.voiceModelEngineMissing, colors.textTertiary),
       VoiceModelStatus.absent => (l10n.voiceModelAbsent, theme.colorScheme.onSurfaceVariant),
       VoiceModelStatus.downloading => (
         '${((model.fraction ?? 0) * 100).floor()}%',
@@ -182,6 +185,7 @@ class VoiceModelCard extends ConsumerWidget {
         total,
       ),
       VoiceModelStatus.absent || VoiceModelStatus.waiting => l10n.voiceModelAbsentNote(total),
+      VoiceModelStatus.unsupported when model.engineMissing => l10n.voiceModelEngineMissingNote,
       VoiceModelStatus.unsupported => null,
     };
 
@@ -198,6 +202,13 @@ class VoiceModelCard extends ConsumerWidget {
     );
 
     final List<(String, Widget)> actions = switch (model.status) {
+      _ when model.engineMissing => [
+        secondary(
+          l10n.voiceModelRestartEngine,
+          () => unawaited(EngineControl.restart(ProviderScope.containerOf(context, listen: false))),
+          key: const ValueKey('voice-model-restart-engine'),
+        ),
+      ],
       VoiceModelStatus.unsupported => const [],
       VoiceModelStatus.waiting when model.wanted => [
         secondary(l10n.commonCancel, () => unawaited(controller.cancel()), key: const ValueKey('voice-model-cancel')),
