@@ -64,7 +64,7 @@ class _RoomSessionSheet extends StatefulWidget {
   final RoomMessageMode mode;
   final List<DsBotItem> items;
 
-  /// Which member a line came from (a sender Session on this Host).
+  /// Which member a line came from (the Bot id it carries, or its name).
   final String? Function(DsBotItem item) speakerOf;
   final ValueChanged<RoomChatTarget> onTarget;
   final ValueChanged<RoomMessageMode> onMode;
@@ -100,8 +100,7 @@ class _RoomSessionSheetState extends State<_RoomSessionSheet> {
   }
 
   /// Newest line per member, read from the group's own messages: no extra RPC.
-  /// The speaker is resolved through the page's resolver — the Host's `botId`
-  /// on a member's line is that member's Session id.
+  /// `botId` is the Bot id on this Host; the line's name settles a missing one.
   Map<String, DateTime> get _lastSpoken {
     final out = <String, DateTime>{};
     for (final item in widget.items) {

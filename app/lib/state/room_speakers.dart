@@ -1,28 +1,30 @@
-// Who a group line came from.
-//
-// The Host writes a member's line with `botId = senderSessionId` (see the
-// plugin's `mobile.js`: `source.senderSessionId`), and older lines with the
-// Bot's own id. An event line carries the Bot id. Every reader that asks "which
-// member said this" must resolve both against the room's member Sessions —
-// never against a private Session, so a group line can only belong to a member
-// of the group.
-
-import 'package:dsh_client/dsh_client.dart';
-
-/// The Bot id behind a sender id, or null when it names no member of [room].
-String? roomSpeakerId(DsBotRoom room, DsBotTeam team, String? senderId) {
-  if (senderId == null || senderId.isEmpty) return null;
-  // Older lines, and every event line: the id is the Bot's.
-  if (team.bot(senderId) != null) return senderId;
-  // A member's line: the sender is that member's Session in this group.
-  for (final id in room.members) {
-    if (room.sessions[id] == senderId) return id;
+/// The Bot id behind a group line, or null when it names no member of [room].
+///
+/// `botId` is the Bot id on this Host (it looks like `session-<uuid>` because a
+/// Bot's id is also its private Session's id), so there is no session→Bot
+/// reverse mapping. A line whose id is missing (an older Host, or a relay path
+/// that drops the source) still names its sender: the line carries `name`, and
+/// a unique member name settles it.
+String? roomSpeakerId(DsBotRoom room, DsBotTeam team, String? senderId, {String? name}) {
+  if (senderId != null && senderId.isNotEmpty) {
+    final bot = team.bot(senderId);
+    if (bot != null) return bot.id;
   }
-  return null;
+  final named = name?.trim();
+  if (named == null || named.isEmpty) return null;
+  String? found;
+  for (final id in room.members) {
+    final bot = team.bot(id);
+    if (bot == null || bot.name != named) continue;
+    if (found != null) return null; // two members share the name: not decided
+    found = bot.id;
+  }
+  return found;
 }
 
-/// [item]'s sender, when it is one of [room]'s members.
-String? roomSpeakerOf(DsBotRoom room, DsBotTeam team, DsBotItem item) => roomSpeakerId(room, team, item.botId);
+/// [item]'s sender among [room]'s members.
+String? roomSpeakerOf(DsBotRoom room, DsBotTeam team, DsBotItem item) =>
+    roomSpeakerId(room, team, item.botId, name: item.name);
 
 /// The newest line each member wrote in [items], by Bot id.
 Map<String, DateTime> roomSpeakerTimes(DsBotRoom room, DsBotTeam team, List<DsBotItem> items) {

@@ -326,11 +326,12 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
     required String? roomSession,
     required BotActionScope fullTextScope,
   }) {
-    final speakerId = roomSpeakerId(room, team, item.botId);
+    // `botId` is the Bot id (it looks like a Session id, hence the old naming;
+    // a line that lost it still names its sender). The member's Session in this
+    // group is `room.sessions[botId]` only — never the Bot's private one.
+    final speakerId = roomSpeakerOf(room, team, item);
     final speaker = team.bot(speakerId);
-    final speakerSession = speakerId == null
-        ? roomSession
-        : (room.sessions[speakerId] ?? speaker?.sessionId ?? roomSession);
+    final speakerSession = speakerId == null ? roomSession : (room.sessions[speakerId] ?? roomSession);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
