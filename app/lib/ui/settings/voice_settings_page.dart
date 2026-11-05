@@ -30,7 +30,6 @@ String voiceModelFailureText(L10n l10n, VoiceModelFailure? failure, {int? needed
   VoiceModelFailure.storage => l10n.voiceModelFailStorage(voiceModelMegabytes(neededBytes ?? voiceModelDefaultBytes)),
   VoiceModelFailure.engine => l10n.voiceModelFailEngine,
   VoiceModelFailure.lost => l10n.voiceModelFailLost,
-  VoiceModelFailure.lost => l10n.voiceModelFailLost,
   VoiceModelFailure.unknown || null => l10n.voiceModelFailUnknown,
 };
 
@@ -177,6 +176,7 @@ class VoiceModelCard extends ConsumerWidget {
       VoiceModelStatus.ready => l10n.voiceModelReadyNote(total),
       VoiceModelStatus.failed => voiceModelFailureText(l10n, model.failure, neededBytes: model.neededBytes),
       VoiceModelStatus.waiting when model.wanted => l10n.voiceModelWaitingNote,
+      VoiceModelStatus.absent || VoiceModelStatus.waiting when model.filesMissing => l10n.voiceModelLostNote,
       VoiceModelStatus.absent || VoiceModelStatus.waiting when partial => l10n.voiceModelBytes(
         voiceModelMegabytes(model.doneBytes),
         total,

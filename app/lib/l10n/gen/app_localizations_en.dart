@@ -19001,6 +19001,9 @@ class L10nEn extends L10n {
   String get voiceModelFailLost => 'The voice model’s files are gone. Download it again.';
 
   @override
+  String get voiceModelLostNote => 'The local model is gone. Download it again to use it.';
+
+  @override
   String get voiceModelFailIntegrity => 'The files didn’t pass verification';
 
   @override

@@ -32569,6 +32569,9 @@ abstract class L10n {
   /// No description provided for @voiceModelFailLost.
   String get voiceModelFailLost;
 
+  /// No description provided for @voiceModelLostNote.
+  String get voiceModelLostNote;
+
   /// No description provided for @voiceModelFailIntegrity.
   ///
   /// In zh, this message translates to:

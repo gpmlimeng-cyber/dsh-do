@@ -58,6 +58,7 @@ class VoiceModelState {
     this.failure,
     this.neededBytes,
     this.wanted = false,
+    this.filesMissing = false,
   });
 
   final VoiceModelStatus status;
@@ -74,6 +75,10 @@ class VoiceModelState {
   /// A download was asked for and is not finished: it goes on by itself.
   final bool wanted;
 
+  /// The model's files are not on this phone (removed, or gone missing): the
+  /// settings row says that, rather than only dropping to 未下载.
+  final bool filesMissing;
+
   bool get busy => status == VoiceModelStatus.downloading || status == VoiceModelStatus.preparing;
 
   /// 0–1; null while the amount is unknown.
@@ -87,6 +92,7 @@ class VoiceModelState {
     bool clearFailure = false,
     int? neededBytes,
     bool? wanted,
+    bool? filesMissing,
   }) => VoiceModelState(
     status: status ?? this.status,
     doneBytes: doneBytes ?? this.doneBytes,
@@ -94,6 +100,7 @@ class VoiceModelState {
     failure: clearFailure ? null : (failure ?? this.failure),
     neededBytes: clearFailure ? null : (neededBytes ?? this.neededBytes),
     wanted: wanted ?? this.wanted,
+    filesMissing: filesMissing ?? this.filesMissing,
   );
 }
 
@@ -292,6 +299,10 @@ class VoiceModelController extends Notifier<VoiceModelState> {
   /// Whether the missing model was already reported this run.
   bool _lostNoticed = false;
 
+  /// The engine whose voice bundle was looked at: switching it back on is
+  /// once per engine, not once per refresh.
+  DshClient? _bundleChecked;
+
   /// Every mirror download that may still write: each from before its
   /// isolate is spawned until it reports that it ended (however it ended). A
   /// newer one never stands for an older one: a cancelled run can return
@@ -391,6 +402,8 @@ class VoiceModelController extends Notifier<VoiceModelState> {
     }
     // A live run or poll owns the state.
     if (_owned) return;
+    await _ensureBundle(client);
+    if (!ref.mounted || !identical(client, _client) || _owned) return;
     final files = await _platform.files();
     final assets = files?.assets();
     if (!ref.mounted || !identical(client, _client)) return;
@@ -431,8 +444,38 @@ class VoiceModelController extends Notifier<VoiceModelState> {
       status: failed ? VoiceModelStatus.failed : VoiceModelStatus.absent,
       doneBytes: present,
       totalBytes: total,
+      filesMissing: !onDisk && total > 0,
     );
     if (state.wanted && !_cancelled && !failed) unawaited(_start(announce: true));
+  }
+
+  /// Keeps the voice bundle on: it carries the whole voice path — the local
+  /// recognizer, the speech API and the cloud provider that uses it. Turning
+  /// it off with the local model would take the cloud down too, so a bundle
+  /// found off (an older App switched it off, or a delete did) is switched
+  /// back on here, once per engine.
+  Future<void> _ensureBundle(DshClient client) async {
+    if (identical(_bundleChecked, client)) return;
+    try {
+      final bundles = await client.listBundles();
+      if (!ref.mounted || !identical(client, _client)) return;
+      final bundle = bundles.where((b) => b.name == voiceInputBundle).firstOrNull;
+      if (bundle == null) {
+        // No voice bundle in this runtime at all: not something enabling fixes.
+        _bundleChecked = client;
+        return;
+      }
+      if (!bundle.enabled) {
+        await client.setBundleEnabled(voiceInputBundle, true);
+        if (!ref.mounted) return;
+        // The services appear once the Host applies it; the next refresh reads
+        // them. Nothing here waits on that.
+      }
+      _bundleChecked = client;
+    } catch (_) {
+      // Tried again on the next refresh: a bundle that could not be switched
+      // on must not look like a model problem.
+    }
   }
 
   /// Download (or go on with) the model. The settings page asks about mobile data first.
@@ -515,7 +558,12 @@ class VoiceModelController extends Notifier<VoiceModelState> {
       ok = false;
     }
     if (ref.mounted) {
-      state = state.copyWith(status: VoiceModelStatus.absent, doneBytes: 0, clearFailure: true);
+      state = state.copyWith(
+        status: VoiceModelStatus.absent,
+        doneBytes: 0,
+        clearFailure: true,
+        filesMissing: true,
+      );
       unawaited(refresh());
     }
     return ok;

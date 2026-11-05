@@ -5459,6 +5459,7 @@
   "voiceModelFailCertificate": "Secure connection failed; check the phone’s date",
   "voiceModelFailServer": "The download source is unavailable for now",
   "voiceModelFailLost": "The voice model’s files are gone. Download it again.",
+  "voiceModelLostNote": "The local model is gone. Download it again to use it.",
   "voiceModelFailIntegrity": "The files didn’t pass verification",
   "voiceModelFailStorage": "Not enough storage; about {size} more is needed",
   "voiceModelFailEngine": "The engine didn’t respond",

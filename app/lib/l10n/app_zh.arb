@@ -11921,7 +11921,7 @@
   "voiceModelFailCertificate": "安全连接失败，请检查手机时间",
   "voiceModelFailServer": "下载源暂时不可用",
   "voiceModelFailLost": "语音模型文件不在了，请重新下载",
-  "voiceModelFailLost": "语音模型文件不在了，请重新下载",
+  "voiceModelLostNote": "本地模型已丢失，重新下载后可用",
   "voiceModelFailIntegrity": "文件校验没有通过",
   "voiceModelFailStorage": "存储空间不足，还需要约 {size}",
   "@voiceModelFailStorage": {
