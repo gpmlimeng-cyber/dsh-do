@@ -3,9 +3,7 @@
 // the small pure helpers the pages lean on.
 
 import 'dart:convert';
-import 'dart:typed_data';
 
-import 'package:dsh_app/state/attachments.dart';
 import 'package:dsh_app/state/bots_state.dart';
 import 'package:dsh_app/state/connection_state.dart';
 import 'package:dsh_app/state/hosts_state.dart';
@@ -390,78 +388,41 @@ void main() {
       expect(mergeNewestPage(shown, [item('x')]).items.map((i) => i.id), ['x']);
     });
 
-    test('settlePending drops each echoed message once', () {
+    test('an echo that names the bubble removes it, whatever its text', () {
       final at = DateTime(2026);
-      final pending = [DsBotPending('hi', at), DsBotPending('hi', at), DsBotPending('other', at)];
-      final left = settlePending(pending, [const DsBotItem(kind: DsBotItemKind.user, text: 'hi ')]);
-      expect(left.map((p) => p.text), ['hi', 'other']);
-    });
-
-    test('settlePending sees through an image reading note', () {
-      final at = DateTime(2026);
-      final pending = [DsBotPending('look at this', at)];
+      final pending = [DsBotPending('hi', at, requestId: 'r1')];
       final left = settlePending(pending, const [
-        DsBotItem(
-          kind: DsBotItemKind.user,
-          text: 'look at this\n[Image "shot.jpg", read by a vision model:]\n'
-              'A cat on a sofa.\n[End of image "shot.jpg"]',
-        ),
+        DsBotItem(kind: DsBotItemKind.user, text: 'something else entirely', rpcId: 'r1'),
       ]);
       expect(left, isEmpty);
     });
 
-    test('a picture-only send settles against an echo that names every attachment', () {
+    test('without a request id the echo is the next user line, not an older one', () {
       final at = DateTime(2026);
-      final pending = [
-        DsBotPending('', at, drafts: [DraftAttachment(name: 'shot.jpg', bytes: Uint8List(4), mediaType: 'image/jpeg')]),
-      ];
-      // `images` counts the pictures, `files` names them: one picture is one
-      // attachment, not two.
+      final pending = [DsBotPending('', at), DsBotPending('', at, afterSeq: 10)];
       final left = settlePending(pending, const [
-        DsBotItem(
-          kind: DsBotItemKind.user,
-          images: 1,
-          files: [DsBotAttachmentRef(id: 'a1', name: 'shot.jpg', mediaType: 'image/jpeg')],
-        ),
+        DsBotItem(kind: DsBotItemKind.user, seq: 9),
+        DsBotItem(kind: DsBotItemKind.user, seq: 11),
       ]);
       expect(left, isEmpty);
     });
 
-    test('a send that carried a file meets the file marker line of its echo', () {
+    test('the group shape finds the sequence in the item id', () {
       final at = DateTime(2026);
-      final pending = [
-        DsBotPending('看这个', at, drafts: [DraftAttachment(name: 'crash.log', bytes: Uint8List(12))]),
-      ];
+      final pending = [DsBotPending('', at, afterSeq: 100)];
       final left = settlePending(pending, const [
-        DsBotItem(
-          kind: DsBotItemKind.user,
-          text: '看这个\n[File "crash.log" (12 bytes) attached]',
-          files: [DsBotAttachmentRef(id: 'f1', name: 'crash.log')],
-        ),
+        DsBotItem(kind: DsBotItemKind.user, id: '101', text: '[Image "x.jpg", read by a model:] words'),
       ]);
       expect(left, isEmpty);
     });
 
-    test('a counted-only echo still settles a picture-only send', () {
-      final at = DateTime(2026);
-      final pending = [
-        DsBotPending('', at, drafts: [DraftAttachment(name: 'shot.jpg', bytes: Uint8List(4), mediaType: 'image/jpeg')]),
-      ];
-      final left = settlePending(pending, const [DsBotItem(kind: DsBotItemKind.user, images: 1)]);
-      expect(left, isEmpty);
-    });
-
-    test('settlePending sees through a picture that could not be read', () {
-      final at = DateTime(2026);
-      final pending = [DsBotPending('look at this', at)];
-      final left = settlePending(pending, const [
-        DsBotItem(
-          kind: DsBotItemKind.user,
-          text: 'look at this\n[Image "shot.jpg": it could not be read right now. '
-              'Ask the user what it shows if it matters.]',
-        ),
-      ]);
-      expect(left, isEmpty);
+    test('a bubble nobody echoes keeps sending, then fails', () {
+      final at = DateTime(2026, 1, 1);
+      final pending = [DsBotPending('', at)];
+      expect(settlePending(pending, const [], now: at.add(const Duration(seconds: 5))).single.failed, isFalse);
+      final later = settlePending(pending, const [], now: at.add(pendingTimeout + const Duration(seconds: 1)));
+      expect(later.single.failed, isTrue);
+      expect(later, hasLength(1));
     });
 
     test('transcriptRows marks one speaker\'s runs and puts a time between distant messages', () {

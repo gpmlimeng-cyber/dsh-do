@@ -629,13 +629,32 @@ NotifyPost dsBotPost(HostRef host, DsBotNotice notice) {
 
 // ── A Bot's own chat ─────────────────────────────────────────────────────────
 
-/// A message sent from here that the chat does not show yet.
+enum DsBotPendingStatus { sending, sent, failed }
+
+/// A message sent from here that the chat does not show yet, with the name it
+/// was sent under: the echo that carries [requestId] back removes this bubble
+/// exactly, so no text, attachment count or seq has to be compared.
 @immutable
 class DsBotPending {
-  const DsBotPending(this.text, this.at, {this.failed = false, this.drafts = const [], this.afterSeq});
+  const DsBotPending(
+    this.text,
+    this.at, {
+    this.requestId = '',
+    this.status = DsBotPendingStatus.sending,
+    this.drafts = const [],
+    this.afterSeq,
+  });
+
   final String text;
   final DateTime at;
-  final bool failed;
+
+  /// The client's name for this send; a retry reuses it.
+  final String requestId;
+  final DsBotPendingStatus status;
+  bool get failed => status == DsBotPendingStatus.failed;
+
+  DsBotPending withStatus(DsBotPendingStatus next) =>
+      DsBotPending(text, at, requestId: requestId, status: next, drafts: drafts, afterSeq: afterSeq);
 
   /// The pictures and files still being uploaded with this line: drawn as they
   /// will look once the host echoes them, so a photo shows the moment it is sent.
@@ -693,78 +712,89 @@ class BotChatState {
   );
 }
 
-/// Drops pending sends the chat now shows (the same text, from the user).
+/// Drops the bubbles the chat now shows.
 ///
-/// An echoed message can carry the note ds-bot writes so a text-only model can
-/// read a posted picture; [withoutImageNotes] takes it off both sides first, so
-/// a send whose echo carries one still settles instead of queueing forever.
-List<DsBotPending> settlePending(List<DsBotPending> pending, Iterable<DsBotItem> shown) {
-  final texts = [
+/// Identity first: an echo carrying a bubble's `requestId` removes exactly that
+/// bubble. Until a Host echoes request ids, order — this app sends serially, so
+/// a bubble's echo is the first user line after the newest line it held — and a
+/// bubble nobody echoes within [pendingTimeout] becomes failed, never a queue
+/// that runs forever.
+List<DsBotPending> settlePending(
+  List<DsBotPending> pending,
+  Iterable<DsBotItem> shown, {
+  DateTime? now,
+}) {
+  final echoes = <({int? seq, String? rpcId})>[
     for (final item in shown)
       if (item.kind == DsBotItemKind.user)
-        (text: _comparableText(item.text), attachments: _attachmentCount(item), seq: item.seq),
+        // The group's old shape carries its seq as the item id; the chat's
+        // shape carries `seq` itself.
+        (seq: item.seq ?? int.tryParse(item.id ?? ''), rpcId: item.rpcId),
   ];
+  final at = now ?? DateTime.now();
+  final claimed = <int>{};
   final left = <DsBotPending>[];
   for (final entry in pending) {
-    final wanted = _comparableText(entry.text);
-    // A line that was only pictures carries no text to compare: it pairs with a
-    // user line of the same attachment count, never with the first empty one.
-    final at = wanted.isEmpty
-        ? texts.indexWhere((item) =>
-            item.text.isEmpty &&
-            item.attachments == entry.drafts.length &&
-            (entry.afterSeq == null || (item.seq != null && item.seq! > entry.afterSeq!)))
-        : texts.indexWhere((item) => item.text == wanted);
-    if (at >= 0 && !entry.failed) {
-      texts.removeAt(at);
-    } else {
+    var matched = -1;
+    // Exact: the echo carries the bubble's own name.
+    if (entry.requestId.isNotEmpty) {
+      for (var i = 0; i < echoes.length; i++) {
+        if (!claimed.contains(i) && echoes[i].rpcId == entry.requestId) {
+          matched = i;
+          break;
+        }
+      }
+    }
+    // Until a Host echoes request ids: order. This app sends serially, so a
+    // bubble's echo is the first user line after the newest line it held, or
+    // the newest user line when it held none.
+    if (matched < 0) {
+      if (entry.afterSeq case final after?) {
+        for (var i = 0; i < echoes.length; i++) {
+          final seq = echoes[i].seq;
+          if (!claimed.contains(i) && seq != null && seq > after) {
+            matched = i;
+            break;
+          }
+        }
+      } else {
+        for (var i = echoes.length - 1; i >= 0; i--) {
+          if (!claimed.contains(i)) {
+            matched = i;
+            break;
+          }
+        }
+      }
+    }
+    if (matched >= 0) {
+      claimed.add(matched);
+      continue;
+    }
+    // Sending has a deadline: a bubble nobody echoed is a failure to show, not
+    // a queue that runs forever.
+    if (entry.failed || at.difference(entry.at) <= pendingTimeout) {
       left.add(entry);
+    } else {
+      left.add(entry.withStatus(DsBotPendingStatus.failed));
     }
-  }
-  // Still unmatched after the pairing: keep both sides' actual values so the
-  // next report says which of them disagrees (text after the notes, the count,
-  // or the seq the pending bubble was made after).
-  if (left.isNotEmpty) {
-    String show(String text) {
-      final one = text.replaceAll('\n', ' ');
-      return one.length > 60 ? '${one.substring(0, 60)}…' : one;
-    }
-
-    final pendingText = [
-      for (final entry in left)
-        '{text "${show(_comparableText(entry.text))}", drafts ${entry.drafts.length}, afterSeq ${entry.afterSeq}}',
-    ].join(' ');
-    final echoes = [
-      for (final item in texts) '{text "${show(item.text)}", attachments ${item.attachments}, seq ${item.seq}}',
-    ].join(' ');
-    appErrorLog.record(
-      AppErrorSource.platform,
-      'pending: unmatched pending=[$pendingText] echoes=[$echoes]',
-      StackTrace.current,
-    );
   }
   return left;
 }
 
-/// How many attachments a line carries.
-///
-/// `files` names every one of them, pictures included, so it is the count when
-/// it is there; `images` is only how many pictures it holds. Adding the two
-/// counts a picture twice and leaves a picture-only send looking unsettled —
-/// its pending bubble and its echo both stay on screen. An older host that only
-/// counts pictures sends no `files`, and then the count is all there is.
-int _attachmentCount(DsBotItem item) => item.files.isNotEmpty ? item.files.length : item.images;
+/// How long a bubble may stay `sending` before it is shown as failed.
+const pendingTimeout = Duration(seconds: 20);
 
-/// What a line says once the host's own notes about its attachments are gone:
-/// the image reading note, and the `[File "…" (N bytes) attached]` marker line
-/// the phone draws as a card instead. Both sides of a pairing go through this,
-/// so a send that carried a file still meets its echo.
-String _comparableText(String text) => [
-  for (final line in withoutImageNotes(text).split('\n'))
-    if (!_fileMarker.hasMatch(line.trim())) line,
-].join('\n').trim();
+var _pendingSerial = 0;
 
-final _fileMarker = RegExp(r'^\[File ".*" \(\d+ bytes?\) attached\]$');
+/// A bubble for a send, under a name of its own: the echo that carries it back
+/// removes exactly this one.
+DsBotPending newPending(String text, {List<DraftAttachment> drafts = const [], int? afterSeq}) => DsBotPending(
+  text.trim(),
+  DateTime.now(),
+  requestId: 'p${DateTime.now().microsecondsSinceEpoch}-${_pendingSerial++}',
+  drafts: drafts,
+  afterSeq: afterSeq,
+);
 
 /// [text] without ds-bot's image reading notes: `[Image "…", read by …:] …
 /// [End of image "…"]` and the one-line "could not be read right now" form.
@@ -1169,7 +1199,7 @@ class RoomChatController extends Notifier<RoomChatState> {
     for (final item in state.items) {
       if (item.seq case final seq? when newest == null || seq > newest) newest = seq;
     }
-    final entry = DsBotPending(text.trim(), DateTime.now(), drafts: drafts, afterSeq: newest);
+    final entry = newPending(text, drafts: drafts, afterSeq: newest);
     state = state.copyWith(pending: [...state.pending, entry], error: () => null);
     return entry;
   }
@@ -1195,7 +1225,7 @@ class RoomChatController extends Notifier<RoomChatState> {
     final trimmed = text.trim();
     if (api == null || (trimmed.isEmpty && images.isEmpty && fileReceiptIds.isEmpty)) return false;
     final generation = _generation;
-    final entry = pending ?? DsBotPending(trimmed, DateTime.now());
+    final entry = pending ?? newPending(trimmed);
     if (pending == null) state = state.copyWith(pending: [...state.pending, entry], error: () => null);
     try {
       await api.send(roomId, trimmed, images: images, fileReceiptIds: fileReceiptIds, mode: mode);

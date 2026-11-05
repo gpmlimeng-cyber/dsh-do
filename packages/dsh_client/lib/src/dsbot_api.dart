@@ -965,6 +965,7 @@ class DsBotItem {
     this.toolStatus,
     this.turn,
     this.seq,
+    this.rpcId,
     this.duration,
     this.live = false,
     this.whole,
@@ -1001,6 +1002,9 @@ class DsBotItem {
       toolStatus: asString(map['status']),
       turn: asInt(map['turn']),
       seq: asInt(map['seq']),
+      // The sender's own request id, echoed back: the optimistic bubble is
+      // removed by this, not by matching its text.
+      rpcId: asString(map['rpcId']),
       duration: asInt(map['duration']) == null ? null : Duration(milliseconds: asInt(map['duration'])!),
       live: asBool(map['live']) ?? false,
       whole: whole == null ? null : DsBotLongText(asInt(whole['length']) ?? 0, asMapOrEmpty(whole['file'])),
@@ -1043,6 +1047,7 @@ class DsBotItem {
   /// host older than these fields.
   final int? turn;
   final int? seq;
+  final String? rpcId;
   final Duration? duration;
 
   /// Said in the round still running; replaced by the logged one later.
