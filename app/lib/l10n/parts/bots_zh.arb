@@ -1003,5 +1003,7 @@
       "name": {"type": "String"}
     }
   },
-  "botsRoomMemberSessionMissing": "该成员还没在本群开始会话"
+  "botsRoomMemberSessionMissing": "该成员还没在本群开始会话",
+  "botsRoomMemberScope": "只看 {name} · 本群",
+  "@botsRoomMemberScope": {"placeholders": {"name": {"type": "String"}}}
 }

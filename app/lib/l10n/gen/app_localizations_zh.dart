@@ -18309,6 +18309,11 @@ class L10nZh extends L10n {
   String get botsRoomMemberSessionMissing => '该成员还没在本群开始会话';
 
   @override
+  String botsRoomMemberScope(String name) {
+    return '只看 $name · 本群';
+  }
+
+  @override
   String get botsMessageModeRelevant => '仅与我相关';
 
   @override

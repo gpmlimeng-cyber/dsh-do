@@ -75,14 +75,26 @@ enum SessionDetailMode {
 /// through [open]. 子代理 shows once the conversation has dispatched subagents,
 /// or when opened from a subagent entry.
 class SessionDetailPage extends ConsumerStatefulWidget {
-  const SessionDetailPage({super.key, required this.sessionId, this.initialTab, this.mode = SessionDetailMode.page});
+  const SessionDetailPage({
+    super.key,
+    required this.sessionId,
+    this.initialTab,
+    this.mode = SessionDetailMode.page,
+    this.scopeLabel,
+  });
 
   /// 对话详情 beside the chat.
   const SessionDetailPage.panel({super.key, required this.sessionId})
     : initialTab = null,
-      mode = SessionDetailMode.panel;
+      mode = SessionDetailMode.panel,
+      scopeLabel = null;
 
   final String sessionId;
+
+  /// What this page's figures are scoped to, under the hero's title: a
+  /// member's conversation in a group reads 「只看 X · 本群」. Null everywhere
+  /// else — the single conversation keeps its page untouched.
+  final String? scopeLabel;
 
   /// Null: 轨迹 on a page; the shared tab in the sheet and the panel.
   final SessionTab? initialTab;
@@ -96,15 +108,21 @@ class SessionDetailPage extends ConsumerStatefulWidget {
   /// Opens 对话详情 in the window's form: the panel beside the chat (shown,
   /// or folded when [toggle] and it already shows), the wide sheet, or a
   /// page. [tab] picks the tab.
-  static void open(BuildContext context, String sessionId, {SessionTab? tab, bool toggle = false}) =>
-      openAdaptiveDetail(
-        context,
-        sessionId: sessionId,
-        tab: tab,
-        toggle: toggle,
-        page: (_) => SessionDetailPage(sessionId: sessionId, initialTab: tab),
-        sheet: (_) => SessionDetailPage(sessionId: sessionId, initialTab: tab, mode: SessionDetailMode.sheet),
-      );
+  static void open(
+    BuildContext context,
+    String sessionId, {
+    SessionTab? tab,
+    bool toggle = false,
+    String? scopeLabel,
+  }) => openAdaptiveDetail(
+    context,
+    sessionId: sessionId,
+    tab: tab,
+    toggle: toggle,
+    page: (_) => SessionDetailPage(sessionId: sessionId, initialTab: tab, scopeLabel: scopeLabel),
+    sheet: (_) =>
+        SessionDetailPage(sessionId: sessionId, initialTab: tab, mode: SessionDetailMode.sheet, scopeLabel: scopeLabel),
+  );
 
   @override
   ConsumerState<SessionDetailPage> createState() => _SessionDetailPageState();
@@ -350,6 +368,7 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> with Tick
                 padding: EdgeInsets.symmetric(horizontal: column),
                 child: _SessionHero(
                   sessionId: id,
+                  scopeLabel: widget.scopeLabel,
                   // The panel and the sheet are named in their bar; the hero
                   // keeps the figures.
                   title: _mode == SessionDetailMode.page ? shownTitle : null,
@@ -468,10 +487,13 @@ class _FadeTop extends StatelessWidget {
 /// rounds and whether one runs, then 用时 / 步骤 / 改动文件. Without a [title]
 /// (the panel and the sheet, named in their bar) the rounds line leads.
 class _SessionHero extends ConsumerWidget {
-  const _SessionHero({required this.sessionId, required this.title, this.gutter = 24});
+  const _SessionHero({required this.sessionId, required this.title, this.scopeLabel, this.gutter = 24});
 
   final String sessionId;
   final String? title;
+
+  /// 「只看 X · 本群」 for a member's conversation in a group; null elsewhere.
+  final String? scopeLabel;
 
   /// Where the text starts.
   final double gutter;
@@ -491,6 +513,17 @@ class _SessionHero extends ConsumerWidget {
         : running == null
         ? l10n.hubSessionTurns(turns.length)
         : l10n.hubSessionTurnsRunning(turns.length);
+    final theme = Theme.of(context);
+    // A member's conversation in a group says what the figures below are
+    // scoped to; the single conversation passes null and draws none.
+    Widget? scope() => scopeLabel == null
+        ? null
+        : Text(
+            scopeLabel!,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.labelSmall?.copyWith(color: DshColors.of(context).textTertiary),
+          );
 
     Widget hero(Duration total) {
       final stats = [
@@ -501,18 +534,25 @@ class _SessionHero extends ConsumerWidget {
       if (title case final title?) {
         return PageHero(
           title: title,
-          subtitle: Text(subtitle),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (scope() case final scope?) ...[scope, const SizedBox(height: 2)],
+              Text(subtitle),
+            ],
+          ),
           stats: stats,
           padding: EdgeInsets.fromLTRB(gutter, 4, gutter, 20),
         );
       }
-      final theme = Theme.of(context);
       return Padding(
         padding: EdgeInsets.fromLTRB(gutter, 0, gutter, 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (scope() case final scope?) ...[scope, const SizedBox(height: 4)],
             Text(
               subtitle,
               maxLines: 1,

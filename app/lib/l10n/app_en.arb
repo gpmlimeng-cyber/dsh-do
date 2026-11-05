@@ -886,6 +886,7 @@
   "botsRoomBackToGroupChat": "Back to {room}",
   "botsRoomMemberDetails": "{name}'s conversation details",
   "botsRoomMemberSessionMissing": "This member has not started a conversation in this group yet",
+  "botsRoomMemberScope": "Only {name} · this group",
   "brandXiaomi": "Xiaomi / Redmi",
   "brandHuawei": "Huawei",
   "brandHonor": "Honor",

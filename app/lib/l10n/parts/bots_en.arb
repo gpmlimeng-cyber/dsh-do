@@ -454,5 +454,7 @@
       "name": {"type": "String"}
     }
   },
-  "botsRoomMemberSessionMissing": "This member has not started a conversation in this group yet"
+  "botsRoomMemberSessionMissing": "This member has not started a conversation in this group yet",
+  "botsRoomMemberScope": "Only {name} · this group",
+  "@botsRoomMemberScope": {"placeholders": {"name": {"type": "String"}}}
 }

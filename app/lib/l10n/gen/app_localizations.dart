@@ -33186,6 +33186,12 @@ abstract class L10n {
   /// In zh, this message translates to:
   /// **'该成员还没在本群开始会话'**
   String get botsRoomMemberSessionMissing;
+
+  /// No description provided for @botsRoomMemberScope.
+  ///
+  /// In zh, this message translates to:
+  /// **'只看 {name} · 本群'**
+  String botsRoomMemberScope(String name);
   /// No description provided for @botsMessageModeRelevant.
   String get botsMessageModeRelevant;
   /// No description provided for @botsMessageModeEmpty.

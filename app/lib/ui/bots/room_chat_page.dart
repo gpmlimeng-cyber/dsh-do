@@ -672,7 +672,11 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
             ? () => Navigator.of(context).push(RoomAggregateDetailsPage.route(room.id))
             : memberSession == null
             ? () => ScaffoldMessenger.maybeOf(context)?.showBriefNotice(l10n.botsRoomMemberSessionMissing)
-            : () => SessionDetailPage.open(context, memberSession),
+            : () => SessionDetailPage.open(
+                context,
+                memberSession,
+                scopeLabel: l10n.botsRoomMemberScope(targetBot.name),
+              ),
         infoGreyed: targetBot != null && memberSession == null,
         infoTooltip: targetBot == null
             ? null

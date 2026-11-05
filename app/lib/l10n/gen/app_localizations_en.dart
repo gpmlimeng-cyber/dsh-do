@@ -19326,6 +19326,11 @@ class L10nEn extends L10n {
   String get botsRoomMemberSessionMissing => 'This member has not started a conversation in this group yet';
 
   @override
+  String botsRoomMemberScope(String name) {
+    return 'Only $name · this group';
+  }
+
+  @override
   String get botsMessageModeRelevant => 'Only what involves me';
 
   @override

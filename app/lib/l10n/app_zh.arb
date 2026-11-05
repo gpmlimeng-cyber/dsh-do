@@ -1959,6 +1959,14 @@
     }
   },
   "botsRoomMemberSessionMissing": "该成员还没在本群开始会话",
+  "botsRoomMemberScope": "只看 {name} · 本群",
+  "@botsRoomMemberScope": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "brandXiaomi": "小米 / Redmi",
   "brandHuawei": "华为",
   "brandHonor": "荣耀",
