@@ -174,7 +174,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
 
   /// One send bubble: the Host's queue words and actions when its inbox holds
   /// this message, otherwise the local 发送中 / 没能发送 note.
-  Widget _pendingBubble(DsBotPending pending, DsBotInbox? inbox, {bool running = false}) {
+  Widget _pendingBubble(DsBotPending pending, DsBotQueue? inbox, {bool running = false}) {
     final item = inbox?.byRpc(pending.requestId);
     final inStep = item != null && inbox!.nextStep.any((e) => e.itemId == item.itemId);
     final queue = item == null
@@ -209,7 +209,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
   /// 「立即发送」: take it out of the inbox, stop the running turn, send it
   /// again under the same request id, then the ones queued behind it — in
   /// their order, or they would overtake it.
-  Future<void> _sendNow(DsBotPending pending, DsBotInbox inbox, DsBotInboxItem item) async {
+  Future<void> _sendNow(DsBotPending pending, DsBotQueue inbox, DsBotQueueItem item) async {
     final client = ref.read(activeConnectionProvider).value?.client;
     final api = ref.read(dsBotProvider.notifier).api;
     if (client == null || api == null) return;
@@ -240,7 +240,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
   }
 
   /// The next-turn entries waiting behind [item], in inbox order.
-  List<DsBotInboxItem> _behind(DsBotInbox inbox, DsBotInboxItem item) {
+  List<DsBotQueueItem> _behind(DsBotQueue inbox, DsBotQueueItem item) {
     final at = inbox.nextTurn.indexWhere((e) => e.itemId == item.itemId);
     return at < 0 ? const [] : inbox.nextTurn.skip(at + 1).toList();
   }
@@ -249,8 +249,8 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
   /// the same call the app's own chat uses. The inbox push is the truth after.
   Future<void> _queueAction(
     DsBotPending pending,
-    DsBotInbox inbox,
-    DsBotInboxItem item, {
+    DsBotQueue inbox,
+    DsBotQueueItem item, {
     bool remove = false,
   }) async {
     final client = ref.read(activeConnectionProvider).value?.client;

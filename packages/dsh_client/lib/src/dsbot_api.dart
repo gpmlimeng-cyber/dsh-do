@@ -1062,12 +1062,12 @@ class DsBotItem {
 /// A page of a Bot's own chat, newest page first, oldest first within it.
 /// One message still in the Host's inbox: not part of the round yet.
 @immutable
-class DsBotInboxItem {
-  const DsBotInboxItem({required this.itemId, this.rpcId, this.text = '', this.time, this.canSteer = false});
+class DsBotQueueItem {
+  const DsBotQueueItem({required this.itemId, this.rpcId, this.text = '', this.time, this.canSteer = false});
 
-  factory DsBotInboxItem.fromJson(Object? json) {
+  factory DsBotQueueItem.fromJson(Object? json) {
     final map = asMapOrEmpty(json);
-    return DsBotInboxItem(
+    return DsBotQueueItem(
       itemId: asString(map['itemId']) ?? '',
       rpcId: asString(map['rpcId']),
       text: asString(map['text']) ?? '',
@@ -1089,23 +1089,23 @@ class DsBotInboxItem {
 /// The Host's inbox for one conversation: the two queues and the session they
 /// belong to (a Bot or group may have moved to another part).
 @immutable
-class DsBotInbox {
-  const DsBotInbox({required this.sessionId, this.nextTurn = const [], this.nextStep = const []});
+class DsBotQueue {
+  const DsBotQueue({required this.sessionId, this.nextTurn = const [], this.nextStep = const []});
 
-  factory DsBotInbox.fromJson(Object? json) {
+  factory DsBotQueue.fromJson(Object? json) {
     final map = asMapOrEmpty(json);
-    return DsBotInbox(
+    return DsBotQueue(
       sessionId: asString(map['sessionId']) ?? '',
-      nextTurn: [for (final item in asListOrEmpty(map['nextTurn'])) DsBotInboxItem.fromJson(item)],
-      nextStep: [for (final item in asListOrEmpty(map['nextStep'])) DsBotInboxItem.fromJson(item)],
+      nextTurn: [for (final item in asListOrEmpty(map['nextTurn'])) DsBotQueueItem.fromJson(item)],
+      nextStep: [for (final item in asListOrEmpty(map['nextStep'])) DsBotQueueItem.fromJson(item)],
     );
   }
 
   final String sessionId;
-  final List<DsBotInboxItem> nextTurn;
-  final List<DsBotInboxItem> nextStep;
+  final List<DsBotQueueItem> nextTurn;
+  final List<DsBotQueueItem> nextStep;
 
-  DsBotInboxItem? byRpc(String rpcId) {
+  DsBotQueueItem? byRpc(String rpcId) {
     for (final item in nextTurn) {
       if (item.rpcId == rpcId) return item;
     }
@@ -1149,13 +1149,13 @@ class DsBotChatPage {
       sessionId: asString(map['sessionId']) ?? '',
       items: [for (final item in asListOrEmpty(map['items'])) DsBotItem.fromJson(item)],
       cursor: map['cursor'],
-      inbox: map['inbox'] == null ? null : DsBotInbox.fromJson(map['inbox']),
+      inbox: map['inbox'] == null ? null : DsBotQueue.fromJson(map['inbox']),
     );
   }
 
   /// The Host's queue for this conversation; null on a Host that sends none
   /// (the app then keeps its own send bubbles).
-  final DsBotInbox? inbox;
+  final DsBotQueue? inbox;
 
   /// The current part, which the feed's `message` events name.
   final String sessionId;
@@ -1226,7 +1226,7 @@ class DsBotRoomPage {
       cursor: map['cursor'],
       sessionItems: sessionItems,
       sessionCursor: map['sessionCursor'],
-      inbox: map['inbox'] == null ? null : DsBotInbox.fromJson(map['inbox']),
+      inbox: map['inbox'] == null ? null : DsBotQueue.fromJson(map['inbox']),
       running: asBool(map['running']) ?? false,
       speaking: asString(map['speaking']),
     );
@@ -1244,7 +1244,7 @@ class DsBotRoomPage {
   final Object? sessionCursor;
 
   /// The Host's queue for this group; null on a Host that sends none.
-  final DsBotInbox? inbox;
+  final DsBotQueue? inbox;
 
   /// A round is under way.
   final bool running;

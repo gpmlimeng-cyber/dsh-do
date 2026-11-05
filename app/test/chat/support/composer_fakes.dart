@@ -148,11 +148,11 @@ String _parent(String path) {
 class FakeVoiceBridge implements VoiceBridge {
   FakeVoiceBridge({
     this.caps = const VoiceCapabilities(recognizer: true, recorder: true),
-    this.permission = VoicePermission.granted,
+    this.permissionResult = VoicePermission.granted,
   });
 
   VoiceCapabilities caps;
-  VoicePermission permission;
+  VoicePermission permissionResult;
 
   /// What `stop` returns in recorder mode.
   Uint8List? recording;
@@ -168,11 +168,11 @@ class FakeVoiceBridge implements VoiceBridge {
   @override
   Future<VoicePermission> requestPermission() async {
     calls.add('permission');
-    return permission;
+    return permissionResult;
   }
 
   @override
-  Future<VoicePermission> permission() async => permission;
+  Future<VoicePermission> permission() async => permissionResult;
 
   @override
   Future<void> openSettings() async => calls.add('settings');

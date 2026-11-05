@@ -1429,7 +1429,7 @@ class BotUserMessage extends StatelessWidget {
           children: [
             AnimatedOpacity(
               opacity: alpha,
-              duration: AppMotion.of(context, 150),
+              duration: AppMotion.of(context, const Duration(milliseconds: 150)),
               child: UserBubble(text: shown, attachments: attachments),
             ),
             if (pending) ...[

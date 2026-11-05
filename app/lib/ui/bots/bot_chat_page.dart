@@ -12,6 +12,7 @@ import '../../l10n/l10n.dart';
 import '../../state/settings_state.dart';
 import '../../state/attachments.dart';
 import '../../state/bots_state.dart';
+import '../common/brief_notice.dart';
 import '../../runtime/runtime_bridge.dart' show RuntimePhase;
 import '../../runtime/runtime_state.dart' show localRuntimeProvider;
 import '../../state/connection_state.dart';
@@ -149,7 +150,7 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
 
   /// One send bubble: the Host's queue words and actions when its inbox holds
   /// this message, otherwise the local 发送中 / 没能发送 note.
-  Widget _pendingBubble(DsBotPending pending, DsBotInbox? inbox, {bool running = false}) {
+  Widget _pendingBubble(DsBotPending pending, DsBotQueue? inbox, {bool running = false}) {
     final item = inbox?.byRpc(pending.requestId);
     final inStep = item != null && inbox!.nextStep.any((e) => e.itemId == item.itemId);
     final queue = item == null
@@ -169,7 +170,7 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
       queueIcon: queue?.icon,
       queueActions: [
         if (item != null)
-          (running ? context.l10n.chatSendNow : context.l10n.commonSend, () => _sendNow(pending, inbox!, item)),
+          (running ? context.l10n.chatSendNow : context.l10n.commonSend, () => _sendNow(pending, inbox!, item, running)),
         if (item != null && !inStep && item.canSteer)
           (context.l10n.chatSwitchToSteer, () => _queueAction(pending, inbox!, item)),
         if (item != null) (context.l10n.chatWithdraw, () => _queueAction(pending, inbox!, item, remove: true)),
@@ -179,7 +180,7 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
 
   /// 「立即发送」: out of the inbox, stop the turn, send it again under the
   /// same request id, then the ones queued behind it — in their order.
-  Future<void> _sendNow(DsBotPending pending, DsBotInbox inbox, DsBotInboxItem item) async {
+  Future<void> _sendNow(DsBotPending pending, DsBotQueue inbox, DsBotQueueItem item, bool running) async {
     final client = ref.read(activeConnectionProvider).value?.client;
     final api = ref.read(dsBotProvider.notifier).api;
     if (client == null || api == null) return;
@@ -190,7 +191,7 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
       for (final b in behind) {
         await client.updateQueue(inbox.sessionId, b.itemId, remove: true);
       }
-      if (ref.read(botChatProvider(widget.botId)).running) await client.cancel(inbox.sessionId);
+      if (running) await client.cancel(inbox.sessionId);
       final staged = await stageBotAttachments(client, inbox.sessionId, pending.drafts);
       await api.send(
         widget.botId,
@@ -206,11 +207,11 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
     } catch (_) {
       if (mounted) ScaffoldMessenger.maybeOf(context)?.showBriefNotice(context.l10n.chatQueueGone);
     }
-    if (mounted) unawaited(controller.refresh());
+    if (mounted) unawaited(controller.reload());
   }
 
   /// The next-turn entries waiting behind [item], in inbox order.
-  List<DsBotInboxItem> _behind(DsBotInbox inbox, DsBotInboxItem item) {
+  List<DsBotQueueItem> _behind(DsBotQueue inbox, DsBotQueueItem item) {
     final at = inbox.nextTurn.indexWhere((e) => e.itemId == item.itemId);
     return at < 0 ? const [] : inbox.nextTurn.skip(at + 1).toList();
   }
@@ -218,8 +219,8 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
   /// 改为插话 / 撤回 on a message the Host still holds: `session/updateQueue`.
   Future<void> _queueAction(
     DsBotPending pending,
-    DsBotInbox inbox,
-    DsBotInboxItem item, {
+    DsBotQueue inbox,
+    DsBotQueueItem item, {
     bool remove = false,
   }) async {
     final client = ref.read(activeConnectionProvider).value?.client;

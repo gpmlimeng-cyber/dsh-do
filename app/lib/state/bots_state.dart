@@ -691,7 +691,7 @@ class BotChatState {
   final String? sessionId;
 
   /// The Host's queue for this conversation; null on a Host that sends none.
-  final DsBotInbox? inbox;
+  final DsBotQueue? inbox;
 
   bool get hasEarlier => cursor != null;
 
@@ -704,7 +704,7 @@ class BotChatState {
     List<DsBotPending>? pending,
     String? Function()? streaming,
     String? sessionId,
-    DsBotInbox? Function()? inbox,
+    DsBotQueue? Function()? inbox,
   }) => BotChatState(
     items: items ?? this.items,
     cursor: cursor == null ? this.cursor : cursor(),
@@ -1026,7 +1026,7 @@ class RoomChatState {
   final Object? cursor;
 
   /// The Host's queue for this group; null on a Host that sends none.
-  final DsBotInbox? inbox;
+  final DsBotQueue? inbox;
 
   /// The group Session's own messages, when the host sends them (plugin
   /// 0.2.8+): the whole history, with times. [items] is the old `room.log`
@@ -1056,7 +1056,7 @@ class RoomChatState {
     String? Function()? speaking,
     String? Function()? error,
     List<DsBotPending>? pending,
-    DsBotInbox? Function()? inbox,
+    DsBotQueue? Function()? inbox,
   }) => RoomChatState(
     items: items ?? this.items,
     cursor: cursor == null ? this.cursor : cursor(),
