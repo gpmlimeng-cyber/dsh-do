@@ -806,6 +806,24 @@ List<DsBotPending> settlePending(
   return left;
 }
 
+var _inboxDiagnosed = false;
+
+/// Once a run, says what the Host's queue looked like when no bubble could
+/// claim any of it: the parsed ids and texts are what a mismatch shows up in.
+void diagnoseInbox(List<DsBotPending> pending, DsBotQueue? inbox) {
+  if (_inboxDiagnosed || inbox == null || pending.isEmpty) return;
+  if (pending.any((p) => inbox.byRpc(p.requestId) != null)) return;
+  _inboxDiagnosed = true;
+  String item(DsBotQueueItem e) => '{itemId ${e.itemId}, rpcId ${e.rpcId}, text ${e.text.length}}';
+  appErrorLog.record(
+    AppErrorSource.platform,
+    'queue: no pending bubble matched the inbox; '
+        'pending=[${pending.map((p) => '${p.requestId}:${p.itemId}/${p.slot}').join(' ')}] '
+        'nextTurn=[${inbox.nextTurn.map(item).join(' ')}] nextStep=[${inbox.nextStep.map(item).join(' ')}]',
+    StackTrace.current,
+  );
+}
+
 /// The bubbles the Host's queue implies: an entry nobody has a local bubble
 /// for (the app was reloaded, or the send answered after the page rebuilt)
 /// still has to be drawn, or a queued message vanishes until it is consumed.
@@ -917,6 +935,7 @@ class BotChatController extends Notifier<BotChatState> {
           items.add(update.item);
         }
       }
+      diagnoseInbox(state.pending, page.inbox);
       state = state.copyWith(
         items: items,
         cursor: () => page.cursor,
@@ -1229,6 +1248,7 @@ class RoomChatController extends Notifier<RoomChatState> {
       // The group Session's history rides beside the old shape: it is the
       // whole of the group, and only it carries times. An older host sends
       // none, and the old shape stays the only source.
+      diagnoseInbox(state.pending, page.inbox);
       final session = page.sessionItems;
       final mergedSession = session == null ? null : mergeNewestPage(state.sessionItems, session);
       state = state.copyWith(

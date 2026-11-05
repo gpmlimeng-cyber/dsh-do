@@ -1069,11 +1069,14 @@ class DsBotQueueItem {
 
   factory DsBotQueueItem.fromJson(Object? json) {
     final map = asMapOrEmpty(json);
+    final source = asMapOrEmpty(map['source']);
     return DsBotQueueItem(
-      itemId: asString(map['itemId']) ?? '',
-      rpcId: asString(map['rpcId']),
-      text: asString(map['text']) ?? '',
-      time: asEpochMs(map['time']),
+      itemId: asString(map['itemId']) ?? asString(map['id']) ?? '',
+      // The flat shape the Host documents, or the projection's own
+      // `source.rpcId` — both name the same client request.
+      rpcId: asString(map['rpcId']) ?? asString(source['rpcId']),
+      text: asString(map['text']) ?? asString(map['content']) ?? asString(source['text']) ?? '',
+      time: asEpochMs(map['time']) ?? asEpochMs(map['at']),
       canSteer: asBool(map['canSteer']) ?? false,
     );
   }
