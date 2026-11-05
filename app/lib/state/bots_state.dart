@@ -701,11 +701,11 @@ List<DsBotPending> settlePending(List<DsBotPending> pending, Iterable<DsBotItem>
   final texts = [
     for (final item in shown)
       if (item.kind == DsBotItemKind.user)
-        (text: withoutImageNotes(item.text), attachments: item.images + item.files.length, seq: item.seq),
+        (text: _comparableText(item.text), attachments: _attachmentCount(item), seq: item.seq),
   ];
   final left = <DsBotPending>[];
   for (final entry in pending) {
-    final wanted = withoutImageNotes(entry.text);
+    final wanted = _comparableText(entry.text);
     // A line that was only pictures carries no text to compare: it pairs with a
     // user line of the same attachment count, never with the first empty one.
     final at = wanted.isEmpty
@@ -722,6 +722,26 @@ List<DsBotPending> settlePending(List<DsBotPending> pending, Iterable<DsBotItem>
   }
   return left;
 }
+
+/// How many attachments a line carries.
+///
+/// `files` names every one of them, pictures included, so it is the count when
+/// it is there; `images` is only how many pictures it holds. Adding the two
+/// counts a picture twice and leaves a picture-only send looking unsettled —
+/// its pending bubble and its echo both stay on screen. An older host that only
+/// counts pictures sends no `files`, and then the count is all there is.
+int _attachmentCount(DsBotItem item) => item.files.isNotEmpty ? item.files.length : item.images;
+
+/// What a line says once the host's own notes about its attachments are gone:
+/// the image reading note, and the `[File "…" (N bytes) attached]` marker line
+/// the phone draws as a card instead. Both sides of a pairing go through this,
+/// so a send that carried a file still meets its echo.
+String _comparableText(String text) => [
+  for (final line in withoutImageNotes(text).split('\n'))
+    if (!_fileMarker.hasMatch(line.trim())) line,
+].join('\n').trim();
+
+final _fileMarker = RegExp(r'^\[File ".*" \(\d+ bytes?\) attached\]$');
 
 /// [text] without ds-bot's image reading notes: `[Image "…", read by …:] …
 /// [End of image "…"]` and the one-line "could not be read right now" form.

@@ -3,7 +3,9 @@
 // the small pure helpers the pages lean on.
 
 import 'dart:convert';
+import 'dart:typed_data';
 
+import 'package:dsh_app/state/attachments.dart';
 import 'package:dsh_app/state/bots_state.dart';
 import 'package:dsh_app/state/connection_state.dart';
 import 'package:dsh_app/state/hosts_state.dart';
@@ -405,6 +407,47 @@ void main() {
               'A cat on a sofa.\n[End of image "shot.jpg"]',
         ),
       ]);
+      expect(left, isEmpty);
+    });
+
+    test('a picture-only send settles against an echo that names every attachment', () {
+      final at = DateTime(2026);
+      final pending = [
+        DsBotPending('', at, drafts: [DraftAttachment(name: 'shot.jpg', bytes: Uint8List(4), mediaType: 'image/jpeg')]),
+      ];
+      // `images` counts the pictures, `files` names them: one picture is one
+      // attachment, not two.
+      final left = settlePending(pending, const [
+        DsBotItem(
+          kind: DsBotItemKind.user,
+          images: 1,
+          files: [DsBotAttachmentRef(id: 'a1', name: 'shot.jpg', mediaType: 'image/jpeg')],
+        ),
+      ]);
+      expect(left, isEmpty);
+    });
+
+    test('a send that carried a file meets the file marker line of its echo', () {
+      final at = DateTime(2026);
+      final pending = [
+        DsBotPending('看这个', at, drafts: [DraftAttachment(name: 'crash.log', bytes: Uint8List(12))]),
+      ];
+      final left = settlePending(pending, const [
+        DsBotItem(
+          kind: DsBotItemKind.user,
+          text: '看这个\n[File "crash.log" (12 bytes) attached]',
+          files: [DsBotAttachmentRef(id: 'f1', name: 'crash.log')],
+        ),
+      ]);
+      expect(left, isEmpty);
+    });
+
+    test('a counted-only echo still settles a picture-only send', () {
+      final at = DateTime(2026);
+      final pending = [
+        DsBotPending('', at, drafts: [DraftAttachment(name: 'shot.jpg', bytes: Uint8List(4), mediaType: 'image/jpeg')]),
+      ];
+      final left = settlePending(pending, const [DsBotItem(kind: DsBotItemKind.user, images: 1)]);
       expect(left, isEmpty);
     });
 
