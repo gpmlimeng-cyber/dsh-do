@@ -37,6 +37,10 @@ enum VoiceProbeFailure {
   /// The speech API answered, but no provider is usable.
   noModel,
 
+  /// The provider is on its way (checking, loading, waking): not missing, and
+  /// worth waiting a moment for rather than falling back to the phone.
+  preparing,
+
   /// The probe ran out of time.
   timeout,
 
@@ -236,7 +240,11 @@ class VoiceInputController extends ChangeNotifier with WidgetsBindingObserver {
     if (!_disposed) notifyListeners();
   }
 
-  Future<_VoiceTarget?> _readCatalog(DshClient? c, MuxGeneration? generation) async {
+  Future<_VoiceTarget?> _readCatalog(
+    DshClient? c,
+    MuxGeneration? generation, {
+    Duration timeout = const Duration(seconds: 8),
+  }) async {
     if (c == null || !_caps.recorder || !identical(client(), c) || !identical(c.mux.generation, generation)) {
       _probeFailure = c == null || !identical(client(), c) ? VoiceProbeFailure.host : VoiceProbeFailure.recorder;
       return null;
@@ -249,7 +257,7 @@ class VoiceInputController extends ChangeNotifier with WidgetsBindingObserver {
     try {
       // A busy engine (a long round streaming) answers late; 4 s called that
       // a missing model. The model is local, so waiting is cheap.
-      var catalog = await c.speechCatalog().timeout(const Duration(seconds: 8));
+      var catalog = await c.speechCatalog().timeout(timeout);
       if (catalog == null) {
         // No speech API on this host: its plugin is not loaded, or it is older
         // than the API. A different failure from "no provider is usable".
@@ -257,7 +265,11 @@ class VoiceInputController extends ChangeNotifier with WidgetsBindingObserver {
         detail = 'speech/catalog answered null (no speech API on this host)';
       } else if (requiredProviderId case final id?) {
         final provider = catalog.providers.where((p) => p.id == id && p.location == 'host-local').firstOrNull;
-        if (provider == null || !provider.usable) {
+        if (provider != null && !provider.usable && _preparing(provider.phase)) {
+          failure = VoiceProbeFailure.preparing;
+          detail = 'provider=$id phase=${provider.phase}';
+          catalog = null;
+        } else if (provider == null || !provider.usable) {
           failure = VoiceProbeFailure.noModel;
           catalog = null;
         } else {
@@ -275,6 +287,9 @@ class VoiceInputController extends ChangeNotifier with WidgetsBindingObserver {
       if (target == null && detail == null) {
         final selectedId = catalog?.selected?.id;
         final phase = catalog?.providers.where((p) => p.id == selectedId).firstOrNull?.phase;
+        // Preparing is not missing: the model is being checked or loaded, and
+        // the tap may not be handed to the phone as if there were no model.
+        if (phase != null && _preparing(phase)) failure = VoiceProbeFailure.preparing;
         detail = 'selected=${selectedId ?? '-'} phase=${phase ?? '-'}';
       }
     } on TimeoutException catch (error) {
@@ -296,13 +311,22 @@ class VoiceInputController extends ChangeNotifier with WidgetsBindingObserver {
       } else {
         // A busy engine does not take a working model away. Only an answer
         // that says there is none (no API, no usable provider) clears it.
-        if (failure == VoiceProbeFailure.noApi || failure == VoiceProbeFailure.noModel) _catalog = null;
+        if (failure == VoiceProbeFailure.noApi ||
+            failure == VoiceProbeFailure.noModel ||
+            failure == VoiceProbeFailure.preparing) {
+          _catalog = null;
+        }
         _probeFailure = failure;
         _probeDetail = detail;
       }
     }
     return target;
   }
+
+  /// A provider on its way: preparation states that become usable by
+  /// themselves in a moment (they are not a failed or missing model).
+  static bool _preparing(String phase) =>
+      const {'downloading', 'checking', 'loading', 'waking', 'cancelling'}.contains(phase);
 
   /// `id(phase)` per provider plus the selection, short enough for a log line.
   static String _summarize(SpeechCatalog? catalog) {
@@ -322,6 +346,34 @@ class VoiceInputController extends ChangeNotifier with WidgetsBindingObserver {
       };
     } catch (_) {
       return 'unknown';
+    }
+  }
+
+  /// Probes until the model is usable, the answer is a real failure, or
+  /// [budget] runs out — `checking` must not become a fall to the phone.
+  /// Reports [onWaiting] once, when it first has to wait.
+  Future<_VoiceTarget?> _readCatalogWaiting(
+    int operation, {
+    Duration budget = const Duration(seconds: 4),
+    VoidCallback? onWaiting,
+  }) async {
+    final end = DateTime.now().add(budget);
+    var waiting = false;
+    while (true) {
+      final target = await _readCatalog(_runClient, _runGeneration, timeout: const Duration(seconds: 2));
+      if (!_current(operation)) return null;
+      if (target != null) return target;
+      if (_probeFailure != VoiceProbeFailure.preparing) return null;
+      if (!waiting) {
+        waiting = true;
+        onWaiting?.call();
+      }
+      if (!DateTime.now().isBefore(end)) {
+        _probeFailure = VoiceProbeFailure.preparing;
+        return null;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      if (!_current(operation)) return null;
     }
   }
 
@@ -420,7 +472,12 @@ class VoiceInputController extends ChangeNotifier with WidgetsBindingObserver {
       // dictation must not fail because the group is busy.
       var target = (_catalog?.current(client()) ?? false) ? _catalog : null;
       if (target == null) {
-        target = await _readCatalog(_runClient, _runGeneration);
+        // A model that is checking or loading is worth a few seconds: the
+        // phone's recognizer is not what the person chose.
+        target = await _readCatalogWaiting(
+          operation,
+          onWaiting: () => _say(VoiceMessage(appL10n.voiceEnginePreparing)),
+        );
         if (!_current(operation)) return;
       }
       // The engine was too busy to answer in time: the model that worked a
@@ -433,6 +490,12 @@ class VoiceInputController extends ChangeNotifier with WidgetsBindingObserver {
       if (target != null) {
         _diag('engine');
         await _startRecorder(operation, target);
+        return;
+      }
+      if (_probeFailure == VoiceProbeFailure.preparing) {
+        _diag('engine-preparing');
+        _finish();
+        _say(VoiceMessage(appL10n.voiceEnginePreparingTimeout, change: true));
         return;
       }
       // The engine was asked and did not answer in time: 「系统识别用不了」 is a
@@ -456,10 +519,18 @@ class VoiceInputController extends ChangeNotifier with WidgetsBindingObserver {
       _diag('system-after-probe');
     }
     if (!system) {
-      final target = await _readCatalog(_runClient, _runGeneration);
+      final target = await _readCatalogWaiting(
+        operation,
+        onWaiting: () => _say(VoiceMessage(appL10n.voiceEnginePreparing)),
+      );
       if (!_current(operation)) return;
       if (target == null) {
         _diag('engine-mode-failed');
+        if (_probeFailure == VoiceProbeFailure.preparing) {
+          _finish();
+          _say(VoiceMessage(appL10n.voiceEnginePreparingTimeout, change: true));
+          return;
+        }
         _finish();
         final busy = _probeFailure == VoiceProbeFailure.timeout || _probeFailure == VoiceProbeFailure.failed;
         final engineMissing =

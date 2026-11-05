@@ -17828,6 +17828,12 @@ class L10nZh extends L10n {
   String get voiceEngineBusy => '引擎正忙或响应超时，语音模型暂时用不了，稍后再点一次';
 
   @override
+  String get voiceEnginePreparing => '正在准备语音模型…';
+
+  @override
+  String get voiceEnginePreparingTimeout => '语音模型还在准备，稍后再点一次';
+
+  @override
   String get voiceErrorNetworkTimeout => '语音识别连接超时，请检查网络';
 
   @override

@@ -32308,6 +32308,18 @@ abstract class L10n {
   /// **'引擎正忙或响应超时，语音模型暂时用不了，稍后再点一次'**
   String get voiceEngineBusy;
 
+  /// No description provided for @voiceEnginePreparing.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在准备语音模型…'**
+  String get voiceEnginePreparing;
+
+  /// No description provided for @voiceEnginePreparingTimeout.
+  ///
+  /// In zh, this message translates to:
+  /// **'语音模型还在准备，稍后再点一次'**
+  String get voiceEnginePreparingTimeout;
+
   /// No description provided for @voiceErrorNetworkTimeout.
   ///
   /// In zh, this message translates to:

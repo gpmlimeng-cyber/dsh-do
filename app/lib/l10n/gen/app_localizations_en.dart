@@ -18842,6 +18842,12 @@ class L10nEn extends L10n {
       'The engine is busy or did not answer in time, so the voice model is not ready yet. Try again in a moment.';
 
   @override
+  String get voiceEnginePreparing => 'Preparing the voice model…';
+
+  @override
+  String get voiceEnginePreparingTimeout => 'The voice model is still preparing. Try again in a moment.';
+
+  @override
   String get voiceErrorNetworkTimeout => 'Speech recognition timed out. Check your connection.';
 
   @override
