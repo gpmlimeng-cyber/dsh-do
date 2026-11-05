@@ -275,46 +275,51 @@ class _AppPageState extends State<AppPage> {
           body: Stack(
             children: [
               if (widget.nested)
-                NestedScrollView(
-                  controller: _controller,
-                  headerSliverBuilder: (context, _) => [
-                    // The bar and its band are one pinned sliver: the tab strip
-                    // below can never slide under a floating bar.
-                    SliverPersistentHeader(
-                      pinned: true,
-                      delegate: PinnedBox(
-                        extent: top,
-                        child: Stack(
-                          children: [
-                            Positioned.fill(child: veil()),
-                            Positioned(
-                              left: 0,
-                              right: 0,
-                              top: padding.top,
-                              height: AppPage.barHeight,
-                              child: bar,
-                            ),
-                          ],
-                        ),
+                Column(
+                  children: [
+                    // The bar lives outside the scroll area: the tab strip pins
+                    // to the top of the view below it, so it always meets the
+                    // bar's lower edge — no stacked pinned headers to drift in a
+                    // rotated window.
+                    SizedBox(
+                      height: top,
+                      child: Stack(
+                        children: [
+                          Positioned.fill(child: veil()),
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            top: padding.top,
+                            height: AppPage.barHeight,
+                            child: bar,
+                          ),
+                        ],
                       ),
                     ),
-                    ?headerSliver(),
-                    SliverPersistentHeader(
-                      pinned: true,
-                      delegate: PinnedBox(
-                        extent: AppPage.tabsHeight,
-                        child: DetailsTabBand(
-                          offset: _offset,
-                          color: DshSurfaces.of(context).backdropTop,
-                          child: Padding(
-                            padding: EdgeInsets.fromLTRB(side.left + 16, 4, side.left + 16, 12),
-                            child: widget.tabs!,
+                    Expanded(
+                      child: NestedScrollView(
+                        controller: _controller,
+                        headerSliverBuilder: (context, _) => [
+                          ?headerSliver(),
+                          SliverPersistentHeader(
+                            pinned: true,
+                            delegate: PinnedBox(
+                              extent: AppPage.tabsHeight,
+                              child: DetailsTabBand(
+                                offset: _offset,
+                                color: DshSurfaces.of(context).backdropTop,
+                                child: Padding(
+                                  padding: EdgeInsets.fromLTRB(side.left + 16, 4, side.left + 16, 12),
+                                  child: widget.tabs!,
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
+                        body: widget.body!,
                       ),
                     ),
                   ],
-                  body: widget.body!,
                 )
               else
                 CustomScrollView(
