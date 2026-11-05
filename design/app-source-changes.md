@@ -76,3 +76,4 @@ Upstream: `ccch1mneyyy/dsh-Go`, against `v1.0.10` (fork branch `ci/room-progress
 | `3c88975` | `app/lib/ui/bots/bot_chat_kit.dart`, `app/lib/ui/bots/bot_chat_page.dart`, `app/lib/ui/bots/room_chat_page.dart`, `app/lib/l10n/` | v1.0.10 | What a sent bubble's three states look like is Flutter UI over the chat's own state; no seam owns it. |
 | `ac75226` | `app/lib/ui/bots/bot_chat_kit.dart` | v1.0.10 | Whether a message list follows new rows is Flutter scroll state; no seam owns it. |
 | `a8fb854` | `app/lib/ui/bots/bot_chat_kit.dart`, `app/lib/ui/bots/bot_chat_page.dart`, `app/lib/ui/bots/room_chat_page.dart`, `app/lib/state/bots_state.dart` | v1.0.10 | The two actions on a failed bubble are Flutter UI over the chat's own state; no seam owns them. |
+| `90d5cc7` | `app/lib/ui/bots/bot_chat_kit.dart` | v1.0.10 | The back-to-bottom badge label is Flutter UI; no seam owns it. |
