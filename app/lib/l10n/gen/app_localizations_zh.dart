@@ -16494,6 +16494,21 @@ class L10nZh extends L10n {
   String get viewArtifactNoPreview => '无法预览';
 
   @override
+  String get viewPreviewBadge => '预览';
+
+  @override
+  String get viewHtmlCantOpen => '这个页面打不开';
+
+  @override
+  String get viewHtmlCantOpenBody => '用手机应用打开还能看内容';
+
+  @override
+  String get viewHtmlPartialResources => '部分资源未能加载';
+
+  @override
+  String get viewHtmlLinkBlocked => '已拦截不安全的链接';
+
+  @override
   String get viewArtifactNotText => '不是文本文件';
 
   @override

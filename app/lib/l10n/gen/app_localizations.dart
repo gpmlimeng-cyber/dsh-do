@@ -30158,6 +30158,32 @@ abstract class L10n {
   /// **'无法预览'**
   String get viewArtifactNoPreview;
 
+  /// No description provided for @viewPreviewBadge.
+  ///
+  /// In zh, this message translates to:
+  /// **'预览'**
+  String get viewPreviewBadge;
+  /// No description provided for @viewHtmlCantOpen.
+  ///
+  /// In zh, this message translates to:
+  /// **'这个页面打不开'**
+  String get viewHtmlCantOpen;
+  /// No description provided for @viewHtmlCantOpenBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'用手机应用打开还能看内容'**
+  String get viewHtmlCantOpenBody;
+  /// No description provided for @viewHtmlPartialResources.
+  ///
+  /// In zh, this message translates to:
+  /// **'部分资源未能加载'**
+  String get viewHtmlPartialResources;
+  /// No description provided for @viewHtmlLinkBlocked.
+  ///
+  /// In zh, this message translates to:
+  /// **'已拦截不安全的链接'**
+  String get viewHtmlLinkBlocked;
+
   /// No description provided for @viewArtifactNotText.
   ///
   /// In zh, this message translates to:

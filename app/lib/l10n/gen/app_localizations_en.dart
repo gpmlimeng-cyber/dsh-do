@@ -17394,6 +17394,21 @@ class L10nEn extends L10n {
   String get viewArtifactNoPreview => 'Can’t preview';
 
   @override
+  String get viewPreviewBadge => 'Preview';
+
+  @override
+  String get viewHtmlCantOpen => 'This page won't open';
+
+  @override
+  String get viewHtmlCantOpenBody => 'Open it in another app to read it';
+
+  @override
+  String get viewHtmlPartialResources => 'Some resources did not load';
+
+  @override
+  String get viewHtmlLinkBlocked => 'Blocked an unsafe link';
+
+  @override
   String get viewArtifactNotText => 'Not a text file';
 
   @override

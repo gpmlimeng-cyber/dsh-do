@@ -1331,5 +1331,10 @@
   "viewUiDialectKindMap": "地图",
   "viewUiDialectKindOther": "这部分",
   "viewUiDialectInvalid": "这块内容在网页版查看",
-  "viewUiDialectNote": "在网页版查看"
+  "viewUiDialectNote": "在网页版查看",
+  "viewPreviewBadge": "预览",
+  "viewHtmlCantOpen": "这个页面打不开",
+  "viewHtmlCantOpenBody": "用手机应用打开还能看内容",
+  "viewHtmlPartialResources": "部分资源未能加载",
+  "viewHtmlLinkBlocked": "已拦截不安全的链接"
 }

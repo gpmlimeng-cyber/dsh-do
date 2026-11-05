@@ -342,5 +342,10 @@
   "viewUiDialectKindMap": "Map",
   "viewUiDialectKindOther": "This part",
   "viewUiDialectInvalid": "This block shows in DSH Web",
-  "viewUiDialectNote": "Shown in DSH Web"
+  "viewUiDialectNote": "Shown in DSH Web",
+  "viewPreviewBadge": "Preview",
+  "viewHtmlCantOpen": "This page won't open",
+  "viewHtmlCantOpenBody": "Open it in another app to read it",
+  "viewHtmlPartialResources": "Some resources did not load",
+  "viewHtmlLinkBlocked": "Blocked an unsafe link"
 }
