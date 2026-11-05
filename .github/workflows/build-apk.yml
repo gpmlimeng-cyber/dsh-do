@@ -8,6 +8,7 @@ on:
   push:
     branches:
       - ci/build-apk
+      - 'release/*'
   workflow_dispatch:
     inputs:
       version:
@@ -73,9 +74,12 @@ jobs:
         # --build-name every build says pubspec's 2.0.0, so an update installs
         # and then still reports the old version.
         env:
-          VERSION: ${{ inputs.version }}
+          VERSION_IN: ${{ inputs.version }}
         run: |
           set -o pipefail
+          VERSION="$VERSION_IN"
+          case "$GITHUB_REF_NAME" in release/*) VERSION="${GITHUB_REF_NAME#release/}";; esac
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           args=(--release -f arm64)
           if [ -n "$VERSION" ]; then args+=(--build-name "$VERSION"); fi
           tooling/build-apk.sh "${args[@]}" 2>&1 | tee /tmp/build.log
@@ -108,9 +112,11 @@ jobs:
         # `releases/latest`, so a named release carries exactly that file.
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ inputs.version }}
+          VERSION_IN: ${{ inputs.version }}
           PREVIEW: ${{ inputs.prerelease }}
         run: |
+          VERSION="$VERSION_IN"
+          case "$GITHUB_REF_NAME" in release/*) VERSION="${GITHUB_REF_NAME#release/}";; esac
           apk="$(ls app/build/app/outputs/flutter-apk/*.apk | head -1)"
           echo "apk=$apk version=${VERSION:-<none>} preview=${PREVIEW:-<none>}"
           if [ -n "$VERSION" ]; then
