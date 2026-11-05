@@ -10,6 +10,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../diagnostics/app_error_log.dart';
 import '../l10n/l10n.dart';
 import '../ui/chat/secret_mask.dart';
 import 'app_info.dart';
@@ -719,6 +720,28 @@ List<DsBotPending> settlePending(List<DsBotPending> pending, Iterable<DsBotItem>
     } else {
       left.add(entry);
     }
+  }
+  // Still unmatched after the pairing: keep both sides' actual values so the
+  // next report says which of them disagrees (text after the notes, the count,
+  // or the seq the pending bubble was made after).
+  if (left.isNotEmpty) {
+    String show(String text) {
+      final one = text.replaceAll('\n', ' ');
+      return one.length > 60 ? '${one.substring(0, 60)}…' : one;
+    }
+
+    final pendingText = [
+      for (final entry in left)
+        '{text "${show(_comparableText(entry.text))}", drafts ${entry.drafts.length}, afterSeq ${entry.afterSeq}}',
+    ].join(' ');
+    final echoes = [
+      for (final item in texts) '{text "${show(item.text)}", attachments ${item.attachments}, seq ${item.seq}}',
+    ].join(' ');
+    appErrorLog.record(
+      AppErrorSource.platform,
+      'pending: unmatched pending=[$pendingText] echoes=[$echoes]',
+      StackTrace.current,
+    );
   }
   return left;
 }
