@@ -1753,6 +1753,12 @@ class L10nZh extends L10n {
   String get botsSending => '发送中';
 
   @override
+  String get botsSendStillWaiting => '还在等服务器确认';
+
+  @override
+  String get botsSendFailed => '没能发送';
+
+  @override
   String get botsWriteOwn => '自己写';
 
   @override

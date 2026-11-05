@@ -533,6 +533,8 @@
   "botsShowAll": "Show all",
   "botsImagePlaceholder": "[Image]",
   "botsSending": "Sending",
+  "botsSendStillWaiting": "Still waiting for the server",
+  "botsSendFailed": "Could not send",
   "botsWriteOwn": "Write your own",
   "botsSubmit": "Submit",
   "botsChooseModelFor": "Choose a model for {name}",

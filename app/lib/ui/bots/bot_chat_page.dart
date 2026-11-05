@@ -352,7 +352,12 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
                 padding: rowPadding(row),
                 child: switch (row) {
                   BotTimeRow(:final time) => BotTimeLine(time),
-                  BotPendingRow(:final pending) => BotUserMessage(text: pending.text, pending: true, pendingSince: pending.at),
+                  BotPendingRow(:final pending) => BotUserMessage(
+                    text: pending.text,
+                    pending: true,
+                    pendingSince: pending.at,
+                    pendingStatus: pending.status,
+                  ),
                   BotStreamingRow(:final text) =>
                     text.isEmpty
                         ? const Align(alignment: Alignment.centerLeft, child: _Thinking())

@@ -1339,14 +1339,17 @@ class BotUserMessage extends StatelessWidget {
     required this.text,
     this.pending = false,
     this.pendingSince,
+    this.pendingStatus = DsBotPendingStatus.sending,
     this.images = 0,
     this.attachments,
     this.onQuote,
   });
 
-
   final String text;
   final bool pending;
+
+  /// 发送中 / 没能发送: the bubble says which, without adding a second line.
+  final DsBotPendingStatus pendingStatus;
 
   /// When a queued line was made. The label says how long it has waited — an
   /// approximation (a retry or a page rebuild restarts the clock), enough to show
@@ -1368,28 +1371,61 @@ class BotUserMessage extends StatelessWidget {
     final l10n = context.l10n;
     final shown = text.isEmpty && attachments == null && images > 0 ? l10n.botsImagePlaceholder : text;
     if (shown.isEmpty && attachments == null) return const SizedBox.shrink();
+    final failed = pending && pendingStatus == DsBotPendingStatus.failed;
+    // 0.72 while it is not landed; fully opaque once it is, or once it failed
+    // (a half-transparent failure reads as "still sending").
+    final alpha = pending && !failed ? 0.72 : 1.0;
     return Align(
       alignment: Alignment.centerRight,
       child: GestureDetector(
         onLongPress: pending || text.trim().isEmpty ? null : () => botLineMenu(context, text, onQuote: onQuote),
-        child: UserBubble(
-          text: shown,
-          attachments: attachments,
-          pendingLabel: pending ? _pendingLabel(context) : null,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedOpacity(
+              opacity: alpha,
+              duration: AppMotion.of(context, 150),
+              child: UserBubble(text: shown, attachments: attachments),
+            ),
+            if (pending) ...[
+              const SizedBox(height: 6),
+              _PendingNote(failed: failed, since: pendingSince),
+            ],
+          ],
         ),
       ),
     );
   }
+}
 
-  String _pendingLabel(BuildContext context) {
-    final since = pendingSince;
-    if (since == null) return context.l10n.botsSending;
-    final waited = DateTime.now().difference(since);
-    final span = context.l10n.activitySpanMinutesSeconds(
-      waited.inMinutes,
-      (waited.inSeconds % 60).toString().padLeft(2, '0'),
+/// 发送中 (with a small clock), 还在等服务器确认 after 8 s, or 没能发送.
+class _PendingNote extends StatelessWidget {
+  const _PendingNote({required this.failed, this.since});
+
+  final bool failed;
+  final DateTime? since;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final colors = DshColors.of(context);
+    final waited = since == null ? Duration.zero : DateTime.now().difference(since!);
+    final label = failed
+        ? l10n.botsSendFailed
+        : waited > const Duration(seconds: 8)
+        ? l10n.botsSendStillWaiting
+        : l10n.botsSending;
+    final tone = failed ? colors.danger : colors.textTertiary;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(failed ? AppIcons.error : AppIcons.time, size: 13, color: tone),
+        const SizedBox(width: 4),
+        Text(label, style: theme.textTheme.labelSmall?.copyWith(color: tone)),
+      ],
     );
-    return '${context.l10n.chatQueued} · $span';
   }
 }
 

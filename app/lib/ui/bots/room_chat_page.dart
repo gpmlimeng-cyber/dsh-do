@@ -819,6 +819,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
                     text: pending.text,
                     pending: true,
                     pendingSince: pending.at,
+                    pendingStatus: pending.status,
                     attachments: pending.drafts.isEmpty ? null : SentAttachments.pending(pending.drafts),
                   ),
                   BotStreamingRow() => const SizedBox.shrink(),

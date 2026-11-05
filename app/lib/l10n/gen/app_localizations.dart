@@ -3290,6 +3290,12 @@ abstract class L10n {
   /// **'发送中'**
   String get botsSending;
 
+  /// No description provided for @botsSendStillWaiting.
+  String get botsSendStillWaiting;
+
+  /// No description provided for @botsSendFailed.
+  String get botsSendFailed;
+
   /// No description provided for @botsWriteOwn.
   ///
   /// In zh, this message translates to:

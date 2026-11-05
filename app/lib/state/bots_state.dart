@@ -952,7 +952,7 @@ class BotChatController extends Notifier<BotChatState> {
     final entry = DsBotPending(trimmed, DateTime.now());
     state = state.copyWith(pending: [...state.pending, entry], error: () => null);
     try {
-      await api.send(botId, trimmed, images: images, fileReceiptIds: fileReceiptIds, mode: mode);
+      await api.send(botId, trimmed, images: images, fileReceiptIds: fileReceiptIds, mode: mode, requestId: entry.requestId);
       return true;
     } catch (error) {
       if (!_current(generation)) return false;
@@ -1228,7 +1228,7 @@ class RoomChatController extends Notifier<RoomChatState> {
     final entry = pending ?? newPending(trimmed);
     if (pending == null) state = state.copyWith(pending: [...state.pending, entry], error: () => null);
     try {
-      await api.send(roomId, trimmed, images: images, fileReceiptIds: fileReceiptIds, mode: mode);
+      await api.send(roomId, trimmed, images: images, fileReceiptIds: fileReceiptIds, mode: mode, requestId: entry.requestId);
       return true;
     } catch (error) {
       if (!_current(generation)) return false;

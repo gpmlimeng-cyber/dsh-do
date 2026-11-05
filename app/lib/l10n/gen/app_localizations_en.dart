@@ -1863,6 +1863,12 @@ class L10nEn extends L10n {
   String get botsSending => 'Sending';
 
   @override
+  String get botsSendStillWaiting => 'Still waiting for the server';
+
+  @override
+  String get botsSendFailed => 'Could not send';
+
+  @override
   String get botsWriteOwn => 'Write your own';
 
   @override

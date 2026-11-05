@@ -1667,6 +1667,9 @@ class DsBotApi {
     /// (`queue`), which is also what a host without this field does.
     String? mode,
 
+    /// The client's name for this message: the echo carries it back, so a
+    /// retry with the same id is the same message, not a second one.
+    String? requestId,
   }) =>
       call('send', {
         'sessionId': conversationId,
@@ -1674,6 +1677,7 @@ class DsBotApi {
         if (images.isNotEmpty) 'images': [for (final image in images) image.toJson()],
         if (fileReceiptIds.isNotEmpty) 'fileReceiptIds': fileReceiptIds,
         if (mode != null) 'mode': mode,
+        if (requestId != null && requestId.isNotEmpty) 'requestId': requestId,
       }, const Duration(seconds: 40));
 
   /// Reads the Host's bounded preview, retaining its completeness metadata.

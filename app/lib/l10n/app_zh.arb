@@ -1091,6 +1091,8 @@
   "botsShowAll": "显示全部",
   "botsImagePlaceholder": "［图片］",
   "botsSending": "发送中",
+  "botsSendStillWaiting": "还在等服务器确认",
+  "botsSendFailed": "没能发送",
   "botsWriteOwn": "自己写",
   "botsSubmit": "提交",
   "botsChooseModelFor": "给 {name} 选一个模型",
