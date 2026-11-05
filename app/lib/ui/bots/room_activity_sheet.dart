@@ -56,7 +56,8 @@ class _Activity {
   double? get contextShare {
     final used = usedTokens;
     final size = window;
-    if (used == null || size == null || size <= 0) return null;
+    // 0 is not a measurement (a prompt is never empty): no bar, no "0 %".
+    if (used == null || used <= 0 || size == null || size <= 0) return null;
     return (used / size).clamp(0.0, 1.0);
   }
 

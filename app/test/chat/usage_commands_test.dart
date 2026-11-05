@@ -154,6 +154,19 @@ void main() {
       expect(usage.hasTokens, isFalse);
     });
 
+    test('a window without a measured prompt is unknown, never 0 %', () {
+      // What a group Session looks like while idle: the window is known, the
+      // provider has not reported a prompt size yet. The ring must hide.
+      const idle = SessionUsage(contextWindow: 1048576);
+      expect(idle.contextFraction, isNull);
+      // A reported 0 is no measurement either: a real prompt is never empty.
+      const zero = SessionUsage(pressureTokens: 0, contextWindow: 1048576);
+      expect(zero.contextFraction, isNull);
+      // Measured values keep working, including tiny shares.
+      const live = SessionUsage(pressureTokens: 123000, contextWindow: 2097152);
+      expect(live.contextFraction, closeTo(0.0586, 0.0001));
+    });
+
     test('cache hit rate and cost need real numbers', () {
       const usage = SessionUsage(uncachedInput: 2000, cacheRead: 6000, output: 500);
       expect(usage.cacheHitRate, 0.75);

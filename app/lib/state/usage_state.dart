@@ -85,11 +85,17 @@ class SessionUsage {
   /// the first request.
   double? get cacheHitRate => input == 0 ? null : cacheRead / input;
 
-  /// Fraction of the context window in use; null until DSH knows the window.
+  /// Fraction of the context window in use; null until DSH has measured it.
+  ///
+  /// A missing [pressureTokens] is "not measured yet", never "empty": the ring
+  /// hides instead of claiming 0 %. A reported 0 is no measurement either — the
+  /// prompt of a real request is never 0 tokens — so it is treated the same way
+  /// and never turns into a 0 % ring.
   double? get contextFraction {
     final window = contextWindow;
-    if (window == null || window <= 0) return null;
-    return ((pressureTokens ?? 0) / window).clamp(0.0, 1.0);
+    final used = pressureTokens;
+    if (window == null || window <= 0 || used == null || used <= 0) return null;
+    return (used / window).clamp(0.0, 1.0);
   }
 
   bool get hasTokens => input > 0 || output > 0;

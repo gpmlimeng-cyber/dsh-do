@@ -53,7 +53,12 @@ class RoomMemberActivity {
   /// conversation keeps its figures on its row but stays out of the sum.
   final bool inGroup;
 
-  int? get contextTokens => projectedTokens ?? pressureTokens;
+  int? get contextTokens {
+    final used = projectedTokens ?? pressureTokens;
+    // Zero is not a measurement: a request's prompt is never empty, so a 0 here
+    // means the figure is missing. Keeping it would add a window with no use.
+    return used == null || used <= 0 ? null : used;
+  }
 
   double? get contextShare {
     final used = contextTokens;
@@ -133,7 +138,10 @@ SessionUsage roomUsageTotal(SessionUsage group, RoomMembersActivity activity) {
   var used = 0;
   var window = 0;
   void addWindow(int? usedTokens, int? size) {
-    if (usedTokens == null || size == null || size <= 0) return;
+    // Only a measured pair adds a window: an unknown (or 0) use with a known
+    // window would read as "empty" rather than "nobody knows", which is the
+    // 0 %-while-idle bug the ring had.
+    if (usedTokens == null || usedTokens <= 0 || size == null || size <= 0) return;
     used += usedTokens;
     window += size;
   }
