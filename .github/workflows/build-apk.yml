@@ -75,6 +75,10 @@ jobs:
         # and then still reports the old version.
         env:
           VERSION_IN: ${{ inputs.version }}
+          # The runners are not in China: the mainland Maven mirror answered 502
+          # often enough to lose whole builds, while the official repositories
+          # are a local fetch there. settings.gradle.kts keys this switch.
+          DSH_MAVEN_MIRRORS: '0'
         run: |
           set -o pipefail
           VERSION="$VERSION_IN"
