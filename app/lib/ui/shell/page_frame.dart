@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -279,24 +280,36 @@ class _AppPageState extends State<AppPage> {
                   headerSliverBuilder: (context, _) => [
                     // The bar and its band are one pinned sliver: the tab strip
                     // below can never slide under a floating bar.
-                    PinnedBox(
-                      extent: top,
-                      child: Stack(
-                        children: [
-                          Positioned.fill(child: veil()),
-                          Positioned(left: 0, right: 0, top: padding.top, height: AppPage.barHeight, child: bar),
-                        ],
+                    SliverPersistentHeader(
+                      pinned: true,
+                      delegate: PinnedBox(
+                        extent: top,
+                        child: Stack(
+                          children: [
+                            Positioned.fill(child: veil()),
+                            Positioned(
+                              left: 0,
+                              right: 0,
+                              top: padding.top,
+                              height: AppPage.barHeight,
+                              child: bar,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                     ?headerSliver(),
-                    PinnedBox(
-                      extent: AppPage.tabsHeight,
-                      child: DetailsTabBand(
-                        offset: _offset,
-                        color: DshSurfaces.of(context).backdropTop,
-                        child: Padding(
-                          padding: EdgeInsets.fromLTRB(side.left + 16, 4, side.left + 16, 12),
-                          child: widget.tabs!,
+                    SliverPersistentHeader(
+                      pinned: true,
+                      delegate: PinnedBox(
+                        extent: AppPage.tabsHeight,
+                        child: DetailsTabBand(
+                          offset: _offset,
+                          color: DshSurfaces.of(context).backdropTop,
+                          child: Padding(
+                            padding: EdgeInsets.fromLTRB(side.left + 16, 4, side.left + 16, 12),
+                            child: widget.tabs!,
+                          ),
                         ),
                       ),
                     ),

@@ -830,8 +830,9 @@ List<DrawerBlock> drawerBlocks({
   for (final folder in view.folders) {
     final members = membersByFolder[folder.id] ?? const <DrawerRow>[];
     if (members.isEmpty && scoped) continue;
-    bool pinnedInFolder(DrawerRow row) =>
-        row is SessionRow ? pinnedSet.contains(row.id) : pinnedBots.contains(botPinKey(row));
+    bool pinnedInFolder(DrawerRow row) => row is SessionRow
+        ? pinnedSet.contains(row.id)
+        : row is BotDrawerRow && pinnedBots.contains(botPinKey(row));
     blocks.add(
       FolderBlock(folder, [
         for (final row in members) if (pinnedInFolder(row)) row,
@@ -842,7 +843,11 @@ List<DrawerBlock> drawerBlocks({
   final days = <SessionDay, List<DrawerRow>>{};
   for (final row in sorted) {
     if (folderOf.containsKey(row.id)) continue;
-    if (row is SessionRow ? pinnedSet.contains(row.id) : pinnedBots.contains(botPinKey(row))) continue;
+    if (row is SessionRow
+        ? pinnedSet.contains(row.id)
+        : row is BotDrawerRow && pinnedBots.contains(botPinKey(row))) {
+      continue;
+    }
     days.putIfAbsent(sessionDayOf(row.sortKeyOf(view.sort), now), () => []).add(row);
   }
   for (final day in SessionDay.values) {
