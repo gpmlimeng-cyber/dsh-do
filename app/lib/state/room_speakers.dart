@@ -1,3 +1,5 @@
+import 'package:dsh_client/dsh_client.dart';
+
 /// The Bot id behind a group line, or null when it names no member of [room].
 ///
 /// `botId` is the Bot id on this Host (it looks like `session-<uuid>` because a
