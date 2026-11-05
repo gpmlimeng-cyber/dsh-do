@@ -59,7 +59,7 @@ class BotChatHeader extends StatelessWidget {
     this.messagesTooltip,
     this.titleHint,
     this.infoTooltip,
-    this.infoEnabled = true,
+    this.infoGreyed = false,
   });
 
   final Widget face;
@@ -98,8 +98,9 @@ class BotChatHeader extends StatelessWidget {
   /// The right key's words; null keeps 「详情」. A disabled key also says why.
   final String? infoTooltip;
 
-  /// False greys the right key and makes it untappable (no details to show).
-  final bool infoEnabled;
+  /// Greys the right key's glyph when there is nothing it can open; the key
+  /// keeps its tap area and says why in [infoTooltip] when tapped.
+  final bool infoGreyed;
 
   static const barHeight = 56.0;
   static const key44 = 44.0;
@@ -237,8 +238,8 @@ class BotChatHeader extends StatelessWidget {
                     key: const ValueKey('bot-details'),
                     icon: AppIcons.info,
                     tooltip: infoTooltip ?? l10n.commonDetails,
-                    onTap: infoEnabled ? (onInfo ?? onDetails) : null,
-                    iconColor: infoEnabled ? null : DshColors.of(context).textTertiary,
+                    onTap: onInfo ?? onDetails,
+                    iconColor: infoGreyed ? DshColors.of(context).textTertiary : null,
                   ),
                 ],
               ),

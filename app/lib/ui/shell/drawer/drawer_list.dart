@@ -77,6 +77,7 @@ class DrawerConversationList extends ConsumerWidget {
     final pending = ref.watch(pendingInteractionsProvider);
     final unread = ref.watch(unreadSessionIdsProvider);
     final pinned = ref.watch(workspacesProvider.select((s) => s.pinnedSessionIds)).toSet();
+    final pinnedBots = ref.watch(drawerViewProvider.select((v) => v.pinnedBots)).toSet();
     final sort = ref.watch(drawerViewProvider.select((v) => v.sort));
     if (!readOnly && sort == DrawerSort.created) {
       final ids = [
@@ -128,7 +129,6 @@ class DrawerConversationList extends ConsumerWidget {
       current: viewing == row.id,
       pending: readOnly ? null : row.pending,
       unread: !readOnly && row.unread,
-      pinned: false,
       badge: row.badge,
       note: botRowNote(bots, row, clock),
       // A face is what tells these rows from the conversations beside them.
@@ -138,6 +138,9 @@ class DrawerConversationList extends ConsumerWidget {
         _ => null,
       },
       indent: inFolder ? SessionTile.folderIndent : 0,
+      // The 置顶 block's eyebrow already says it: a pin shows only on a row
+      // that is pinned inside a folder, where it explains the position.
+      pinned: inFolder && pinnedBots.contains(botPinKey(row)),
       selecting: selecting,
       selected: false,
       // One chat page on the stack: this closes the drawer and replaces an
@@ -145,7 +148,7 @@ class DrawerConversationList extends ConsumerWidget {
       onTap: selecting
           ? () {}
           : () => openTeamChat(context, row.id, room: row.isRoom, beforeOpen: onClose),
-      onLongPress: readOnly || selecting ? null : () => moveToFolderFlow(context, ref, [row.id]),
+      onLongPress: readOnly || selecting ? null : () => botRowActionsFlow(context, ref, row),
     );
 
     void addRows(List<DrawerRow> items) {

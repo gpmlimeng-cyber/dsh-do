@@ -105,7 +105,12 @@ enum DrawerSort {
 
 /// The drawer's view of one host: folders in display order and the sort.
 class DrawerView {
-  const DrawerView({this.loaded = false, this.folders = const [], this.sort = DrawerSort.activity});
+  const DrawerView({
+    this.loaded = false,
+    this.folders = const [],
+    this.sort = DrawerSort.activity,
+    this.pinnedBots = const [],
+  });
 
   factory DrawerView.fromJson(Object? json) {
     final map = json is Map ? json : const {};
@@ -119,6 +124,11 @@ class DrawerView {
             if (DrawerFolder.fromJson(raw) case final f? when seen.add(f.id)) f,
       ],
       sort: map['sort'] == 'created' ? DrawerSort.created : DrawerSort.activity,
+      pinnedBots: [
+        if (map['pinnedBots'] case final List<Object?> keys)
+          for (final key in keys)
+            if (key is String && key.isNotEmpty) key,
+      ].toSet().toList(),
     );
   }
 
@@ -126,9 +136,15 @@ class DrawerView {
   final List<DrawerFolder> folders;
   final DrawerSort sort;
 
+  /// Pinned Bot and group rows, newest pin first: `bot:<id>` / `room:<id>`.
+  /// Local only — the Host's pin table takes session ids — and kept apart from
+  /// the conversations' pins so the two can never be confused for each other.
+  final List<String> pinnedBots;
+
   Map<String, Object?> toJson() => {
     'folders': [for (final f in folders) f.toJson()],
     'sort': sort.name,
+    if (pinnedBots.isNotEmpty) 'pinnedBots': pinnedBots,
   };
 
   DrawerFolder? byId(String? id) {
@@ -145,8 +161,12 @@ class DrawerView {
       for (final id in f.sessionIds) id: f.id,
   };
 
-  DrawerView copyWith({List<DrawerFolder>? folders, DrawerSort? sort}) =>
-      DrawerView(loaded: loaded, folders: folders ?? this.folders, sort: sort ?? this.sort);
+  DrawerView copyWith({List<DrawerFolder>? folders, DrawerSort? sort, List<String>? pinnedBots}) => DrawerView(
+    loaded: loaded,
+    folders: folders ?? this.folders,
+    sort: sort ?? this.sort,
+    pinnedBots: pinnedBots ?? this.pinnedBots,
+  );
 }
 
 /// [DrawerView] of the active host, in shared preferences.
@@ -280,6 +300,16 @@ class DrawerViewController extends Notifier<DrawerView> {
     final folder = state.byId(id);
     if (folder != null) await setCollapsed(id, !folder.collapsed);
   }
+
+  /// Pins or unpins a Bot/group row, newest first. Local only: the Host's pin
+  /// table takes session ids, so these keys (`bot:` / `room:`) never go there.
+  Future<void> setBotPinned(String key, bool pinned) => _update(
+    (view) => view.copyWith(
+      pinnedBots: pinned
+          ? [key, ...view.pinnedBots.where((k) => k != key)]
+          : [for (final k in view.pinnedBots) if (k != key) k],
+    ),
+  );
 
   /// Moves [ids] into [folderId] (null: out of any folder). Returns where
   /// each one was before, for [restoreAssignments].
@@ -695,6 +725,10 @@ final class BotDrawerRow extends DrawerRow {
   DateTime sortKeyOf(DrawerSort sort) => sort == DrawerSort.created ? createdAt : updatedAt;
 }
 
+/// A Bot or group row's pin key: `bot:<botId>` / `room:<roomId>`. The prefix
+/// keeps it from ever colliding with a session id.
+String botPinKey(BotDrawerRow row) => '${row.isRoom ? 'room' : 'bot'}:${row.id}';
+
 /// One block of the drawer list.
 sealed class DrawerBlock {
   const DrawerBlock(this.items);
@@ -773,11 +807,17 @@ List<DrawerBlock> drawerBlocks({
   }
   final folderOf = view.folderOf;
   final pinnedSet = pinnedIds.toSet();
+  final pinnedBots = view.pinnedBots.toSet();
   final byId = {for (final row in sorted) row.id: row};
+  final botByKey = {for (final row in sorted.whereType<BotDrawerRow>()) botPinKey(row): row};
   final blocks = <DrawerBlock>[];
   final pinned = [
     for (final id in pinnedIds)
       if (byId[id] case final row? when row is SessionRow && !folderOf.containsKey(id)) row,
+    // Then the Bot/group rows, newest pin first: the Host's pins keep their own
+    // order, and mixing the two sources would mean guessing pin times.
+    for (final key in view.pinnedBots)
+      if (botByKey[key] case final row? when !folderOf.containsKey(row.id)) row,
   ];
   if (pinned.isNotEmpty) blocks.add(PinnedBlock(pinned));
   final membersByFolder = <String, List<DrawerRow>>{};
@@ -790,19 +830,19 @@ List<DrawerBlock> drawerBlocks({
   for (final folder in view.folders) {
     final members = membersByFolder[folder.id] ?? const <DrawerRow>[];
     if (members.isEmpty && scoped) continue;
+    bool pinnedInFolder(DrawerRow row) =>
+        row is SessionRow ? pinnedSet.contains(row.id) : pinnedBots.contains(botPinKey(row));
     blocks.add(
       FolderBlock(folder, [
-        for (final row in members)
-          if (row is SessionRow && pinnedSet.contains(row.id)) row,
-        for (final row in members)
-          if (row is! SessionRow || !pinnedSet.contains(row.id)) row,
+        for (final row in members) if (pinnedInFolder(row)) row,
+        for (final row in members) if (!pinnedInFolder(row)) row,
       ]),
     );
   }
   final days = <SessionDay, List<DrawerRow>>{};
   for (final row in sorted) {
     if (folderOf.containsKey(row.id)) continue;
-    if (row is SessionRow && pinnedSet.contains(row.id)) continue;
+    if (row is SessionRow ? pinnedSet.contains(row.id) : pinnedBots.contains(botPinKey(row))) continue;
     days.putIfAbsent(sessionDayOf(row.sortKeyOf(view.sort), now), () => []).add(row);
   }
   for (final day in SessionDay.values) {

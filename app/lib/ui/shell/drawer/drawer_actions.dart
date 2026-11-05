@@ -25,6 +25,8 @@ import '../../bots/new_bot_page.dart';
 import '../../bots/new_room_sheet.dart';
 import '../../../state/bots_state.dart';
 import '../../common/brief_notice.dart';
+import '../../common/app_sheet.dart';
+import '../../theme/app_icons.dart';
 
 void _toast(ScaffoldMessengerState? messenger, String text, {String? undoLabel, VoidCallback? onUndo}) {
   if (messenger == null) return;
@@ -301,3 +303,55 @@ Future<void> archiveSelectionFlow(BuildContext context, WidgetRef ref) async {
   }
   ref.read(drawerSelectionProvider.notifier).end();
 }
+
+/// The actions of one Bot or group row. Pinning is the drawer's own: the Host's
+/// pin table takes session ids, so a `bot:` / `room:` key is kept locally and
+/// shares the single 置顶 block with the conversations.
+Future<void> botRowActionsFlow(BuildContext context, WidgetRef ref, BotDrawerRow row) async {
+  final key = botPinKey(row);
+  final view = ref.read(drawerViewProvider);
+  final pinned = view.pinnedBots.contains(key);
+  final ready = ref.read(workspacesProvider).ready;
+  final inFolder = view.folderOf.containsKey(row.id);
+  final action = await showAppSheet<String>(
+    context,
+    isScrollControlled: true,
+    builder: (sheet) => SafeArea(
+      top: false,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SheetHeader(row.title),
+          SheetGroup(
+            children: [
+              // Without the workspace registry the pin has nowhere to land; the
+              // native row hides the entry too.
+              if (ready)
+                ListTile(
+                  leading: Icon(pinned ? AppIcons.pinActive : AppIcons.pin),
+                  title: Text(pinned ? context.l10n.shellUnpin : context.l10n.commonPin),
+                  onTap: () => Navigator.pop(sheet, pinned ? 'unpin' : 'pin'),
+                ),
+              ListTile(
+                leading: const Icon(AppIcons.moveToFolder),
+                title: Text(inFolder ? context.l10n.shellMoveToOtherFolder : context.l10n.shellMoveToFolder),
+                onTap: () => Navigator.pop(sheet, 'folder'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+        ],
+      ),
+    ),
+  );
+  if (!context.mounted || action == null) return;
+  switch (action) {
+    case 'pin' || 'unpin':
+      // No toast: the row moves into the 置顶 block by itself.
+      await ref.read(drawerViewProvider.notifier).setBotPinned(key, action == 'pin');
+    case 'folder':
+      await moveToFolderFlow(context, ref, [row.id]);
+  }
+}
+

@@ -27,6 +27,7 @@ import '../chat/widgets/attachments.dart';
 import '../chat/widgets/quote_chip.dart' show ComposerTrayStack, QuoteChip;
 import '../chat/widgets/chat_card.dart';
 import '../common/status_dot.dart' show StatusTone;
+import '../common/brief_notice.dart';
 import '../features/feature_kit.dart';
 import '../shell/page_frame.dart';
 import '../session/session_detail_page.dart';
@@ -669,8 +670,10 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
         // private one, and never the group's numbers under a member's name.
         onInfo: targetBot == null
             ? () => Navigator.of(context).push(RoomAggregateDetailsPage.route(room.id))
-            : (memberSession == null ? null : () => SessionDetailPage.open(context, memberSession)),
-        infoEnabled: targetBot == null || memberSession != null,
+            : memberSession == null
+            ? () => ScaffoldMessenger.maybeOf(context)?.showBriefNotice(l10n.botsRoomMemberSessionMissing)
+            : () => SessionDetailPage.open(context, memberSession),
+        infoGreyed: targetBot != null && memberSession == null,
         infoTooltip: targetBot == null
             ? null
             : (memberSession == null
