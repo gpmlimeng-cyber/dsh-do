@@ -203,7 +203,7 @@ class SessionsDrawer extends ConsumerWidget {
       ),
     ];
     final list = _EdgeFade(
-      child: _SessionList(onClose: onClose, now: now),
+      child: _SessionList(onClose: onClose, onChosen: onChosen, now: now),
     );
 
     const radius = BorderRadius.only(
@@ -445,9 +445,12 @@ class _EdgeFade extends StatelessWidget {
 }
 
 class _SessionList extends ConsumerWidget {
-  const _SessionList({required this.onClose, this.now});
+  const _SessionList({required this.onClose, this.onChosen, this.now});
 
   final VoidCallback onClose;
+
+  /// Chosen, not just closed: a page that is not the shell leaves for it.
+  final VoidCallback? onChosen;
   final DateTime? now;
 
   @override
