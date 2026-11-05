@@ -151,8 +151,23 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
   /// One send bubble: the Host's queue words and actions when its inbox holds
   /// this message, otherwise the local 发送中 / 没能发送 note.
   Widget _pendingBubble(DsBotPending pending, DsBotQueue? inbox, {bool running = false}) {
-    final item = inbox?.byRpc(pending.requestId);
-    final inStep = item != null && inbox!.nextStep.any((e) => e.itemId == item.itemId);
+    // The inbox answers first; before it arrives the send's own itemId/slot do.
+    final item =
+        inbox?.byRpc(pending.requestId) ??
+        (pending.itemId == null
+            ? null
+            : DsBotQueueItem(
+                itemId: pending.itemId!,
+                rpcId: pending.requestId,
+                text: pending.text,
+                canSteer: pending.slot == 'next-turn' && running,
+              ));
+    final queueInbox = item == null
+        ? null
+        : (inbox ?? DsBotQueue(sessionId: ref.read(botChatProvider(widget.botId)).sessionId ?? ''));
+    final inStep =
+        item != null &&
+        ((inbox != null && inbox.nextStep.any((e) => e.itemId == item.itemId)) || pending.slot == 'next-step');
     final queue = item == null
         ? null
         : (
@@ -170,10 +185,14 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
       queueIcon: queue?.icon,
       queueActions: [
         if (item != null)
-          (running ? context.l10n.chatSendNow : context.l10n.commonSend, () => _sendNow(pending, inbox!, item, running)),
+          (
+            running ? context.l10n.chatSendNow : context.l10n.commonSend,
+            () => _sendNow(pending, queueInbox!, item, running),
+          ),
         if (item != null && !inStep && item.canSteer)
-          (context.l10n.chatSwitchToSteer, () => _queueAction(pending, inbox!, item)),
-        if (item != null) (context.l10n.chatWithdraw, () => _queueAction(pending, inbox!, item, remove: true)),
+          (context.l10n.chatSwitchToSteer, () => _queueAction(pending, queueInbox!, item)),
+        if (item != null)
+          (context.l10n.chatWithdraw, () => _queueAction(pending, queueInbox!, item, remove: true)),
       ],
     );
   }

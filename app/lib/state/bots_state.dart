@@ -643,6 +643,8 @@ class DsBotPending {
     this.status = DsBotPendingStatus.sending,
     this.drafts = const [],
     this.afterSeq,
+    this.itemId,
+    this.slot,
   });
 
   final String text;
@@ -653,8 +655,25 @@ class DsBotPending {
   final DsBotPendingStatus status;
   bool get failed => status == DsBotPendingStatus.failed;
 
+  /// The Host's inbox entry, when `send` answered with one, and its slot
+  /// (`next-turn` / `next-step`): the bubble words itself from these before
+  /// the inbox page arrives.
+  final String? itemId;
+  final String? slot;
+
   DsBotPending withStatus(DsBotPendingStatus next) =>
-      DsBotPending(text, at, requestId: requestId, status: next, drafts: drafts, afterSeq: afterSeq);
+      DsBotPending(text, at, requestId: requestId, status: next, drafts: drafts, afterSeq: afterSeq, itemId: itemId, slot: slot);
+
+  DsBotPending withQueue({String? itemId, String? slot}) => DsBotPending(
+    text,
+    at,
+    requestId: requestId,
+    status: status,
+    drafts: drafts,
+    afterSeq: afterSeq,
+    itemId: itemId ?? this.itemId,
+    slot: slot ?? this.slot,
+  );
 
   /// The pictures and files still being uploaded with this line: drawn as they
   /// will look once the host echoes them, so a photo shows the moment it is sent.
@@ -787,6 +806,34 @@ List<DsBotPending> settlePending(
   return left;
 }
 
+/// The bubbles the Host's queue implies: an entry nobody has a local bubble
+/// for (the app was reloaded, or the send answered after the page rebuilt)
+/// still has to be drawn, or a queued message vanishes until it is consumed.
+List<DsBotPending> pendingWithInbox(List<DsBotPending> pending, DsBotQueue? inbox, Iterable<DsBotItem> shown) {
+  if (inbox == null) return pending;
+  final seen = <String>{
+    for (final entry in pending)
+      if (entry.requestId.isNotEmpty) entry.requestId,
+    for (final item in shown)
+      if (item.kind == DsBotItemKind.user && item.rpcId case final rpc?) rpc,
+  };
+  final out = [...pending];
+  for (final item in [...inbox.nextStep, ...inbox.nextTurn]) {
+    final rpc = item.rpcId;
+    if (item.itemId.isEmpty || rpc == null || rpc.isEmpty || !seen.add(rpc)) continue;
+    out.add(
+      DsBotPending(
+        item.text,
+        item.time ?? DateTime.now(),
+        requestId: rpc,
+        itemId: item.itemId,
+        slot: inbox.nextStep.any((e) => e.itemId == item.itemId) ? 'next-step' : 'next-turn',
+      ),
+    );
+  }
+  return out;
+}
+
 /// How long a bubble may stay `sending` before it is shown as failed.
 const pendingTimeout = Duration(seconds: 20);
 
@@ -876,7 +923,7 @@ class BotChatController extends Notifier<BotChatState> {
         loading: false,
         error: () => null,
         sessionId: page.sessionId,
-        pending: settlePending(state.pending, items),
+        pending: pendingWithInbox(settlePending(state.pending, items), page.inbox, items),
         inbox: () => page.inbox,
       );
     } catch (error) {
@@ -982,7 +1029,29 @@ class BotChatController extends Notifier<BotChatState> {
       error: () => null,
     );
     try {
-      await api.send(botId, trimmed, images: images, fileReceiptIds: fileReceiptIds, mode: mode, requestId: entry.requestId);
+      final sent = await api.send(
+        botId,
+        trimmed,
+        images: images,
+        fileReceiptIds: fileReceiptIds,
+        mode: mode,
+        requestId: entry.requestId,
+      );
+      if (sent.itemId != null || sent.slot != null) {
+        state = state.copyWith(
+          pending: [
+            for (final p in state.pending)
+              if (p.requestId == entry.requestId) p.withQueue(itemId: sent.itemId, slot: sent.slot) else p,
+          ],
+        );
+        // The Host writes the queue entry just after answering: one quick read
+        // brings the inbox page in, words and actions with it.
+        unawaited(
+          Future<void>.delayed(const Duration(milliseconds: 600)).then((_) {
+            if (ref.mounted) unawaited(reload());
+          }),
+        );
+      }
       return true;
     } catch (error) {
       if (!_current(generation)) return false;
@@ -1171,7 +1240,7 @@ class RoomChatController extends Notifier<RoomChatState> {
         running: page.running,
         speaking: () => page.speaking,
         error: () => null,
-        pending: settlePending(state.pending, page.items),
+        pending: pendingWithInbox(settlePending(state.pending, page.items), page.inbox, page.items),
         inbox: () => page.inbox,
       );
       _armPoll(page.running);
@@ -1273,7 +1342,27 @@ class RoomChatController extends Notifier<RoomChatState> {
       error: () => null,
     );
     try {
-      await api.send(roomId, trimmed, images: images, fileReceiptIds: fileReceiptIds, mode: mode, requestId: entry.requestId);
+      final sent = await api.send(
+        roomId,
+        trimmed,
+        images: images,
+        fileReceiptIds: fileReceiptIds,
+        mode: mode,
+        requestId: entry.requestId,
+      );
+      if (sent.itemId != null || sent.slot != null) {
+        state = state.copyWith(
+          pending: [
+            for (final p in state.pending)
+              if (p.requestId == entry.requestId) p.withQueue(itemId: sent.itemId, slot: sent.slot) else p,
+          ],
+        );
+        unawaited(
+          Future<void>.delayed(const Duration(milliseconds: 600)).then((_) {
+            if (ref.mounted) unawaited(refresh());
+          }),
+        );
+      }
       return true;
     } catch (error) {
       if (!_current(generation)) return false;
