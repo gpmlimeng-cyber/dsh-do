@@ -48,6 +48,7 @@ import 'drawer/drawer_destination.dart';
 import 'drawer/archive_notice.dart';
 import 'drawer/drawer_filter_bar.dart';
 import 'drawer/drawer_list.dart';
+import 'new_panel.dart';
 import 'drawer/selection_bars.dart';
 import 'drawer/session_deletion.dart';
 import 'session_search_page.dart';
@@ -114,10 +115,7 @@ class SessionsDrawer extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    void newChat() {
-      ref.read(currentSessionProvider.notifier).select(null);
-      (onChosen ?? onClose)();
-    }
+    void newChat() => showNewPanel(context, onChosen: onChosen ?? onClose);
 
     void manageWorkspaces() {
       Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const WorkspacesPage()));

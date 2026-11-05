@@ -25,9 +25,14 @@ import 'bot_format.dart';
 import 'bot_creation_scope.dart';
 
 class NewBotPage extends ConsumerStatefulWidget {
-  const NewBotPage({super.key});
+  const NewBotPage({super.key, this.initialName});
 
-  static Route<void> route() => MaterialPageRoute<void>(builder: (_) => const NewBotPage());
+  /// A name typed in 新建's search field: the page opens with it filled in, so
+  /// 「新建 Bot「前」」 lands on a Bot about to be called that.
+  final String? initialName;
+
+  static Route<void> route({String? initialName}) =>
+      MaterialPageRoute<void>(builder: (_) => NewBotPage(initialName: initialName));
 
   @override
   ConsumerState<NewBotPage> createState() => _NewBotPageState();
@@ -49,7 +54,7 @@ String? newBotInstructions(String typed, {required bool visualReplies}) {
 }
 
 class _NewBotPageState extends ConsumerState<NewBotPage> {
-  final _name = TextEditingController();
+  late final _name = TextEditingController(text: widget.initialName ?? '');
   final _role = TextEditingController();
   final _instructions = TextEditingController();
   String _color = dsBotPickerColors[5];
