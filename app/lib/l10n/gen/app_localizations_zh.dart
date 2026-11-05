@@ -17825,6 +17825,9 @@ class L10nZh extends L10n {
   String get voiceEngineModelMissing => '语音模型已下载，但引擎没有加载它；请重启 App，或在语音设置里检查插件';
 
   @override
+  String get voiceEngineBusy => '引擎正忙或响应超时，语音模型暂时用不了，稍后再点一次';
+
+  @override
   String get voiceErrorNetworkTimeout => '语音识别连接超时，请检查网络';
 
   @override

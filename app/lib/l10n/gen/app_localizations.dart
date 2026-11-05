@@ -32302,6 +32302,12 @@ abstract class L10n {
   /// **'语音模型已下载，但引擎没有加载它；请重启 App，或在语音设置里检查插件'**
   String get voiceEngineModelMissing;
 
+  /// No description provided for @voiceEngineBusy.
+  ///
+  /// In zh, this message translates to:
+  /// **'引擎正忙或响应超时，语音模型暂时用不了，稍后再点一次'**
+  String get voiceEngineBusy;
+
   /// No description provided for @voiceErrorNetworkTimeout.
   ///
   /// In zh, this message translates to:

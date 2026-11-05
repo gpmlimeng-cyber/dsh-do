@@ -5394,6 +5394,7 @@
   "voiceConfigureEngine": "Download the voice model in voice settings first",
   "voiceConfigureEither": "The phone’s service isn’t available. Download the voice model in voice settings.",
   "voiceEngineModelMissing": "The voice model is downloaded, but the engine has not loaded it. Restart the app, or check the voice plugin in settings.",
+  "voiceEngineBusy": "The engine is busy or did not answer in time, so the voice model is not ready yet. Try again in a moment.",
   "voiceErrorNetworkTimeout": "Speech recognition timed out. Check your connection.",
   "voiceErrorNetwork": "Speech recognition could not connect to the network",
   "voiceErrorAudio": "Audio recording failed. Check the microphone.",

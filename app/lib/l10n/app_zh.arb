@@ -11825,6 +11825,7 @@
   "voiceConfigureEngine": "请先在语音设置里下载语音模型",
   "voiceConfigureEither": "系统识别用不了，可以在语音设置里下载语音模型",
   "voiceEngineModelMissing": "语音模型已下载，但引擎没有加载它；请重启 App，或在语音设置里检查插件",
+  "voiceEngineBusy": "引擎正忙或响应超时，语音模型暂时用不了，稍后再点一次",
   "voiceErrorNetworkTimeout": "语音识别连接超时，请检查网络",
   "voiceErrorNetwork": "语音识别网络连接失败",
   "voiceErrorAudio": "语音录音失败，请检查麦克风",

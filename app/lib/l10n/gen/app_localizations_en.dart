@@ -17397,7 +17397,7 @@ class L10nEn extends L10n {
   String get viewPreviewBadge => 'Preview';
 
   @override
-  String get viewHtmlCantOpen => 'This page won't open';
+  String get viewHtmlCantOpen => 'This page won\'t open';
 
   @override
   String get viewHtmlCantOpenBody => 'Open it in another app to read it';
@@ -18836,6 +18836,10 @@ class L10nEn extends L10n {
   @override
   String get voiceEngineModelMissing =>
       'The voice model is downloaded, but the engine has not loaded it. Restart the app, or check the voice plugin in settings.';
+
+  @override
+  String get voiceEngineBusy =>
+      'The engine is busy or did not answer in time, so the voice model is not ready yet. Try again in a moment.';
 
   @override
   String get voiceErrorNetworkTimeout => 'Speech recognition timed out. Check your connection.';
