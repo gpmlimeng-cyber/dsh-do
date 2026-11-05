@@ -55,7 +55,8 @@ class BotChatHeader extends StatelessWidget {
     this.chip,
     this.onInfo,
     this.onMessages,
-    this.messagesBadge,
+    this.messagesIcon,
+    this.messagesTooltip,
   });
 
   final Widget face;
@@ -78,8 +79,14 @@ class BotChatHeader extends StatelessWidget {
   /// 消息模式: only a group passes it, and the key sits left of the details one.
   final VoidCallback? onMessages;
 
-  /// A member's face on the messages key: the mode shows that member only.
-  final Widget? messagesBadge;
+  /// What the messages key draws instead of its default glyph: the mode that is
+  /// chosen (气泡 / @ / 一位成员的头像), so the current mode reads at a glance.
+  /// Give it a key per mode — the key swaps with a 120 ms fade and 0.92 → 1
+  /// scale, no bounce.
+  final Widget? messagesIcon;
+
+  /// The messages key's words; the page names the mode in them.
+  final String? messagesTooltip;
 
   static const barHeight = 56.0;
   static const key44 = 44.0;
@@ -206,10 +213,10 @@ class BotChatHeader extends StatelessWidget {
                     const SizedBox(width: 8),
                     _RoundKey(
                       key: const ValueKey('bot-messages'),
-                      icon: AppIcons.menu,
-                      tooltip: l10n.botsMessageMode,
+                      icon: AppIcons.chat,
+                      iconWidget: messagesIcon,
+                      tooltip: messagesTooltip ?? l10n.botsMessageMode,
                       onTap: onMessages,
-                      badge: messagesBadge,
                     ),
                   ],
                   const SizedBox(width: 8),
@@ -230,14 +237,14 @@ class BotChatHeader extends StatelessWidget {
 }
 
 class _RoundKey extends StatelessWidget {
-  const _RoundKey({super.key, required this.icon, required this.tooltip, required this.onTap, this.badge});
+  const _RoundKey({super.key, required this.icon, required this.tooltip, required this.onTap, this.iconWidget});
 
   final IconData icon;
   final String tooltip;
   final VoidCallback onTap;
 
-  /// Pinned to the key's lower right: 消息模式's member, when one is chosen.
-  final Widget? badge;
+  /// Drawn instead of [icon]: 消息模式's own key shows the mode, not one glyph.
+  final Widget? iconWidget;
 
   @override
   Widget build(BuildContext context) => Semantics(
@@ -255,8 +262,20 @@ class _RoundKey extends StatelessWidget {
           child: Stack(
             clipBehavior: Clip.none,
             children: [
-              Center(child: Icon(icon, size: 22, color: Theme.of(context).colorScheme.onSurface)),
-              if (badge case final badge?) Positioned(right: 1, bottom: 1, child: badge),
+              Center(
+                child: AnimatedSwitcher(
+                  // A pick lands: fade in and grow a hair, no bounce, no slide.
+                  duration: const Duration(milliseconds: 120),
+                  transitionBuilder: (child, animation) => FadeTransition(
+                    opacity: animation,
+                    child: ScaleTransition(
+                      scale: Tween<double>(begin: 0.92, end: 1).animate(animation),
+                      child: child,
+                    ),
+                  ),
+                  child: iconWidget ?? Icon(icon, size: 22, color: Theme.of(context).colorScheme.onSurface),
+                ),
+              ),
             ],
           ),
         ),

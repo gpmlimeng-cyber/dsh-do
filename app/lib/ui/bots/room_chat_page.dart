@@ -216,6 +216,54 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
     onChosen: _chosen,
   );
 
+  /// The header's messages key as the mode it shows now: 气泡 for 全部, @ for
+  /// 仅与我相关 (with a 4 dp dot), and the member's own face in a primary ring
+  /// for one member. Keyed by the mode, so a pick fades and grows into place.
+  Widget _modeIcon(BuildContext context, RoomMessageMode mode, DsBot? bot) {
+    final scheme = Theme.of(context).colorScheme;
+    final key = ValueKey('room-mode-icon-${mode.key}');
+    if (bot != null) {
+      return Container(
+        key: key,
+        padding: const EdgeInsets.all(1.5),
+        decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: scheme.primary, width: 1.5)),
+        child: BotAvatar(bot: bot, size: 22),
+      );
+    }
+    return SizedBox.square(
+      key: key,
+      dimension: 24,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Icon(
+            mode.isAll ? AppIcons.chat : AppIcons.mention,
+            size: 22,
+            color: mode.isAll ? scheme.onSurface : scheme.primary,
+          ),
+          if (mode.isRelevant)
+            Positioned(
+              right: 1,
+              bottom: 1,
+              child: Container(
+                width: 4,
+                height: 4,
+                decoration: BoxDecoration(color: scheme.primary, shape: BoxShape.circle),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// The mode in words, for the key's tooltip and its screen-reader label:
+  /// 「消息模式 · 全部 / 仅与我相关 / 前端工程师」.
+  String _modeLabel(L10n l10n, RoomMessageMode mode, DsBot? bot) => mode.isAll
+      ? l10n.shellAll
+      : mode.isRelevant
+      ? l10n.botsMessageModeRelevant
+      : (bot?.name ?? l10n.shellAll);
+
   /// The composer's right side: the group's context ring, and — while a turn
   /// runs with an empty field — a microphone. Both may hide; then there is no
   /// accessory at all, so the send key keeps its place (the Composer adds 2dp
@@ -441,7 +489,13 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
     final chat = ref.watch(roomChatProvider(widget.roomId));
     // Which lines this group shows. Filtering is rendering only: pending,
     // unread counts, 「已说 N」 and the round's progress keep the full list.
-    final mode = ref.watch(roomMessageModeProvider(room.id));
+    final pickedMode = ref.watch(roomMessageModeProvider(room.id));
+    // A member who left the group, or a team that no longer has them: the stored
+    // "that member only" mode stands for nothing, so the group reads as 全部
+    // rather than through a face with no name.
+    final mode = pickedMode.memberId != null && team.bot(pickedMode.memberId!) == null
+        ? RoomMessageMode.all
+        : pickedMode;
     final modeBot = mode.memberId == null ? null : team.bot(mode.memberId!);
     final approvals = [
       for (final a in status.live.approvals)
@@ -551,7 +605,8 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
           current: mode,
           onSelected: (picked) => ref.read(roomMessageModesProvider.notifier).set(room.id, picked),
         ),
-        messagesBadge: modeBot == null ? null : BotAvatar(bot: modeBot, size: 16),
+        messagesIcon: _modeIcon(context, mode, modeBot),
+        messagesTooltip: '${l10n.botsMessageMode} · ${_modeLabel(l10n, mode, modeBot)}',
       ),
       body: chat.loading && chat.items.isEmpty
           ? Padding(
