@@ -1914,6 +1914,51 @@
       }
     }
   },
+  "botsRoomSwitchChat": "切换会话",
+  "botsRoomSwitchTo": "切换会话：{target}",
+  "@botsRoomSwitchTo": {
+    "placeholders": {
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "botsRoomMemberChats": "成员会话",
+  "botsRoomOnlyWhose": "只看谁的发言",
+  "botsRoomFilter": "群聊过滤",
+  "botsRoomFilterGroupOnly": "只在群聊里生效",
+  "botsRoomWatching": "正在看",
+  "botsRoomNeverSpoke": "还没在本群说过话",
+  "botsRoomMemberChatLine": "本群会话 · {room}",
+  "@botsRoomMemberChatLine": {
+    "placeholders": {
+      "room": {
+        "type": "String"
+      }
+    }
+  },
+  "botsRoomSearchMembers": "搜索成员",
+  "botsRoomMemberLeft": "该成员已不在群里，已回到群聊",
+  "botsRoomMemberChat": "本群会话",
+  "botsRoomSendsToGroup": "发送到群聊，群里都看得见",
+  "botsRoomOnlyThisMember": "只看此成员",
+  "botsRoomBackToGroupChat": "回到群聊 {room}",
+  "@botsRoomBackToGroupChat": {
+    "placeholders": {
+      "room": {
+        "type": "String"
+      }
+    }
+  },
+  "botsRoomMemberDetails": "{name} 的对话详情",
+  "@botsRoomMemberDetails": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "botsRoomMemberSessionMissing": "该成员还没在本群开始会话",
   "brandXiaomi": "小米 / Redmi",
   "brandHuawei": "华为",
   "brandHonor": "荣耀",

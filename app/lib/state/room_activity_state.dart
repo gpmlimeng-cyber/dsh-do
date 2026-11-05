@@ -184,7 +184,7 @@ final roomActivityKeyProvider = Provider.autoDispose.family<RoomActivityKey, Str
         present: room != null,
         members: room?.members.join(',') ?? '',
         sessions: [
-          for (final id in room?.members ?? const <String>[]) '${id}:${room?.sessions[id] ?? ''}',
+          for (final id in room?.members ?? const <String>[]) '$id:${room?.sessions[id] ?? ''}',
         ].join(','),
       );
     }),

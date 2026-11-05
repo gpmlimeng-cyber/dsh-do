@@ -204,7 +204,7 @@ class _RoomActivityBarState extends ConsumerState<_RoomActivityBar> {
     if (waiting) {
       line = TextSpan(text: l10n.botsMemberNeedsApproval, style: DockText.title(context, color: ink));
     } else if (showStats) {
-      final speed = pulse == null ? null : pulse.tokensPerSecond;
+      final speed = pulse?.tokensPerSecond;
       line = TextSpan(
         text: speed == null ? l10n.botsWorking : '${speed.round()} tok/s',
         style: AppType.tabular(DockText.detail(context, color: colors.onSurface)),

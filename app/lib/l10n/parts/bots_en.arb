@@ -413,5 +413,46 @@
   "botsMessageModeEmpty": "This member has not spoken in this group yet",
   "botsMessageModeEmptyRelevant": "No messages involve you yet",
   "botsNamedDone": "{name} is done",
-  "@botsNamedDone": {"placeholders": {"name": {"type": "String"}}}
+  "@botsNamedDone": {"placeholders": {"name": {"type": "String"}}},
+  "botsRoomSwitchChat": "Switch conversation",
+  "botsRoomSwitchTo": "Switch to {target}",
+  "@botsRoomSwitchTo": {
+    "placeholders": {
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "botsRoomMemberChats": "Member conversations",
+  "botsRoomOnlyWhose": "Whose messages only",
+  "botsRoomFilter": "Group chat filters",
+  "botsRoomFilterGroupOnly": "Works in the group chat only",
+  "botsRoomWatching": "Viewing",
+  "botsRoomNeverSpoke": "Has not spoken in this group yet",
+  "botsRoomMemberChatLine": "Group conversation · {room}",
+  "@botsRoomMemberChatLine": {
+    "placeholders": {
+      "room": {
+        "type": "String"
+      }
+    }
+  },
+  "botsRoomSearchMembers": "Search members",
+  "botsRoomMemberLeft": "That member is no longer in this group; back to the group chat",
+  "botsRoomMemberChat": "Group conversation",
+  "botsRoomSendsToGroup": "Sends to the group chat; everyone there sees it",
+  "botsRoomOnlyThisMember": "Only this member",
+  "botsRoomBackToGroupChat": "Back to {room}",
+  "@botsRoomBackToGroupChat": {
+    "placeholders": {
+      "room": {"type": "String"}
+    }
+  },
+  "botsRoomMemberDetails": "{name}'s conversation details",
+  "@botsRoomMemberDetails": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "botsRoomMemberSessionMissing": "This member has not started a conversation in this group yet"
 }

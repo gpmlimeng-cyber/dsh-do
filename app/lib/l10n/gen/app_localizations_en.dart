@@ -19267,6 +19267,65 @@ class L10nEn extends L10n {
   }
 
   @override
+  String get botsRoomSwitchChat => 'Switch conversation';
+
+  @override
+  String botsRoomSwitchTo(String target) {
+    return 'Switch to $target';
+  }
+
+  @override
+  String get botsRoomMemberChats => 'Member conversations';
+
+  @override
+  String get botsRoomOnlyWhose => 'Whose messages only';
+
+  @override
+  String get botsRoomFilter => 'Group chat filters';
+
+  @override
+  String get botsRoomFilterGroupOnly => 'Works in the group chat only';
+
+  @override
+  String get botsRoomWatching => 'Viewing';
+
+  @override
+  String get botsRoomNeverSpoke => 'Has not spoken in this group yet';
+
+  @override
+  String botsRoomMemberChatLine(String room) {
+    return 'Group conversation · $room';
+  }
+
+  @override
+  String get botsRoomSearchMembers => 'Search members';
+
+  @override
+  String get botsRoomMemberLeft => 'That member is no longer in this group; back to the group chat';
+
+  @override
+  String get botsRoomMemberChat => 'Group conversation';
+
+  @override
+  String get botsRoomSendsToGroup => 'Sends to the group chat; everyone there sees it';
+
+  @override
+  String get botsRoomOnlyThisMember => 'Only this member';
+
+  @override
+  String botsRoomBackToGroupChat(String room) {
+    return 'Back to $room';
+  }
+
+  @override
+  String botsRoomMemberDetails(String name) {
+    return '$name\'s conversation details';
+  }
+
+  @override
+  String get botsRoomMemberSessionMissing => 'This member has not started a conversation in this group yet';
+
+  @override
   String get botsMessageModeRelevant => 'Only what involves me';
 
   @override

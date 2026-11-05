@@ -18250,6 +18250,65 @@ class L10nZh extends L10n {
   }
 
   @override
+  String get botsRoomSwitchChat => '切换会话';
+
+  @override
+  String botsRoomSwitchTo(String target) {
+    return '切换会话：$target';
+  }
+
+  @override
+  String get botsRoomMemberChats => '成员会话';
+
+  @override
+  String get botsRoomOnlyWhose => '只看谁的发言';
+
+  @override
+  String get botsRoomFilter => '群聊过滤';
+
+  @override
+  String get botsRoomFilterGroupOnly => '只在群聊里生效';
+
+  @override
+  String get botsRoomWatching => '正在看';
+
+  @override
+  String get botsRoomNeverSpoke => '还没在本群说过话';
+
+  @override
+  String botsRoomMemberChatLine(String room) {
+    return '本群会话 · $room';
+  }
+
+  @override
+  String get botsRoomSearchMembers => '搜索成员';
+
+  @override
+  String get botsRoomMemberLeft => '该成员已不在群里，已回到群聊';
+
+  @override
+  String get botsRoomMemberChat => '本群会话';
+
+  @override
+  String get botsRoomSendsToGroup => '发送到群聊，群里都看得见';
+
+  @override
+  String get botsRoomOnlyThisMember => '只看此成员';
+
+  @override
+  String botsRoomBackToGroupChat(String room) {
+    return '回到群聊 $room';
+  }
+
+  @override
+  String botsRoomMemberDetails(String name) {
+    return '$name 的对话详情';
+  }
+
+  @override
+  String get botsRoomMemberSessionMissing => '该成员还没在本群开始会话';
+
+  @override
   String get botsMessageModeRelevant => '仅与我相关';
 
   @override

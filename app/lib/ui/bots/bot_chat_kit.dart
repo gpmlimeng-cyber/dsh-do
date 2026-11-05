@@ -57,6 +57,9 @@ class BotChatHeader extends StatelessWidget {
     this.onMessages,
     this.messagesIcon,
     this.messagesTooltip,
+    this.titleHint,
+    this.infoTooltip,
+    this.infoEnabled = true,
   });
 
   final Widget face;
@@ -79,14 +82,24 @@ class BotChatHeader extends StatelessWidget {
   /// 消息模式: only a group passes it, and the key sits left of the details one.
   final VoidCallback? onMessages;
 
-  /// What the messages key draws instead of its default glyph: the mode that is
-  /// chosen (气泡 / @ / 一位成员的头像), so the current mode reads at a glance.
-  /// Give it a key per mode — the key swaps with a 120 ms fade and 0.92 → 1
-  /// scale, no bounce.
+  /// What the messages key draws instead of its default glyph: the conversation
+  /// it opens (the group's icon, or a member's face in a ring), so where you are
+  /// reads at a glance. Give it a key per target — the key swaps with a 120 ms
+  /// fade and 0.92 → 1 scale, no bounce.
   final Widget? messagesIcon;
 
   /// The messages key's words; the page names the mode in them.
   final String? messagesTooltip;
+
+  /// What the title capsule does, for screen readers. The default says
+  /// 查看详情; a page whose capsule switches conversations says that instead.
+  final String? titleHint;
+
+  /// The right key's words; null keeps 「详情」. A disabled key also says why.
+  final String? infoTooltip;
+
+  /// False greys the right key and makes it untappable (no details to show).
+  final bool infoEnabled;
 
   static const barHeight = 56.0;
   static const key44 = 44.0;
@@ -144,7 +157,7 @@ class BotChatHeader extends StatelessWidget {
                       alignment: Alignment.centerLeft,
                       child: Semantics(
                         button: true,
-                        hint: l10n.botsViewDetails,
+                        hint: titleHint ?? l10n.botsViewDetails,
                         child: GlassSurface(
                           key: const ValueKey('bot-title'),
                           tier: GlassTier.chrome,
@@ -205,10 +218,6 @@ class BotChatHeader extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (chip case final chip?) ...[
-                    const SizedBox(width: 8),
-                    chip,
-                  ],
                   if (onMessages case final onMessages?) ...[
                     const SizedBox(width: 8),
                     _RoundKey(
@@ -219,12 +228,17 @@ class BotChatHeader extends StatelessWidget {
                       onTap: onMessages,
                     ),
                   ],
+                  if (chip case final chip?) ...[
+                    const SizedBox(width: 8),
+                    chip,
+                  ],
                   const SizedBox(width: 8),
                   _RoundKey(
                     key: const ValueKey('bot-details'),
                     icon: AppIcons.info,
-                    tooltip: l10n.commonDetails,
-                    onTap: onInfo ?? onDetails,
+                    tooltip: infoTooltip ?? l10n.commonDetails,
+                    onTap: infoEnabled ? (onInfo ?? onDetails) : null,
+                    iconColor: infoEnabled ? null : DshColors.of(context).textTertiary,
                   ),
                 ],
               ),
@@ -237,11 +251,22 @@ class BotChatHeader extends StatelessWidget {
 }
 
 class _RoundKey extends StatelessWidget {
-  const _RoundKey({super.key, required this.icon, required this.tooltip, required this.onTap, this.iconWidget});
+  const _RoundKey({
+    super.key,
+    required this.icon,
+    required this.tooltip,
+    this.onTap,
+    this.iconWidget,
+    this.iconColor,
+  });
 
   final IconData icon;
   final String tooltip;
-  final VoidCallback onTap;
+
+  /// Null disables the key: it still says what it would do, but does nothing.
+  final VoidCallback? onTap;
+
+  final Color? iconColor;
 
   /// Drawn instead of [icon]: 消息模式's own key shows the mode, not one glyph.
   final Widget? iconWidget;
@@ -273,7 +298,8 @@ class _RoundKey extends StatelessWidget {
                       child: child,
                     ),
                   ),
-                  child: iconWidget ?? Icon(icon, size: 22, color: Theme.of(context).colorScheme.onSurface),
+                  child: iconWidget ??
+                      Icon(icon, size: 22, color: iconColor ?? Theme.of(context).colorScheme.onSurface),
                 ),
               ),
             ],

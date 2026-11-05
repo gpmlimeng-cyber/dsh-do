@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
 import '../../state/bots_state.dart';
+import '../../state/room_chat_target.dart';
 import '../common/app_sheet.dart';
 import '../common/list_page_row.dart';
 import '../common/page_hero.dart';
@@ -22,7 +23,7 @@ import '../theme/theme.dart';
 import 'bot_avatar.dart';
 import 'unavailable_message.dart';
 import 'bot_action_scope.dart';
-import 'bot_chat_page.dart';
+import 'room_chat_page.dart';
 import 'bot_format.dart';
 import 'bot_sheets.dart';
 import 'bots_page.dart' show BotTag;
@@ -74,8 +75,8 @@ class RoomDetailsPage extends ConsumerWidget {
             SheetGroup(
               children: [
                 ListPageRow(
-                  icon: AppIcons.chat,
-                  title: context.l10n.botsPrivateChat,
+                  icon: AppIcons.groupChat,
+                  title: context.l10n.botsRoomMemberChat,
                   onTap: () => Navigator.pop(sheet, 'chat'),
                 ),
                 if (!admin)
@@ -103,7 +104,10 @@ class RoomDetailsPage extends ConsumerWidget {
     if (!context.mounted || !scope.current(context, ref) || action == null) return;
     switch (action) {
       case 'chat':
-        await Navigator.of(context).push(BotChatPage.route(bot.id));
+        // This member's conversation in the group, never their private one.
+        await Navigator.of(context).push(
+          RoomChatPage.route(room.id, initialTarget: RoomChatTarget.member(bot.id)),
+        );
       case 'admin':
         await _update(context, ref, scope, (api) => api.updateRoom(room.id, admin: bot.id));
       case 'remove':

@@ -33099,6 +33099,93 @@ abstract class L10n {
   /// In zh, this message translates to:
   /// **'消息模式：{mode}'**
   String botsMessageModeWith(String mode);
+
+  /// No description provided for @botsRoomSwitchChat.
+  ///
+  /// In zh, this message translates to:
+  /// **'切换会话'**
+  String get botsRoomSwitchChat;
+  /// No description provided for @botsRoomSwitchTo.
+  ///
+  /// In zh, this message translates to:
+  /// **'切换会话：{target}'**
+  String botsRoomSwitchTo(String target);
+  /// No description provided for @botsRoomMemberChats.
+  ///
+  /// In zh, this message translates to:
+  /// **'成员会话'**
+  String get botsRoomMemberChats;
+  /// No description provided for @botsRoomOnlyWhose.
+  ///
+  /// In zh, this message translates to:
+  /// **'只看谁的发言'**
+  String get botsRoomOnlyWhose;
+  /// No description provided for @botsRoomFilter.
+  ///
+  /// In zh, this message translates to:
+  /// **'群聊过滤'**
+  String get botsRoomFilter;
+  /// No description provided for @botsRoomFilterGroupOnly.
+  ///
+  /// In zh, this message translates to:
+  /// **'只在群聊里生效'**
+  String get botsRoomFilterGroupOnly;
+  /// No description provided for @botsRoomWatching.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在看'**
+  String get botsRoomWatching;
+  /// No description provided for @botsRoomNeverSpoke.
+  ///
+  /// In zh, this message translates to:
+  /// **'还没在本群说过话'**
+  String get botsRoomNeverSpoke;
+  /// No description provided for @botsRoomMemberChatLine.
+  ///
+  /// In zh, this message translates to:
+  /// **'本群会话 · {room}'**
+  String botsRoomMemberChatLine(String room);
+  /// No description provided for @botsRoomSearchMembers.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索成员'**
+  String get botsRoomSearchMembers;
+  /// No description provided for @botsRoomMemberLeft.
+  ///
+  /// In zh, this message translates to:
+  /// **'该成员已不在群里，已回到群聊'**
+  String get botsRoomMemberLeft;
+  /// No description provided for @botsRoomMemberChat.
+  ///
+  /// In zh, this message translates to:
+  /// **'本群会话'**
+  String get botsRoomMemberChat;
+  /// No description provided for @botsRoomSendsToGroup.
+  ///
+  /// In zh, this message translates to:
+  /// **'发送到群聊，群里都看得见'**
+  String get botsRoomSendsToGroup;
+  /// No description provided for @botsRoomOnlyThisMember.
+  ///
+  /// In zh, this message translates to:
+  /// **'只看此成员'**
+  String get botsRoomOnlyThisMember;
+
+  /// No description provided for @botsRoomBackToGroupChat.
+  ///
+  /// In zh, this message translates to:
+  /// **'回到群聊 {room}'**
+  String botsRoomBackToGroupChat(String room);
+  /// No description provided for @botsRoomMemberDetails.
+  ///
+  /// In zh, this message translates to:
+  /// **'{name} 的对话详情'**
+  String botsRoomMemberDetails(String name);
+  /// No description provided for @botsRoomMemberSessionMissing.
+  ///
+  /// In zh, this message translates to:
+  /// **'该成员还没在本群开始会话'**
+  String get botsRoomMemberSessionMissing;
   /// No description provided for @botsMessageModeRelevant.
   String get botsMessageModeRelevant;
   /// No description provided for @botsMessageModeEmpty.

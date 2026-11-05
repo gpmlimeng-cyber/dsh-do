@@ -150,6 +150,15 @@ List<DsBotItem> visibleRoomItems(
   return kept;
 }
 
+/// The lines one member's conversation in this group shows: their own and the
+/// user's own. A message sent there is a group message — it must not vanish the
+/// instant it lands — so the person's lines stay, and other members' lines stay
+/// in the group chat.
+List<DsBotItem> memberTargetItems(List<DsBotItem> items, String memberId) => [
+  for (final item in items)
+    if (item.botId == memberId || item.kind == DsBotItemKind.user) item,
+];
+
 /// [items] without a `done` line whose previous line is the same member's own
 /// words: the words already say it finished. A `done` line is kept when it is
 /// the only trace — the member answered PASS or only ran tools — and the data

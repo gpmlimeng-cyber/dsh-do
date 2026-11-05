@@ -19,7 +19,6 @@ import '../settings/settings_screen.dart';
 import '../theme/theme.dart';
 import '../web/local_web_screen.dart';
 import 'adaptive/adaptive_layout.dart';
-import 'drawer/drawer_destination.dart';
 import 'drawer_drag.dart';
 import 'sessions_drawer.dart';
 

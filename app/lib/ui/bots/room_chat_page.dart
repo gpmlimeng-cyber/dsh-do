@@ -10,9 +10,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
 import '../../state/room_activity_state.dart' show roomMembersActivityProvider, roomUsageTotal;
+import '../../state/room_chat_target.dart';
 import '../../state/room_message_mode.dart';
 import '../../state/settings_state.dart';
 import '../../state/attachments.dart';
+import '../../state/draft_store.dart';
 import '../../state/bots_state.dart';
 import '../../state/connection_state.dart';
 import '../chat/composer.dart';
@@ -27,6 +29,7 @@ import '../chat/widgets/chat_card.dart';
 import '../common/status_dot.dart' show StatusTone;
 import '../features/feature_kit.dart';
 import '../shell/page_frame.dart';
+import '../session/session_detail_page.dart';
 import 'bot_stop_guard.dart';
 import 'bot_action_scope.dart';
 import '../shell/drawer/drawer_destination.dart';
@@ -48,17 +51,22 @@ import 'bot_format.dart';
 import 'bot_mention.dart';
 import 'room_approval_action.dart';
 import 'room_activity_strip.dart' show roomStatusOf;
-import 'room_message_sheet.dart' show showRoomMessageSheet;
+import 'room_session_sheet.dart' show showRoomSessionSheet;
 import 'room_aggregate_details_page.dart';
 import 'room_details_page.dart';
 import 'room_full_text_sheet.dart';
 
 class RoomChatPage extends ConsumerStatefulWidget {
-  const RoomChatPage({super.key, required this.roomId});
+  const RoomChatPage({super.key, required this.roomId, this.initialTarget = RoomChatTarget.all});
 
   final String roomId;
 
-  static Route<void> route(String roomId) => MaterialPageRoute<void>(builder: (_) => RoomChatPage(roomId: roomId));
+  /// The conversation to open on: the group chat (default) or one member's
+  /// conversation in it. Later switches are page state, not routes.
+  final RoomChatTarget initialTarget;
+
+  static Route<void> route(String roomId, {RoomChatTarget initialTarget = RoomChatTarget.all}) =>
+      MaterialPageRoute<void>(builder: (_) => RoomChatPage(roomId: roomId, initialTarget: initialTarget));
 
   @override
   ConsumerState<RoomChatPage> createState() => _RoomChatPageState();
@@ -74,6 +82,15 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
   final _focus = FocusNode();
   final _scrolled = ValueNotifier(0.0);
   late final DsBotViewingController _viewing;
+
+  /// Which conversation this page shows now. Switching replaces it in place:
+  /// no route is pushed, so one back still lands on the group's details.
+  late RoomChatTarget _target = widget.initialTarget;
+
+  late final DraftStore _draftStore = ref.read(draftStoreProvider.notifier);
+
+  /// A draft per conversation: the group's, and each member's own.
+  late String _draftKey = _draftKeyFor(_target);
   /// This page's own drawer: it opens over the chat instead of leaving it.
   late final SessionDrawerController _drawer = SessionDrawerController(vsync: this);
   late final BotMentionController _mentions = BotMentionController(input: _input);
@@ -103,7 +120,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
     return null;
   }
 
-  void _rememberFlash(DsBotRoom room, DsBotTeam team, RoomMessageMode mode, List<String> names) {
+  void _rememberFlash(DsBotRoom room, DsBotTeam team, RoomMessageMode mode, List<String> names, RoomChatTarget target) {
     final items = ref.read(roomChatProvider(widget.roomId)).items;
     final latest = _latestFlash(items);
     if (latest == null) return;
@@ -116,6 +133,8 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
     }
     if (latest.key == _lastFlashKey) return;
     _lastFlashKey = latest.key;
+    // Another member's line is not this conversation's news.
+    if (target.memberId != null && latest.item.botId != target.memberId) return;
     // A line the current mode filters out must not speak either.
     if (visibleRoomItems([latest.item], mode, memberNames: names).isEmpty) return;
     final name = team.bot(latest.item.botId)?.name;
@@ -131,6 +150,33 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
   }
   late final VoiceInputController _voice;
   late final VoiceInputActiveController _voiceFlag;
+
+  String _draftKeyFor(RoomChatTarget target) =>
+      'room:${widget.roomId}${target.isAll ? '' : ':${target.memberId}'}';
+
+  void _saveDraft() => _draftStore.save(_draftKey, _input.text, _drafts);
+
+  void _showDraft(String key) {
+    final draft = ref.read(draftStoreProvider).drafts[key];
+    _drafts = draft?.attachments ?? const [];
+    final text = draft?.text ?? '';
+    _input.value = TextEditingValue(text: text, selection: TextSelection.collapsed(offset: text.length));
+  }
+
+  /// Another conversation of the same group: same page, same data, same
+  /// composer. Drafts go with their own conversation, so switching back brings
+  /// the words back.
+  void _switchTarget(RoomChatTarget next) {
+    if (next == _target) return;
+    _saveDraft();
+    setState(() {
+      _target = next;
+      _draftKey = _draftKeyFor(next);
+    });
+    _showDraft(_draftKey);
+    _mentions.dismiss();
+    if (_voice.active) unawaited(_voice.cancel());
+  }
 
   @override
   void initState() {
@@ -150,6 +196,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _viewing.set(widget.roomId);
     });
+    _showDraft(_draftKey);
     // A read, and only while a round runs: nothing here starts a turn.
     _progressTimer = Timer.periodic(const Duration(seconds: 1), (_) => unawaited(_readProgress()));
   }
@@ -186,6 +233,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
     scheduleMicrotask(() => flag.set(false));
     _stopGuard.dispose();
     _viewing.leave(widget.roomId);
+    _saveDraft();
     _drawer.dispose();
     _mentions.dispose();
     _input.dispose();
@@ -216,32 +264,29 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
     onChosen: _chosen,
   );
 
-  /// The header's messages key as the mode it shows now: 气泡 for 全部, @ for
-  /// 仅与我相关 (with a 4 dp dot), and the member's own face in a primary ring
-  /// for one member. Keyed by the mode, so a pick fades and grows into place.
-  Widget _modeIcon(BuildContext context, RoomMessageMode mode, DsBot? bot) {
+  /// The header's switch key as the conversation it shows: the group's icon —
+  /// with the dot that means "the group is filtered" — or the member's own face
+  /// in a primary ring. A member's conversation carries no dot: filters do not
+  /// apply there, and a dot would say they do. Keyed, so a switch fades and
+  /// grows into place.
+  Widget _targetIcon(BuildContext context, RoomChatTarget target, DsBot? bot, {required bool filtered}) {
     final scheme = Theme.of(context).colorScheme;
-    final key = ValueKey('room-mode-icon-${mode.key}');
     if (bot != null) {
       return Container(
-        key: key,
+        key: ValueKey('room-target-icon-${bot.id}'),
         padding: const EdgeInsets.all(1.5),
         decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: scheme.primary, width: 1.5)),
         child: BotAvatar(bot: bot, size: 22),
       );
     }
     return SizedBox.square(
-      key: key,
+      key: ValueKey('room-target-icon-all-${filtered ? 'filtered' : 'plain'}'),
       dimension: 24,
       child: Stack(
         alignment: Alignment.center,
         children: [
-          Icon(
-            mode.isAll ? AppIcons.chat : AppIcons.mention,
-            size: 22,
-            color: mode.isAll ? scheme.onSurface : scheme.primary,
-          ),
-          if (mode.isRelevant)
+          Icon(AppIcons.groupChat, size: 22, color: scheme.onSurface),
+          if (filtered)
             Positioned(
               right: 1,
               bottom: 1,
@@ -256,13 +301,9 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
     );
   }
 
-  /// The mode in words, for the key's tooltip and its screen-reader label:
-  /// 「消息模式 · 全部 / 仅与我相关 / 前端工程师」.
-  String _modeLabel(L10n l10n, RoomMessageMode mode, DsBot? bot) => mode.isAll
-      ? l10n.shellAll
-      : mode.isRelevant
-      ? l10n.botsMessageModeRelevant
-      : (bot?.name ?? l10n.shellAll);
+  /// The conversation in words, for the key's tooltip and its screen-reader
+  /// label: 「切换会话：群聊 / 前端工程师」.
+  String _targetLabel(L10n l10n, DsBot? bot) => bot?.name ?? l10n.botsGroupChat;
 
   /// The composer's right side: the group's context ring, and — while a turn
   /// runs with an empty field — a microphone. Both may hide; then there is no
@@ -496,7 +537,20 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
     final mode = pickedMode.memberId != null && team.bot(pickedMode.memberId!) == null
         ? RoomMessageMode.all
         : pickedMode;
-    final modeBot = mode.memberId == null ? null : team.bot(mode.memberId!);
+    // The conversation this page shows. A member who left the group while being
+    // read falls back to the group chat, and the page says so once.
+    final targetBot = _target.memberId == null ? null : team.bot(_target.memberId!);
+    // The member's Session in this group, and only that one: empty means the
+    // details are unavailable (old Host), never their private conversation.
+    final memberSession = targetBot == null ? null : room.sessions[targetBot.id];
+    final target = targetBot == null ? RoomChatTarget.all : _target;
+    if (!_target.isAll && targetBot == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _target.isAll) return;
+        _switchTarget(RoomChatTarget.all);
+        ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text(context.l10n.botsRoomMemberLeft)));
+      });
+    }
     final approvals = [
       for (final a in status.live.approvals)
         if (a.roomId == room.id && a.answerable) a,
@@ -530,7 +584,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
     }
     final speaker = statusLine.bot;
 
-    final typing = speaker == null
+    final typing = speaker == null || (target.memberId != null && speaker.id != target.memberId)
         ? null
         : BotTypingRow(
             speaker,
@@ -544,6 +598,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
     final deliveredByBot = <String, ({String sessionId, TurnArtifacts group})>{};
     final seenFiles = <String>{};
     for (final id in room.members) {
+      if (target.memberId != null && id != target.memberId) continue;
       final bot = team.bot(id);
       if (bot == null) continue;
       final memberSession = room.sessions[bot.id] ?? bot.sessionId;
@@ -562,13 +617,15 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
       );
     }
     final groupArtifacts = room.sessionId == null ? null : ref.watch(sessionArtifactsProvider(room.sessionId!));
-    final visible = visibleRoomItems(chat.items, mode, memberNames: [for (final bot in members) bot.name]);
+    final visible = target.memberId == null
+        ? visibleRoomItems(chat.items, mode, memberNames: [for (final bot in members) bot.name])
+        : memberTargetItems(chat.items, target.memberId!);
     final names = [for (final bot in members) bot.name];
     if (!_flashPrimed) {
-      _rememberFlash(room, team, mode, names);
+      _rememberFlash(room, team, mode, names, target);
     }
     ref.listen(roomChatProvider(widget.roomId).select((s) => s.items), (_, _) {
-      if (mounted) _rememberFlash(room, team, mode, names);
+      if (mounted) _rememberFlash(room, team, mode, names, target);
     });
     final transcript = transcriptRows(withoutDoneEchoes(visible), pending: chat.pending, typing: typing);
     final rows = attachMemberArtifacts(
@@ -585,28 +642,57 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
 
     return BotChatFrame(
       header: BotChatHeader(
+        // The group is what the page is about, in either conversation: its face
+        // and its title stay, and the member is named on the line below.
         face: RoomAvatar(room: room, team: team, size: BotChatHeader.faceSize),
         title: room.name,
-        status: statusLine.spoken == 0
-            ? statusLine.label
-            : '${statusLine.label} · ${l10n.botsAlreadySpoke} ${statusLine.spoken}',
+        titleHint: targetBot == null ? null : l10n.botsRoomBackToGroupChat(room.name),
+        // One member's conversation says whose it is and which group it belongs
+        // to: without that line the single-chat-shaped page reads as a private
+        // chat.
+        status: targetBot == null
+            ? (statusLine.spoken == 0
+                  ? statusLine.label
+                  : '${statusLine.label} · ${l10n.botsAlreadySpoke} ${statusLine.spoken}')
+            : '‹ ${l10n.botsGroupChat} · ${targetBot.name}',
         tone: statusLine.tone,
         scrolledUnder: _scrolled,
         onLeading: () => _drawer.toggle(context),
-        // The title capsule is the group's own details; the key on the right is
-        // this conversation's — trajectory, files, progress, context — the same
-        // page a Bot's chat shows, read from the Session the group runs in.
-        onDetails: () => Navigator.of(context).push(RoomDetailsPage.route(room.id)),
-        onInfo: () => Navigator.of(context).push(RoomAggregateDetailsPage.route(room.id)),
-        onMessages: () => showRoomMessageSheet(
+        // The title capsule is the group's: in a member's conversation it
+        // switches back to the group chat, in the group chat it opens the
+        // group's own details, as it always did.
+        onDetails: targetBot == null
+            ? () => Navigator.of(context).push(RoomDetailsPage.route(room.id))
+            : () => _switchTarget(RoomChatTarget.all),
+        // Right key = this conversation's details: the group's aggregate in the
+        // group chat, the member's own Session in this group otherwise — never a
+        // private one, and never the group's numbers under a member's name.
+        onInfo: targetBot == null
+            ? () => Navigator.of(context).push(RoomAggregateDetailsPage.route(room.id))
+            : (memberSession == null ? null : () => SessionDetailPage.open(context, memberSession)),
+        infoEnabled: targetBot == null || memberSession != null,
+        infoTooltip: targetBot == null
+            ? null
+            : (memberSession == null
+                  ? l10n.botsRoomMemberSessionMissing
+                  : l10n.botsRoomMemberDetails(targetBot.name)),
+        onMessages: () => showRoomSessionSheet(
           context,
           room: room,
           team: team,
-          current: mode,
-          onSelected: (picked) => ref.read(roomMessageModesProvider.notifier).set(room.id, picked),
+          target: target,
+          mode: mode,
+          items: chat.items,
+          onTarget: _switchTarget,
+          onMode: (picked) => ref.read(roomMessageModesProvider.notifier).set(room.id, picked),
         ),
-        messagesIcon: _modeIcon(context, mode, modeBot),
-        messagesTooltip: l10n.botsMessageModeWith(_modeLabel(l10n, mode, modeBot)),
+        messagesIcon: _targetIcon(
+          context,
+          target,
+          targetBot,
+          filtered: target.isAll && !mode.isAll,
+        ),
+        messagesTooltip: l10n.botsRoomSwitchTo(_targetLabel(l10n, targetBot)),
       ),
       body: chat.loading && chat.items.isEmpty
           ? Padding(
@@ -620,7 +706,16 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
               hasEarlier: chat.hasEarlier,
               loadingEarlier: chat.loadingEarlier,
               onEarlier: () => ref.read(roomChatProvider(widget.roomId).notifier).loadEarlier(),
-              empty: mode.isAll
+              empty: targetBot != null
+                  ? Center(
+                      child: Text(
+                        l10n.botsMessageModeEmpty,
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodyMedium?.copyWith(color: DshColors.of(context).textTertiary),
+                      ),
+                    )
+                  : mode.isAll
                   ? _Members(room: room, team: team)
                   : Center(
                       child: Text(
@@ -798,6 +893,40 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
           running: chat.running,
           showSessionBars: false,
           roomActivity: statusLine,
+        ),
+        // One member's conversation still sends to the group, so say it above
+        // the field where the doubt starts. Not the field's own hint: that one
+        // disappears as soon as the person types.
+        AnimatedSize(
+          duration: const Duration(milliseconds: 150),
+          alignment: Alignment.bottomCenter,
+          child: targetBot == null
+              ? const SizedBox(width: double.infinity)
+              : Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(AppIcons.groupChat, size: 12, color: DshColors.of(context).textTertiary),
+                        const SizedBox(width: 5),
+                        Flexible(
+                          child: Text(
+                            l10n.botsRoomSendsToGroup,
+                            maxLines: 2,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              height: 1.35,
+                              color: DshColors.of(context).textTertiary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
         ),
         // The accessory shows while the field is empty, so the field's text is
         // listened to here (the Composer listens to it anyway).
