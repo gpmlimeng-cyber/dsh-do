@@ -48,6 +48,7 @@ import 'drawer/drawer_destination.dart';
 import 'drawer/archive_notice.dart';
 import 'drawer/drawer_filter_bar.dart';
 import 'drawer/drawer_list.dart';
+import '../update/update_row.dart';
 import 'new_panel.dart';
 import 'drawer/selection_bars.dart';
 import 'drawer/session_deletion.dart';
@@ -230,6 +231,8 @@ class SessionsDrawer extends ConsumerWidget {
                 ...top,
                 Expanded(child: list),
               ],
+              // 有更新才出现: above 本机引擎/设置, zero height otherwise.
+              if (!selecting) const DrawerUpdateRow(),
               // The action bar lies exactly over the identity bar, which
               // keeps its size while hidden: same height at any text size.
               _ReportHeight(
