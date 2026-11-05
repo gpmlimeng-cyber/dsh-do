@@ -99,16 +99,22 @@ class _RoomSessionSheetState extends State<_RoomSessionSheet> {
     super.dispose();
   }
 
-  /// Newest line per member, read from the group's own messages: no extra RPC.
-  /// `botId` is the Bot id on this Host; the line's name settles a missing one.
-  Map<String, DateTime> get _lastSpoken {
-    final out = <String, DateTime>{};
+  /// When each member last spoke in this group, read from the messages on
+  /// screen: no extra RPC. A line's presence is what says the member has
+  /// spoken — `room.log` lines carry no time at all, so the row shows a time
+  /// only when the host sends one.
+  Map<String, ({DateTime? time, int at})> get _lastSpoken {
+    final out = <String, ({DateTime? time, int at})>{};
+    var index = 0;
     for (final item in widget.items) {
       final id = widget.speakerOf(item);
       final time = item.time;
-      if (id == null || time == null) continue;
+      index++;
+      if (id == null) continue;
       final seen = out[id];
-      if (seen == null || time.isAfter(seen)) out[id] = time;
+      if (seen == null || (time != null && (seen.time == null || time.isAfter(seen.time!)))) {
+        out[id] = (time: time, at: index);
+      }
     }
     return out;
   }
@@ -133,7 +139,10 @@ class _RoomSessionSheetState extends State<_RoomSessionSheet> {
       if (at == null && bt == null) return 0;
       if (at == null) return 1;
       if (bt == null) return -1;
-      return bt.compareTo(at);
+      // Times answer it finely; without them the newest line wins, which is
+      // what the order of the messages already says.
+      if (at.time != null && bt.time != null) return bt.time!.compareTo(at.time!);
+      return bt.at.compareTo(at.at);
     });
     return matched;
   }
@@ -229,14 +238,15 @@ class _RoomSessionSheetState extends State<_RoomSessionSheet> {
     final compact = available < 420;
 
     Widget memberRow(DsBot bot) {
-      final time = spoken[bot.id];
+      final spokenAt = spoken[bot.id];
+      final time = spokenAt?.time;
       final selected = filtering ? _mode.memberId == bot.id : _target.memberId == bot.id;
       return ListPageRow(
         key: ValueKey('room-member-${bot.id}'),
         leading: BotAvatar(bot: bot, size: 24),
         title: bot.name,
-        subtitle: time == null ? l10n.botsRoomNeverSpoke : shortTime(time, now: now),
-        subtitleColor: time == null ? dsh.textTertiary : null,
+        subtitle: time != null ? shortTime(time, now: now) : (spokenAt == null ? l10n.botsRoomNeverSpoke : null),
+        subtitleColor: spokenAt == null ? dsh.textTertiary : null,
         meta: !filtering && selected ? l10n.botsRoomWatching : null,
         trailing: filtering
             ? Icon(

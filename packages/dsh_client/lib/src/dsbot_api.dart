@@ -1114,22 +1114,42 @@ class DsBotRoomProgress {
 }
 
 class DsBotRoomPage {
-  const DsBotRoomPage({required this.roomId, required this.items, this.cursor, this.running = false, this.speaking});
+  const DsBotRoomPage({
+    required this.roomId,
+    required this.items,
+    this.cursor,
+    this.sessionItems,
+    this.sessionCursor,
+    this.running = false,
+    this.speaking,
+  });
 
   factory DsBotRoomPage.fromJson(Object? json) {
     final map = asMapOrEmpty(json);
+    final sessionItems = map['sessionItems'] is List
+        ? [for (final item in asListOrEmpty(map['sessionItems'])) DsBotItem.fromJson(item)]
+        : null;
     return DsBotRoomPage(
       roomId: asString(map['roomId']) ?? '',
       items: [for (final item in asListOrEmpty(map['items'])) DsBotItem.fromJson(item)],
       cursor: map['cursor'],
+      sessionItems: sessionItems,
+      sessionCursor: map['sessionCursor'],
       running: asBool(map['running']) ?? false,
       speaking: asString(map['speaking']),
     );
   }
 
   final String roomId;
+
+  /// The `room.log` shape: the newest lines of the group, capped by the host.
   final List<DsBotItem> items;
   final Object? cursor;
+
+  /// The group Session's own messages (plugin 0.2.8+): the whole history, with
+  /// times. Null on an older host, which leaves [items] the only source.
+  final List<DsBotItem>? sessionItems;
+  final Object? sessionCursor;
 
   /// A round is under way.
   final bool running;

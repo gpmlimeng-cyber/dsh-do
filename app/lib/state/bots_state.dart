@@ -908,6 +908,8 @@ class RoomChatState {
   const RoomChatState({
     this.items = const [],
     this.cursor,
+    this.sessionItems = const [],
+    this.sessionCursor,
     this.loading = true,
     this.loadingEarlier = false,
     this.running = false,
@@ -918,6 +920,12 @@ class RoomChatState {
 
   final List<DsBotItem> items;
   final Object? cursor;
+
+  /// The group Session's own messages, when the host sends them (plugin
+  /// 0.2.8+): the whole history, with times. [items] is the old `room.log`
+  /// shape, which the host keeps to its newest lines.
+  final List<DsBotItem> sessionItems;
+  final Object? sessionCursor;
   final bool loading;
   final bool loadingEarlier;
   final bool running;
@@ -927,9 +935,14 @@ class RoomChatState {
 
   bool get hasEarlier => cursor != null;
 
+  /// Whether the group Session's history has older lines to load.
+  bool get hasSessionEarlier => sessionCursor != null;
+
   RoomChatState copyWith({
     List<DsBotItem>? items,
     Object? Function()? cursor,
+    List<DsBotItem>? sessionItems,
+    Object? Function()? sessionCursor,
     bool? loading,
     bool? loadingEarlier,
     bool? running,
@@ -939,6 +952,8 @@ class RoomChatState {
   }) => RoomChatState(
     items: items ?? this.items,
     cursor: cursor == null ? this.cursor : cursor(),
+    sessionItems: sessionItems ?? this.sessionItems,
+    sessionCursor: sessionCursor == null ? this.sessionCursor : sessionCursor(),
     loading: loading ?? this.loading,
     loadingEarlier: loadingEarlier ?? this.loadingEarlier,
     running: running ?? this.running,
@@ -1033,9 +1048,16 @@ class RoomChatController extends Notifier<RoomChatState> {
       final page = await api.roomChat(roomId);
       if (!_current(generation) || load != _load) return;
       final merged = mergeNewestPage(state.items, page.items);
+      // The group Session's history rides beside the old shape: it is the
+      // whole of the group, and only it carries times. An older host sends
+      // none, and the old shape stays the only source.
+      final session = page.sessionItems;
+      final mergedSession = session == null ? null : mergeNewestPage(state.sessionItems, session);
       state = state.copyWith(
         items: merged.items,
         cursor: merged.joined && state.items.isNotEmpty ? null : () => page.cursor,
+        sessionItems: mergedSession?.items,
+        sessionCursor: session == null ? null : () => page.sessionCursor,
         loading: false,
         running: page.running,
         speaking: () => page.speaking,
@@ -1068,9 +1090,12 @@ class RoomChatController extends Notifier<RoomChatState> {
     });
   }
 
-  Future<void> loadEarlier() async {
+  /// Reads the page before the oldest shown. [session] pages the group
+  /// Session's own history — what a member's conversation reads — instead of
+  /// the old `room.log` shape the group chat itself shows.
+  Future<void> loadEarlier({bool session = false}) async {
     final api = _api;
-    final cursor = state.cursor;
+    final cursor = session ? state.sessionCursor : state.cursor;
     if (api == null || cursor == null || state.loadingEarlier) return;
     final generation = _generation;
     final load = _load;
@@ -1079,6 +1104,14 @@ class RoomChatController extends Notifier<RoomChatState> {
     try {
       final page = await api.roomChat(roomId, cursor: cursor);
       if (!_current(generation) || load != _load || earlier != _earlier) return;
+      if (session) {
+        state = state.copyWith(
+          sessionItems: [...?page.sessionItems, ...state.sessionItems],
+          sessionCursor: () => page.sessionCursor,
+          loadingEarlier: false,
+        );
+        return;
+      }
       state = state.copyWith(items: [...page.items, ...state.items], cursor: () => page.cursor, loadingEarlier: false);
     } catch (error) {
       if (!_current(generation) || load != _load || earlier != _earlier) return;

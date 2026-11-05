@@ -683,6 +683,13 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
     final groupArtifacts = target.memberId != null
         ? null
         : unclaimedArtifacts(relayArtifacts == null || relayArtifacts.isEmpty ? null : relayArtifacts.last, seenFiles);
+    // A member's conversation reads the group Session's own history when the
+    // host sends it: `room.log` keeps only the newest lines, so a member who
+    // spoke earlier would otherwise read as having said nothing at all. The
+    // group chat stays on the old shape until the new one carries what it
+    // draws (each line's files).
+    final memberSource = target.memberId != null && chat.sessionItems.isNotEmpty;
+    final memberItems = memberSource ? chat.sessionItems : chat.items;
     final visible = target.memberId == null
         ? visibleRoomItems(
             chat.items,
@@ -691,7 +698,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
             speakerOf: (item) => roomSpeakerOf(room, team, item),
           )
         : memberTargetItems(
-            chat.items,
+            memberItems,
             target.memberId!,
             speakerOf: (item) => roomSpeakerOf(room, team, item),
           );
@@ -759,7 +766,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
           team: team,
           target: target,
           mode: mode,
-          items: chat.items,
+          items: memberItems,
           speakerOf: (item) => roomSpeakerOf(room, team, item),
           onTarget: _switchTarget,
           onMode: (picked) => ref.read(roomMessageModesProvider.notifier).set(room.id, picked),
@@ -781,9 +788,10 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
               rows: rows,
               topInset: topInset,
               scrolledUnder: _scrolled,
-              hasEarlier: chat.hasEarlier,
+              hasEarlier: memberSource ? chat.hasSessionEarlier : chat.hasEarlier,
               loadingEarlier: chat.loadingEarlier,
-              onEarlier: () => ref.read(roomChatProvider(widget.roomId).notifier).loadEarlier(),
+              onEarlier: () =>
+                  ref.read(roomChatProvider(widget.roomId).notifier).loadEarlier(session: memberSource),
               empty: targetBot != null
                   ? Center(
                       child: Text(
