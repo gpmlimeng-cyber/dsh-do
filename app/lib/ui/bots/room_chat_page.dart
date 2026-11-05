@@ -617,7 +617,15 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
         group: TurnArtifacts(turn: group.turn, endSeq: group.endSeq, files: fresh),
       );
     }
-    final groupArtifacts = room.sessionId == null ? null : ref.watch(sessionArtifactsProvider(room.sessionId!));
+    // The group's own Session repeats what members delivered — their presented
+    // files are relayed into it. Members are collected first, so a file draws
+    // one card under the member who produced it; only what no member claimed
+    // keeps the relay's turn-placed card. In a member's conversation the relay's
+    // card is left out entirely: it would show other members' files.
+    final relayArtifacts = room.sessionId == null ? null : ref.watch(sessionArtifactsProvider(room.sessionId!));
+    final groupArtifacts = target.memberId != null
+        ? null
+        : unclaimedArtifacts(relayArtifacts == null || relayArtifacts.isEmpty ? null : relayArtifacts.last, seenFiles);
     final visible = target.memberId == null
         ? visibleRoomItems(chat.items, mode, memberNames: [for (final bot in members) bot.name])
         : memberTargetItems(chat.items, target.memberId!);
@@ -630,11 +638,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
     });
     final transcript = transcriptRows(withoutDoneEchoes(visible), pending: chat.pending, typing: typing);
     final rows = attachMemberArtifacts(
-      attachArtifacts(
-        transcript,
-        groupArtifacts == null || groupArtifacts.isEmpty ? null : groupArtifacts.last,
-        atOldestEnd: !chat.hasEarlier,
-      ),
+      attachArtifacts(transcript, groupArtifacts, atOldestEnd: !chat.hasEarlier),
       deliveredByBot,
       roundStart: _lastUserRow(transcript),
     );

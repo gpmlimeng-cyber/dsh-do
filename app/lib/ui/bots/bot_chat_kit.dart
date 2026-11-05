@@ -534,6 +534,18 @@ List<BotRow> attachMemberArtifacts(
   return out;
 }
 
+/// [group] without the files a member card already drew: in a group the relay
+/// Session repeats what members delivered (their presented files are relayed
+/// into it), and one file must draw one card. Null when nothing would be left.
+TurnArtifacts? unclaimedArtifacts(TurnArtifacts? group, Set<String> claimed) {
+  if (group == null || group.files.isEmpty) return null;
+  final fresh = [
+    for (final file in group.files)
+      if (!claimed.contains(file.path)) file,
+  ];
+  return fresh.isEmpty ? null : TurnArtifacts(turn: group.turn, endSeq: group.endSeq, files: fresh);
+}
+
 List<BotRow> attachArtifacts(List<BotRow> rows, TurnArtifacts? group, {bool atOldestEnd = true}) {
   if (group == null || group.files.isEmpty) return rows;
   int? turnOf(BotRow row) => switch (row) {
