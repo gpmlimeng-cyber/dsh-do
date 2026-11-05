@@ -1372,7 +1372,13 @@ class BotUserMessage extends StatelessWidget {
     this.images = 0,
     this.attachments,
     this.onQuote,
+    this.onRetry,
+    this.onWithdraw,
   });
+
+  /// Failed only: 重试 reuses the same request id, 撤回 puts the text back.
+  final VoidCallback? onRetry;
+  final VoidCallback? onWithdraw;
 
   final String text;
   final bool pending;
@@ -1419,7 +1425,12 @@ class BotUserMessage extends StatelessWidget {
             ),
             if (pending) ...[
               const SizedBox(height: 6),
-              _PendingNote(failed: failed, since: pendingSince),
+              _PendingNote(
+                failed: failed,
+                since: pendingSince,
+                onRetry: onRetry,
+                onWithdraw: onWithdraw,
+              ),
             ],
           ],
         ),
@@ -1430,10 +1441,12 @@ class BotUserMessage extends StatelessWidget {
 
 /// 发送中 (with a small clock), 还在等服务器确认 after 8 s, or 没能发送.
 class _PendingNote extends StatelessWidget {
-  const _PendingNote({required this.failed, this.since});
+  const _PendingNote({required this.failed, this.since, this.onRetry, this.onWithdraw});
 
   final bool failed;
   final DateTime? since;
+  final VoidCallback? onRetry;
+  final VoidCallback? onWithdraw;
 
   @override
   Widget build(BuildContext context) {
@@ -1447,12 +1460,28 @@ class _PendingNote extends StatelessWidget {
         ? l10n.botsSendStillWaiting
         : l10n.botsSending;
     final tone = failed ? colors.danger : colors.textTertiary;
+    Widget action(String text, Color color, VoidCallback? onTap) => Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: TextButton(
+        onPressed: onTap,
+        style: TextButton.styleFrom(
+          minimumSize: const Size(0, 32),
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          foregroundColor: color,
+          textStyle: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600),
+        ),
+        child: Text(text),
+      ),
+    );
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(failed ? AppIcons.error : AppIcons.time, size: 13, color: tone),
         const SizedBox(width: 4),
         Text(label, style: theme.textTheme.labelSmall?.copyWith(color: tone)),
+        if (failed && onRetry != null) action(l10n.commonRetry, Theme.of(context).colorScheme.primary, onRetry),
+        if (failed && onWithdraw != null) action(l10n.chatWithdraw, colors.textTertiary, onWithdraw),
       ],
     );
   }

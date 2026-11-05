@@ -172,6 +172,31 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
     _input.value = TextEditingValue(text: text, selection: TextSelection.collapsed(offset: text.length));
   }
 
+  /// 重试 a failed send: the same request id, the staged attachments again.
+  Future<void> _retryPending(DsBotPending pending) async {
+    final client = ref.read(activeConnectionProvider).value?.client;
+    final controller = ref.read(roomChatProvider(widget.roomId).notifier);
+    if (client == null) return;
+    try {
+      final staged = await stageBotAttachments(client, _roomSession(), pending.drafts);
+      await controller.send(
+        pending.text,
+        images: staged.images,
+        fileReceiptIds: staged.receipts,
+        pending: pending,
+      );
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.maybeOf(context)?.showBriefNotice(describeDsBotError(error));
+    }
+  }
+
+  /// 撤回 a failed send: the bubble goes, its words come back to be edited.
+  void _withdrawPending(DsBotPending pending) {
+    ref.read(roomChatProvider(widget.roomId).notifier).dropPending(pending);
+    _input.text = pending.text;
+    ScaffoldMessenger.maybeOf(context)?.showBriefNotice(context.l10n.chatWithdrawnEditable);
+  }
+
   /// Another conversation of the same group: same page, same data, same
   /// composer. Drafts go with their own conversation, so switching back brings
   /// the words back.
@@ -821,6 +846,8 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
                     pendingSince: pending.at,
                     pendingStatus: pending.status,
                     attachments: pending.drafts.isEmpty ? null : SentAttachments.pending(pending.drafts),
+                    onRetry: () => _retryPending(pending),
+                    onWithdraw: () => _withdrawPending(pending),
                   ),
                   BotStreamingRow() => const SizedBox.shrink(),
                   BotTypingRow(:final bot, :final label) => BotTypingLine(bot: bot, label: label),

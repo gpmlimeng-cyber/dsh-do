@@ -937,6 +937,16 @@ class BotChatController extends Notifier<BotChatState> {
     }
   }
 
+  /// Takes a failed bubble away (撤回 puts its words back in the composer).
+  void dropPending(DsBotPending entry) {
+    state = state.copyWith(
+      pending: [
+        for (final p in state.pending)
+          if (!identical(p, entry)) p,
+      ],
+    );
+  }
+
   /// Sends [text] with [images] inline and [fileReceiptIds] already staged;
   /// it shows at once and leaves the pending list when the chat echoes it.
   Future<bool> send(
@@ -944,13 +954,26 @@ class BotChatController extends Notifier<BotChatState> {
     List<PromptImage> images = const [],
     List<String> fileReceiptIds = const [],
     String? mode,
+    DsBotPending? pending,
   }) async {
     final api = _api;
     final trimmed = text.trim();
     if (api == null || (trimmed.isEmpty && images.isEmpty && fileReceiptIds.isEmpty)) return false;
     final generation = _generation;
-    final entry = DsBotPending(trimmed, DateTime.now());
-    state = state.copyWith(pending: [...state.pending, entry], error: () => null);
+    int? newest;
+    for (final item in state.items) {
+      if (item.seq case final seq? when newest == null || seq > newest) newest = seq;
+    }
+    final entry = pending ?? newPending(trimmed, afterSeq: newest);
+    state = state.copyWith(
+      pending: [
+        for (final p in state.pending)
+          if (!identical(p, entry)) p,
+        // A retry reuses the bubble: back to 发送中 while it is tried.
+        entry.withStatus(DsBotPendingStatus.sending),
+      ],
+      error: () => null,
+    );
     try {
       await api.send(botId, trimmed, images: images, fileReceiptIds: fileReceiptIds, mode: mode, requestId: entry.requestId);
       return true;
@@ -1226,7 +1249,15 @@ class RoomChatController extends Notifier<RoomChatState> {
     if (api == null || (trimmed.isEmpty && images.isEmpty && fileReceiptIds.isEmpty)) return false;
     final generation = _generation;
     final entry = pending ?? newPending(trimmed);
-    if (pending == null) state = state.copyWith(pending: [...state.pending, entry], error: () => null);
+    state = state.copyWith(
+      pending: [
+        for (final p in state.pending)
+          if (!identical(p, entry)) p,
+        // A retry reuses the bubble: back to 发送中 while it is tried.
+        entry.withStatus(DsBotPendingStatus.sending),
+      ],
+      error: () => null,
+    );
     try {
       await api.send(roomId, trimmed, images: images, fileReceiptIds: fileReceiptIds, mode: mode, requestId: entry.requestId);
       return true;

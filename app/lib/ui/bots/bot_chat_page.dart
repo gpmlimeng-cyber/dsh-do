@@ -147,6 +147,31 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
     onChosen: _chosen,
   );
 
+  /// 重试 a failed send: the same request id, the staged attachments again.
+  Future<void> _retryPending(DsBotPending pending) async {
+    final client = ref.read(activeConnectionProvider).value?.client;
+    final bot = ref.read(dsBotProvider).team?.bot(widget.botId);
+    if (client == null || bot == null) return;
+    try {
+      final staged = await stageBotAttachments(client, bot.sessionId, pending.drafts);
+      await ref.read(botChatProvider(widget.botId).notifier).send(
+        pending.text,
+        images: staged.images,
+        fileReceiptIds: staged.receipts,
+        pending: pending,
+      );
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.maybeOf(context)?.showBriefNotice(describeDsBotError(error));
+    }
+  }
+
+  /// 撤回 a failed send: the bubble goes, its words come back to be edited.
+  void _withdrawPending(DsBotPending pending) {
+    ref.read(botChatProvider(widget.botId).notifier).dropPending(pending);
+    _input.text = pending.text;
+    ScaffoldMessenger.maybeOf(context)?.showBriefNotice(context.l10n.chatWithdrawnEditable);
+  }
+
   Future<void> _send(BotActionScope target, String part, {SendMode mode = SendMode.queue}) async {
     if (!mounted || target.botId != widget.botId || !target.current(context, ref)) return;
     final status = ref.read(dsBotProvider);
@@ -357,6 +382,8 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
                     pending: true,
                     pendingSince: pending.at,
                     pendingStatus: pending.status,
+                    onRetry: () => _retryPending(pending),
+                    onWithdraw: () => _withdrawPending(pending),
                   ),
                   BotStreamingRow(:final text) =>
                     text.isEmpty
