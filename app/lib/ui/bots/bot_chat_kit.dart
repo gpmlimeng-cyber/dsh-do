@@ -1015,7 +1015,7 @@ class _BotTranscriptState extends State<BotTranscript> {
                                   borderRadius: BorderRadius.circular(9),
                                 ),
                                 child: Text(
-                                  '$_new',
+                                  _new > 99 ? '99+' : '$_new',
                                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                                     color: Theme.of(context).colorScheme.onError,
                                     fontWeight: FontWeight.w600,
