@@ -858,6 +858,11 @@ class _BotTranscriptState extends State<BotTranscript> {
   final _controller = ScrollController();
   bool _away = false;
 
+  /// The rows held while the person reads: frozen at the frame they scrolled
+  /// away, so nothing under the finger moves — not even a growing reply —
+  /// however much arrives. Cleared when the newest row is on screen again.
+  List<BotRow>? _frozen;
+
   /// Rows that arrived while the list was scrolled away: the badge on the way
   /// back. Reset as soon as the newest row is on screen again.
   int _new = 0;
@@ -877,7 +882,19 @@ class _BotTranscriptState extends State<BotTranscript> {
   void didUpdateWidget(BotTranscript oldWidget) {
     super.didUpdateWidget(oldWidget);
     final added = widget.rows.length - oldWidget.rows.length;
-    if (added > 0 && _away && mounted) setState(() => _new += added);
+    // Sent from here: the newest line is the person's own, so it always lands
+    // in view, reading or not.
+    int pendingRows(List<BotRow> rows) => rows.whereType<BotPendingRow>().length;
+    final ownSend = pendingRows(widget.rows) > pendingRows(oldWidget.rows);
+    if (_away && ownSend) {
+      _toBottom();
+      return;
+    }
+    if (added > 0 && _away && mounted) {
+      // Freeze on the frame the person was reading: the count says what came.
+      _frozen ??= oldWidget.rows;
+      setState(() => _new += added);
+    }
   }
 
   @override
@@ -900,18 +917,30 @@ class _BotTranscriptState extends State<BotTranscript> {
     // Reversed, pixels counts from the newest row: 0 is the bottom. `above`
     // is the distance to the oldest end, which is a different question.
     final away = position.pixels > 240;
-    if (away != _away && mounted) setState(() => _away = away);
+    if (away != _away && mounted) {
+      setState(() {
+        _away = away;
+        if (!away) {
+          _frozen = null;
+          _new = 0;
+        }
+      });
+    }
     if (!away && _new != 0 && mounted) setState(() => _new = 0);
   }
 
   void _toBottom() {
-    if (_new != 0) setState(() => _new = 0);
+    setState(() {
+      _new = 0;
+      _frozen = null;
+      _away = false;
+    });
     _controller.animateTo(0, duration: AppMotion.of(context, AppMotion.standard), curve: AppMotion.std);
   }
 
   @override
   Widget build(BuildContext context) {
-    final rows = widget.rows;
+    final rows = _away ? (_frozen ?? widget.rows) : widget.rows;
     if (rows.isEmpty && widget.empty != null) {
       return Padding(
         padding: EdgeInsets.only(top: widget.topInset),
