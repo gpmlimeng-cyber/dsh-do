@@ -300,6 +300,15 @@ class UpdateSources {
           headers: channel.headers,
         ),
       ..._preferFirst(manifests, (e) => e.id == preferred),
+      // 预览版: `releases/latest` never carries a pre-release, so an rc is only
+      // visible through the list. Asked first: it is strictly more information.
+      if (includePrerelease)
+        UpdateEndpoint(
+          id: 'api:releases',
+          kind: EndpointKind.githubApiReleases,
+          url: githubReleasesApi,
+          mirrorId: UpdateMirror.github.id,
+        ),
       if (useGithubApi)
         UpdateEndpoint(id: 'api', kind: EndpointKind.githubApi, url: githubLatestApi, mirrorId: UpdateMirror.github.id),
     ];
