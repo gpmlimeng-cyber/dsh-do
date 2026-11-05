@@ -73,3 +73,4 @@ Upstream: `ccch1mneyyy/dsh-Go`, against `v1.0.10` (fork branch `ci/room-progress
 | `0d594bb` | `app/lib/ui/chat/model_sheet.dart` | v1.0.10 | Making the model picker's pieces reusable is Flutter UI; no plugin seam owns it. |
 | `028e023` | `app/lib/state/bots_state.dart` | v1.0.10 | What a failed bubble pairing saw is client diagnostics; no seam owns it. |
 | `cdace31` | `app/lib/state/bots_state.dart`, `packages/dsh_client/lib/src/dsbot_api.dart` (+ `app/test/bots/bots_state_test.dart`) | v1.0.10 | How a sent message finds its echo is client state over the Host's own answer; no seam owns it. |
+| `3c88975` | `app/lib/ui/bots/bot_chat_kit.dart`, `app/lib/ui/bots/bot_chat_page.dart`, `app/lib/ui/bots/room_chat_page.dart`, `app/lib/l10n/` | v1.0.10 | What a sent bubble's three states look like is Flutter UI over the chat's own state; no seam owns it. |
