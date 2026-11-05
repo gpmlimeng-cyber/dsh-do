@@ -136,9 +136,9 @@ jobs:
               notes_args=(--notes "$notes")
             fi
             if [ "$PREVIEW" = "true" ]; then
-              gh release create "v${VERSION}" "/tmp/$file" --title "MODO ${VERSION} (preview)" "${notes_args[@]}" --prerelease
+              gh release create "v${VERSION}" "/tmp/$file" --title "MODO ${VERSION} (preview)" --target "$GITHUB_SHA" "${notes_args[@]}" --prerelease
             else
-              gh release create "v${VERSION}" "/tmp/$file" --title "MODO ${VERSION}" "${notes_args[@]}" --latest
+              gh release create "v${VERSION}" "/tmp/$file" --title "MODO ${VERSION}" --target "$GITHUB_SHA" "${notes_args[@]}" --latest
             fi
           else
             tag="ci-$(date -u +%Y%m%d-%H%M)-${GITHUB_SHA::7}"
