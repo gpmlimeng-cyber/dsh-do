@@ -15086,6 +15086,42 @@ class L10nEn extends L10n {
   String get shellNewFolder => 'New folder';
 
   @override
+  String get shellNewPanelTitle => 'New';
+
+  @override
+  String get shellNewPanelSearch => 'Search Bots, groups and folders, or type a name';
+
+  @override
+  String get shellNewPanelStart => 'Start a conversation';
+
+  @override
+  String get shellNewPanelRecent => 'Recent 3';
+
+  @override
+  String get shellNewPanelNew => 'New';
+
+  @override
+  String get shellNewPanelBots => 'Bots';
+
+  @override
+  String get shellNewPanelGroups => 'Groups';
+
+  @override
+  String get shellGroups => 'Folders';
+
+  @override
+  String shellFolderSessions(int count) => count == 1 ? '1 conversation' : '$count conversations';
+
+  @override
+  String shellNewNamedBot(String name) => 'New Bot “$name”';
+
+  @override
+  String get shellNewFolderName => 'Folder name';
+
+  @override
+  String get shellNewFolderTaken => 'A folder with that name already exists';
+
+  @override
   String get shellManageFolders => 'Manage folders';
 
   @override
@@ -18960,6 +18996,9 @@ class L10nEn extends L10n {
 
   @override
   String get voiceModelFailServer => 'The download source is unavailable for now';
+
+  @override
+  String get voiceModelFailLost => 'The voice model’s files are gone. Download it again.';
 
   @override
   String get voiceModelFailIntegrity => 'The files didn’t pass verification';

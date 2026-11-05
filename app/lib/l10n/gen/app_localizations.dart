@@ -26186,6 +26186,42 @@ abstract class L10n {
   /// **'新建文件夹'**
   String get shellNewFolder;
 
+  /// No description provided for @shellNewPanelTitle.
+  String get shellNewPanelTitle;
+
+  /// No description provided for @shellNewPanelSearch.
+  String get shellNewPanelSearch;
+
+  /// No description provided for @shellNewPanelStart.
+  String get shellNewPanelStart;
+
+  /// No description provided for @shellNewPanelRecent.
+  String get shellNewPanelRecent;
+
+  /// No description provided for @shellNewPanelNew.
+  String get shellNewPanelNew;
+
+  /// No description provided for @shellNewPanelBots.
+  String get shellNewPanelBots;
+
+  /// No description provided for @shellNewPanelGroups.
+  String get shellNewPanelGroups;
+
+  /// No description provided for @shellGroups.
+  String get shellGroups;
+
+  /// No description provided for @shellFolderSessions.
+  String shellFolderSessions(int count);
+
+  /// No description provided for @shellNewNamedBot.
+  String shellNewNamedBot(String name);
+
+  /// No description provided for @shellNewFolderName.
+  String get shellNewFolderName;
+
+  /// No description provided for @shellNewFolderTaken.
+  String get shellNewFolderTaken;
+
   /// No description provided for @shellManageFolders.
   ///
   /// In zh, this message translates to:
@@ -32529,6 +32565,9 @@ abstract class L10n {
   /// In zh, this message translates to:
   /// **'下载源暂时不可用'**
   String get voiceModelFailServer;
+
+  /// No description provided for @voiceModelFailLost.
+  String get voiceModelFailLost;
 
   /// No description provided for @voiceModelFailIntegrity.
   ///

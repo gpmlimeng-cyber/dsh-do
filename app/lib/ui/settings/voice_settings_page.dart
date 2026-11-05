@@ -29,6 +29,8 @@ String voiceModelFailureText(L10n l10n, VoiceModelFailure? failure, {int? needed
   VoiceModelFailure.integrity => l10n.voiceModelFailIntegrity,
   VoiceModelFailure.storage => l10n.voiceModelFailStorage(voiceModelMegabytes(neededBytes ?? voiceModelDefaultBytes)),
   VoiceModelFailure.engine => l10n.voiceModelFailEngine,
+  VoiceModelFailure.lost => l10n.voiceModelFailLost,
+  VoiceModelFailure.lost => l10n.voiceModelFailLost,
   VoiceModelFailure.unknown || null => l10n.voiceModelFailUnknown,
 };
 

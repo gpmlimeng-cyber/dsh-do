@@ -14305,6 +14305,42 @@ class L10nZh extends L10n {
   String get shellNewFolder => '新建文件夹';
 
   @override
+  String get shellNewPanelTitle => '新建';
+
+  @override
+  String get shellNewPanelSearch => '搜索 Bot、群、分组，或直接写名字';
+
+  @override
+  String get shellNewPanelStart => '开始对话';
+
+  @override
+  String get shellNewPanelRecent => '最近 3 个';
+
+  @override
+  String get shellNewPanelNew => '新建';
+
+  @override
+  String get shellNewPanelBots => 'Bot';
+
+  @override
+  String get shellNewPanelGroups => '群';
+
+  @override
+  String get shellGroups => '分组';
+
+  @override
+  String shellFolderSessions(int count) => '$count 个会话';
+
+  @override
+  String shellNewNamedBot(String name) => '新建 Bot「$name」';
+
+  @override
+  String get shellNewFolderName => '分组名称';
+
+  @override
+  String get shellNewFolderTaken => '已经有叫这个名字的分组了';
+
+  @override
   String get shellManageFolders => '管理文件夹';
 
   @override
@@ -17945,6 +17981,9 @@ class L10nZh extends L10n {
 
   @override
   String get voiceModelFailServer => '下载源暂时不可用';
+
+  @override
+  String get voiceModelFailLost => '语音模型文件不在了，请重新下载';
 
   @override
   String get voiceModelFailIntegrity => '文件校验没有通过';
