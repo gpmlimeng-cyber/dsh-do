@@ -3,7 +3,6 @@
 
 import 'dart:async';
 import 'dart:math' as math;
-import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,7 +10,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../l10n/l10n.dart';
 import '../../../state/app_icon_state.dart';
 import '../../common/pressable.dart';
-import '../../shell/brand_glyph.g.dart';
 import '../../theme/theme.dart';
 import '../../common/brief_notice.dart';
 
@@ -232,65 +230,65 @@ class AppIconPreview extends StatelessWidget {
   final double size;
   final List<double>? mask;
 
+  /// The tile the launcher draws, as shipped: the one render of this theme,
+  /// not a redrawing of it (the four previews must be the four icons).
+  static String assetOf(AppIcon icon) => 'assets/brand/icons/logo_${icon.name}.png';
+
   @override
-  Widget build(BuildContext context) => CustomPaint(
-    size: Size.square(size),
-    painter: _IconPainter(icon, mask, Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.08)),
+  Widget build(BuildContext context) => SizedBox.square(
+    dimension: size,
+    child: ClipPath(
+      clipper: _MaskClipper(launcherMaskPath(mask, size)),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset(assetOf(icon), fit: BoxFit.cover, filterQuality: FilterQuality.medium),
+          // A hairline inside the edge, so the light tile keeps its shape on a
+          // light card (the launcher draws the same line).
+          CustomPaint(
+            painter: _EdgePainter(
+              launcherMaskPath(mask, size),
+              Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.08),
+            ),
+          ),
+        ],
+      ),
+    ),
   );
 }
 
-class _IconPainter extends CustomPainter {
-  const _IconPainter(this.icon, this.mask, this.edge);
+class _MaskClipper extends CustomClipper<Path> {
+  const _MaskClipper(this.path);
 
-  final AppIcon icon;
-  final List<double>? mask;
-  final Color edge;
+  final Path path;
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final art = AppIconArt.of(icon);
-    final clip = launcherMaskPath(mask, size.width);
-    canvas
-      ..save()
-      ..clipPath(clip)
-      ..save()
-      // The visible 72 of the 108 grid, as on the launcher.
-      ..scale(size.width / 72)
-      ..translate(-18, -18)
-      ..drawRect(
-        const Rect.fromLTWH(0, 0, 108, 108),
-        Paint()..shader = ui.Gradient.linear(AppIconArt.start, AppIconArt.end, [art.from, art.to]),
-      );
-    switch (art.glyph) {
-      case AppIconGlyph.mono:
-        final paint = Paint()..color = art.mono!;
-        canvas
-          ..drawPath(BrandGlyph.body, paint)
-          ..drawPath(BrandGlyph.bubble, paint);
-      case AppIconGlyph.glassDark || AppIconGlyph.glassLight:
-        final dark = art.glyph == AppIconGlyph.glassDark;
-        canvas
-          ..drawPath(BrandGlyph.body, Paint()..shader = dark ? BrandGlyph.tailDark : BrandGlyph.tailLight)
-          ..drawPath(BrandGlyph.fin, Paint()..shader = dark ? BrandGlyph.finDark : BrandGlyph.finLight)
-          ..drawPath(BrandGlyph.belly, Paint()..shader = dark ? BrandGlyph.bellyDark : BrandGlyph.bellyLight)
-          ..drawPath(BrandGlyph.bubble, Paint()..shader = dark ? BrandGlyph.bubbleDark : BrandGlyph.bubbleLight);
-    }
-    canvas
-      ..restore()
-      // Half of it falls outside the clip: a 1 px line just inside the edge.
-      ..drawPath(
-        clip,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2
-          ..color = edge,
-      )
-      ..restore();
-  }
+  Path getClip(Size size) => path;
 
   @override
-  bool shouldRepaint(_IconPainter old) => old.icon != icon || old.mask != mask || old.edge != edge;
+  bool shouldReclip(_MaskClipper oldClipper) => oldClipper.path != path;
 }
+
+/// The 1 px line just inside [path].
+class _EdgePainter extends CustomPainter {
+  const _EdgePainter(this.path, this.color);
+
+  final Path path;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) => canvas.drawPath(
+    path,
+    Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..color = color,
+  );
+
+  @override
+  bool shouldRepaint(_EdgePainter old) => old.path != path || old.color != color;
+}
+
 
 /// The launcher's icon shape at [side] × [side]: [mask] (a closed outline in
 /// 0…1 from the system) or, without one, a rounded square.
