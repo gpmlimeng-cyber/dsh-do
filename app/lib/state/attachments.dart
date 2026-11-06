@@ -279,5 +279,7 @@ final sessionImageProvider = FutureProvider.autoDispose.family<Uint8List, (Strin
   ref.onCancel(() => release = Timer(const Duration(seconds: 30), link.close));
   ref.onResume(() => release?.cancel());
   ref.onDispose(() => release?.cancel());
-  return (await client.attachment(sessionId, attachment)).bytes;
+  // A fetch that never answers (a dropped link, a Host that went away) would
+  // otherwise keep the bubble loading for the rest of the session.
+  return (await client.attachment(sessionId, attachment).timeout(const Duration(seconds: 20))).bytes;
 });

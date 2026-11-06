@@ -320,7 +320,10 @@ class _SessionImage extends ConsumerWidget {
         },
         child: _ImagePlaceholder(size: box, aspect: aspect, failed: true),
       ),
-      _ => _ImagePlaceholder(size: box, aspect: aspect),
+      _ => GestureDetector(
+        onTap: () => ref.invalidate(sessionImageProvider((sessionId, attachment))),
+        child: _ImagePlaceholder(size: box, aspect: aspect),
+      ),
     };
   }
 }
