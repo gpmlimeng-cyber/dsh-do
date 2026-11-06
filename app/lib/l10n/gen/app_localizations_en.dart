@@ -7824,7 +7824,7 @@ class L10nEn extends L10n {
   String get hubTableTintNoneHint => 'Grid lines only, the lightest';
 
   @override
-  String get hubAbout => 'About DSH Go';
+  String get hubAbout => 'About Coka';
 
   @override
   String get aboutTagline => 'Think deep, ship complete.';
