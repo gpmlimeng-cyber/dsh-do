@@ -18,6 +18,7 @@ import '../../state/attachments.dart';
 import '../../state/draft_store.dart';
 import '../../state/adaptive_layout_state.dart';
 import '../../state/bots_state.dart';
+import '../../state/last_conversation.dart';
 import '../../state/connection_state.dart';
 import '../chat/composer.dart';
 import '../../state/voice_model_state.dart';
@@ -316,7 +317,15 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
     _showDraft(_draftKey);
     _mentions.dismiss();
     if (_voice.active) unawaited(_voice.cancel());
+    _rememberConversation();
   }
+
+  /// Which conversation of this group the next cold start reopens.
+  void _rememberConversation() => unawaited(
+    ref
+        .read(lastConversationStoreProvider)
+        .rememberRoom(widget.roomId, memberId: _target.memberId),
+  );
 
   @override
   void initState() {
@@ -336,6 +345,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _viewing.set(widget.roomId);
     });
+    _rememberConversation();
     _showDraft(_draftKey);
     // A read, and only while a round runs: nothing here starts a turn.
     _progressTimer = Timer.periodic(const Duration(seconds: 1), (_) => unawaited(_readProgress()));

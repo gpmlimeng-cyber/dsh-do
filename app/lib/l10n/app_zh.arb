@@ -11880,6 +11880,8 @@
   "voiceEngineBusy": "引擎正忙或响应超时，语音模型暂时用不了，稍后再点一次",
   "voiceEnginePreparing": "正在准备语音模型…",
   "voiceEnginePreparingTimeout": "语音模型还在准备，稍后再点一次",
+  "lastConversationMissingSession": "上次的会话已不存在",
+  "lastConversationMissingObject": "上次的 Bot 或群已不存在",
   "voiceErrorNetworkTimeout": "语音识别连接超时，请检查网络",
   "voiceErrorNetwork": "语音识别网络连接失败",
   "voiceErrorAudio": "语音录音失败，请检查麦克风",

@@ -5448,6 +5448,8 @@
   "voiceEngineBusy": "The engine is busy or did not answer in time, so the voice model is not ready yet. Try again in a moment.",
   "voiceEnginePreparing": "Preparing the voice model…",
   "voiceEnginePreparingTimeout": "The voice model is still preparing. Try again in a moment.",
+  "lastConversationMissingSession": "The conversation you left is gone",
+  "lastConversationMissingObject": "That Bot or group is gone",
   "voiceErrorNetworkTimeout": "Speech recognition timed out. Check your connection.",
   "voiceErrorNetwork": "Speech recognition could not connect to the network",
   "voiceErrorAudio": "Audio recording failed. Check the microphone.",

@@ -18962,6 +18962,12 @@ class L10nEn extends L10n {
   String get voiceEnginePreparingTimeout => 'The voice model is still preparing. Try again in a moment.';
 
   @override
+  String get lastConversationMissingSession => 'The conversation you left is gone';
+
+  @override
+  String get lastConversationMissingObject => 'That Bot or group is gone';
+
+  @override
   String get voiceErrorNetworkTimeout => 'Speech recognition timed out. Check your connection.';
 
   @override

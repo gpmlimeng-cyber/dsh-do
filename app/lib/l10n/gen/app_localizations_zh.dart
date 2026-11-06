@@ -17945,6 +17945,12 @@ class L10nZh extends L10n {
   String get voiceEnginePreparingTimeout => '语音模型还在准备，稍后再点一次';
 
   @override
+  String get lastConversationMissingSession => '上次的会话已不存在';
+
+  @override
+  String get lastConversationMissingObject => '上次的 Bot 或群已不存在';
+
+  @override
   String get voiceErrorNetworkTimeout => '语音识别连接超时，请检查网络';
 
   @override

@@ -13,6 +13,7 @@ import '../../l10n/l10n.dart';
 import '../../state/sessions_state.dart';
 import '../../state/ui_mode_state.dart';
 import '../shell/home_shell.dart';
+import '../shell/last_conversation_host.dart';
 import '../shell/page_frame.dart';
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
@@ -57,7 +58,11 @@ class _ModeHomeState extends ConsumerState<ModeHome> {
             key: const ValueKey(UiMode.web),
             child: widget.web?.call(_handoff) ?? WebHome(initial: _handoff),
           )
-        : KeyedSubtree(key: const ValueKey(UiMode.native), child: widget.native ?? const HomeShell());
+        : KeyedSubtree(
+            key: const ValueKey(UiMode.native),
+            // A cold start lands on the conversation this phone left open.
+            child: LastConversationHost(child: widget.native ?? const HomeShell()),
+          );
     return AnimatedSwitcher(
       duration: AppMotion.of(context, AppMotion.page),
       switchInCurve: AppMotion.enter,

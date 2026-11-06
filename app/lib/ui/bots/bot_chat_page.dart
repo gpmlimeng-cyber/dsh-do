@@ -13,6 +13,7 @@ import '../../state/settings_state.dart';
 import '../../state/attachments.dart';
 import '../../state/adaptive_layout_state.dart';
 import '../../state/bots_state.dart';
+import '../../state/last_conversation.dart';
 import '../common/brief_notice.dart';
 import 'bot_adaptive_frame.dart';
 import '../../runtime/runtime_bridge.dart' show RuntimePhase;
@@ -104,6 +105,8 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
     });
     WidgetsBinding.instance.addObserver(this);
     _viewing = ref.read(dsBotViewingProvider.notifier);
+    // The next cold start comes back here, not to the session behind it.
+    unawaited(ref.read(lastConversationStoreProvider).rememberBot(widget.botId));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _viewing.set(widget.botId);
     });

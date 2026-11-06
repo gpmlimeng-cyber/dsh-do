@@ -32496,6 +32496,17 @@ abstract class L10n {
   /// In zh, this message translates to:
   /// **'语音模型还在准备，稍后再点一次'**
   String get voiceEnginePreparingTimeout;
+  /// No description provided for @lastConversationMissingSession.
+  ///
+  /// In zh, this message translates to:
+  /// **'上次的会话已不存在'**
+  String get lastConversationMissingSession;
+
+  /// No description provided for @lastConversationMissingObject.
+  ///
+  /// In zh, this message translates to:
+  /// **'上次的 Bot 或群已不存在'**
+  String get lastConversationMissingObject;
 
   /// No description provided for @voiceErrorNetworkTimeout.
   ///
