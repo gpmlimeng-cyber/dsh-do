@@ -59,10 +59,12 @@ void main() {
     expect(box.right, closeTo(BrandGlyph.box.right, 0.01));
     expect(box.bottom, closeTo(BrandGlyph.box.bottom, 0.01));
     expect(BrandGlyph.aspect, closeTo(BrandGlyph.box.width / BrandGlyph.box.height, 1e-5));
-    // The fin and the belly lie on the silhouette.
+    // Any fin or belly layer lies on the silhouette. The 鲸耘 mark has neither:
+    // its two shapes are the body and the hook above it, each its own layer.
     final body = BrandGlyph.body.getBounds();
     for (final layer in [BrandGlyph.fin, BrandGlyph.belly]) {
       final b = layer.getBounds();
+      if (b.isEmpty) continue;
       expect(b.left >= body.left - 1e-3 && b.right <= body.right + 1e-3, isTrue);
       expect(b.top >= body.top - 1e-3 && b.bottom <= body.bottom + 1e-3, isTrue);
     }

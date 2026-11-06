@@ -5,7 +5,8 @@ import '../../state/app_info.dart';
 import '../theme/theme.dart';
 import 'brand_glyph.g.dart';
 
-/// The dsh-go mark: a fish tail with its bubble.
+/// The 鲸耘 mark: the whale and the hook of a moon above it, two shapes that
+/// read as one whale turning in the water.
 ///
 /// Vector paths generated from the brand masters in `assets/brand/`
 /// (`brand_glyph.g.dart`, by `tool/make_brand_mark.py`), in the launcher icon's
@@ -98,8 +99,8 @@ class _BrandPainter extends CustomPainter {
     canvas.restore();
   }
 
-  /// The colour glyph: the tail's gradient over the whole silhouette, the fin (behind
-  /// the stem) and the belly (in front of it) over that, then the bubble.
+  /// The colour glyph: the body's gradient, then the fin and the belly where a master
+  /// has them (this mark has none), then the hook over the body.
   static void _glass(Canvas canvas, {required bool dark}) {
     canvas
       ..drawPath(BrandGlyph.body, Paint()..shader = dark ? BrandGlyph.tailDark : BrandGlyph.tailLight)
