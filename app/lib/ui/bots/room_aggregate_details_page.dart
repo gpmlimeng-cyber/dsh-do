@@ -726,6 +726,26 @@ class _RoomContextTab extends ConsumerWidget {
     final turns = sessionId == null
         ? const <TurnTrace>[]
         : ref.watch(chatProvider(sessionId).select((s) => s.turns));
+    // One row per member turn that spent tokens, oldest first.
+    final team = ref.watch(dsBotProvider.select((s) => s.team));
+    final l10n = context.l10n;
+    final memberTurns = <({String? label, TurnTrace trace})>[];
+    for (final entry in room.sessions.entries) {
+      final memberSession = entry.value;
+      if (memberSession.isEmpty) continue;
+      final name = team?.bot(entry.key)?.name;
+      final memberChat = ref.watch(chatProvider(memberSession).select((s) => s.turns));
+      for (final trace in memberChat) {
+        if (trace.usage.isEmpty) continue;
+        memberTurns.add((
+          label: name == null ? null : '$name · ${l10n.hubSessionTurn(trace.turn)}',
+          trace: trace,
+        ));
+      }
+    }
+    // Oldest first across members, the way the card reads a conversation.
+    DateTime at(TurnTrace trace) => trace.end ?? trace.start;
+    memberTurns.sort((a, b) => at(a.trace).compareTo(at(b.trace)));
     final total = activity.value;
     final groupUsage = usage ?? SessionUsage.empty;
     final totals = total == null ? groupUsage : roomUsageTotal(groupUsage, total);
@@ -739,9 +759,14 @@ class _RoomContextTab extends ConsumerWidget {
         // added up; the members' rows below are the detail. No price: the
         // members may run different models, so one pricing does not hold.
         if (showCards) SessionUsageSections(usage: totals, pricing: null),
-        // The group Session's last turns, as the single-conversation page draws
-        // them. Member turns only come as sums, so they are not plotted here.
-        TurnUsageCard(turns: turns),
+        // 每轮用量: the group's own Session runs no model, so it has no turns
+        // to plot — the card is drawn from each member's Session instead, and
+        // every row names the member (turn numbers restart per conversation).
+        // The group Session's own turns still go in when a Host does run it.
+        if (memberTurns.isNotEmpty)
+          TurnUsageCard.entries(entries: memberTurns)
+        else
+          TurnUsageCard(turns: turns),
         if (total == null && activity.isLoading) ...[
           // Only the detail waits; the cards above already show what is known.
           const Padding(

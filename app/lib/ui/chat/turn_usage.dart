@@ -12,13 +12,27 @@ import 'trajectory_sheet.dart' show TimelineBar;
 import 'usage_sheet.dart' show formatPercent, formatTokens;
 
 class TurnUsageCard extends StatelessWidget {
-  const TurnUsageCard({super.key, required this.turns});
+  const TurnUsageCard({super.key, required List<TurnTrace> turns})
+    : entries = const [],
+      turns = turns;
+
+  /// Turns from more than one conversation (a group draws each member's). The
+  /// label replaces 「第 N 轮」, because turn numbers restart per conversation.
+  const TurnUsageCard.entries({super.key, required this.entries}) : turns = const [];
 
   /// Every turn of the conversation, oldest first; the ones without usage are
   /// skipped and only the newest [capacity] are drawn.
   final List<TurnTrace> turns;
 
+  /// The same, each with the label its row shows instead of the turn number.
+  final List<({String? label, TurnTrace trace})> entries;
+
   static const int capacity = 12;
+
+  /// Oldest first, whichever way the rows were given.
+  List<({String? label, TurnTrace trace})> get _rows => entries.isNotEmpty
+      ? entries
+      : [for (final trace in turns) (label: null, trace: trace)];
 
   @override
   Widget build(BuildContext context) {
@@ -26,17 +40,18 @@ class TurnUsageCard extends StatelessWidget {
     final theme = Theme.of(context);
     final dsh = DshColors.of(context);
     final recent = [
-      for (final trace in turns.reversed)
-        if (!trace.usage.isEmpty) trace,
+      for (final row in _rows.reversed)
+        if (!row.trace.usage.isEmpty) row,
     ].take(capacity).toList();
     if (recent.isEmpty) return const SizedBox.shrink();
-    final peak = recent.fold<int>(0, (most, trace) => trace.usage.total > most ? trace.usage.total : most);
+    final peak = recent.fold<int>(0, (most, row) => row.trace.usage.total > most ? row.trace.usage.total : most);
     return ListPageCard(
       title: l10n.hubSessionTurnUsage,
       // Same rhythm as the usage groups above (SheetGroup: 6 + 6).
       margin: const EdgeInsets.fromLTRB(16, 6, 16, 6),
       children: [
-        for (final trace in recent)
+        for (final row in recent)
+          if (row.trace case final trace)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 9, 16, 9),
             child: Row(
@@ -44,7 +59,7 @@ class TurnUsageCard extends StatelessWidget {
                 SizedBox(
                   width: 52,
                   child: Text(
-                    l10n.hubSessionTurn(trace.turn),
+                    row.label ?? l10n.hubSessionTurn(trace.turn),
                     style: AppType.tabular(theme.textTheme.bodySmall!.copyWith(color: dsh.textTertiary)),
                   ),
                 ),
