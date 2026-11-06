@@ -311,9 +311,13 @@ class _SessionImage extends ConsumerWidget {
             showImageActions(context, image: MemoryImage(value), load: () async => value, name: attachment.name),
       ),
       // A fetch that failed once stays failed inside the provider; tapping
-      // asks it again instead of leaving an empty box until the app restarts.
-      AsyncError() => GestureDetector(
-        onTap: () => ref.invalidate(sessionImageProvider((sessionId, attachment))),
+      // says why it failed and asks it again, instead of leaving an empty box
+      // until the app restarts.
+      AsyncError(:final error) => GestureDetector(
+        onTap: () {
+          ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text('$error')));
+          ref.invalidate(sessionImageProvider((sessionId, attachment)));
+        },
         child: _ImagePlaceholder(size: box, aspect: aspect, failed: true),
       ),
       _ => _ImagePlaceholder(size: box, aspect: aspect),
