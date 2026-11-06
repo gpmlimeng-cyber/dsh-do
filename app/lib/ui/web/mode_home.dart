@@ -102,14 +102,19 @@ class WebModeKey extends ConsumerWidget {
     // Taken before the drawer goes: its context is gone by the time a failure
     // arrives, and a silent failure looks exactly like a dead key.
     final messenger = ScaffoldMessenger.maybeOf(context);
-    // Proof the key itself fired: without it a blocked tap and a switch that
-    // quietly does nothing look the same.
-    messenger?.showSnackBar(SnackBar(content: Text(appL10n.webSwitchToWeb), duration: const Duration(milliseconds: 900)));
     onSwitch?.call();
     try {
       await ref.read(uiModeProvider.notifier).set(UiMode.web);
     } catch (error) {
       messenger?.showSnackBar(SnackBar(content: Text('$error')));
+      return;
+    }
+    // If the state did not move, say what it is: a switch that quietly does
+    // nothing is otherwise indistinguishable from a dead key.
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+    final now = ref.read(uiModeProvider).mode;
+    if (now != UiMode.web) {
+      messenger?.showSnackBar(SnackBar(content: Text('界面模式=${now.name}')));
     }
   }
 }
