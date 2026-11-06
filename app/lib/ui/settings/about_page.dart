@@ -103,7 +103,9 @@ class AboutPage extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
           child: Column(
             children: [
-              BrandMark(size: 18, color: colors.textDisabled),
+              // The colour logo, not the flat silhouette: the foot of the
+              // page shows the mark itself.
+              const BrandMark(size: 22),
               const SizedBox(height: 10),
               Text(
                 l10n.aboutPitch,
