@@ -28,11 +28,13 @@ class BrandMark extends ConsumerWidget {
 
   /// The logo for each launcher theme, as bundled: the same four 3D renders the
   /// launcher icons are cut from.
+  /// The artwork only: the cubes, no tile behind them, so the mark sits on
+  /// whatever page draws it.
   static const assets = <AppIcon, String>{
-    AppIcon.mist: 'assets/brand/icons/logo_mist.png',
-    AppIcon.night: 'assets/brand/icons/logo_night.png',
-    AppIcon.frost: 'assets/brand/icons/logo_frost.png',
-    AppIcon.ink: 'assets/brand/icons/logo_ink.png',
+    AppIcon.mist: 'assets/brand/icons/logo_mist_art.png',
+    AppIcon.night: 'assets/brand/icons/logo_night_art.png',
+    AppIcon.frost: 'assets/brand/icons/logo_frost_art.png',
+    AppIcon.ink: 'assets/brand/icons/logo_ink_art.png',
   };
 
   static const monoAsset = 'assets/brand/icons/logo_mono.png';
