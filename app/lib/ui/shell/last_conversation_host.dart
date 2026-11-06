@@ -49,7 +49,7 @@ class _LastConversationHostState extends ConsumerState<LastConversationHost> {
     super.initState();
     _sessionsWatch = ref.listenManual(sessionsProvider, (_, _) => _attempt());
     _teamWatch = ref.listenManual<DsBotStatus>(dsBotProvider, (previous, next) {
-      if (previous.team == null && next.team != null) _attempt();
+      if (previous?.team == null && next.team != null) _attempt();
     });
     _deadline = Timer(LastConversationHost.waitFor, () {
       if (!_spent) _spend();
