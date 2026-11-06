@@ -7403,7 +7403,7 @@ class L10nZh extends L10n {
   String get aboutTagline => '想得深，做得透';
 
   @override
-  String get aboutPitch => '深度理解，完美交付';
+  String get aboutPitch => '交给 DeepDone，就 Deep Done';
 
   @override
   String get hubAboutNewVersion => '有新版本';
