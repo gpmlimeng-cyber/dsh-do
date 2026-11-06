@@ -123,7 +123,9 @@ String chatEventText(DsBotItem item, {String? roomName}) {
     'reply' => appL10n.botsEventReplied(name),
     'report' => roomName == null ? appL10n.botsGroupReplied : appL10n.botsNamedGroupReplied(roomName),
     'stopped' => appL10n.botsEventCalledStop(name),
-    _ => item.text,
+    // A turn that ended without words: the host sends no text for it, so the
+    // event's own wording is the line (otherwise it would be blank).
+    _ => item.text.trim().isNotEmpty || item.event == null ? item.text : roomEventText(item),
   };
 }
 

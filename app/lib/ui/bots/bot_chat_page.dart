@@ -25,6 +25,7 @@ import '../chat/widgets/artifact_card.dart';
 import '../../state/voice_model_state.dart';
 import '../../state/voice_state.dart';
 import '../../state/chat_state.dart' show SendMode;
+import '../../state/room_message_mode.dart' show withoutDoneEchoes;
 import '../chat/voice/voice_controller.dart';
 import '../chat/widgets/attachments.dart';
 import '../chat/widgets/quote_chip.dart' show ComposerTrayStack, QuoteChip;
@@ -434,7 +435,10 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
     final rows = attachArtifacts(
       groupToolRows(
         transcriptRows(
-          botTranscriptItems(chat.items, running: ownTurn),
+          // 「{name} 完成了工作」 after every turn says what the reply already
+          // said. The group chat has dropped that echo since it was written;
+          // a Bot's own chat keeps the line only when it is the only trace.
+          botTranscriptItems(withoutDoneEchoes(chat.items), running: ownTurn),
           pending: chat.pending,
           streaming: ownTurn ? chat.streaming : null,
         ),
