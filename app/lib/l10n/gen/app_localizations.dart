@@ -6239,6 +6239,12 @@ abstract class L10n {
   /// **'没有权限，可在系统设置中开启'**
   String get chatAttachmentPermission;
 
+  /// No description provided for @chatAttachmentNoPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'This kind of file can’t be previewed here'**
+  String get chatAttachmentNoPreview;
+
   /// No description provided for @chatOpenAttachmentFailed.
   ///
   /// In zh, this message translates to:

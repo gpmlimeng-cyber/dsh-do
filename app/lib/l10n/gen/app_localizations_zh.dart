@@ -3376,6 +3376,9 @@ class L10nZh extends L10n {
   String get chatAttachmentPermission => '没有权限，可在系统设置中开启';
 
   @override
+  String get chatAttachmentNoPreview => '这类文件不能直接预览';
+
+  @override
   String get chatOpenAttachmentFailed => '没能打开附件';
 
   @override

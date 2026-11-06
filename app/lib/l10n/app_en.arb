@@ -1051,6 +1051,7 @@
   "chatAttachmentLimit": "{count, plural, =1{Up to 1 attachment per message} other{Up to {count} attachments per message}}",
   "chatAttachmentPermission": "Permission denied. Turn it on in system settings.",
   "chatOpenAttachmentFailed": "Couldn’t open attachment",
+  "chatAttachmentNoPreview": "This kind of file can’t be previewed here",
   "chatReadFailed": "Couldn’t read",
   "chatReadImageFailed": "Couldn’t read image",
   "chatOpenChatFirst": "Open a chat first",

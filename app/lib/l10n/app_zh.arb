@@ -2183,6 +2183,7 @@
   },
   "chatAttachmentPermission": "没有权限，可在系统设置中开启",
   "chatOpenAttachmentFailed": "没能打开附件",
+  "chatAttachmentNoPreview": "这类文件不能直接预览",
   "chatReadFailed": "读取失败",
   "chatReadImageFailed": "没能读取图片",
   "chatOpenChatFirst": "先打开一个对话",

@@ -19,6 +19,11 @@ Future<void> openBotAttachmentFile(
   String? roomId,
 }) async {
   final l10n = context.l10n;
+  // A zip or an APK read as text is a sheet of mojibake; say so instead.
+  if (!_looksTextual(file.name)) {
+    _say(context, l10n.chatAttachmentNoPreview);
+    return;
+  }
   final id = file.attachmentId;
   // A Host that sends neither id nor attachmentId names the file but gives the
   // phone no way to fetch it; saying so beats a tap that does nothing.
@@ -85,4 +90,18 @@ class _FileTextSheet extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Text the sheet can show: the extensions a conversation actually carries.
+const _textExtensions = {
+  'txt', 'md', 'markdown', 'json', 'jsonl', 'log', 'csv', 'tsv', 'yaml', 'yml',
+  'xml', 'html', 'htm', 'css', 'js', 'mjs', 'ts', 'tsx', 'dart', 'py', 'sh',
+  'ini', 'toml', 'conf', 'diff', 'patch', 'sql', 'svg',
+};
+
+bool _looksTextual(String? name) {
+  final lower = (name ?? '').toLowerCase();
+  final dot = lower.lastIndexOf('.');
+  if (dot < 0 || dot == lower.length - 1) return true; // no extension: let the host try
+  return _textExtensions.contains(lower.substring(dot + 1));
 }

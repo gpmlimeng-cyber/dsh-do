@@ -3562,6 +3562,9 @@ class L10nEn extends L10n {
   String get chatAttachmentPermission => 'Permission denied. Turn it on in system settings.';
 
   @override
+  String get chatAttachmentNoPreview => 'This kind of file can’t be previewed here';
+
+  @override
   String get chatOpenAttachmentFailed => 'Couldn’t open attachment';
 
   @override
