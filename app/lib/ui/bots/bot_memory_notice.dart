@@ -104,7 +104,7 @@ final sessionMemoryNoticesProvider = Provider.autoDispose.family<Map<int, Memory
     for (final trace in turns)
       if (!trace.running && trace.endSeq != null) trace.turn,
   };
-  final chat = ref.read(chatProvider(sessionId));
+  final chat = ref.read(chatProvider(sessionId).notifier);
   final all = memoryNoticesByTurn(chat.events);
   return {
     for (final entry in all.entries)

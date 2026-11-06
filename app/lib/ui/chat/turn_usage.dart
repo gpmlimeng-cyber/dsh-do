@@ -51,7 +51,6 @@ class TurnUsageCard extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(16, 6, 16, 6),
       children: [
         for (final row in recent)
-          if (row.trace case final trace)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 9, 16, 9),
             child: Row(
@@ -59,14 +58,14 @@ class TurnUsageCard extends StatelessWidget {
                 SizedBox(
                   width: 52,
                   child: Text(
-                    row.label ?? l10n.hubSessionTurn(trace.turn),
+                    row.label ?? l10n.hubSessionTurn(row.trace.turn),
                     style: AppType.tabular(theme.textTheme.bodySmall!.copyWith(color: dsh.textTertiary)),
                   ),
                 ),
                 Expanded(
                   child: TimelineBar(
                     start: Duration.zero,
-                    duration: Duration(milliseconds: trace.usage.total),
+                    duration: Duration(milliseconds: row.trace.usage.total),
                     total: Duration(milliseconds: peak <= 0 ? 1 : peak),
                     color: theme.colorScheme.primary.withValues(alpha: 0.75),
                     height: 6,
@@ -76,7 +75,7 @@ class TurnUsageCard extends StatelessWidget {
                 SizedBox(
                   width: 52,
                   child: Text(
-                    formatTokens(trace.usage.total),
+                    formatTokens(row.trace.usage.total),
                     textAlign: TextAlign.right,
                     style: AppType.tabular(
                       theme.textTheme.bodySmall!.copyWith(color: theme.colorScheme.onSurfaceVariant),
@@ -86,9 +85,9 @@ class TurnUsageCard extends StatelessWidget {
                 SizedBox(
                   width: 64,
                   child: Text(
-                    trace.usage.cacheHitRate == null
+                    row.trace.usage.cacheHitRate == null
                         ? ''
-                        : l10n.hubSessionCacheHit(formatPercent(trace.usage.cacheHitRate!)),
+                        : l10n.hubSessionCacheHit(formatPercent(row.trace.usage.cacheHitRate!)),
                     textAlign: TextAlign.right,
                     style: AppType.tabular(theme.textTheme.bodySmall!.copyWith(color: dsh.textTertiary)),
                   ),

@@ -50,6 +50,8 @@ import 'unavailable_message.dart';
 import '../../state/artifacts.dart' show TurnArtifacts, sessionArtifactsProvider;
 import '../chat/widgets/artifact_card.dart';
 import 'bot_chat_kit.dart';
+import 'bot_memory_notice.dart';
+import 'bot_memory_page.dart';
 import 'bot_links.dart' show openLinkedFile;
 import 'bot_chat_page.dart';
 import 'bot_format.dart';
@@ -852,10 +854,18 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
       if (mounted) _rememberFlash(room, team, mode, names, target);
     });
     final transcript = transcriptRows(withoutDoneEchoes(visible), pending: chat.pending, typing: typing);
-    final rows = attachMemberArtifacts(
-      attachArtifacts(transcript, groupArtifacts, atOldestEnd: !chat.hasEarlier),
-      deliveredByBot,
-      roundStart: _lastUserRow(transcript),
+    // The group's own Session is what the admin's memory tools write to; in a
+    // member's conversation the line would belong to another conversation.
+    final memoryNotices = target.memberId == null && room.sessionId != null
+        ? ref.watch(sessionMemoryNoticesProvider(room.sessionId!))
+        : const <int, MemoryNotice>{};
+    final rows = attachMemoryNotices(
+      attachMemberArtifacts(
+        attachArtifacts(transcript, groupArtifacts, atOldestEnd: !chat.hasEarlier),
+        deliveredByBot,
+        roundStart: _lastUserRow(transcript),
+      ),
+      memoryNotices,
     );
     final topInset = BotChatHeader.heightOf(context);
     final readOnly = status.readOnly != null;
@@ -989,6 +999,13 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
                   // own turns — a group line carries no DSH turn to place them by.
                   BotArtifactsRow(:final group, :final sessionId) =>
                     ArtifactCard(sessionId: sessionId ?? roomSession, group: group),
+                  // A member's memory write, under the member's own line.
+                  BotMemoryNoticeRow(:final notice, :final botId) => BotMemoryLine(
+                    notice: notice,
+                    onTap: () => Navigator.of(
+                      context,
+                    ).push(BotMemoryPage.route(botId: botId, roomId: botId == null ? room.id : null)),
+                  ),
                   BotToolGroupRow(:final items) => BotToolGroup(items: items),
                   BotItemRow(:final item, :final continued) => switch (item.kind) {
                     DsBotItemKind.user => BotUserMessage(
