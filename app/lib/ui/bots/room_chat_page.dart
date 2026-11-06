@@ -1091,12 +1091,15 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
           error: chat.error,
           onDismiss: () => ref.read(roomChatProvider(widget.roomId).notifier).dismissError(),
         ),
-        // A group has no single conversation behind it: the todo, goal and
-        // permission parts stay off; the activity and plugin strips still apply.
+        // The group keeps its own status line, and carries the conversation's
+        // todo, goal and permission bars too — the group's Session has them,
+        // and a person who works in here should not lose the reminders they
+        // have in a single chat. Without a Session yet (an older Host), the
+        // bars would read an id that has no modes, so they stay off.
         BotComposerDeck(
           sessionId: roomSession,
           running: chat.running,
-          showSessionBars: false,
+          showSessionBars: room?.sessionId != null,
           roomActivity: statusLine,
         ),
         // One member's conversation still sends to the group, so say it above

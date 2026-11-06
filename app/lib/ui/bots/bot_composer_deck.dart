@@ -24,6 +24,7 @@ import '../common/app_sheet.dart' show SheetGroup, showAppSheet;
 import '../common/sheet_title_bar.dart' show SheetTitleBar;
 import '../chat/dock/chat_dock.dart';
 import '../chat/dock/dock_stack.dart';
+import '../chat/balance_widgets.dart' show LowBalanceBanner;
 import '../chat/usage_sheet.dart' show ContextRing, showUsageSheet;
 import '../session/session_tab.dart';
 import '../chat/voice/voice_controller.dart';
@@ -92,9 +93,17 @@ class BotComposerDeck extends ConsumerWidget {
     final busy = running || roomActivity?.waiting == true || roomActivity?.activity != null;
     final pillsInCapsules = !busy;
     final shownCapsule = pillsInCapsules ? capsule() : null;
+    // The chat page draws the low-balance reminder above everything else, and
+    // only while connected: a message fails on a spent balance in a Bot's chat
+    // and in a group of one too, so both get the same line.
+    final connected = ref.watch(activeConnectionProvider).value != null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (connected)
+          const Padding(padding: EdgeInsets.only(bottom: 8), child: LowBalanceBanner())
+        else
+          const SizedBox(width: double.infinity),
         // Safe mode / trial banner; draws nothing otherwise.
         const SafeModeBanner(padding: EdgeInsets.only(bottom: 8)),
         BackdropGroup(
