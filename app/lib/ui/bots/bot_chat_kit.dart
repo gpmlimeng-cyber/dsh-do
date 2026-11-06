@@ -348,6 +348,16 @@ class BotChatFrame extends StatelessWidget {
                   child: Stack(
                     children: [
                       Positioned.fill(child: body),
+                      // The last lines sink into the page at the composer's edge
+                      // instead of ending against a cut under the status strip:
+                      // the buttons keep their own fill, the row around them does
+                      // not cover anything.
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: IgnorePointer(child: BottomFade(height: 18)),
+                      ),
                       Positioned(left: 0, right: 0, top: 0, child: header),
                     ],
                   ),
