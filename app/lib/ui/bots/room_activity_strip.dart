@@ -40,6 +40,11 @@ typedef RoomStatus = ({
   bool waiting,
   DsBotWork? work,
   int others,
+  /// The members running besides [bot], so the line can show their faces
+  /// instead of a bare 「+N」.
+  List<DsBot> otherBots,
+  /// How many members the group has: 「已说 3/6」 needs the whole count.
+  int members,
   String? sessionId,
 });
 
@@ -122,6 +127,12 @@ RoomStatus roomStatusOf({
     waiting: waiting,
     work: mainWork,
     others: others,
+    otherBots: [
+      for (final work in working)
+        if (work.botId != mainWork?.botId)
+          if (team.bot(work.botId) case final other?) other,
+    ],
+    members: room.members.length,
     sessionId: mainBot == null ? null : _memberSession(room, mainBot),
   );
 }
@@ -143,24 +154,30 @@ String? _memberSession(DsBotRoom room, DsBot bot) {
 /// The deck's status line: a dock slot that is zero high while nobody runs, and
 /// rises into place while a member does — the same motion as the todo bar.
 class RoomActivityStrip extends StatelessWidget {
-  const RoomActivityStrip({super.key, required this.status});
+  const RoomActivityStrip({super.key, required this.status, this.onTap});
 
   final RoomStatus status;
+
+  /// A tap opens the group's own activity figures. Null leaves the line quiet —
+  /// the header and the details page still carry them.
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final visible = status.activity != null || status.waiting;
     return DockSlot(
       key: const ValueKey('room-activity'),
-      child: visible ? _RoomActivityBar(status: status) : null,
+      child: visible ? _RoomActivityBar(status: status, onTap: onTap) : null,
     );
   }
 }
 
 class _RoomActivityBar extends ConsumerStatefulWidget {
-  const _RoomActivityBar({required this.status});
+  const _RoomActivityBar({required this.status, this.onTap});
 
   final RoomStatus status;
+
+  final VoidCallback? onTap;
 
   @override
   ConsumerState<_RoomActivityBar> createState() => _RoomActivityBarState();
@@ -237,12 +254,13 @@ class _RoomActivityBarState extends ConsumerState<_RoomActivityBar> {
       child: GlassSurface(
         tier: GlassTier.chrome,
         stadium: true,
+        onTap: widget.onTap,
         onLongPress: waiting ? null : _showStats,
         child: DockRow(
-          // The member doing it, as its face; the group itself has no face.
-          leading: bot == null
-              ? DockGlyph.icon(AppIcons.groupChat, color: waiting ? (ink ?? colors.primary) : colors.primary)
-              : BotAvatar(bot: bot, size: DockMetrics.glyph),
+          // The member doing it, as its face; the group itself has no face, and
+          // a round with several members running stacks their faces instead of
+          // summing them up as 「+N」.
+          leading: _RoomActivityFaces(status: status, waiting: waiting, ink: ink),
           content: Text.rich(line, maxLines: 1, overflow: TextOverflow.ellipsis),
           accessory: showStats || waiting
               ? (showStats && status.since != null
@@ -256,7 +274,15 @@ class _RoomActivityBarState extends ConsumerState<_RoomActivityBar> {
               : Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (status.others > 0) ...[
+                    // How far the round has got, as the header says it, so the
+                    // line carries a number and not just a name.
+                    if (status.spoken > 0 && status.members > 0) ...[
+                      Text(
+                        '${l10n.botsAlreadySpoke} ${status.spoken}/${status.members}',
+                        style: AppType.tabular(DockText.detail(context)),
+                      ),
+                      const SizedBox(width: 6),
+                    ] else if (status.others > 0) ...[
                       Text('+${status.others}', style: AppType.tabular(DockText.detail(context))),
                       const SizedBox(width: 6),
                     ],
@@ -269,6 +295,46 @@ class _RoomActivityBarState extends ConsumerState<_RoomActivityBar> {
                   ],
                 ),
         ),
+      ),
+    );
+  }
+}
+
+/// The line's leading: the group's glyph, one member's face, or the faces of the
+/// members running now, overlapping so the row stays one glyph wide plus a sliver.
+class _RoomActivityFaces extends StatelessWidget {
+  const _RoomActivityFaces({required this.status, required this.waiting, this.ink});
+
+  final RoomStatus status;
+  final bool waiting;
+  final Color? ink;
+
+  /// How much of each face the next one covers.
+  static const _overlap = 6.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final bot = status.bot;
+    final primary = Theme.of(context).colorScheme.primary;
+    if (bot == null) {
+      return DockGlyph.icon(AppIcons.groupChat, color: waiting ? (ink ?? primary) : primary);
+    }
+    final more = status.otherBots.take(2).toList();
+    if (more.isEmpty) return BotAvatar(bot: bot, size: DockMetrics.glyph);
+    final step = DockMetrics.glyph - _overlap;
+    return SizedBox(
+      width: DockMetrics.glyph + step * more.length,
+      height: DockMetrics.glyph,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          for (var i = more.length; i > 0; i--)
+            Positioned(
+              left: DockMetrics.glyph + step * (i - 1),
+              child: BotAvatar(bot: more[i - 1], size: DockMetrics.glyph),
+            ),
+          Positioned(left: 0, child: BotAvatar(bot: bot, size: DockMetrics.glyph)),
+        ],
       ),
     );
   }

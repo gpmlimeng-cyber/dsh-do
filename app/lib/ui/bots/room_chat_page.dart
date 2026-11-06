@@ -55,6 +55,7 @@ import 'bot_chat_page.dart';
 import 'bot_format.dart';
 import 'bot_mention.dart';
 import 'room_approval_action.dart';
+import 'room_activity_sheet.dart' show showRoomActivitySheet;
 import 'room_activity_strip.dart' show roomStatusOf;
 import 'room_session_sheet.dart' show showRoomSessionSheet;
 import 'room_aggregate_details_page.dart';
@@ -1101,6 +1102,14 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
           running: chat.running,
           showSessionBars: room?.sessionId != null,
           roomActivity: statusLine,
+          onRoomActivityTap: room == null
+              ? null
+              : () {
+                  final api = ref.read(dsBotProvider.notifier).api;
+                  final team = ref.read(dsBotProvider).team;
+                  if (api == null || team == null) return;
+                  unawaited(showRoomActivitySheet(context, room: room, team: team, api: api));
+                },
         ),
         // One member's conversation still sends to the group, so say it above
         // the field where the doubt starts. Not the field's own hint: that one

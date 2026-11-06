@@ -49,6 +49,7 @@ class BotComposerDeck extends ConsumerWidget {
     required this.running,
     this.showSessionBars = true,
     this.roomActivity,
+    this.onRoomActivityTap,
   });
 
   final String sessionId;
@@ -58,6 +59,10 @@ class BotComposerDeck extends ConsumerWidget {
   /// no single one of those, so its deck keeps the activity and plugin strips.
   /// (The activity strip used to be gated by this too, which contradicted it.)
   final bool showSessionBars;
+
+  /// A tap on the group's status line: the group's own activity figures. Null
+  /// leaves the line without one.
+  final VoidCallback? onRoomActivityTap;
 
   /// A group's own status line. Null in a Bot's chat, where the activity strip
   /// reads a single turn; a group has no single turn to read.
@@ -114,7 +119,7 @@ class BotComposerDeck extends ConsumerWidget {
                 GoalDockSlot(sessionId: sessionId),
               ],
               if (roomActivity case final status?)
-                RoomActivityStrip(status: status)
+                RoomActivityStrip(status: status, onTap: onRoomActivityTap)
               else
                 ActivityStripSlot(sessionId: sessionId),
               ComposerStripSlot(sessionId: sessionId, visible: !running),
