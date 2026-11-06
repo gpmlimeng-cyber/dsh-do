@@ -887,13 +887,25 @@ final drawerBotRowsProvider = Provider<List<BotDrawerRow>>((ref) {
   if (team == null) return const [];
   final inbox = ref.watch(dsBotInboxProvider);
   final live = status.live;
-  DateTime latest(String id, DateTime? created) => inbox.latest[id]?.time ?? created ?? _earliest;
+  // When the conversation last moved. The inbox only knows what arrived while
+  // this app run was listening, so a Bot talked to yesterday would sort by its
+  // creation otherwise; the Session behind it keeps the real time.
+  final sessions = ref.watch(sessionsProvider).value ?? const <SessionSummary>[];
+  final sessionAt = {for (final session in sessions) session.sessionId: session.updatedAt};
+  DateTime latest(String id, String? sessionId, DateTime? created) {
+    final seen = [
+      inbox.latest[id]?.time,
+      if (sessionId != null) sessionAt[sessionId],
+      created,
+    ].whereType<DateTime>();
+    return seen.isEmpty ? _earliest : seen.reduce((a, b) => a.isAfter(b) ? a : b);
+  }
   return [
     for (final bot in team.bots)
       BotDrawerRow(
         id: bot.id,
         title: bot.name,
-        updatedAt: latest(bot.id, bot.createdAt),
+        updatedAt: latest(bot.id, bot.sessionId, bot.createdAt),
         createdAt: bot.createdAt ?? _earliest,
         running: live.bots.containsKey(bot.id),
         pending: team.questionOf(bot) != null
@@ -910,7 +922,7 @@ final drawerBotRowsProvider = Provider<List<BotDrawerRow>>((ref) {
       BotDrawerRow(
         id: room.id,
         title: room.name,
-        updatedAt: latest(room.id, room.createdAt),
+        updatedAt: latest(room.id, room.sessionId, room.createdAt),
         createdAt: room.createdAt ?? _earliest,
         running: live.rooms.containsKey(room.id),
         unread: inbox.unreadOf(room.id) > 0,
