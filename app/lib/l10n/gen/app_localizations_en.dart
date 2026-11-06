@@ -7827,6 +7827,12 @@ class L10nEn extends L10n {
   String get hubAbout => 'About DSH Go';
 
   @override
+  String get aboutTagline => 'Think deep, ship complete.';
+
+  @override
+  String get aboutPitch => 'Deep understanding, complete delivery.';
+
+  @override
   String get hubAboutNewVersion => 'Update available';
 
   @override

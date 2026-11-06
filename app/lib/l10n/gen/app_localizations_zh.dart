@@ -7400,6 +7400,12 @@ class L10nZh extends L10n {
   String get hubAbout => '关于 DSH Go';
 
   @override
+  String get aboutTagline => '想得深，做得透';
+
+  @override
+  String get aboutPitch => '深度理解，完美交付';
+
+  @override
   String get hubAboutNewVersion => '有新版本';
 
   @override

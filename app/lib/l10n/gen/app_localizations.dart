@@ -13547,6 +13547,18 @@ abstract class L10n {
   /// **'关于 DSH Go'**
   String get hubAbout;
 
+  /// No description provided for @aboutTagline.
+  ///
+  /// In zh, this message translates to:
+  /// **'想得深，做得透'**
+  String get aboutTagline;
+
+  /// No description provided for @aboutPitch.
+  ///
+  /// In zh, this message translates to:
+  /// **'深度理解，完美交付'**
+  String get aboutPitch;
+
   /// No description provided for @hubAboutNewVersion.
   ///
   /// In zh, this message translates to:

@@ -2127,7 +2127,6 @@
   "chatSendNow": "立即发送",
   "chatSwitchToSteer": "改为插话",
   "chatQueueGone": "这条已经不在队列里了",
-  "chatQueueGone": "这条已经不在队列里了",
   "chatWithdraw": "撤回",
   "chatContinuedInNewChat": "已在新对话中继续",
   "chatReadOriginalImageFailed": "读取原图失败，请重试",
@@ -4856,7 +4855,7 @@
   "hubTableTintFillHint": "隔行淡一档，长表格更好扫读",
   "hubTableTintFollowHint": "表头浅底，表身跟随正文",
   "hubTableTintNoneHint": "只剩网格线，最轻",
-  "hubAbout": "关于 DSH Go",
+  "hubAbout": "关于 DeepDone",
   "hubAboutNewVersion": "有新版本",
   "hubValueSet": "已设置",
   "hubValueOff": "未开启",
@@ -4886,7 +4885,7 @@
   "hubPermissionPhoneConfirm": "手机操控确认",
   "hubHardwareEnterSends": "外接键盘按 Enter 发送",
   "hubHardwareEnterSendsHint": "开启后，Shift+Enter 换行。屏幕键盘仍换行；Ctrl/⌘+Enter 始终可发送。",
-  "hubAboutAuthor": "DSH Go 原作者",
+  "hubAboutAuthor": "上游作者",
   "hubAboutBilibili": "B站主页",
   "hubAboutX": "X 主页",
   "hubAboutGithub": "GitHub 主页",
@@ -12110,5 +12109,7 @@
         "type": "String"
       }
     }
-  }
+  },
+  "aboutTagline": "想得深，做得透",
+  "aboutPitch": "深度理解，完美交付"
 }

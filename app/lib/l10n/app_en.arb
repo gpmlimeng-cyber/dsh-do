@@ -2268,7 +2268,7 @@
   "hubTableTintFillHint": "Alternating rows, easier to scan long tables",
   "hubTableTintFollowHint": "Header tint only, body follows the reply",
   "hubTableTintNoneHint": "Grid lines only, the lightest",
-  "hubAbout": "About DSH Go",
+  "hubAbout": "About DeepDone",
   "hubAboutNewVersion": "Update available",
   "hubValueSet": "Set",
   "hubValueOff": "Off",
@@ -2284,7 +2284,7 @@
   "hubPermissionPhoneConfirm": "Phone control confirmation",
   "hubHardwareEnterSends": "Send with hardware Enter",
   "hubHardwareEnterSendsHint": "When on, Shift+Enter inserts a new line. The on-screen keyboard keeps newlines; Ctrl/⌘+Enter always sends.",
-  "hubAboutAuthor": "Original author of DSH Go",
+  "hubAboutAuthor": "Upstream author",
   "hubAboutBilibili": "Bilibili profile",
   "hubAboutX": "X profile",
   "hubAboutGithub": "GitHub profile",
@@ -5591,5 +5591,7 @@
   "webTargetCordisMissing": "Couldn’t find the Cordis panel. The plugin may have been removed.",
   "webTargetNewChatFailed": "Couldn’t start a chat. You’re on the DSH Web home page.",
   "webTargetPageFailed": "Couldn’t open this page. You’re on the DSH Web home page.",
-  "webConnectHostFirst": "Connect to “{name}” to open DSH Web"
+  "webConnectHostFirst": "Connect to “{name}” to open DSH Web",
+  "aboutTagline": "Think deep, ship complete.",
+  "aboutPitch": "Deep understanding, complete delivery."
 }

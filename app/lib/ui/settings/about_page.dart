@@ -39,6 +39,18 @@ class AboutPage extends ConsumerWidget {
     return AppPage.list(
       title: l10n.hubAbout,
       children: [
+        // The brand line first: the name is in the bar, the promise belongs here.
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(l10n.aboutTagline, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 2),
+              Text(l10n.aboutPitch, style: theme.textTheme.bodySmall?.copyWith(color: colors.textTertiary)),
+            ],
+          ),
+        ),
         SettingsSection(
           children: [
             SettingsTile(
