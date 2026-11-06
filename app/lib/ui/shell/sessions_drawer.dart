@@ -168,7 +168,7 @@ class SessionsDrawer extends ConsumerWidget {
                       ),
                     ),
                     // 网页模式, quietly: the one solid element stays 新对话.
-                    const WebModeKey(tier: GlassTier.pill),
+                    WebModeKey(tier: GlassTier.pill, onSwitch: onClose),
                     const SizedBox(width: 8),
                     SessionSearchBar(onClose: onClose),
                     const SizedBox(width: 8),

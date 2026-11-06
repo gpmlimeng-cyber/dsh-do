@@ -3,7 +3,6 @@
 
 import 'dart:convert';
 
-import 'package:dsh_app/state/bots_state.dart';
 import 'package:dsh_app/state/last_conversation.dart';
 import 'package:dsh_app/state/sessions_state.dart';
 import 'package:dsh_client/dsh_client.dart';

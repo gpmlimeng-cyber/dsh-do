@@ -76,10 +76,14 @@ class _ModeHomeState extends ConsumerState<ModeHome> {
 /// 新对话 beside it, with 界面's own mark (the globe at the drawer's foot
 /// opens the web page on top; this one makes it the home).
 class WebModeKey extends ConsumerWidget {
-  const WebModeKey({super.key, this.size = 36, this.tier = GlassTier.chrome});
+  const WebModeKey({super.key, this.size = 36, this.tier = GlassTier.chrome, this.onSwitch});
 
   final double size;
   final GlassTier tier;
+
+  /// The drawer puts itself away first: the key is its last act there, and the
+  /// page that takes over should not open behind an open drawer.
+  final VoidCallback? onSwitch;
 
   static String get tooltip => appL10n.webSwitchToWeb;
 
@@ -90,7 +94,19 @@ class WebModeKey extends ConsumerWidget {
       tooltip: context.l10n.webSwitchToWeb,
       size: size,
       tier: tier,
-      onPressed: () => unawaited(ref.read(uiModeProvider.notifier).set(UiMode.web)),
+      onPressed: () => unawaited(_switch(context, ref)),
     );
+  }
+
+  Future<void> _switch(BuildContext context, WidgetRef ref) async {
+    // Taken before the drawer goes: its context is gone by the time a failure
+    // arrives, and a silent failure looks exactly like a dead key.
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    onSwitch?.call();
+    try {
+      await ref.read(uiModeProvider.notifier).set(UiMode.web);
+    } catch (error) {
+      messenger?.showSnackBar(SnackBar(content: Text('$error')));
+    }
   }
 }

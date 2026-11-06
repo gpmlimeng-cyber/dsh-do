@@ -686,7 +686,7 @@ class ManageModelsLink extends StatelessWidget {
 /// 渠道横条: chat models here, transcription providers in 语音输入's picker.
 /// Public so both pickers are the same bar, not a copy of one.
 class ModelChannelBar extends StatelessWidget {
-  const ModelChannelBar({required this.groups, required this.shown, required this.onChanged});
+  const ModelChannelBar({super.key, required this.groups, required this.shown, required this.onChanged});
 
   final List<ProviderGroup> groups;
   final String shown;

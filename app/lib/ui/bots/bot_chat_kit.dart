@@ -1509,8 +1509,8 @@ class _PendingNote extends StatelessWidget {
         Icon(failed ? AppIcons.error : (icon ?? AppIcons.time), size: 13, color: tone),
         const SizedBox(width: 4),
         Text(label, style: theme.textTheme.labelSmall?.copyWith(color: tone)),
-        if (this.actions.isNotEmpty)
-          for (final (text, onTap) in this.actions)
+        if (actions.isNotEmpty)
+          for (final (text, onTap) in actions)
             action(text, Theme.of(context).colorScheme.primary, onTap)
         else ...[
           if (failed && onRetry != null) action(l10n.commonRetry, Theme.of(context).colorScheme.primary, onRetry),

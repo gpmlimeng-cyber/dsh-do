@@ -31,7 +31,6 @@ import 'memory_card.dart';
 import 'working_folder_sheet.dart';
 import 'room_activity_sheet.dart';
 import 'room_relay_limit_sheet.dart';
-import 'room_chat_page.dart' show GroupApprovalCard;
 
 class RoomDetailsPage extends ConsumerWidget {
   const RoomDetailsPage({super.key, required this.roomId});
