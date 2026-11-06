@@ -39,15 +39,6 @@ class AboutPage extends ConsumerWidget {
     return AppPage.list(
       title: l10n.hubAbout,
       children: [
-        // The brand line first: the name is in the bar, one line under it says
-        // what Coka is.
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
-          child: Text(
-            l10n.aboutPitch,
-            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-          ),
-        ),
         SettingsSection(
           children: [
             SettingsTile(
@@ -115,7 +106,7 @@ class AboutPage extends ConsumerWidget {
               BrandMark(size: 18, color: colors.textDisabled),
               const SizedBox(height: 10),
               Text(
-                AppInfo.slogan,
+                l10n.aboutPitch,
                 textAlign: TextAlign.center,
                 style: theme.textTheme.labelSmall?.copyWith(color: colors.textTertiary),
               ),
