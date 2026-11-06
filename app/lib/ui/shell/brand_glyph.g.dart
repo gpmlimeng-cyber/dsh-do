@@ -6,7 +6,7 @@
 
 // dart format off
 import 'dart:ui' as ui;
-import 'dart:ui' show Color, Offset, Path, Rect, Shader;
+import 'dart:ui' show Color, Offset, Path, PathFillType, Rect, Shader;
 
 /// Paths, gradients and measurements of the brand glyph (see `brand_mark.dart`).
 abstract final class BrandGlyph {
@@ -89,13 +89,16 @@ abstract final class BrandGlyph {
     ..cubicTo(64.2663, 56.506, 63.9315, 55.9042, 63.3761, 55.5777)
     ..cubicTo(62.8208, 55.2512, 62.1322, 55.2512, 61.5769, 55.5777)
     ..cubicTo(61.0215, 55.9042, 60.6867, 56.506, 60.702, 57.15)
-    ..close();
+    ..close()
+    ..fillType = PathFillType.evenOdd;
 
   /// The fin layer, over [body] in the colour glyph (empty: this mark has none).
-  static final Path fin = Path();
+  static final Path fin = Path()
+    ..fillType = PathFillType.evenOdd;
 
   /// The belly layer, over [body] in the colour glyph (empty: this mark has none).
-  static final Path belly = Path();
+  static final Path belly = Path()
+    ..fillType = PathFillType.evenOdd;
 
   /// The hook of the moon: the upper shape.
   static final Path bubble = Path()
@@ -178,7 +181,8 @@ abstract final class BrandGlyph {
     ..cubicTo(61.001, 26.941, 60.88, 27.093, 60.764, 26.996)
     ..cubicTo(60.655, 26.904, 60.637, 26.832, 60.303, 26.789)
     ..cubicTo(59.963, 26.753, 59.167, 26.728, 58.748, 26.759)
-    ..close();
+    ..close()
+    ..fillType = PathFillType.evenOdd;
 
   /// The tile's rounded square (the app icon's outline).
   static final Path tile = Path()
@@ -187,7 +191,8 @@ abstract final class BrandGlyph {
     ..cubicTo(90, 18, 90, 90, 90, 90)
     ..cubicTo(90, 90, 18, 90, 18, 90)
     ..cubicTo(18, 90, 18, 18, 18, 18)
-    ..close();
+    ..close()
+    ..fillType = PathFillType.evenOdd;
 
   static final Shader tileFill = ui.Gradient.linear(Offset(54, 18), Offset(54, 90), const [Color(0xFF7A8CC9), Color(0xFF6F81BD)], const [0, 1]);
 
