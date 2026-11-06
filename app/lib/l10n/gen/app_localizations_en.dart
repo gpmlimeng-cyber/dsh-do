@@ -2301,6 +2301,30 @@ class L10nEn extends L10n {
   }
 
   @override
+  String get botsMemoryUpdated => 'Memory updated';
+
+  @override
+  String get botsMemoryAlready => 'Already saved';
+
+  @override
+  String get botsMemoryFailed => 'Couldn\'t save to memory';
+
+  @override
+  String get botsMemoryUnchanged => 'Memory not changed';
+
+  @override
+  String get botsMemoryReasonEmpty => 'Write something to save';
+
+  @override
+  String get botsMemoryReasonNoMatch => 'No saved entry matched';
+
+  @override
+  String get botsMemoryReasonRefused => 'The memory refused this change';
+
+  @override
+  String get botsMemoryReasonOther => 'The memory could not be changed';
+
+  @override
   String get botsMemoryReadFailed => 'Couldn’t load memories';
 
   @override

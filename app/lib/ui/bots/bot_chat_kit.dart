@@ -30,6 +30,7 @@ import '../common/typing_indicator.dart';
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
 import 'bot_avatar.dart';
+import 'bot_memory_notice.dart';
 import 'bot_format.dart';
 import 'bots_page.dart' show BotTag;
 
@@ -405,6 +406,59 @@ class BotErrorSlot extends StatelessWidget {
 /// One row of a transcript, newest last.
 sealed class BotRow {
   const BotRow();
+}
+
+/// One turn's memory change, drawn under that turn's last line.
+///
+/// It takes the place the 「完成了工作」 line used to hold at the end of a turn:
+/// the line that says what the turn did, instead of that it ended. Tapping it
+/// opens the memory it changed.
+final class BotMemoryNoticeRow extends BotRow {
+  const BotMemoryNoticeRow(this.notice, {this.botId});
+
+  final MemoryNotice notice;
+
+  /// The Bot whose memory changed; null opens the group's.
+  final String? botId;
+}
+
+/// Inserts each turn's [MemoryNotice] under the last row that turn stamped.
+///
+/// Turn numbers restart with every part, so a page read from history only gets
+/// a line when some row on it still carries that turn: the notice is placed the
+/// way a deliverable card is, and a page that cannot place it draws nothing.
+List<BotRow> attachMemoryNotices(
+  List<BotRow> rows,
+  Map<int, MemoryNotice> notices, {
+  String? botId,
+}) {
+  if (notices.isEmpty || rows.isEmpty) return rows;
+  int? turnOf(BotRow row) => switch (row) {
+    BotItemRow(:final item) => item.turn,
+    BotToolGroupRow(:final items) => items.isEmpty ? null : items.last.turn,
+    _ => null,
+  };
+  final lastAt = <int, int>{};
+  for (var i = 0; i < rows.length; i++) {
+    final turn = turnOf(rows[i]);
+    if (turn != null && notices.containsKey(turn)) lastAt[turn] = i;
+  }
+  if (lastAt.isEmpty) return rows;
+  final out = <BotRow>[];
+  for (var i = 0; i < rows.length; i++) {
+    out.add(rows[i]);
+    for (final entry in lastAt.entries) {
+      if (entry.value != i) continue;
+      // A deliverable card of the same turn stays above the quiet line: the
+      // block is what the turn made, the line is what it noted.
+      var at = out.length;
+      while (at > 0 && out[at - 1] is BotArtifactsRow) {
+        at--;
+      }
+      out.insert(at, BotMemoryNoticeRow(notices[entry.key]!, botId: botId));
+    }
+  }
+  return out;
 }
 
 final class BotItemRow extends BotRow {
@@ -1048,6 +1102,7 @@ EdgeInsets rowPadding(BotRow row) => switch (row) {
   BotItemRow(continued: true) => const EdgeInsets.fromLTRB(16, 4, 16, 0),
   BotTimeRow() => const EdgeInsets.fromLTRB(16, 20, 16, 4),
   BotArtifactsRow() => const EdgeInsets.fromLTRB(16, 12, 16, 0),
+  BotMemoryNoticeRow() => const EdgeInsets.fromLTRB(16, 2, 16, 0),
   _ => const EdgeInsets.fromLTRB(16, 16, 16, 0),
 };
 
@@ -1566,6 +1621,70 @@ class BotToolRow extends StatelessWidget {
     );
   }
 }
+
+/// 「记忆已更新」 under the turn that did it: one quiet line, tappable, and the
+/// only place a Bot's chat says a memory write happened (the web client says it
+/// the same way, in the same place).
+class BotMemoryLine extends StatelessWidget {
+  const BotMemoryLine({super.key, required this.notice, this.onTap});
+
+  final MemoryNotice notice;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final colors = DshColors.of(context);
+    final failed = notice.change == MemoryChange.failed;
+    final text = switch (notice.change) {
+      MemoryChange.updated => l10n.botsMemoryUpdated,
+      MemoryChange.already => l10n.botsMemoryAlready,
+      MemoryChange.unchanged => l10n.botsMemoryUnchanged,
+      MemoryChange.failed => l10n.botsMemoryFailed,
+    };
+    final why = failed ? memoryReasonText(l10n, notice.reason) : null;
+    final tone = failed ? colors.warning : colors.textTertiary;
+    final line = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(failed ? AppIcons.warning : AppIcons.bookmark, size: 14, color: tone),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Text(
+            [
+              text,
+              if (notice.count > 1) '×${notice.count}',
+              if (why != null) '· $why',
+            ].join(' '),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodySmall?.copyWith(color: tone),
+          ),
+        ),
+      ],
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: onTap == null
+          ? line
+          : InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(6),
+              child: Padding(padding: const EdgeInsets.symmetric(vertical: 2), child: line),
+            ),
+    );
+  }
+}
+
+/// Why a memory write changed nothing, in the interface language
+/// (`remember` / `forget` answer with a code; the host's words stay in the log).
+String memoryReasonText(L10n l10n, String? code) => switch (code) {
+  'memory/empty' => l10n.botsMemoryReasonEmpty,
+  'memory/no-match' => l10n.botsMemoryReasonNoMatch,
+  'memory/refused' || 'memory/denied' => l10n.botsMemoryReasonRefused,
+  _ => l10n.botsMemoryReasonOther,
+};
 
 // ── Cards ────────────────────────────────────────────────────────────────────
 

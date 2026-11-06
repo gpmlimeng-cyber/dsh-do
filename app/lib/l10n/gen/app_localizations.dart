@@ -4003,6 +4003,46 @@ abstract class L10n {
   /// In zh, this message translates to:
   /// **'记忆 · {count}'**
   String botsMemoryCount(int count);
+  /// No description provided for @botsMemoryUpdated.
+  ///
+  /// In zh, this message translates to:
+  /// **'记忆已更新'**
+  String get botsMemoryUpdated;
+  /// No description provided for @botsMemoryAlready.
+  ///
+  /// In zh, this message translates to:
+  /// **'已经保存过了'**
+  String get botsMemoryAlready;
+  /// No description provided for @botsMemoryFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'没能保存到记忆'**
+  String get botsMemoryFailed;
+  /// No description provided for @botsMemoryUnchanged.
+  ///
+  /// In zh, this message translates to:
+  /// **'记忆没有变化'**
+  String get botsMemoryUnchanged;
+  /// No description provided for @botsMemoryReasonEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有内容可保存'**
+  String get botsMemoryReasonEmpty;
+  /// No description provided for @botsMemoryReasonNoMatch.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有匹配的条目'**
+  String get botsMemoryReasonNoMatch;
+  /// No description provided for @botsMemoryReasonRefused.
+  ///
+  /// In zh, this message translates to:
+  /// **'记忆拒绝了这次改动'**
+  String get botsMemoryReasonRefused;
+  /// No description provided for @botsMemoryReasonOther.
+  ///
+  /// In zh, this message translates to:
+  /// **'记忆没能改动'**
+  String get botsMemoryReasonOther;
 
   /// No description provided for @botsMemoryReadFailed.
   ///

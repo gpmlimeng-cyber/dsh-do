@@ -51,6 +51,8 @@ import 'unavailable_message.dart';
 import 'bot_chat_kit.dart';
 import 'bot_links.dart' show openLinkedFile;
 import 'bot_details_page.dart';
+import 'bot_memory_notice.dart';
+import 'bot_memory_page.dart';
 import 'bot_format.dart';
 import 'bot_pending_card.dart';
 
@@ -432,7 +434,11 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
     // a rebuild that happens to fall on an invisible moment.
     final artifacts = ref.watch(sessionArtifactsProvider(bot.sessionId));
     final delivered = !(visible && engineUp) || artifacts.isEmpty ? null : artifacts.last;
-    final rows = attachArtifacts(
+    // What its memory tools changed, one quiet line under the turn that did it.
+    final memoryNotices = visible && engineUp
+        ? ref.watch(sessionMemoryNoticesProvider(bot.sessionId))
+        : const <int, MemoryNotice>{};
+    final rows = attachMemoryNotices(attachArtifacts(
       groupToolRows(
         transcriptRows(
           // 「{name} 完成了工作」 after every turn says what the reply already
@@ -448,7 +454,7 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
       // numbers there restart per part, so a card must not be placed by sheer
       // "newest row" guessing.
       atOldestEnd: !chat.hasEarlier,
-    );
+    ), memoryNotices, botId: bot.id);
     final topInset = BotChatHeader.heightOf(context);
     final rooms = {for (final room in team.rooms) room.id: room.name};
     final readOnly = status.readOnly != null;
@@ -507,6 +513,10 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
                   BotTypingRow() => const SizedBox.shrink(),
                   BotArtifactsRow(:final group, :final sessionId) =>
                     ArtifactCard(sessionId: sessionId ?? bot.sessionId, group: group),
+                  BotMemoryNoticeRow(:final notice) => BotMemoryLine(
+                    notice: notice,
+                    onTap: () => Navigator.of(context).push(BotMemoryPage.route(botId: bot.id)),
+                  ),
                   BotToolGroupRow(:final items) => BotToolGroup(
                     // A stable key: paging in older rows must not hand this
                     // group's open state to the one that lands on its index.

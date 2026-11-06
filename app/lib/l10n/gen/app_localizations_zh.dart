@@ -2179,6 +2179,30 @@ class L10nZh extends L10n {
   }
 
   @override
+  String get botsMemoryUpdated => '记忆已更新';
+
+  @override
+  String get botsMemoryAlready => '已经保存过了';
+
+  @override
+  String get botsMemoryFailed => '没能保存到记忆';
+
+  @override
+  String get botsMemoryUnchanged => '记忆没有变化';
+
+  @override
+  String get botsMemoryReasonEmpty => '没有内容可保存';
+
+  @override
+  String get botsMemoryReasonNoMatch => '没有匹配的条目';
+
+  @override
+  String get botsMemoryReasonRefused => '记忆拒绝了这次改动';
+
+  @override
+  String get botsMemoryReasonOther => '记忆没能改动';
+
+  @override
   String get botsMemoryReadFailed => '没能读取记忆';
 
   @override
