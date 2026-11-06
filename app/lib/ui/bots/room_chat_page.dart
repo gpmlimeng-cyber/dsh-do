@@ -993,16 +993,6 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
                     DsBotItemKind.user => BotUserMessage(
                       text: botLineText(item),
                       images: item.images,
-                      attachments: botLineAttachments(
-                        item,
-                        roomSession,
-                        onOpenFile: (file) => openBotAttachmentFile(
-                          context,
-                          ref,
-                          file: file,
-                          roomId: room.id,
-                        ),
-                      ),
                       onQuote: _setQuote,
                     ),
                     DsBotItemKind.bot => _groupRow(

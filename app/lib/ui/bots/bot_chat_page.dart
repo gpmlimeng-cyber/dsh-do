@@ -513,16 +513,6 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
                     DsBotItemKind.user => BotUserMessage(
                       text: botLineText(item),
                       images: item.images,
-                      attachments: botLineAttachments(
-                        item,
-                        chat.sessionId,
-                        onOpenFile: (file) => openBotAttachmentFile(
-                          context,
-                          ref,
-                          file: file,
-                          botId: bot.id,
-                        ),
-                      ),
                       onQuote: _setQuote,
                     ),
                     DsBotItemKind.bot => Column(
