@@ -11,8 +11,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/l10n.dart';
 import '../../state/settings_state.dart';
 import '../../state/attachments.dart';
+import '../../state/adaptive_layout_state.dart';
 import '../../state/bots_state.dart';
 import '../common/brief_notice.dart';
+import 'bot_adaptive_frame.dart';
 import '../../runtime/runtime_bridge.dart' show RuntimePhase;
 import '../../runtime/runtime_state.dart' show localRuntimeProvider;
 import '../../state/connection_state.dart';
@@ -446,18 +448,26 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
     final modelScope = BotActionScope(ref, botId: bot.id);
     final sendTarget = BotActionScope(ref, botId: bot.id);
 
-    return BotChatFrame(
+    return BotAdaptiveFrame(
+      drawer: _drawerConfig,
+      // The column beside the chat on a wide window; the key folds it away.
+      panel: SessionDetailPage.panel(key: ValueKey('bot-detail-${bot.sessionId}'), sessionId: bot.sessionId),
+      builder: (context, layout) => BotChatFrame(
       header: BotChatHeader(
         face: BotAvatar(bot: bot, size: BotChatHeader.faceSize),
         title: bot.name,
         status: label,
         tone: tone,
         scrolledUnder: _scrolled,
-        onLeading: () => _drawer.toggle(context),
+        onLeading: () => onBotMenu(context, ref, layout, () => _drawer.toggle(context)),
+        leadingTooltip: botMenuTooltip(context, layout),
         // The title capsule opens the Bot's own details; the key on the right
         // opens the conversation's (trajectory, files, progress).
         onDetails: () => Navigator.of(context).push(BotDetailsPage.route(bot.id)),
-        onInfo: () => SessionDetailPage.open(context, bot.sessionId),
+        onInfo: () => openBotDetail(context, ref, layout: layout, sessionId: bot.sessionId),
+        infoTooltip: layout.isExpanded && layout.panelAvailable
+            ? (ref.watch(layoutPrefsProvider).panelOpen ? l10n.shellCollapseDetails : l10n.shellChatDetails)
+            : null,
         // The chat page's own chip: same height, padding, chevron and type.
         chip: ModelChip(
           selection: botModelSelection(bot),
@@ -619,6 +629,7 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
         ),
       ],
       drawer: _drawerConfig,
+      ),
     );
   }
 }

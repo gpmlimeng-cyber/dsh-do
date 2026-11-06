@@ -16,6 +16,7 @@ import '../../state/room_speakers.dart';
 import '../../state/settings_state.dart';
 import '../../state/attachments.dart';
 import '../../state/draft_store.dart';
+import '../../state/adaptive_layout_state.dart';
 import '../../state/bots_state.dart';
 import '../../state/connection_state.dart';
 import '../chat/composer.dart';
@@ -42,6 +43,7 @@ import 'bot_attachment_open.dart';
 import 'bot_attachments.dart';
 import 'bot_composer_deck.dart';
 import 'bot_draft_send.dart';
+import 'bot_adaptive_frame.dart';
 import 'bot_avatar.dart';
 import 'unavailable_message.dart';
 import '../../state/artifacts.dart' show TurnArtifacts, sessionArtifactsProvider;
@@ -847,7 +849,19 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
     final topInset = BotChatHeader.heightOf(context);
     final readOnly = status.readOnly != null;
 
-    return BotChatFrame(
+    return BotAdaptiveFrame(
+      drawer: _drawerConfig,
+      // The column beside the chat: this conversation's details. A member who
+      // has no conversation in this group yet leaves it saying why.
+      panel: targetBot == null
+          ? SessionDetailPage.panel(key: ValueKey('room-detail-$roomSession'), sessionId: roomSession)
+          : memberSession == null
+          ? const _MemberDetailMissing()
+          : SessionDetailPage.panel(
+              key: ValueKey('member-detail-$memberSession'),
+              sessionId: memberSession,
+            ),
+      builder: (context, layout) => BotChatFrame(
       header: BotChatHeader(
         // The group is what the page is about, in either conversation: its face
         // and its title stay, and the member is named on the line below.
@@ -864,7 +878,8 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
             : '‹ ${l10n.botsGroupChat} · ${targetBot.name}',
         tone: statusLine.tone,
         scrolledUnder: _scrolled,
-        onLeading: () => _drawer.toggle(context),
+        onLeading: () => onBotMenu(context, ref, layout, () => _drawer.toggle(context)),
+        leadingTooltip: botMenuTooltip(context, layout),
         // The title capsule is the group's: in a member's conversation it
         // switches back to the group chat, in the group chat it opens the
         // group's own details, as it always did.
@@ -875,16 +890,25 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
         // group chat, the member's own Session in this group otherwise — never a
         // private one, and never the group's numbers under a member's name.
         onInfo: targetBot == null
-            ? () => Navigator.of(context).push(RoomAggregateDetailsPage.route(room.id))
+            // The group's aggregate page has no panel form: beside the chat it
+            // is the group Session's own details, which the key folds away.
+            ? (layout.isExpanded && layout.panelAvailable
+                  ? () => ref.read(layoutPrefsProvider.notifier).setPanelOpen(!ref.read(layoutPrefsProvider).panelOpen)
+                  : () => Navigator.of(context).push(RoomAggregateDetailsPage.route(room.id)))
             : memberSession == null
             ? () => ScaffoldMessenger.maybeOf(context)?.showBriefNotice(l10n.botsRoomMemberSessionMissing)
-            : () => SessionDetailPage.open(
+            : () => openBotDetail(
                 context,
-                memberSession,
+                ref,
+                layout: layout,
+                sessionId: memberSession,
                 scopeLabel: l10n.botsRoomMemberScope(targetBot.name),
               ),
         infoGreyed: targetBot != null && memberSession == null,
-        infoTooltip: targetBot == null
+        infoTooltip: layout.isExpanded && layout.panelAvailable
+            // Beside the chat the key is a switch for the column.
+            ? (ref.watch(layoutPrefsProvider).panelOpen ? l10n.shellCollapseDetails : l10n.shellChatDetails)
+            : targetBot == null
             ? null
             : (memberSession == null
                   ? l10n.botsRoomMemberSessionMissing
@@ -1150,8 +1174,27 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
         ),
       ],
       drawer: _drawerConfig,
+      ),
     );
   }
+}
+
+/// The column beside a member's conversation that has none of its own in this
+/// group yet: the same reason the greyed key gives.
+class _MemberDetailMissing extends StatelessWidget {
+  const _MemberDetailMissing();
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Text(
+        context.l10n.botsRoomMemberSessionMissing,
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: DshColors.of(context).textTertiary),
+      ),
+    ),
+  );
 }
 
 /// The microphone a group needs while a run holds the send key: the same quiet
