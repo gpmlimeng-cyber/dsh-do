@@ -483,6 +483,14 @@
   "botsAddMemory": "添加记忆",
   "botsMemoryReplyExample": "比如：回复尽量简短",
   "botsMemoryDraftExample": "比如：周五前交初稿",
+  "botsMemoryUpdated": "记忆已更新",
+  "botsMemoryAlready": "已经保存过了",
+  "botsMemoryFailed": "没能保存到记忆",
+  "botsMemoryUnchanged": "记忆没有变化",
+  "botsMemoryReasonEmpty": "没有内容可保存",
+  "botsMemoryReasonNoMatch": "没有匹配的条目",
+  "botsMemoryReasonRefused": "记忆拒绝了这次改动",
+  "botsMemoryReasonOther": "记忆没能改动",
   "botsMemoryCount": "记忆 · {count}",
   "@botsMemoryCount": {
     "placeholders": {
