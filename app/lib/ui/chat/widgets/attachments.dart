@@ -310,7 +310,12 @@ class _SessionImage extends ConsumerWidget {
         onLongPress: () =>
             showImageActions(context, image: MemoryImage(value), load: () async => value, name: attachment.name),
       ),
-      AsyncError() => _ImagePlaceholder(size: box, aspect: aspect, failed: true),
+      // A fetch that failed once stays failed inside the provider; tapping
+      // asks it again instead of leaving an empty box until the app restarts.
+      AsyncError() => GestureDetector(
+        onTap: () => ref.invalidate(sessionImageProvider((sessionId, attachment))),
+        child: _ImagePlaceholder(size: box, aspect: aspect, failed: true),
+      ),
       _ => _ImagePlaceholder(size: box, aspect: aspect),
     };
   }
