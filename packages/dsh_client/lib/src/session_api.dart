@@ -546,10 +546,17 @@ class DshClient {
 
   /// Read a durable image using its real log reference. Legacy Hosts reject the
   /// new request before dispatch; only that explicit validation failure falls back.
+  /// The four types `session/attachment` accepts. Sending anything else (or a
+  /// reference missing [ImageAttachment.bytes], its width or its height) makes
+  /// the Host's strict codec refuse the request outright, so it is checked here
+  /// rather than left to fail as an unreadable picture.
+  static const attachmentImageTypes = {'image/png', 'image/jpeg', 'image/webp', 'image/gif'};
+
   Future<({ImageAttachment attachment, Uint8List bytes})> attachment(
     String sessionId,
     ImageAttachment reference,
   ) async {
+    _requireCompleteReference(reference);
     final generation = mux.generation;
     if (generation == null || !identical(generation, _attachmentReferenceGeneration)) {
       _attachmentReferenceSupported = null;
@@ -593,6 +600,16 @@ class DshClient {
       attachment: ImageAttachment.fromJson(value['attachment']),
       bytes: base64Decode(asString(value['data']) ?? ''),
     );
+  }
+
+  /// Throws when [reference] cannot be sent to `session/attachment` as it is.
+  static void _requireCompleteReference(ImageAttachment reference) {
+    if (!attachmentImageTypes.contains(reference.mediaType)) {
+      throw StateError('session/attachment: unsupported image type ${reference.mediaType}');
+    }
+    if (reference.bytes == null || reference.width == null || reference.height == null) {
+      throw StateError('session/attachment: the reference has no byte length or dimensions');
+    }
   }
 
   /// Edits/removes/steers a still-queued prompt (`session/updateQueue`).
