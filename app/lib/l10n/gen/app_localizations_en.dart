@@ -7830,7 +7830,7 @@ class L10nEn extends L10n {
   String get aboutTagline => 'Think deep, ship complete.';
 
   @override
-  String get aboutPitch => 'Hand it to DeepDone — Deep Done.';
+  String get aboutPitch => 'Hand it to Coka — done properly.';
 
   @override
   String get hubAboutNewVersion => 'Update available';
