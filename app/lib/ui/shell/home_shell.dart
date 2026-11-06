@@ -336,7 +336,7 @@ class _HomeShellState extends ConsumerState<HomeShell> with TickerProviderStateM
                       ExcludeSemantics(
                         excluding: _open || _quickPanelOpen,
                         child: _SideParallax(
-                          drawer: _drawer,
+                          drawer: _drawer.animation,
                           drawerWidth: width,
                           quickPanel: _quickPanel,
                           quickPanelWidth: _quickPanelWidth(context),
