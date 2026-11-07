@@ -8,6 +8,7 @@ import 'dart:math' as math;
 
 import 'package:dsh_client/dsh_client.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
 import '../../l10n/l10n.dart';
@@ -320,7 +321,7 @@ class _RoundKey extends StatelessWidget {
 
 /// The page: the transcript fills the space between the header (floating
 /// over it) and the bottom column (cards, error, composer).
-class BotChatFrame extends StatelessWidget {
+class BotChatFrame extends StatefulWidget {
   const BotChatFrame({super.key, required this.header, required this.body, required this.bottom, this.drawer});
 
   final Widget header;
@@ -333,7 +334,27 @@ class BotChatFrame extends StatelessWidget {
   final SessionDrawerConfig? drawer;
 
   @override
+  State<BotChatFrame> createState() => _BotChatFrameState();
+}
+
+class _BotChatFrameState extends State<BotChatFrame> {
+  /// The composer's measured height: the box it occupies, and the room the
+  /// transcript keeps clear of. Written after layout (no animation, so the
+  /// first frame that has it is the frame it takes effect).
+  final _composer = ValueNotifier<double>(0);
+
+  @override
+  void dispose() {
+    _composer.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final header = widget.header;
+    final body = widget.body;
+    final bottom = widget.bottom;
+    final drawer = widget.drawer;
     final frame = AnnotatedRegion<SystemUiOverlayStyle>(
       value: dshSystemOverlay(Theme.of(context).brightness),
       child: AppBackdrop(
@@ -342,35 +363,56 @@ class BotChatFrame extends StatelessWidget {
           resizeToAvoidBottomInset: true,
           // A phone on its side: clear of the cutout on both sides.
           body: SideSafeArea(
-            child: Column(
+            child: Stack(
               children: [
-                Expanded(
-                  child: Stack(
-                    children: [
-                      Positioned.fill(child: body),
-                      Positioned(left: 0, right: 0, top: 0, child: header),
-                    ],
+                // The transcript keeps clear of the composer's measured height:
+                // the last row stops above it instead of running under it.
+                Positioned.fill(
+                  child: ValueListenableBuilder<double>(
+                    valueListenable: _composer,
+                    builder: (context, height, child) => Padding(padding: EdgeInsets.only(bottom: height), child: child),
+                    child: body,
                   ),
                 ),
-                SafeArea(
-                  top: false,
-                  minimum: const EdgeInsets.only(bottom: 8),
-                  // No plate here: the composer is its own column, not over the
-                  // list, so a backdrop repaint would only band the page.
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: AppSpace.floatingWidth),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: bottom,
+                // The composer's own plate: the page again, a little
+                // see-through, feathered where the transcript meets it.
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: ValueListenableBuilder<double>(
+                    valueListenable: _composer,
+                    builder: (context, height, _) => height <= 0
+                        ? const SizedBox.shrink()
+                        : SizedBox(height: height, child: BackdropVeil(solidHeight: _composer, feather: 14, opacity: 0.86)),
+                  ),
+                ),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: _Measured(
+                    onHeight: (height) => _composer.value = height,
+                    child: SafeArea(
+                      top: false,
+                      minimum: const EdgeInsets.only(bottom: 8),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: AppSpace.floatingWidth),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: bottom,
+                            ),
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
+                Positioned(left: 0, right: 0, top: 0, child: header),
               ],
             ),
           ),
@@ -2245,3 +2287,31 @@ final cardButton = FilledButton.styleFrom(
   visualDensity: VisualDensity.compact,
   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
 );
+
+/// Reports its child's laid-out height, so the frame can leave exactly that
+/// much room without asking for a frame's worth of delay: the value is written
+/// after layout, and the next frame already uses it.
+class _Measured extends SingleChildRenderObjectWidget {
+  const _Measured({required this.onHeight, super.child});
+
+  final ValueChanged<double> onHeight;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) => _RenderMeasured(onHeight);
+}
+
+class _RenderMeasured extends RenderProxyBox {
+  _RenderMeasured(this.onHeight);
+
+  final ValueChanged<double> onHeight;
+  double _last = -1;
+
+  @override
+  void performLayout() {
+    super.performLayout();
+    final height = size.height;
+    if (height == _last) return;
+    _last = height;
+    SchedulerBinding.instance.addPostFrameCallback((_) => onHeight(height));
+  }
+}
