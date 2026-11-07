@@ -57,57 +57,65 @@ class BotAdaptiveFrame extends ConsumerWidget {
     // the chat in the middle is drawn on the page's. One backdrop for all three.
     final width = drawer.controller.widthOf(context);
     return AppBackdrop(
-      // The same pull home has: opening the drawer slides the three columns
-      // back, so the list never stands behind it unmoved.
-      child: SideParallax(
-        drawer: drawer.controller.animation,
-        drawerWidth: width,
-        quickPanel: kAlwaysCompleteAnimation,
-        quickPanelWidth: 0,
-        child: AdaptiveChrome(
-      layout: layout,
-      child: AdaptiveScaffold(
-        layout: layout,
-        // Stored choices arriving at launch snap into place.
-        animate: prefs.loaded,
-        body: builder(context, layout),
-        sidebar: sidebar
-            ? SessionsDrawer(
-                key: const ValueKey('bot-sidebar'),
-                // It stays: picking a conversation just shows it.
-                onClose: () {},
-                onOpen: drawer.onDestination,
-                onChosen: drawer.onChosen,
-              )
-            : null,
-        // Without a widget here the layout still reserves the rail's width and
-        // the page shows an empty strip; the rail is the list's folded form.
-        rail: AdaptiveRail(
-          onMenu: () {
-            final notifier = ref.read(layoutPrefsProvider.notifier);
-            switch (layout.menuAction) {
-              case MenuAction.overlay:
-                drawer.controller.open(context);
-              case MenuAction.expand:
-                unawaited(notifier.setSidebarOpen(true));
-              case MenuAction.collapse:
-                unawaited(notifier.setSidebarOpen(false));
-            }
-          },
-          menuTooltip: AdaptiveChrome.menuTooltipFor(layout),
-          onSearch: () async {
-            final sessionId = await showSessionSearch(context);
-            if (sessionId != null) drawer.onChosen();
-          },
-          onHost: () => drawer.onDestination(DrawerDestination.remote),
-          onWeb: () => drawer.onDestination(DrawerDestination.web),
-          onSettings: () => drawer.onDestination(DrawerDestination.settings),
+      // One drawer for the whole page: it covers all three columns and their
+      // edges, as home's does — inside the chat column it could only cover the
+      // chat. Back closes it, then the page, as it does there.
+      child: SessionDrawerHost(
+        config: drawer,
+        // The same pull home has: opening the drawer slides the three columns
+        // back, so the list never stands behind it unmoved.
+        child: SideParallax(
+          drawer: drawer.controller.animation,
+          drawerWidth: width,
+          quickPanel: kAlwaysCompleteAnimation,
+          quickPanelWidth: 0,
+          child: AdaptiveChrome(
+            layout: layout,
+            child: AdaptiveScaffold(
+              layout: layout,
+              // Stored choices arriving at launch snap into place.
+              animate: prefs.loaded,
+              body: builder(context, layout),
+              sidebar: sidebar
+                  ? SessionsDrawer(
+                      key: const ValueKey('bot-sidebar'),
+                      // It stays: picking a conversation just shows it.
+                      onClose: () {},
+                      onOpen: drawer.onDestination,
+                      onChosen: drawer.onChosen,
+                    )
+                  : null,
+              // Without a widget here the layout still reserves the rail's
+              // width and the page shows an empty strip; the rail is the
+              // list's folded form.
+              rail: AdaptiveRail(
+                onMenu: () {
+                  final notifier = ref.read(layoutPrefsProvider.notifier);
+                  switch (layout.menuAction) {
+                    case MenuAction.overlay:
+                      drawer.controller.open(context);
+                    case MenuAction.expand:
+                      unawaited(notifier.setSidebarOpen(true));
+                    case MenuAction.collapse:
+                      unawaited(notifier.setSidebarOpen(false));
+                  }
+                },
+                menuTooltip: AdaptiveChrome.menuTooltipFor(layout),
+                onSearch: () async {
+                  final sessionId = await showSessionSearch(context);
+                  if (sessionId != null) drawer.onChosen();
+                },
+                onHost: () => drawer.onDestination(DrawerDestination.remote),
+                onWeb: () => drawer.onDestination(DrawerDestination.web),
+                onSettings: () => drawer.onDestination(DrawerDestination.settings),
+              ),
+              // As home does: the panel is handed over whenever there is room,
+              // and the scaffold plays its slide-away; gating it on the pref
+              // would cut that.
+              panel: layout.panelAvailable ? panel : null,
+            ),
+          ),
         ),
-        // As home does: the panel is handed over whenever there is room, and the
-        // scaffold plays its slide-away; gating it on the pref would cut that.
-        panel: layout.panelAvailable ? panel : null,
-      ),
-      ),
       ),
     );
   }

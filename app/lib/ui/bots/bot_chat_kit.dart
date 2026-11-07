@@ -23,7 +23,6 @@ import '../chat/widgets/message_actions.dart';
 import '../share/share_entry.dart' show shareText;
 import '../chat/widgets/notice_row.dart';
 import '../chat/widgets/user_bubble.dart';
-import '../shell/session_drawer_host.dart';
 import '../common/capsule_chip.dart';
 import '../common/side_insets.dart';
 import '../common/smooth_size.dart';
@@ -329,16 +328,11 @@ class _RoundKey extends StatelessWidget {
 /// The page: the transcript fills the space between the header (floating
 /// over it) and the bottom column (cards, error, composer).
 class BotChatFrame extends StatefulWidget {
-  const BotChatFrame({super.key, required this.header, required this.body, required this.bottom, this.drawer});
+  const BotChatFrame({super.key, required this.header, required this.body, required this.bottom});
 
   final Widget header;
   final Widget body;
   final List<Widget> bottom;
-
-  /// The sessions drawer this page pulls over itself; null (a test stand-in)
-  /// hides the header's ≡. The page under it is never left: opening the drawer
-  /// keeps the conversation, its draft and its scroll offset.
-  final SessionDrawerConfig? drawer;
 
   @override
   State<BotChatFrame> createState() => _BotChatFrameState();
@@ -363,8 +357,7 @@ class _BotChatFrameState extends State<BotChatFrame> {
     final bottom = widget.bottom;
     final frame = AnnotatedRegion<SystemUiOverlayStyle>(
       value: dshSystemOverlay(Theme.of(context).brightness),
-      child: AppBackdrop(
-        child: Scaffold(
+      child: Scaffold(
           backgroundColor: Colors.transparent,
           resizeToAvoidBottomInset: true,
           // A phone on its side: clear of the cutout on both sides.
@@ -420,10 +413,8 @@ class _BotChatFrameState extends State<BotChatFrame> {
             ),
           ),
         ),
-      ),
     );
-    final shell = widget.drawer;
-    return shell == null ? frame : SessionDrawerHost(config: shell, child: frame);
+    return frame;
   }
 }
 

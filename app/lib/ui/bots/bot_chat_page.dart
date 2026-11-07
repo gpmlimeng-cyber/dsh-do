@@ -656,7 +656,6 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
           placeholder: l10n.botsComposerHint(bot.name),
         ),
       ],
-      drawer: _drawerConfig,
       ),
     );
   }

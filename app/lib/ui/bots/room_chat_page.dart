@@ -1213,7 +1213,6 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
           ),
         ),
       ],
-      drawer: _drawerConfig,
       ),
     );
   }
