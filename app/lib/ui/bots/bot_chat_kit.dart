@@ -376,15 +376,12 @@ class _BotChatFrameState extends State<BotChatFrame> {
                 ),
                 // The composer's own plate: the page again, a little
                 // see-through, feathered where the transcript meets it.
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  child: ValueListenableBuilder<double>(
-                    valueListenable: _composer,
-                    builder: (context, height, _) => height <= 0
-                        ? const SizedBox.shrink()
-                        : SizedBox(height: height, child: BackdropVeil(solidHeight: _composer, feather: 14, opacity: 0.86)),
+                // Full-page, exactly as the native chat draws it: the plate is
+                // solid over the composer and feathers above it. A box the
+                // height of the composer would clip the feather into a hard edge.
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: BackdropVeil(solidHeight: _composer, feather: 14, opacity: 0.86),
                   ),
                 ),
                 Positioned(
