@@ -133,17 +133,6 @@ class BotChatHeader extends StatelessWidget {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        if (scrolledUnder case final scrolled?)
-          Positioned(
-            left: 0,
-            right: 0,
-            top: 0,
-            child: ValueListenableBuilder<double>(
-              valueListenable: scrolled,
-              builder: (context, t, child) => Opacity(opacity: t, child: child),
-              child: TopFade(height: top + barHeightOf(context) + 12),
-            ),
-          ),
         Padding(
           padding: EdgeInsets.fromLTRB(12, top, 12, 0),
           child: BackdropGroup(
@@ -348,16 +337,6 @@ class BotChatFrame extends StatelessWidget {
                   child: Stack(
                     children: [
                       Positioned.fill(child: body),
-                      // The last lines sink into the page at the composer's edge
-                      // instead of ending against a cut under the status strip:
-                      // the buttons keep their own fill, the row around them does
-                      // not cover anything.
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        child: IgnorePointer(child: BottomFade(height: 18)),
-                      ),
                       Positioned(left: 0, right: 0, top: 0, child: header),
                     ],
                   ),
@@ -365,18 +344,26 @@ class BotChatFrame extends StatelessWidget {
                 SafeArea(
                   top: false,
                   minimum: const EdgeInsets.only(bottom: 8),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: AppSpace.floatingWidth),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: bottom,
+                  child: Stack(
+                    children: [
+                      // The composer's own plate: the page's backdrop again, a
+                      // little see-through, so what scrolls under it stays
+                      // faintly readable instead of being cut off.
+                      const Positioned.fill(child: BackdropVeil.area()),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: AppSpace.floatingWidth),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: bottom,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
+                    ],
                   ),
                 ),
               ],

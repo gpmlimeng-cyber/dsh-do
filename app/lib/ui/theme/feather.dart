@@ -45,36 +45,3 @@ class TopFade extends StatelessWidget {
     child: BackdropVeil.top(height: height - 16, feather: 16),
   );
 }
-
-/// The same fade at the other edge: page-coloured at the bottom, easing out
-/// upward, so content reaching the composer (or the tool strip above it) sinks
-/// into the page instead of ending against a cut.
-///
-/// The native chat page draws this with [BackdropVeil] and the composer's own
-/// measured height; a Bot's chat, whose composer sits below the list, only needs
-/// the feather itself.
-class BottomFade extends StatelessWidget {
-  const BottomFade({super.key, required this.height});
-
-  final double height;
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-    height: height,
-    width: double.infinity,
-    child: BackdropVeil(solidHeight: _BottomFadeHeight(), feather: height),
-  );
-}
-
-class _BottomFadeHeight implements ValueListenable<double> {
-  const _BottomFadeHeight();
-
-  @override
-  double get value => 0;
-
-  @override
-  void addListener(VoidCallback listener) {}
-
-  @override
-  void removeListener(VoidCallback listener) {}
-}

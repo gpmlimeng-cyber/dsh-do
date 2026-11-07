@@ -109,13 +109,20 @@ class _BackdropScope extends InheritedWidget {
 /// 整页、和页面左上角对齐。分栏布局里的一栏(宽屏的聊天栏、详情栏)由
 /// [BackdropFrame] 告知它在整张背景里的位置,照样对得上。
 class BackdropVeil extends StatelessWidget {
-  const BackdropVeil({super.key, required this.solidHeight, this.feather = 14, this.glow = true}) : fromTop = false;
+  const BackdropVeil({super.key, required this.solidHeight, this.feather = 14, this.glow = true, this.opacity = 1})
+    : fromTop = false;
 
   /// 顶部版:从顶边往下 [height] 实心,再往下 [feather] 缓缓淡出(页面顶栏
   /// 后面)。同样要铺满整页、和页面左上角对齐。
-  BackdropVeil.top({super.key, required double height, this.feather = 14, this.glow = true})
+  BackdropVeil.top({super.key, required double height, this.feather = 14, this.glow = true, this.opacity = 1})
     : solidHeight = _FixedHeight(height),
       fromTop = true;
+
+  /// The page's own backdrop over the whole box it is given (the composer's
+  /// plate): [opacity] below 1 lets the conversation behind show through.
+  BackdropVeil.area({super.key, this.feather = 14, this.glow = true, this.opacity = 0.86})
+    : solidHeight = const _FixedHeight(100000),
+      fromTop = false;
 
   /// 从底边往上实心的高度。由页面布局在排好浮动控件时写入:遮罩画在布局
   /// 之后,不经过重建,这一帧就按新高度画,和控件严丝合缝。
@@ -124,6 +131,10 @@ class BackdropVeil extends StatelessWidget {
   /// 实心区之外(底部版在上、顶部版在下)的淡出高度。
   final double feather;
   final bool glow;
+
+  /// How opaque the plate is: 1 hides the content behind it, below that the
+  /// conversation stays faintly visible through the backdrop.
+  final double opacity;
 
   /// 顶部版([BackdropVeil.top])。
   final bool fromTop;
@@ -139,6 +150,7 @@ class BackdropVeil extends StatelessWidget {
           solidHeight: solidHeight,
           feather: feather,
           fromTop: fromTop,
+          opacity: opacity,
           backdrop: _BackdropPainter(
             top: s.backdropTop,
             bottom: s.backdropBottom,
@@ -176,13 +188,20 @@ class _FixedHeight implements ValueListenable<double> {
 
 /// [BackdropVeil] 的一条:底部实心,往上缓缓淡出(顶部版反过来)。
 class _VeilPainter extends CustomPainter {
-  _VeilPainter({required this.solidHeight, required this.feather, required this.backdrop, this.fromTop = false})
+  _VeilPainter({
+    required this.solidHeight,
+    required this.feather,
+    required this.backdrop,
+    this.fromTop = false,
+    this.opacity = 1,
+  })
     : super(repaint: backdrop.picture == null ? solidHeight : Listenable.merge([solidHeight, backdrop.picture!.fade]));
 
   final ValueListenable<double> solidHeight;
   final double feather;
   final _BackdropPainter backdrop;
   final bool fromTop;
+  final double opacity;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -211,7 +230,8 @@ class _VeilPainter extends CustomPainter {
       colors.add(Colors.black);
     }
 
-    canvas.saveLayer(rect, Paint());
+    // The layer's own colour alpha is what makes the plate translucent.
+    canvas.saveLayer(rect, Paint()..color = const Color(0xFFFFFFFF).withValues(alpha: opacity));
     canvas.clipRect(rect);
     // The whole backdrop from the page's top, so the band lines up with it.
     backdrop.paint(canvas, size);
@@ -234,6 +254,7 @@ class _VeilPainter extends CustomPainter {
       old.solidHeight != solidHeight ||
       old.feather != feather ||
       old.fromTop != fromTop ||
+      old.opacity != opacity ||
       backdrop.shouldRepaint(old.backdrop);
 }
 

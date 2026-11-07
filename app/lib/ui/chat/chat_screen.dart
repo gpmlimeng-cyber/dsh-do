@@ -1622,7 +1622,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
                   // the list's 8dp bottom padding, so the last message is untouched.
                   LayoutId(
                     id: _Slot.veil,
-                    child: BackdropVeil(solidHeight: _veilHeight),
+                    child: BackdropVeil(solidHeight: _veilHeight, opacity: _ChatLayout.veilOpacity),
                   ),
                   LayoutId(
                     id: _Slot.header,
@@ -2210,6 +2210,11 @@ enum _Slot { body, veil, header, palette, composer }
 /// 不走「帧后报高度、下一帧再 setState」:那样胶囊升起 / 收回的每一帧列表
 /// 都晚一拍,最后一条消息和胶囊之间时而压住、时而露出一道缝。
 class _ChatLayout extends MultiChildLayoutDelegate {
+  /// The composer's plate is a little see-through: what scrolls under it stays
+  /// faintly legible.
+  static const veilOpacity = 0.86;
+
+
   _ChatLayout(this.veilHeight);
 
   /// 列表视口伸到输入条上沿以下的距离:底色在那里已经是实心,看不见裁切。
