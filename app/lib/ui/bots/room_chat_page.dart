@@ -1173,6 +1173,10 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
           listenable: _input,
           builder: (context, _) => Composer(
             hardwareEnterSends: ref.watch(settingsProvider.select((s) => s.hardwareEnterSends)),
+          // The native chat's own line count for the same screen and text
+          // size, so the field grows the same way here.
+          maxLines: Composer.linesFor(context),
+          busy: chat.loading,
             voice: _voice,
             controller: _input,
             placeholder: l10n.botsGroupComposerHint,

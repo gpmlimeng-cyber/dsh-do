@@ -622,6 +622,10 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
         BotComposerDeck(sessionId: bot.sessionId, running: ownTurn),
         Composer(
           hardwareEnterSends: ref.watch(settingsProvider.select((s) => s.hardwareEnterSends)),
+          // The native chat's own line count for the same screen and text
+          // size, so the field grows the same way here.
+          maxLines: Composer.linesFor(context),
+          busy: chat.loading,
           controller: _input,
           focusNode: _focus,
           connected: api != null && !readOnly,
