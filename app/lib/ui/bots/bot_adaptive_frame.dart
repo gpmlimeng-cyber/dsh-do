@@ -18,6 +18,8 @@ import '../session/session_detail_page.dart';
 import '../shell/adaptive/adaptive_layout.dart';
 import '../shell/adaptive/adaptive_scaffold.dart';
 import '../shell/adaptive/open_detail.dart';
+import '../shell/adaptive/adaptive_rail.dart';
+import '../shell/drawer/drawer_destination.dart';
 import '../shell/session_drawer_host.dart';
 import '../shell/sessions_drawer.dart';
 
@@ -63,6 +65,26 @@ class BotAdaptiveFrame extends ConsumerWidget {
                 onChosen: drawer.onChosen,
               )
             : null,
+        // Without a widget here the layout still reserves the rail's width and
+        // the page shows an empty strip; the rail is the list's folded form.
+        rail: AdaptiveRail(
+          onMenu: () {
+            final notifier = ref.read(layoutPrefsProvider.notifier);
+            switch (layout.menuAction) {
+              case MenuAction.overlay:
+                drawer.controller.open(context);
+              case MenuAction.expand:
+                unawaited(notifier.setSidebarOpen(true));
+              case MenuAction.collapse:
+                unawaited(notifier.setSidebarOpen(false));
+            }
+          },
+          menuTooltip: AdaptiveChrome.menuTooltipFor(layout),
+          onSearch: () => drawer.onDestination(DrawerDestination.settings),
+          onHost: () => drawer.onDestination(DrawerDestination.remote),
+          onWeb: () => drawer.onDestination(DrawerDestination.web),
+          onSettings: () => drawer.onDestination(DrawerDestination.settings),
+        ),
         panel: layout.panelAvailable && prefs.panelOpen ? panel : null,
       ),
     );
