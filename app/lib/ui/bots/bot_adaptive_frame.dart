@@ -15,6 +15,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/l10n.dart';
 import '../../state/adaptive_layout_state.dart';
 import '../session/session_detail_page.dart';
+import '../shell/session_search_page.dart' show showSessionSearch;
 import '../theme/backdrop.dart' show AppBackdrop;
 import '../shell/adaptive/adaptive_layout.dart';
 import '../shell/adaptive/adaptive_scaffold.dart';
@@ -85,12 +86,17 @@ class BotAdaptiveFrame extends ConsumerWidget {
             }
           },
           menuTooltip: AdaptiveChrome.menuTooltipFor(layout),
-          onSearch: () => drawer.onDestination(DrawerDestination.settings),
+          onSearch: () async {
+            final sessionId = await showSessionSearch(context);
+            if (sessionId != null) drawer.onChosen();
+          },
           onHost: () => drawer.onDestination(DrawerDestination.remote),
           onWeb: () => drawer.onDestination(DrawerDestination.web),
           onSettings: () => drawer.onDestination(DrawerDestination.settings),
         ),
-        panel: layout.panelAvailable && prefs.panelOpen ? panel : null,
+        // As home does: the panel is handed over whenever there is room, and the
+        // scaffold plays its slide-away; gating it on the pref would cut that.
+        panel: layout.panelAvailable ? panel : null,
       ),
       ),
     );
