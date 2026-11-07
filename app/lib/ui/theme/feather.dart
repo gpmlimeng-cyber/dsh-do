@@ -34,14 +34,18 @@ LinearGradient featherFade({
 /// Callers fade it in only once content has scrolled under the bar, so at rest
 /// the page is one uninterrupted surface.
 class TopFade extends StatelessWidget {
-  const TopFade({super.key, required this.height});
+  const TopFade({super.key, required this.height, this.opacity = 0.86});
 
   final double height;
+
+  /// Below 1 the conversation behind the bar stays faintly visible, the same
+  /// way it does under the composer's plate.
+  final double opacity;
 
   @override
   Widget build(BuildContext context) => SizedBox(
     height: height,
     width: double.infinity,
-    child: BackdropVeil.top(height: height - 16, feather: 16),
+    child: BackdropVeil.top(height: height - 16, feather: 16, opacity: opacity),
   );
 }

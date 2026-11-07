@@ -133,6 +133,13 @@ class BotChatHeader extends StatelessWidget {
     return Stack(
       clipBehavior: Clip.none,
       children: [
+        // The bar's own plate: the page's backdrop again, a little see-through,
+        // so the conversation scrolls under the buttons instead of being cut.
+        BackdropVeil.top(
+          height: top + barHeightOf(context) + 10,
+          feather: 12,
+          opacity: 0.86,
+        ),
         Padding(
           padding: EdgeInsets.fromLTRB(12, top, 12, 0),
           child: BackdropGroup(
