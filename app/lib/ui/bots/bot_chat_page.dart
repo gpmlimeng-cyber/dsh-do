@@ -25,7 +25,7 @@ import '../chat/composer.dart';
 import '../chat/widgets/artifact_card.dart';
 import '../../state/voice_model_state.dart';
 import '../../state/voice_state.dart';
-import '../../state/chat_state.dart' show SendMode;
+import '../../state/chat_state.dart' show SendMode, chatProvider;
 import '../../state/room_message_mode.dart' show withoutDoneEchoes;
 import '../chat/voice/voice_controller.dart';
 import '../chat/widgets/attachments.dart';
@@ -437,7 +437,8 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
     // Only the newest finished turn's own deliverables: a card from an earlier
     // turn must not reappear under a later one (turn numbers restart per part,
     // so "the last group" is not the same question as "this turn's group").
-    final finished = [for (final trace in chat.turns) if (!trace.running && trace.endSeq != null) trace];
+    final botTurns = ref.watch(chatProvider(bot.sessionId).select((s) => s.turns));
+    final finished = [for (final trace in botTurns) if (!trace.running && trace.endSeq != null) trace];
     final newestEnd = finished.isEmpty ? null : finished.last.endSeq;
     final newest = artifacts.isEmpty ? null : artifacts.last;
     final delivered = !(visible && engineUp) || newest == null || newest.endSeq != newestEnd ? null : newest;

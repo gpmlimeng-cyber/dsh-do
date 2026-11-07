@@ -356,7 +356,7 @@ class BotChatFrame extends StatelessWidget {
                       // The composer's own plate: the page's backdrop again, a
                       // little see-through, so what scrolls under it stays
                       // faintly readable instead of being cut off.
-                      const Positioned.fill(child: BackdropVeil.area()),
+                      Positioned.fill(child: BackdropVeil.area()),
                       Padding(
                         padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
                         child: Center(

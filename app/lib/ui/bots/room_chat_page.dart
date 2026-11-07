@@ -24,7 +24,7 @@ import '../chat/chat_text_scale.dart';
 import '../chat/composer.dart';
 import '../../state/voice_model_state.dart';
 import '../../state/voice_state.dart';
-import '../../state/chat_state.dart' show SendMode;
+import '../../state/chat_state.dart' show SendMode, chatProvider;
 import '../../state/usage_state.dart' show SessionUsage, sessionUsageProvider;
 import '../chat/voice/voice_controller.dart';
 import '../chat/widgets/attachments.dart';
@@ -810,8 +810,8 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
       if (artifacts.isEmpty) continue;
       // The member's newest delivered turn, and only while that turn is its
       // newest finished one: an older group must not hang under a later round.
-      final own = [for (final trace in ref.watch(chatProvider(memberSession).select((s) => s.turns)))
-        if (!trace.running && trace.endSeq != null) trace];
+      final memberTurns = ref.watch(chatProvider(memberSession).select((s) => s.turns));
+      final own = [for (final trace in memberTurns) if (!trace.running && trace.endSeq != null) trace];
       final group = artifacts.last;
       if (own.isEmpty || own.last.endSeq != group.endSeq) continue;
       final fresh = [
