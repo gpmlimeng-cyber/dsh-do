@@ -446,5 +446,8 @@
   "phoneDndManualConnect": "Connect by port",
   "phoneDndConnectPortLabel": "Connection port",
   "phoneDndConnectPortHint": "On the main Wireless debugging settings page, find “IP address & port” and enter the port after the colon. Do not use the pairing-code dialog’s port.",
-  "phoneDndRootConnectedKept": "Root is connected. If it drops, DSH Go asks your root manager again on its own."
+  "phoneDndRootConnectedKept": "Root is connected. If it drops, DSH Go asks your root manager again on its own.",
+  "phoneResetAlsoDeletes": "Anything else in the home folder (/root) goes too, including files in your workspaces, AGENTS.md and data that plugins store themselves, such as memories.",
+  "phoneSafeStopIncomplete": "Could not confirm that the engine has stopped. Configuration was not changed. Check the engine logs before trying again.",
+  "phoneSafeRestartIncomplete": "The configuration operation finished, but the engine has not stopped or restarted. Wait for it to stop before starting it again."
 }

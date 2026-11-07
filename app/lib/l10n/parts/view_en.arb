@@ -347,5 +347,6 @@
   "viewHtmlCantOpen": "This page won't open",
   "viewHtmlCantOpenBody": "Open it in another app to read it",
   "viewHtmlPartialResources": "Some resources did not load",
-  "viewHtmlLinkBlocked": "Blocked an unsafe link"
+  "viewHtmlLinkBlocked": "Blocked an unsafe link",
+  "viewEmptyHostDefaultDirectory": "Host default folder"
 }

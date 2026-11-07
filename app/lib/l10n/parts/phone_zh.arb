@@ -661,5 +661,8 @@
   "phoneDndManualConnect": "按端口连接",
   "phoneDndConnectPortLabel": "连接端口",
   "phoneDndConnectPortHint": "在系统「无线调试」首页查看「IP 地址和端口」，填写冒号后的端口。请不要使用配对码页面的端口。",
-  "phoneDndRootConnectedKept": "root 已连接。断开后 DSH Go 会自己向 root 管理器再次申请。"
+  "phoneDndRootConnectedKept": "root 已连接。断开后 DSH Go 会自己向 root 管理器再次申请。",
+  "phoneResetAlsoDeletes": "家目录（/root）里没有保留的内容也会一起删除，包括工作区里的文件、AGENTS.md，以及插件自己存的数据（比如记忆）。",
+  "phoneSafeStopIncomplete": "还无法确认引擎已停止，未更改配置。请查看引擎日志后重试。",
+  "phoneSafeRestartIncomplete": "配置操作已完成，但引擎还未停止，暂未重启。请等待停止完成后再启动。"
 }

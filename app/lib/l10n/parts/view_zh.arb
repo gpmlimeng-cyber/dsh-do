@@ -1336,5 +1336,6 @@
   "viewHtmlCantOpen": "这个页面打不开",
   "viewHtmlCantOpenBody": "用手机应用打开还能看内容",
   "viewHtmlPartialResources": "部分资源未能加载",
-  "viewHtmlLinkBlocked": "已拦截不安全的链接"
+  "viewHtmlLinkBlocked": "已拦截不安全的链接",
+  "viewEmptyHostDefaultDirectory": "主机默认目录"
 }
