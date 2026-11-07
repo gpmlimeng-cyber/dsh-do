@@ -339,6 +339,10 @@ class BotChatFrame extends StatefulWidget {
 }
 
 class _BotChatFrameState extends State<BotChatFrame> {
+  /// As the native chat's `_ChatLayout.overlap`: the list reaches this far into
+  /// the composer, and the plate's solid part starts this far below its top —
+  /// the top 6px of the composer area belongs to the feather, not the slab.
+  static const _overlap = 6.0;
   /// The composer's measured height: the box it occupies, and the room the
   /// transcript keeps clear of. Written after layout (no animation, so the
   /// first frame that has it is the frame it takes effect).
@@ -388,7 +392,7 @@ class _BotChatFrameState extends State<BotChatFrame> {
                   right: 0,
                   bottom: 0,
                   child: _Measured(
-                    onHeight: (height) => _composer.value = height,
+                    onHeight: (height) => _composer.value = math.max(0, height - _overlap),
                     child: SafeArea(
                       top: false,
                       minimum: const EdgeInsets.only(bottom: 8),
