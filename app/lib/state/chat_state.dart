@@ -1243,11 +1243,6 @@ class ChatController extends Notifier<ChatState> {
     }
     if (!_canControl && (mode == SendMode.interrupt || !await waitForSync())) return false;
     if (!ref.mounted || !identical(client, _client) || !_canControl) return false;
-    // Keep the pictures this run sends: an echo may need them before the
-    // Host's copy arrives (and if it never arrives).
-    for (final attachment in attachments) {
-      if (attachment.isImage) ref.read(sentImagesProvider.notifier).remember(attachment.name, attachment.bytes);
-    }
     final operation = _ChatOperation(ref, client, _syncScope);
     final content = _contentKey(trimmed, attachments);
     final retrying = _unsettled?.content == content;

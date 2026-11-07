@@ -1,6 +1,4 @@
 import 'package:dsh_client/dsh_client.dart';
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -298,31 +296,6 @@ class _SessionImage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final bytes = ref.watch(sessionImageProvider((sessionId, attachment)));
-    // What this run just sent, by the same name: the picture the person saw on
-    // their way to this row, while (or instead of) the Host's copy arriving.
-    final local = ref.watch(sentImagesProvider)[attachment.name];
-    if (bytes is! AsyncData<Uint8List> && local != null) {
-      final tag = 'img-$sessionId-${attachment.attachmentId}';
-      return _Thumb(
-        size: single ? null : const Size.square(88),
-        aspect: attachment.width != null && attachment.height != null && attachment.height! > 0
-            ? attachment.width! / attachment.height!
-            : 1,
-        heroTag: tag,
-        image: MemoryImage(local),
-        onTap: () => openImageViewer(context, MemoryImage(local), heroTag: tag, name: attachment.name),
-        onLongPress: () => showImageActions(
-          context,
-          image: MemoryImage(local),
-          load: () async => local,
-          name: attachment.name,
-        ),
-      );
-    }
-    final w = attachment.width, h = attachment.height;
-    final aspect = (w != null && h != null && h > 0) ? w / h : 1.0;
-    final box = single ? null : const Size.square(88);
-    final tag = 'img-$sessionId-${attachment.attachmentId}';
     return switch (bytes) {
       AsyncData(:final value) => _Thumb(
         size: box,
