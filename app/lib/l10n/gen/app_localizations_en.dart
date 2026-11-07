@@ -18954,6 +18954,24 @@ class L10nEn extends L10n {
   String get voiceModeAuto => 'Automatic';
 
   @override
+  String get voiceModeCloud => "Cloud";
+
+  @override
+  String get voiceModeCloudHint => "Use a cloud recognizer: pick a configured one below";
+
+  @override
+  String get voiceCloudSection => "Cloud speech models";
+
+  @override
+  String get voiceCloudFooter => "The list is the speech-capable providers configured in the engine; pick one to use it.";
+
+  @override
+  String get voiceCloudEmpty => "No cloud speech model is configured";
+
+  @override
+  String get voiceCloudNeedPick => "Pick a cloud speech model in Settings first";
+
+  @override
   String get voiceModeSystem => 'System';
 
   @override

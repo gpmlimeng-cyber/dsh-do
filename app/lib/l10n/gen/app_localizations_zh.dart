@@ -17939,6 +17939,24 @@ class L10nZh extends L10n {
   String get voiceModeAuto => '自动';
 
   @override
+  String get voiceModeCloud => "云端";
+
+  @override
+  String get voiceModeCloudHint => "用云端识别服务，在下方选一个已配置的模型";
+
+  @override
+  String get voiceCloudSection => "云端语音模型";
+
+  @override
+  String get voiceCloudFooter => "列表来自引擎里已配置的、支持语音的服务商；换一个就选中它。";
+
+  @override
+  String get voiceCloudEmpty => "还没有配置云端语音模型";
+
+  @override
+  String get voiceCloudNeedPick => "先在设置里选一个云端语音模型";
+
+  @override
   String get voiceModeSystem => '系统';
 
   @override

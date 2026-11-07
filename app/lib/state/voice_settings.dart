@@ -1,7 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-enum VoiceMode { auto, system, engine }
+/// How voice input is recognized.
+///
+/// [cloud] uses a speech-capable provider configured in the engine's settings
+/// (its `location` is `cloud`); which one is the Host's saved selection.
+enum VoiceMode { auto, system, engine, cloud }
 
 class VoiceSettingsController extends Notifier<VoiceMode> {
   static const preferenceKey = 'voice_recognition_mode';

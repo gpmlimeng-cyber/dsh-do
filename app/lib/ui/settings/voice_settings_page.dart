@@ -1,9 +1,11 @@
 import 'dart:async';
 
+import 'package:dsh_client/dsh_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
+import '../../state/connection_state.dart';
 import '../../state/engine_control.dart';
 import '../../state/voice_model_state.dart';
 import '../../state/voice_settings.dart';
@@ -17,6 +19,7 @@ String voiceModeLabel(L10n l10n, VoiceMode mode) => switch (mode) {
   VoiceMode.auto => l10n.voiceModeAuto,
   VoiceMode.system => l10n.voiceModeSystem,
   VoiceMode.engine => l10n.voiceModeEngine,
+  VoiceMode.cloud => l10n.voiceModeCloud,
 };
 
 /// The model's name as its authors write it (not translated).
@@ -120,6 +123,7 @@ class _VoiceSettingsPageState extends ConsumerState<VoiceSettingsPage> {
                     VoiceMode.auto => l10n.voiceModeAutoHint,
                     VoiceMode.system => l10n.voiceModeSystemHint,
                     VoiceMode.engine => l10n.voiceModeEngineHint,
+                    VoiceMode.cloud => l10n.voiceModeCloudHint,
                   },
                   trailing: SizedBox.square(
                     dimension: 32,
@@ -130,6 +134,8 @@ class _VoiceSettingsPageState extends ConsumerState<VoiceSettingsPage> {
               ),
           ],
         ),
+        // 云端 picked: the speech-capable providers configured on this host.
+        if (selected == VoiceMode.cloud) const CloudVoiceModels(),
         SettingsSection(
           title: l10n.voiceModelSection,
           footer: Text(l10n.voiceModelFooter),
@@ -376,4 +382,110 @@ class _Actions extends StatelessWidget {
       );
     },
   );
+}
+
+/// The cloud recognizers this host has configured, under 云端: picking one saves
+/// it as the Host's selection, which is what the engine transcribes through.
+class CloudVoiceModels extends ConsumerStatefulWidget {
+  const CloudVoiceModels({super.key});
+
+  @override
+  ConsumerState<CloudVoiceModels> createState() => _CloudVoiceModelsState();
+}
+
+class _CloudVoiceModelsState extends ConsumerState<CloudVoiceModels> {
+  bool _loading = true;
+  String? _error;
+  List<SpeechProviderView> _providers = const [];
+  String? _selected;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_load());
+  }
+
+  Future<void> _load() async {
+    final client = ref.read(activeConnectionProvider).value?.client;
+    if (client == null) {
+      if (mounted) setState(() {
+        _loading = false;
+        _error = context.l10n.commonNotConnected;
+      });
+      return;
+    }
+    try {
+      final catalog = await client.speechCatalog();
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = null;
+        _providers = [
+          for (final provider in catalog?.providers ?? const <SpeechProviderView>[])
+            if (provider.location == 'cloud') provider,
+        ];
+        _selected = catalog?.providerId;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = '$e';
+      });
+    }
+  }
+
+  Future<void> _choose(SpeechProviderView provider) async {
+    final client = ref.read(activeConnectionProvider).value?.client;
+    if (client == null || _saving) return;
+    setState(() => _saving = true);
+    try {
+      await client.configureSpeech(providerId: provider.id);
+      if (mounted) setState(() => _selected = provider.id);
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text('$e')));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return SettingsSection(
+      title: l10n.voiceCloudSection,
+      footer: Text(l10n.voiceCloudFooter),
+      children: [
+        if (_loading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Center(child: SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2))),
+          )
+        else if (_providers.isEmpty)
+          Padding(
+            key: const ValueKey('voice-cloud-empty'),
+            padding: const EdgeInsets.fromLTRB(SettingsMetrics.inset, 0, SettingsMetrics.inset, 14),
+            child: Text(
+              _error ?? l10n.voiceCloudEmpty,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: DshColors.of(context).textTertiary),
+            ),
+          )
+        else
+          for (final provider in _providers)
+            SettingsTile(
+              key: ValueKey('voice-cloud-${provider.id}'),
+              title: provider.name,
+              subtitle: provider.languages.isEmpty ? null : provider.languages.join(' · '),
+              trailing: SizedBox.square(
+                dimension: 32,
+                child: Icon(_selected == provider.id ? AppIcons.radioOn : AppIcons.radioOff, size: 24),
+              ),
+              onTap: _saving ? null : () => unawaited(_choose(provider)),
+            ),
+      ],
+    );
+  }
 }

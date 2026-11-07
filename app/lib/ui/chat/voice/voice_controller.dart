@@ -543,6 +543,10 @@ class VoiceInputController extends ChangeNotifier with WidgetsBindingObserver {
           VoiceMessage(
             busy
                 ? appL10n.voiceEngineBusy
+                // The cloud mode is about the Host's configured providers, not
+                // the local model: saying 「语音模型不可用」 would blame the wrong side.
+                : _runMode == VoiceMode.cloud
+                ? appL10n.voiceCloudNeedPick
                 : engineMissing
                 ? appL10n.voiceEngineModelMissing
                 : _runMode == VoiceMode.engine

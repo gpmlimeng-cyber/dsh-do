@@ -32476,6 +32476,18 @@ abstract class L10n {
   /// In zh, this message translates to:
   /// **'自动'**
   String get voiceModeAuto;
+  /// No description provided for @voiceModeCloud.
+  String get voiceModeCloud;
+  /// No description provided for @voiceModeCloudHint.
+  String get voiceModeCloudHint;
+  /// No description provided for @voiceCloudSection.
+  String get voiceCloudSection;
+  /// No description provided for @voiceCloudFooter.
+  String get voiceCloudFooter;
+  /// No description provided for @voiceCloudEmpty.
+  String get voiceCloudEmpty;
+  /// No description provided for @voiceCloudNeedPick.
+  String get voiceCloudNeedPick;
 
   /// No description provided for @voiceModeSystem.
   ///
