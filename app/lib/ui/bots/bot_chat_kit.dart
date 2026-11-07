@@ -1356,6 +1356,14 @@ class GroupMessage extends StatelessWidget {
                     style: AppType.tabular(theme.textTheme.labelSmall!.copyWith(color: dsh.textTertiary)),
                   ),
                 ],
+                // 网页版的名字行后面还有耗时（不足一秒不写）；同一套口径。
+                if (item.duration case final took? when took >= const Duration(seconds: 1)) ...[
+                  const SizedBox(width: 6),
+                  Text(
+                    l10n.activitySpanSecondsText('${took.inSeconds}'),
+                    style: AppType.tabular(theme.textTheme.labelSmall!.copyWith(color: dsh.textTertiary)),
+                  ),
+                ],
               ],
             ),
           ),
