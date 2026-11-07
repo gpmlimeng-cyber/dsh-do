@@ -140,7 +140,9 @@ void main() {
       expect(usage.cacheHitRate, 0);
       expect(usage.contextWindow, 1000000);
       expect(usage.pressureTokens, 10129);
-      expect(usage.contextFraction, closeTo(0.0101, 0.0001));
+      expect(usage.projectedTokens, 10142);
+      expect(usage.contextTokens, 10142);
+      expect(usage.contextFraction, closeTo(0.010142, 0.000001));
       expect(usage.systemTokens, 1467);
       expect(usage.toolsTokens, 5157);
       expect(usage.turns, 1);
@@ -165,6 +167,22 @@ void main() {
       // Measured values keep working, including tiny shares.
       const live = SessionUsage(pressureTokens: 123000, contextWindow: 2097152);
       expect(live.contextFraction, closeTo(0.0586, 0.0001));
+    });
+
+    test('context estimate follows compaction and falls back to the last sample', () {
+      const before = SessionUsage(pressureTokens: 840, projectedTokens: 840, contextWindow: 1000);
+      const after = SessionUsage(pressureTokens: 840, projectedTokens: 400, contextWindow: 1000);
+      const fallback = SessionUsage(pressureTokens: 840, contextWindow: 1000);
+      const unknown = SessionUsage(contextWindow: 1000);
+      const zero = SessionUsage(projectedTokens: 0, pressureTokens: 840, contextWindow: 1000);
+      expect(before.contextFraction, 0.84);
+      expect(after.contextTokens, 400);
+      expect(after.contextFraction, 0.4);
+      expect(fallback.contextFraction, 0.84);
+      expect(unknown.contextFraction, isNull);
+      // An explicit estimate of 0 is a real 0: the next request is empty.
+      expect(zero.contextFraction, 0);
+      expect(const SessionUsage(projectedTokens: 1200, contextWindow: 1000).contextFraction, 1);
     });
 
     test('cache hit rate and cost need real numbers', () {
