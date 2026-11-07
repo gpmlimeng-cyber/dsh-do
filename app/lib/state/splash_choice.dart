@@ -5,9 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 enum SplashChoice {
   mark('标志', null),
-  v1('经典', 'assets/brand/splash/coka_splash_v1.gif'),
-  v2('第二版', 'assets/brand/splash/coka_splash_v2.gif'),
-  v3('第三版', 'assets/brand/splash/coka_splash_v3.gif');
+  animated('动图', 'assets/brand/splash/coka_splash.gif');
 
   const SplashChoice(this.label, this.asset);
 
@@ -24,7 +22,7 @@ class SplashChoiceController extends Notifier<SplashChoice> {
   @override
   SplashChoice build() {
     _loaded = _load();
-    return SplashChoice.v3;
+    return SplashChoice.animated;
   }
 
   Future<void> _load() async {
@@ -32,7 +30,7 @@ class SplashChoiceController extends Notifier<SplashChoice> {
       final prefs = await SharedPreferences.getInstance();
       if (!ref.mounted) return;
       final stored = prefs.getString(preferenceKey);
-      state = SplashChoice.values.firstWhere((choice) => choice.name == stored, orElse: () => SplashChoice.v3);
+      state = SplashChoice.values.firstWhere((choice) => choice.name == stored, orElse: () => SplashChoice.animated);
     } catch (_) {
       // Unreadable preferences: keep the default for this run.
     }
