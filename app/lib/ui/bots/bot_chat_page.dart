@@ -591,12 +591,18 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
                     DsBotItemKind.answer => BotEventLine(text: l10n.botsAnsweredQuestion, icon: AppIcons.done),
                     DsBotItemKind.divider => BotEventLine(text: l10n.botsEarlierMessages, icon: AppIcons.history),
                     DsBotItemKind.tool => BotToolRow(name: item.toolName ?? '', status: item.toolStatus),
-                    // One line while a turn reasons, before its reply starts:
-                    // no expand, no buttons, nothing else to read.
-                    DsBotItemKind.thinking => BotTypingLine(
-                      bot: bot,
-                      label: '${bot.name} · ${l10n.botsThinking}',
-                    ),
+                    // A step's thinking is the conversation's own row: the
+                    // same collapsible pill the native chat draws, in place,
+                    // and it stays while the reply streams under it.
+                    DsBotItemKind.thinking =>
+                      item.text.trim().isEmpty
+                          ? const SizedBox.shrink()
+                          : BotThinkingLine(
+                              text: item.text,
+                              // Still thinking only while nothing else has arrived.
+                              active: chat.running && item == chat.items.last,
+                              streaming: chat.running,
+                            ),
                     DsBotItemKind.unknown => const SizedBox.shrink(),
                   },
                 },

@@ -783,15 +783,8 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
     }
     final speaker = statusLine.bot;
 
-    // The deck's status line already says what the speaker is doing; the
-    // transcript must not repeat it as its last row.
-    final typing =
-        speaker == null || (target.memberId != null && speaker.id != target.memberId) || statusLine.activity != null
-        ? null
-        : BotTypingRow(
-            speaker,
-            l10n.botsNamedActivity(speaker.name, workPhrase(status.live.bots[speaker.id]) ?? l10n.botsTyping),
-          );
+    // No synthesized「名字 · 正在写」row: the transcript's own thinking row is
+    // the line now (web's reasoning row), and the streaming text follows it.
     // What each member delivered in this group, from their Session here; the card
     // goes under their last line. The group Session's own delivery keeps the
     // single-conversation placement by turn.
@@ -858,7 +851,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
     ref.listen(roomChatProvider(widget.roomId).select((s) => s.items), (_, _) {
       if (mounted) _rememberFlash(room, team, mode, names, target);
     });
-    final transcript = transcriptRows(withoutDoneEchoes(visible), pending: chat.pending, typing: typing);
+    final transcript = transcriptRows(withoutDoneEchoes(visible), pending: chat.pending, typing: null);
     // The group's own Session is what the admin's memory tools write to; in a
     // member's conversation the line would belong to another conversation.
     final memoryNotices = target.memberId == null && room.sessionId != null
@@ -1052,9 +1045,18 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
                       },
                     ),
                     DsBotItemKind.tool => BotToolRow(name: item.toolName ?? '', status: item.toolStatus),
-                    // A group's relay Session runs no model, so a thinking
-                    // step should never reach here; it says nothing if it does.
-                    DsBotItemKind.thinking => const SizedBox.shrink(),
+                    // A member's thinking, drawn as the conversation draws it:
+                    // the same collapsible pill, under that member's face, and
+                    // it stays while their reply streams below.
+                    DsBotItemKind.thinking =>
+                      item.text.trim().isEmpty
+                          ? const SizedBox.shrink()
+                          : BotThinkingLine(
+                              text: item.text,
+                              bot: team.bot(item.botId),
+                              active: chat.running && item == chat.items.last,
+                              streaming: chat.running,
+                            ),
                     _ => const SizedBox.shrink(),
                   },
                 },

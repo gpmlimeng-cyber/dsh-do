@@ -22,6 +22,7 @@ import '../chat/secret_mask.dart';
 import '../chat/widgets/message_actions.dart';
 import '../share/share_entry.dart' show shareText;
 import '../chat/widgets/notice_row.dart';
+import '../chat/widgets/thinking_pill.dart';
 import '../chat/widgets/user_bubble.dart';
 import '../common/capsule_chip.dart';
 import '../common/side_insets.dart';
@@ -582,16 +583,10 @@ List<BotRow> transcriptRows(
 /// it, that step is over, and [running] false (a finished turn, or a part read
 /// from history) drops it too.
 List<DsBotItem> botTranscriptItems(List<DsBotItem> items, {required bool running, bool fold = true}) {
-  if (items.isEmpty) return items;
-  // 完成后收起过程 off: every step's thinking stays where it was written.
-  if (!fold) return items;
-  final newest = items.last;
-  final rest = [
-    for (final item in items)
-      if (item.kind != DsBotItemKind.thinking) item,
-  ];
-  if (running && newest.kind == DsBotItemKind.thinking) rest.add(newest);
-  return rest;
+  // 思考行（网页版的 reasoning 行）：跑到哪跟到哪，正文和工具行来了它也不走。
+  // 一条就是一行、收起状态由它自己管，所以不再按 running 丢它 ——「完成后收起
+  // 过程」管的是工具与步骤的明细，不是这行本身。
+  return items;
 }
 
 /// Puts [group]'s deliverables under the turn they belong to.
@@ -1395,6 +1390,45 @@ class GroupMessage extends StatelessWidget {
           Expanded(child: body),
         ],
       ),
+    );
+  }
+}
+
+/// A step's thinking, drawn the way a conversation draws it: the same
+/// collapsible [ThinkingPill] the native chat uses, in the Bot's own line.
+class BotThinkingLine extends StatelessWidget {
+  const BotThinkingLine({
+    super.key,
+    required this.text,
+    this.bot,
+    this.active = false,
+    this.streaming = false,
+    this.growIn = false,
+  });
+
+  /// The reasoning as the Host wrote it.
+  final String text;
+
+  /// Whose line it is; null where the page already shows the speaker (a Bot's
+  /// own chat draws no faces beside its rows).
+  final DsBot? bot;
+
+  final bool active;
+  final bool streaming;
+  final bool growIn;
+
+  @override
+  Widget build(BuildContext context) {
+    final pill = ThinkingPill(reasoning: text, active: active, streaming: streaming, growIn: growIn);
+    final bot = this.bot;
+    if (bot == null) return pill;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        BotAvatar(bot: bot, size: GroupMessage.face, working: active),
+        const SizedBox(width: GroupMessage.gap),
+        Expanded(child: pill),
+      ],
     );
   }
 }
