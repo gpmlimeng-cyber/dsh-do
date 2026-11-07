@@ -35076,4 +35076,6 @@ L10n lookupL10n(Locale locale) {
   String get chatGoalRule;
 
   String chatGoalRework(int count);
+
+  String get hubGroupBot;
 }

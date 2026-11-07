@@ -20409,4 +20409,7 @@ class L10nEn extends L10n {
   String chatGoalRework(int count) {
     return 'Sent back $count×';
   }
+
+  @override
+  String get hubGroupBot => 'Bots';
 }

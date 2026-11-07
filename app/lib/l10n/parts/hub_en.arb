@@ -182,5 +182,6 @@
   "hubQuickPanelSwipeHint": "Swipe right to left over the chat. Code blocks, tables and other content that scrolls sideways aren’t affected.",
   "hubQuickPanelItems": "What it lists",
   "hubQuickPanelItemsNone": "Nothing chosen: a left swipe won't open it",
-  "aboutPitch": "Coka, Your AI Coworker"
+  "aboutPitch": "Coka, Your AI Coworker",
+  "hubGroupBot": "Bots"
 }

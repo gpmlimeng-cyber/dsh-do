@@ -5256,6 +5256,7 @@
   "hubQuickPanelItems": "显示的入口",
   "hubQuickPanelItemsNone": "没有选择，左滑不会打开",
   "aboutPitch": "Coka，Your AI Coworker",
+  "hubGroupBot": "Bot",
   "launchScreenTitle": "启动画面",
   "launchDefault": "默认",
   "launchCustom": "自定义",

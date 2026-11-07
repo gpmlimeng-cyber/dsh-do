@@ -19356,4 +19356,7 @@ class L10nZh extends L10n {
   String chatGoalRework(int count) {
     return '已打回 $count 次';
   }
+
+  @override
+  String get hubGroupBot => 'Bot';
 }
