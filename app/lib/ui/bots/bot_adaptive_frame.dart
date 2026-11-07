@@ -18,6 +18,9 @@ import '../session/session_detail_page.dart';
 import '../shell/adaptive/adaptive_layout.dart';
 import '../shell/adaptive/adaptive_scaffold.dart';
 import '../shell/adaptive/open_detail.dart';
+import '../shell/adaptive/adaptive_rail.dart';
+import '../shell/drawer/drawer_destination.dart';
+import '../shell/session_search_page.dart';
 import '../shell/session_drawer_host.dart';
 import '../shell/sessions_drawer.dart';
 
@@ -46,7 +49,10 @@ class BotAdaptiveFrame extends ConsumerWidget {
       sidebarOpen: prefs.sidebarOpen,
       panelOpen: prefs.panelOpen,
     );
-    final sidebar = layout.sidebarFits && prefs.sidebarOpen;
+    // The same three columns the shell has: the list (sidebar or its rail),
+    // the chat, and 对话详情 beside it. The layout decides; this only supplies
+    // what it names, exactly as home_shell does — a column the layout asks for
+    // but gets nothing for is a blank strip.
     return AdaptiveChrome(
       layout: layout,
       child: AdaptiveScaffold(
@@ -54,16 +60,35 @@ class BotAdaptiveFrame extends ConsumerWidget {
         // Stored choices arriving at launch snap into place.
         animate: prefs.loaded,
         body: builder(context, layout),
-        sidebar: sidebar
-            ? SessionsDrawer(
-                key: const ValueKey('bot-sidebar'),
-                // It stays: picking a conversation just shows it.
-                onClose: () {},
-                onOpen: drawer.onDestination,
-                onChosen: drawer.onChosen,
-              )
-            : null,
-        panel: layout.panelAvailable && prefs.panelOpen ? panel : null,
+        sidebar: SessionsDrawer(
+          key: const ValueKey('bot-sidebar'),
+          // It stays: picking a conversation just shows it.
+          onClose: () {},
+          onOpen: drawer.onDestination,
+          onChosen: drawer.onChosen,
+        ),
+        rail: AdaptiveRail(
+          onMenu: () {
+            final notifier = ref.read(layoutPrefsProvider.notifier);
+            switch (layout.menuAction) {
+              case MenuAction.overlay:
+                drawer.controller.open(context);
+              case MenuAction.expand:
+                unawaited(notifier.setSidebarOpen(true));
+              case MenuAction.collapse:
+                unawaited(notifier.setSidebarOpen(false));
+            }
+          },
+          menuTooltip: AdaptiveChrome.menuTooltipFor(layout),
+          onSearch: () async {
+            final sessionId = await showSessionSearch(context);
+            if (sessionId != null) drawer.onChosen();
+          },
+          onHost: () => drawer.onDestination(DrawerDestination.remote),
+          onWeb: () => drawer.onDestination(DrawerDestination.web),
+          onSettings: () => drawer.onDestination(DrawerDestination.settings),
+        ),
+        panel: layout.panelAvailable ? panel : null,
       ),
     );
   }
