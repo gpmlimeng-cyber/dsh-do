@@ -12,6 +12,12 @@ class PhoneCorePromptOwnerTest {
     private var handoff: () -> HandoffResult = { HandoffResult.CONTINUE }
     private var beforeHandoff: () -> Unit = {}
     private var asked = 0
+    private var lookup: () -> Unit = {}
+    private var prepareSystem: () -> Unit = {}
+    private var afterStart: () -> Unit = {}
+    private var launches = 0
+    private var urls = 0
+    private var intents = 0
     private val main = Driver(PhoneScreen.MAIN)
     private val background = Driver(PhoneScreen.BACKGROUND)
     private val core = PhoneCore(object : PhoneEnv {
@@ -31,12 +37,15 @@ class PhoneCorePromptOwnerTest {
         override fun beforeHandoff(screen: PhoneScreen): String? { beforeHandoff(); return null }
         override fun sleep(ms: Long) {}
         override fun system() = object : SystemApi {
-            override fun apps() = listOf(AppEntry("Example", "example.app"))
+            override fun apps(): List<AppEntry> { lookup(); return listOf(AppEntry("Example", "example.app")) }
             override fun isInstalled(pkg: String) = true
-            override fun launch(app: AppEntry) = error("unexpected launch")
-            override fun urlTarget(url: String) = error("unexpected URL")
-            override fun openUrl(url: String, target: UrlTarget) = error("unexpected URL open")
-            override fun intent(spec: IntentSpec, shareTo: AppEntry?) = error("unexpected intent")
+            override fun launch(app: AppEntry, dispatch: PhoneTasks.SystemDispatch): SysResult { commit(dispatch); launches++; afterStart(); return SysResult(true, "launched") }
+            override fun urlTarget(url: String): UrlTarget {
+                lookup()
+                return UrlTarget(packageName = "example.app", appLabel = "Example")
+            }
+            override fun openUrl(url: String, target: UrlTarget, dispatch: PhoneTasks.SystemDispatch): SysResult { commit(dispatch); urls++; afterStart(); return SysResult(true, "opened") }
+            override fun intent(spec: IntentSpec, shareTo: AppEntry?, dispatch: PhoneTasks.SystemDispatch): SysResult { commit(dispatch); intents++; afterStart(); return SysResult(true, "sent") }
             override fun notify(title: String, text: String) = error("unexpected notification")
             override fun clipboardSet(text: String) = error("unexpected clipboard")
             override fun clipboardGet() = error("unexpected clipboard")
@@ -61,10 +70,81 @@ class PhoneCorePromptOwnerTest {
         override fun open(packageName: String): ActionResult { opens++; return ActionResult(true, "opened") }
     }
 
+    // Models the mandatory SystemApi ticket contract, not Android PM or Binder execution.
+    private fun commit(dispatch: PhoneTasks.SystemDispatch) {
+        prepareSystem()
+        if (!dispatch.commitStart()) throw InterruptedException(PhoneTasks.STOPPED_MESSAGE)
+    }
+
     private fun replace() { tasks.endTask(); tasks.begin() }
     private fun handoffCall() = core.call(PhoneToolCatalog.HANDOFF, mapOf("reason" to "User input"))
     private fun tapCall() = core.call(PhoneToolCatalog.TAP, mapOf("screen" to "s1", "id" to 1))
     @After fun close() = core.worker.shutdown()
+
+    private fun openApp() = core.call(PhoneToolCatalog.OPEN, mapOf("app" to "example.app"))
+    private fun openUrl() = core.call(PhoneToolCatalog.OPEN, mapOf("url" to "https://example.com"))
+    private fun shareIntent() = core.call(PhoneToolCatalog.INTENT,
+        mapOf("kind" to "share", "app" to "example.app", "text" to "example"))
+
+    @Test fun replacedTaskCannotLaunchAnApplicationAfterLookupReturns() {
+        lookup = ::replace
+        val result = openApp()
+        assertTrue(result.text, result.isError)
+        assertTrue(result.text.startsWith(PhoneTasks.STOPPED_MESSAGE))
+        assertEquals(0, launches)
+        assertTrue(tasks.isActive)
+    }
+
+    @Test fun clearingAStopDoesNotLetTheOldUrlLookupLaunchUnderANewTask() {
+        lookup = { tasks.stop("stop"); tasks.clearStop(); tasks.begin() }
+        val result = openUrl()
+        assertTrue(result.text, result.isError)
+        assertEquals(0, urls)
+        assertTrue(tasks.isActive)
+        assertFalse(tasks.isStopped())
+    }
+
+    @Test fun aStopDuringAppLookupPreventsTheIntentDispatch() {
+        lookup = { tasks.stop("stop") }
+        val result = shareIntent()
+        assertTrue(result.text, result.isError)
+        assertEquals(0, intents)
+        assertTrue(tasks.isStopped())
+    }
+
+    @Test fun anInterruptedLookupCannotDispatchEvenWhileItsOwnerIsCurrent() {
+        lookup = { Thread.currentThread().interrupt() }
+        val result = shareIntent()
+        assertTrue(result.text, result.isError)
+        assertEquals(0, intents)
+        assertTrue(tasks.isActive)
+        assertFalse(tasks.isStopped())
+    }
+
+    @Test fun originalOwnerReachesAllThreeFinalSystemEntries() {
+        prepareSystem = ::replace
+        assertTrue(openApp().isError)
+        assertTrue(openUrl().isError)
+        assertTrue(shareIntent().isError)
+        assertEquals(0, launches + urls + intents)
+    }
+
+    @Test fun aCommittedLateStartCannotRenameOrReadTheSuccessor() {
+        afterStart = { replace(); tasks.setApp("successor") }
+        assertTrue(openApp().isError)
+        assertEquals(1, launches)
+        assertEquals("successor", tasks.snapshot().app)
+        assertEquals(0, main.reads)
+    }
+
+    @Test fun currentSystemLaunchesStillDispatchExactlyOnce() {
+        assertFalse(openApp().isError)
+        assertFalse(openUrl().isError)
+        assertFalse(shareIntent().isError)
+        assertEquals(1, launches)
+        assertEquals(1, urls)
+        assertEquals(1, intents)
+    }
 
     @Test fun currentHandoffContinuesAndReadsTheCurrentScreen() {
         assertFalse(handoffCall().isError)

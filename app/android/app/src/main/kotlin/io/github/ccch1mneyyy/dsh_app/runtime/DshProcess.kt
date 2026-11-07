@@ -32,6 +32,8 @@ class DshProcess(
         fun onLog(line: String, stream: String)
         fun onReady(source: DshProcess, baseUrl: String, token: String)
         fun onExit(source: DshProcess, code: Int, expected: Boolean)
+        /** Called under the process monitor: enqueue owner updates without waiting for its lock. */
+        fun onStartupFailure(source: DshProcess)
         /** The start is busy turning PRoot's fake hard links into real files (true), or done (false). */
         fun onTidying(active: Boolean) {}
     }
@@ -256,6 +258,7 @@ class DshProcess(
         if (stopping) return
         startupError = message
         listener.onLog("[dsh-app] start failed: $message", "system")
+        listener.onStartupFailure(this)
         stop(expected = false)
     }
 
@@ -389,12 +392,12 @@ class DshProcess(
     /** Reap a captured process tree before releasing #17 ownership to another launch. */
     @Synchronized fun killStrays(): Boolean = reapStrays().complete
 
-    private data class CleanupResult(val complete: Boolean, val ownedRemaining: Boolean, val canPruneTemp: Boolean = false)
+    internal data class CleanupResult(val complete: Boolean, val ownedRemaining: Boolean, val canPruneTemp: Boolean = false)
 
     /** Unknown ambient processes are not proof of ownership. The default-mode
      * startup policy may continue after reaping every captured identity, while
      * killStrays itself still reports the observation as incomplete. */
-    @Synchronized private fun reapStrays(allowObservationGap: Boolean = false): CleanupResult = synchronized(cleanupState) {
+    @Synchronized internal fun reapStrays(allowObservationGap: Boolean = false): CleanupResult = synchronized(cleanupState) {
         reapStraysLocked(allowObservationGap)
     }
 
