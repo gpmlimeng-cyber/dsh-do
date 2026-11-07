@@ -38,8 +38,18 @@ class _ModeHomeState extends ConsumerState<ModeHome> {
   UiMode? _shown;
   DshWebTarget? _handoff;
 
+  /// The drawer's ⇄ key posts a request instead of switching by itself: the
+  /// home is the only thing that outlives every page, so it does the switch.
+  Future<void> _becomeWeb() async {
+    final container = ProviderScope.containerOf(context, listen: false);
+    await container.read(uiModeProvider.notifier).set(UiMode.web);
+    if (!mounted) return;
+    Navigator.maybeOf(context)?.popUntil((route) => route.isFirst);
+  }
+
   @override
   Widget build(BuildContext context) {
+    ref.listen(webModeRequestProvider, (_, _) => unawaited(_becomeWeb()));
     final mode = ref.watch(uiModeProvider);
     if (!mode.loaded) {
       // Read back with the rest of the settings: no frame of the other home.
@@ -115,17 +125,14 @@ class WebModeKey extends ConsumerWidget {
     // nothing at all on a group page.)
     final messenger = ScaffoldMessenger.maybeOf(context);
     final container = ProviderScope.containerOf(context, listen: false);
-    final controller = container.read(uiModeProvider.notifier);
+    // The intent goes first and synchronously: closing the drawer tears this
+    // page (and this widget) down, and anything read or written after that
+    // would be lost on a Bot or group page.
+    container.read(webModeRequestProvider.notifier).request();
     onSwitch?.call();
-    try {
-      await controller.set(UiMode.web);
-    } catch (error) {
-      messenger?.showSnackBar(SnackBar(content: Text('$error')));
-      return;
-    }
     // If the state did not move, say what it is: a switch that quietly does
     // nothing is otherwise indistinguishable from a dead key.
-    await Future<void>.delayed(const Duration(milliseconds: 400));
+    await Future<void>.delayed(const Duration(milliseconds: 600));
     final now = container.read(uiModeProvider).mode;
     if (now != UiMode.web) {
       messenger?.showSnackBar(SnackBar(content: Text('界面模式=${now.name}')));
