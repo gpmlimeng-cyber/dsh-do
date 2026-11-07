@@ -183,5 +183,8 @@
   "hubQuickPanelItems": "What it lists",
   "hubQuickPanelItemsNone": "Nothing chosen: a left swipe won't open it",
   "aboutPitch": "Coka, Your AI Coworker",
-  "hubGroupBot": "Bots"
+  "hubGroupBot": "Bots",
+  "hubBotThinking": "Show the thinking",
+  "hubFlatBubbles": "Flat messages (no bubbles)",
+  "hubBubbleWidth": "Bubble width"
 }

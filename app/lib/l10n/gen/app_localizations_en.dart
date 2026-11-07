@@ -20412,4 +20412,11 @@ class L10nEn extends L10n {
 
   @override
   String get hubGroupBot => 'Bots';
+
+  @override
+  String get hubBotThinking => 'Show the thinking';
+  @override
+  String get hubFlatBubbles => 'Flat messages (no bubbles)';
+  @override
+  String get hubBubbleWidth => 'Bubble width';
 }

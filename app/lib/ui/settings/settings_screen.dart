@@ -178,6 +178,13 @@ class SettingsScreen extends ConsumerWidget {
             SettingsSwitchTile(
               icon: AppIcons.foldTurns,
               tint: SettingsHues.ai,
+              title: l10n.hubBotThinking,
+              value: settings.showThinking,
+              onChanged: (v) => unawaited(notifier.setShowThinking(v)),
+            ),
+            SettingsSwitchTile(
+              icon: AppIcons.foldTurns,
+              tint: SettingsHues.ai,
               spot: Spots.foldTurns,
               value: settings.foldCompletedTurns,
               onChanged: (v) => unawaited(notifier.setFoldCompletedTurns(v)),
@@ -236,6 +243,27 @@ class SettingsScreen extends ConsumerWidget {
               segments: [for (final (scale, label) in chatTextScales) PillSegment(scale, label)],
               selected: settings.chatTextScale,
               onChanged: (scale) => unawaited(notifier.setChatTextScale(scale)),
+            ),
+            SettingsSwitchTile(
+              icon: AppIcons.reply,
+              tint: SettingsHues.appearance,
+              title: l10n.hubFlatBubbles,
+              value: settings.flatBubbles,
+              onChanged: (v) => unawaited(notifier.setFlatBubbles(v)),
+            ),
+            SettingsSegmentTile<double>(
+              icon: AppIcons.reply,
+              tint: SettingsHues.appearance,
+              title: l10n.hubBubbleWidth,
+              // Percentages instead of words: no language to translate, and the
+              // share of the column is what the setting actually is.
+              segments: const [
+                PillSegment(0.72, '72%'),
+                PillSegment(0.82, '82%'),
+                PillSegment(0.95, '95%'),
+              ],
+              selected: settings.bubbleWidth,
+              onChanged: (w) => unawaited(notifier.setBubbleWidth(w)),
             ),
             const PetEntryTile(tint: SettingsHues.appearance),
           ],

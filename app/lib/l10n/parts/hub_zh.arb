@@ -338,5 +338,8 @@
   "hubQuickPanelItems": "显示的入口",
   "hubQuickPanelItemsNone": "没有选择，左滑不会打开",
   "aboutPitch": "Coka，Your AI Coworker",
-  "hubGroupBot": "Bot"
+  "hubGroupBot": "Bot",
+  "hubBotThinking": "显示思考过程",
+  "hubFlatBubbles": "消息平铺（不用气泡）",
+  "hubBubbleWidth": "气泡宽度"
 }

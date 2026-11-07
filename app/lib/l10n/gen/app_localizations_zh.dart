@@ -19359,4 +19359,11 @@ class L10nZh extends L10n {
 
   @override
   String get hubGroupBot => 'Bot';
+
+  @override
+  String get hubBotThinking => '显示思考过程';
+  @override
+  String get hubFlatBubbles => '消息平铺（不用气泡）';
+  @override
+  String get hubBubbleWidth => '气泡宽度';
 }

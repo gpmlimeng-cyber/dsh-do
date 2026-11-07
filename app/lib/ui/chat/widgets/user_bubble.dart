@@ -1,8 +1,10 @@
 // Portions derived from PiPilot (https://github.com/CikeSeven/pi_pilot), MIT, Copyright (c) 2026 CikeSeven. See THIRD_PARTY_NOTICES.md.
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../l10n/l10n.dart';
+import '../../../state/settings_state.dart';
 import '../../../state/composer_quote.dart' show splitQuote;
 import '../../common/expand_reveal.dart';
 import '../../common/fluid_bits.dart';
@@ -28,7 +30,7 @@ import 'quote_chip.dart';
 /// 可识别的凭据(API Key、令牌、私钥、地址里的密码)只在屏幕上遮挡
 /// ([SecretText]);复制、选择文字、编辑拿到的都是原文。已发送的消息每段
 /// 带眼睛可以显示,乐观气泡只遮挡。
-class UserBubble extends StatelessWidget {
+class UserBubble extends ConsumerWidget {
   const UserBubble({
     super.key,
     required this.text,
@@ -82,7 +84,7 @@ class UserBubble extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
     final surfaces = DshSurfaces.of(context);
     final style = AppType.chatBody(context, color: surfaces.onUserBubble);
@@ -109,6 +111,10 @@ class UserBubble extends StatelessWidget {
       );
     }
 
+    // 消息布局: 平铺 draws the person's line as plain text at the column's
+    // width; the bubble is the default.
+    final flat = ref.watch(settingsProvider.select((s) => s.flatBubbles));
+
     // Its own semantics node, carrying the text and the long-press action.
     final bubble = Semantics(
       container: true,
@@ -117,15 +123,22 @@ class UserBubble extends StatelessWidget {
       child: HoldLift(
         onLongPress: () => _menu(context),
         child: DecoratedBox(
-          decoration: ShapeDecoration(color: surfaces.userBubble, shape: AppShape.bubble),
-          child: Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), child: content),
+          decoration: ShapeDecoration(
+            color: flat ? Colors.transparent : surfaces.userBubble,
+            shape: AppShape.bubble,
+          ),
+          child: Padding(
+            padding: flat ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: content,
+          ),
         ),
       ),
     );
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final maxWidth = constraints.maxWidth * 0.82;
+        final prefs = ref.watch(settingsProvider);
+        final maxWidth = constraints.maxWidth * prefs.bubbleWidth;
         // Explicit nodes: the bubble's long-press node must not pull the
         // attachments' labels into one merged node.
         return Semantics(

@@ -35078,4 +35078,8 @@ L10n lookupL10n(Locale locale) {
   String chatGoalRework(int count);
 
   String get hubGroupBot;
+
+  String get hubBotThinking;
+  String get hubFlatBubbles;
+  String get hubBubbleWidth;
 }
