@@ -15,6 +15,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/l10n.dart';
 import '../../state/adaptive_layout_state.dart';
 import '../session/session_detail_page.dart';
+import '../theme/backdrop.dart' show AppBackdrop;
 import '../shell/adaptive/adaptive_layout.dart';
 import '../shell/adaptive/adaptive_scaffold.dart';
 import '../shell/adaptive/open_detail.dart';
@@ -49,7 +50,11 @@ class BotAdaptiveFrame extends ConsumerWidget {
       panelOpen: prefs.panelOpen,
     );
     final sidebar = layout.sidebarFits && prefs.sidebarOpen;
-    return AdaptiveChrome(
+    // The columns this shell draws sit outside the page's own frame: without
+    // the app's backdrop they fall back to the default (dark) surfaces while
+    // the chat in the middle is drawn on the page's. One backdrop for all three.
+    return AppBackdrop(
+      child: AdaptiveChrome(
       layout: layout,
       child: AdaptiveScaffold(
         layout: layout,
@@ -86,6 +91,7 @@ class BotAdaptiveFrame extends ConsumerWidget {
           onSettings: () => drawer.onDestination(DrawerDestination.settings),
         ),
         panel: layout.panelAvailable && prefs.panelOpen ? panel : null,
+      ),
       ),
     );
   }
