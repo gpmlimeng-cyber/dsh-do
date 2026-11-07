@@ -20,6 +20,7 @@ import '../../state/attachments.dart';
 import '../../state/balance_state.dart';
 import '../../state/chat_error_text.dart';
 import '../../state/chat_state.dart';
+import '../../state/cloud_speech.dart';
 import '../../state/commands_state.dart';
 import '../../state/compose_inbox.dart';
 import '../../state/composer_insert.dart';
@@ -254,6 +255,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
       input: _input,
       bridge: ref.read(voiceBridgeProvider),
       mode: () => ref.read(voiceSettingsProvider.notifier).ready(),
+      // 云端 is the app's own call: the model comes from the providers the app
+      // already reads, not from the engine's speech catalog.
+      cloud: () => mounted ? resolveCloudSpeechModelFrom(ref) : Future<CloudSpeechModel?>.value(),
       // The voice model lives in the on-device engine: it counts for that host only.
       modelReady: () =>
           mounted &&

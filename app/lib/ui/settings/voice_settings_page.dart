@@ -6,9 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
-import '../../state/connection_state.dart';
+import '../../state/cloud_speech.dart';
 import '../../state/engine_control.dart';
-import '../../state/providers_state.dart';
 import '../../state/voice_model_state.dart';
 import '../../state/voice_settings.dart';
 import '../common/app_dialog.dart';
@@ -387,8 +386,9 @@ class _Actions extends StatelessWidget {
   );
 }
 
-/// The cloud recognizers this host has configured, under 云端: picking one saves
-/// it as the Host's selection, which is what the engine transcribes through.
+/// The cloud speech models this phone can call: the engine's providers whose
+/// model declares audio input, with the key the app keeps for them. Picking one
+/// saves it; the request is then the app's own.
 class CloudVoiceModels extends ConsumerStatefulWidget {
   const CloudVoiceModels({super.key});
 
@@ -397,114 +397,71 @@ class CloudVoiceModels extends ConsumerStatefulWidget {
 }
 
 class _CloudVoiceModelsState extends ConsumerState<CloudVoiceModels> {
-  bool _loading = true;
-  String? _error;
-  List<SpeechProviderView> _providers = const [];
   String? _selected;
-  bool _saving = false;
+  bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    unawaited(_load());
+    unawaited(_readSelection());
   }
 
-  Future<void> _load() async {
-    final client = ref.read(activeConnectionProvider).value?.client;
-    if (client == null) {
-      if (mounted) setState(() {
-        _loading = false;
-        _error = context.l10n.commonNotConnected;
-      });
+  Future<void> _readSelection() async {
+    final id = await CloudSpeechPrefs.selected();
+    if (!mounted) return;
+    setState(() {
+      _selected = id;
+      _loading = false;
+    });
+  }
+
+  Future<void> _choose(CloudSpeechModel model) async {
+    if (!model.ready) {
+      // The key is not on this phone: a provider set up in the web page never
+      // typed one here, so the way to fix it is the provider's own page.
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        SnackBar(content: Text(context.l10n.chatProviderKeyMissing)),
+      );
       return;
     }
-    try {
-      final catalog = await client.speechCatalog();
-      if (!mounted) return;
-      setState(() {
-        _loading = false;
-        _error = null;
-        final cloud = [
-          for (final provider in catalog?.providers ?? const <SpeechProviderView>[])
-            if (provider.location == 'cloud') provider,
-        ];
-        _providers = _audioOnly(cloud);
-        _selected = catalog?.providerId;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _loading = false;
-        _error = '$e';
-      });
-    }
-  }
-
-  Future<void> _choose(SpeechProviderView provider) async {
-    final client = ref.read(activeConnectionProvider).value?.client;
-    if (client == null || _saving) return;
-    setState(() => _saving = true);
-    try {
-      await client.configureSpeech(providerId: provider.id);
-      if (mounted) setState(() => _selected = provider.id);
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text('$e')));
-    } finally {
-      if (mounted) setState(() => _saving = false);
-    }
-  }
-
-  /// The recognizers whose model declares audio input: a text model with a key
-  /// is not something to recognize speech with. A host that does not say which
-  /// model a recognizer comes from keeps its whole list.
-  List<SpeechProviderView> _audioOnly(List<SpeechProviderView> providers) {
-    final snapshot = ref.read(customProvidersProvider).value;
-    if (snapshot == null) return providers;
-    final audioModels = <String>{
-      for (final provider in snapshot.providers)
-        for (final model in provider.models)
-          if (model.acceptsAudio(routeDefault: provider.defaults.input))
-            model.id,
-    };
-    if (audioModels.isEmpty) return providers;
-    bool isAudio(SpeechProviderView view) => audioModels.any(
-      (id) => view.id == id || view.id.endsWith('/$id') || view.id.endsWith(':$id'),
-    );
-    final filtered = [for (final view in providers) if (isAudio(view)) view];
-    return filtered.isEmpty ? providers : filtered;
+    await CloudSpeechPrefs.select(model.id);
+    if (!mounted) return;
+    setState(() => _selected = model.id);
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final models = ref.watch(cloudSpeechModelsProvider);
+    final list = models.value ?? const <CloudSpeechModel>[];
     return SettingsSection(
       title: l10n.voiceCloudSection,
       footer: Text(l10n.voiceCloudFooter),
       children: [
-        if (_loading)
+        if (_loading || models.isLoading)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 16),
             child: Center(child: SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2))),
           )
-        else if (_providers.isEmpty)
+        else if (list.isEmpty)
           // Nothing configured: the way there, not a dead sentence.
           SettingsTile(
             key: const ValueKey('voice-cloud-empty'),
             title: l10n.voiceCloudConfigure,
-            subtitle: _error ?? l10n.voiceCloudEmpty,
+            subtitle: l10n.voiceCloudEmpty,
             onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ProvidersPage())),
           )
         else
-          for (final provider in _providers)
+          for (final model in list)
             SettingsTile(
-              key: ValueKey('voice-cloud-${provider.id}'),
-              title: provider.name,
-              subtitle: provider.languages.isEmpty ? null : provider.languages.join(' · '),
+              key: ValueKey('voice-cloud-${model.id}'),
+              title: model.name,
+              subtitle: model.ready ? model.subtitle : l10n.chatProviderKeyMissing,
               trailing: SizedBox.square(
                 dimension: 32,
-                child: Icon(_selected == provider.id ? AppIcons.radioOn : AppIcons.radioOff, size: 24),
+                child: Icon(_selected == model.id ? AppIcons.radioOn : AppIcons.radioOff, size: 24),
               ),
-              onTap: _saving ? null : () => unawaited(_choose(provider)),
+              onTap: () => unawaited(_choose(model)),
             ),
       ],
     );

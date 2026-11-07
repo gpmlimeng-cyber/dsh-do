@@ -13,6 +13,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../../diagnostics/app_error_log.dart';
 import '../../../l10n/l10n.dart';
+import '../../../state/cloud_speech.dart';
 import '../../../state/voice_settings.dart';
 import '../mention/mention_text_controller.dart';
 import 'voice_bridge.dart';
@@ -83,10 +84,15 @@ String voiceErrorText(int code) => switch (code) {
 };
 
 class _VoiceTarget {
-  const _VoiceTarget(this.client, this.generation, this.catalog);
+  const _VoiceTarget(this.client, this.generation, this.catalog, {this.cloud});
+
   final DshClient client;
   final MuxGeneration? generation;
   final SpeechCatalog catalog;
+
+  /// Set when the app itself calls the provider (云端): there is no engine
+  /// recognizer behind it, and this is who to call.
+  final CloudSpeechModel? cloud;
 
   bool current(DshClient? active) => identical(client, active) && identical(generation, client.mux.generation);
 }
@@ -97,12 +103,14 @@ class VoiceInputController extends ChangeNotifier with WidgetsBindingObserver {
     required this.bridge,
     required this.client,
     Future<VoiceMode> Function()? mode,
+    Future<CloudSpeechModel?> Function()? cloud,
     bool Function()? modelReady,
     bool Function()? hostIsLocal,
     this.onRecognized,
     this.requiredProviderId,
     bool observeLifecycle = true,
   }) : _mode = mode ?? _automatic,
+       _cloud = cloud,
        _modelReady = modelReady ?? _noModel,
        _hostIsLocal = hostIsLocal ?? _notLocal,
        _observing = observeLifecycle {
@@ -120,6 +128,11 @@ class VoiceInputController extends ChangeNotifier with WidgetsBindingObserver {
   final VoiceBridge bridge;
   final DshClient? Function() client;
   final Future<VoiceMode> Function() _mode;
+
+  /// The cloud model to call, when the mode is 云端: resolved from the app's
+  /// own view of the engine's providers, so a host without a `cloud`
+  /// recognizer works the same.
+  final Future<CloudSpeechModel?> Function()? _cloud;
 
   /// The on-device voice model is ready for this host (voice settings):
   /// automatic mode then records for it instead of trying the phone service.
@@ -238,7 +251,9 @@ class VoiceInputController extends ChangeNotifier with WidgetsBindingObserver {
     // that report a system service which fails as soon as it is called.
     // A working answer is not probed again: on a busy engine the probe can
     // take seconds, and dictation must not wait for a round that is streaming.
-    if (_catalog == null && caps.recorder && (!caps.recognizer || _hostIsLocal())) {
+    if (_catalog == null &&
+        caps.recorder &&
+        (!caps.recognizer || _hostIsLocal() || await _mode() == VoiceMode.cloud)) {
       await _readCatalog(c, generation);
     }
     if (!_disposed) notifyListeners();
@@ -253,6 +268,9 @@ class VoiceInputController extends ChangeNotifier with WidgetsBindingObserver {
       _probeFailure = c == null || !identical(client(), c) ? VoiceProbeFailure.host : VoiceProbeFailure.recorder;
       return null;
     }
+    // 云端 never asks the engine: the request is the app's own, so a host with
+    // no `cloud` recognizer is not a reason to say 「没有模型」.
+    if (await _mode() == VoiceMode.cloud) return _readCloud(c, generation);
     final probe = ++_catalogProbe;
     _VoiceTarget? target;
     var failure = VoiceProbeFailure.noModel;
@@ -326,6 +344,50 @@ class VoiceInputController extends ChangeNotifier with WidgetsBindingObserver {
     }
     return target;
   }
+
+  /// The 云端 probe: the picked model, not the engine's catalog.
+  Future<_VoiceTarget?> _readCloud(DshClient c, MuxGeneration? generation) async {
+    final probe = ++_catalogProbe;
+    CloudSpeechModel? model;
+    try {
+      model = await _cloud?.call();
+    } catch (error) {
+      _probeDetail = 'cloud: $error';
+      model = null;
+    }
+    if (_disposed || !identical(client(), c) || !identical(c.mux.generation, generation)) return null;
+    final target = model == null || !model.ready
+        ? null
+        : _VoiceTarget(c, generation, _cloudCatalog(model), cloud: model);
+    if (probe == _catalogProbe) {
+      if (target != null) {
+        _catalog = target;
+        _probeFailure = null;
+        _probeDetail = null;
+        _catalogSummary = 'cloud=${model!.id}';
+      } else {
+        _catalog = null;
+        _probeFailure = VoiceProbeFailure.noModel;
+        _probeDetail ??= 'cloud: no model picked, or its key is not on this phone';
+        _catalogSummary = 'cloud=none';
+      }
+    }
+    return target;
+  }
+
+  /// What a cloud target answers like, in the shape the recorder and the
+  /// diagnostics read: one ready `cloud` provider, the picked model's limits.
+  static SpeechCatalog _cloudCatalog(CloudSpeechModel model) => SpeechCatalog(
+    providers: [
+      SpeechProviderView(id: model.id, name: model.name, location: 'cloud', languages: const [], phase: 'ready'),
+    ],
+    providerId: model.id,
+    language: null,
+    // The audio is base64'd into the request: keep the encoded body under the
+    // 10 MB the providers here accept.
+    maxAudioBytes: 7 * 1024 * 1024,
+    maxDurationSeconds: 120,
+  );
 
   /// A provider on its way: preparation states that become usable by
   /// themselves in a moment (they are not a failed or missing model).
@@ -690,22 +752,33 @@ class VoiceInputController extends ChangeNotifier with WidgetsBindingObserver {
       return;
     }
     try {
-      final transcript = await target.client.transcribe(
-        wav,
-        providerId: target.catalog.providerId,
-        language: target.catalog.language,
-      );
+      final cloud = target.cloud;
+      String text;
+      if (cloud != null) {
+        try {
+          text = await transcribeCloudSpeech(model: cloud, wav: wav);
+        } catch (error) {
+          _probeDetail = '$error';
+          rethrow;
+        }
+      } else {
+        text = (await target.client.transcribe(
+          wav,
+          providerId: target.catalog.providerId,
+          language: target.catalog.language,
+        )).text;
+      }
       if (!_current(operation)) return;
       if (!target.current(client())) {
         _finish();
         return;
       }
-      if (transcript.text.isEmpty) {
+      if (text.isEmpty) {
         _finish();
         _say(VoiceMessage(appL10n.chatVoiceNotHeard));
         return;
       }
-      _apply(transcript.text, provisional: false);
+      _apply(text, provisional: false);
       onRecognized?.call();
       _finish();
     } catch (_) {
