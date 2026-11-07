@@ -335,7 +335,7 @@ class _HomeShellState extends ConsumerState<HomeShell> with TickerProviderStateM
                       const BotAlertsHost(),
                       ExcludeSemantics(
                         excluding: _open || _quickPanelOpen,
-                        child: _SideParallax(
+                        child: SideParallax(
                           drawer: _drawer.animation,
                           drawerWidth: width,
                           quickPanel: _quickPanel,
@@ -473,8 +473,10 @@ class _DrawerNoticeTheme extends StatelessWidget {
 /// comes the same way, [fromRight].
 /// The fluid tier: as a side panel slides over, the page below drifts a little the
 /// same way. Only a translation: scaling would make its glass re-sample at a new size.
-class _SideParallax extends StatelessWidget {
-  const _SideParallax({
+/// The shell's own pull: the three columns slide aside with the drawer and the
+/// quick panel. A Bot's page reuses it so both feel the same. 
+class SideParallax extends StatelessWidget {
+  const SideParallax({
     required this.drawer,
     required this.drawerWidth,
     required this.quickPanel,
