@@ -133,22 +133,18 @@ class BotComposerDeck extends ConsumerWidget {
                 TodoDockSlot(sessionId: sessionId),
                 GoalDockSlot(sessionId: sessionId),
               ],
-              // A group speaks through the upstream strip: it shows the member
-              // who is running, from that member's Session in this group. The
-              // group-only line under it says who else is running, and is there
-              // only while someone is.
+              // A group speaks through the upstream strip alone: it shows the
+              // member who is running, read from that member's Session in this
+              // group, and how many are running is in the group's own header.
               if (!showActivity) ...[] else if (roomActivity case final status?) ...[
-                if (status.sessionId case final member?)
-                  ActivityStripSlot(
-                    sessionId: member,
-                    onTap: onRoomActivityTap,
-                    todoProgress: !showSessionBars,
-                  )
-                else if (status.work != null)
-                  // Nobody's Session to read: the strip cannot rise, so the
-                  // group-only line says on its own that members are running.
-                  RoomOthersStrip(count: status.others + 1),
-                if (status.sessionId != null && status.others > 0) RoomOthersStrip(count: status.others),
+                // One strip, and the upstream one: 「另外还有 N 位在跑」 as its
+                // own card floated above the composer on a second layer, and the
+                // group's own header already says how many are running.
+                ActivityStripSlot(
+                  sessionId: status.sessionId ?? activitySessionId ?? sessionId,
+                  onTap: onRoomActivityTap,
+                  todoProgress: !showSessionBars,
+                ),
               ] else
                 ActivityStripSlot(sessionId: activitySessionId ?? sessionId),
               ComposerStripSlot(sessionId: sessionId, visible: !running),
@@ -292,36 +288,3 @@ Future<void> runBotSend(
   await send(mode);
 }
 
-/// 「另外还有 N 位在跑」: the one thing the upstream strip cannot say, because
-/// it describes one Session. A card of the deck on its own — nesting it under
-/// the strip would fight the strip's own rise and sink — and zero high with
-/// nothing to add.
-class RoomOthersStrip extends StatelessWidget {
-  const RoomOthersStrip({super.key, required this.count});
-
-  final int count;
-
-  @override
-  Widget build(BuildContext context) {
-    return DockSlot(
-      key: const ValueKey('room-others'),
-      child: SizedBox(
-        height: 18,
-        child: Padding(
-          padding: const EdgeInsets.only(left: 16, top: 4),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              context.l10n.botsOthersRunning(count),
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                fontSize: 11.5,
-                height: 1.3,
-                color: DshColors.of(context).textTertiary,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
