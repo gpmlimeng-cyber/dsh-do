@@ -358,26 +358,20 @@ class BotChatFrame extends StatelessWidget {
                 SafeArea(
                   top: false,
                   minimum: const EdgeInsets.only(bottom: 8),
-                  child: Stack(
-                    children: [
-                      // The composer's own plate: the page's backdrop again, a
-                      // little see-through, so what scrolls under it stays
-                      // faintly readable instead of being cut off.
-                      Positioned.fill(child: BackdropVeil.area()),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-                        child: Center(
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: AppSpace.floatingWidth),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: bottom,
-                            ),
-                          ),
+                  // No plate here: the composer is its own column, not over the
+                  // list, so a backdrop repaint would only band the page.
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: AppSpace.floatingWidth),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: bottom,
                         ),
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ],
