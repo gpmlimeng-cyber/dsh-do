@@ -20,6 +20,7 @@ import '../../runtime/runtime_bridge.dart' show RuntimePhase;
 import '../../runtime/runtime_state.dart' show localRuntimeProvider;
 import '../../state/connection_state.dart';
 import '../../state/artifacts.dart' show sessionArtifactsProvider;
+import '../chat/chat_text_scale.dart';
 import '../chat/composer.dart';
 import '../chat/widgets/artifact_card.dart';
 import '../../state/voice_model_state.dart';
@@ -493,7 +494,10 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
               padding: EdgeInsets.only(top: topInset),
               child: const QuietSpinner(),
             )
-          : BotTranscript(
+          // 对话字号 applies here too; the header and the composer keep the
+          // system size, as they do in the native chat.
+          : ChatTextScale(
+              child: BotTranscript(
               rows: rows,
               topInset: topInset,
               scrolledUnder: _scrolled,
@@ -571,6 +575,7 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
                     DsBotItemKind.unknown => const SizedBox.shrink(),
                   },
                 },
+              ),
               ),
             ),
       bottom: [

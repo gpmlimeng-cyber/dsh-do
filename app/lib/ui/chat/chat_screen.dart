@@ -76,6 +76,7 @@ import 'chat_header.dart';
 import 'chat_list.dart';
 import 'composer.dart';
 import 'composer_toast.dart';
+import 'chat_text_scale.dart';
 import 'dock/chat_dock.dart';
 import 'dock/dock_stack.dart';
 import 'empty_state.dart';
@@ -1583,7 +1584,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
                               ),
                             ),
                           )
-                        : _ChatTextScale(
+                        : ChatTextScale(
                             child: MediaCardActions(
                               regenerate: readOnly ? null : (meta) => unawaited(_regenerateMedia(sessionId, meta)),
                               revise: readOnly || !mediaReady ? null : _reviseMedia,
@@ -2259,41 +2260,3 @@ class _ChatLayout extends MultiChildLayoutDelegate {
   bool shouldRelayout(_ChatLayout oldDelegate) => oldDelegate.veilHeight != veilHeight;
 }
 
-/// Applies the 对话字号 setting to chat content only (header and composer
-/// keep the system size), on top of the system font scale.
-class _ChatTextScale extends ConsumerWidget {
-  const _ChatTextScale({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final factor = ref.watch(settingsProvider.select((s) => s.chatTextScale));
-    if (factor == 1.0) return child;
-    final media = MediaQuery.of(context);
-    return MediaQuery(
-      data: media.copyWith(textScaler: _ChatScaler(media.textScaler, factor)),
-      child: child,
-    );
-  }
-}
-
-/// The chat size on top of the system's: Android 14 scales large text less
-/// than small, and that curve is kept.
-class _ChatScaler extends TextScaler {
-  const _ChatScaler(this.base, this.factor);
-  final TextScaler base;
-  final double factor;
-
-  @override
-  double scale(double fontSize) => base.scale(fontSize) * factor;
-
-  @override
-  double get textScaleFactor => scale(1);
-
-  @override
-  bool operator ==(Object other) => other is _ChatScaler && other.base == base && other.factor == factor;
-
-  @override
-  int get hashCode => Object.hash(base, factor);
-}

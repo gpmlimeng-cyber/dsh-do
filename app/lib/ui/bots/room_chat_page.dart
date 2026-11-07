@@ -20,6 +20,7 @@ import '../../state/adaptive_layout_state.dart';
 import '../../state/bots_state.dart';
 import '../../state/last_conversation.dart';
 import '../../state/connection_state.dart';
+import '../chat/chat_text_scale.dart';
 import '../chat/composer.dart';
 import '../../state/voice_model_state.dart';
 import '../../state/voice_state.dart';
@@ -958,7 +959,10 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
               padding: EdgeInsets.only(top: topInset),
               child: const QuietSpinner(),
             )
-          : BotTranscript(
+          // 对话字号 applies here too; the header and the composer keep the
+          // system size, as they do in the native chat.
+          : ChatTextScale(
+              child: BotTranscript(
               rows: rows,
               topInset: topInset,
               scrolledUnder: _scrolled,
@@ -1041,6 +1045,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
                     _ => const SizedBox.shrink(),
                   },
                 },
+              ),
               ),
             ),
       bottom: [

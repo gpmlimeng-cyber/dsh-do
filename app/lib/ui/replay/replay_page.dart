@@ -24,6 +24,7 @@ import '../../state/attachments.dart' show sessionImageProvider;
 import '../../state/compose_inbox.dart';
 import '../../state/goal_dock_state.dart' show DockGoal;
 import '../../state/settings_state.dart';
+import '../chat/chat_text_scale.dart';
 import '../chat/dock/dock_pill.dart' show DockSlot;
 import '../chat/dock/goal_bar.dart';
 import '../chat/dock/todo_bar.dart';
@@ -218,7 +219,7 @@ class _ReplayPageState extends ConsumerState<ReplayPage> with SingleTickerProvid
                   children: [
                     LayoutId(
                       id: _Slot.body,
-                      child: _ChatTextScale(
+                      child: ChatTextScale(
                         child: ReplayList(
                           frame: frame,
                           live: _live,
@@ -654,42 +655,6 @@ class _Progress extends StatelessWidget {
       ),
     );
   }
-}
-
-/// The 对话字号 setting on the conversation only (as the chat does).
-class _ChatTextScale extends ConsumerWidget {
-  const _ChatTextScale({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final factor = ref.watch(settingsProvider.select((s) => s.chatTextScale));
-    if (factor == 1.0) return child;
-    final media = MediaQuery.of(context);
-    return MediaQuery(
-      data: media.copyWith(textScaler: _Scaler(media.textScaler, factor)),
-      child: child,
-    );
-  }
-}
-
-class _Scaler extends TextScaler {
-  const _Scaler(this.base, this.factor);
-  final TextScaler base;
-  final double factor;
-
-  @override
-  double scale(double fontSize) => base.scale(fontSize) * factor;
-
-  @override
-  double get textScaleFactor => scale(1);
-
-  @override
-  bool operator ==(Object other) => other is _Scaler && other.base == base && other.factor == factor;
-
-  @override
-  int get hashCode => Object.hash(base, factor);
 }
 
 enum _Slot { body, veil, header, bottom }
