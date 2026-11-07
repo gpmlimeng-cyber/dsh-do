@@ -601,5 +601,31 @@
         "type": "String"
       }
     }
-  }
+  },
+  "shellFolderSessions": "{count} 个会话",
+  "@shellFolderSessions": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "shellGroups": "分组",
+  "shellNewFolderName": "分组名称",
+  "shellNewFolderTaken": "已经有叫这个名字的分组了",
+  "shellNewNamedBot": "新建 Bot「{name}」",
+  "@shellNewNamedBot": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "shellNewPanelBots": "Bot",
+  "shellNewPanelGroups": "群",
+  "shellNewPanelNew": "新建",
+  "shellNewPanelRecent": "最近 3 个",
+  "shellNewPanelSearch": "搜索 Bot、群、分组，或直接写名字",
+  "shellNewPanelStart": "开始对话",
+  "shellNewPanelTitle": "新建"
 }

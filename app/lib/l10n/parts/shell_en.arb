@@ -273,5 +273,17 @@
         "type": "String"
       }
     }
-  }
+  },
+  "shellFolderSessions": "{count, plural, =1{1 conversation} other{{count} conversations}}",
+  "shellGroups": "Folders",
+  "shellNewFolderName": "Folder name",
+  "shellNewFolderTaken": "A folder with that name already exists",
+  "shellNewNamedBot": "New Bot “{name}”",
+  "shellNewPanelBots": "Bots",
+  "shellNewPanelGroups": "Groups",
+  "shellNewPanelNew": "New",
+  "shellNewPanelRecent": "Recent 3",
+  "shellNewPanelSearch": "Search Bots, groups and folders, or type a name",
+  "shellNewPanelStart": "Start a conversation",
+  "shellNewPanelTitle": "New"
 }

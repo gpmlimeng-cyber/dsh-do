@@ -159,7 +159,13 @@
   "botsDuplicateHint": "Same settings, fresh chat and memory",
   "botsDuplicateNamed": "Duplicate {name}?",
   "botsDuplicateBody": "The new Bot keeps its job, instructions and model settings, starts with a fresh chat and personal memory, and gets its name from the host. When a model is available, it opens with a greeting.",
-  "@botsDuplicateNamed": {"placeholders": {"name": {"type": "String"}}},
+  "@botsDuplicateNamed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "botsChooseModelStart": "Choose a model to start",
   "botsNoChats": "No chats yet",
   "botsUnreadCount": "{count, plural, =1{1 unread} other{{count} unread}}",
@@ -421,7 +427,13 @@
   "botsMessageModeEmpty": "This member has not spoken in this group yet",
   "botsMessageModeEmptyRelevant": "No messages involve you yet",
   "botsNamedDone": "{name} is done",
-  "@botsNamedDone": {"placeholders": {"name": {"type": "String"}}},
+  "@botsNamedDone": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "botsRoomSwitchChat": "Switch conversation",
   "botsRoomSwitchTo": "Switch to {target}",
   "@botsRoomSwitchTo": {
@@ -453,16 +465,29 @@
   "botsRoomBackToGroupChat": "Back to {room}",
   "@botsRoomBackToGroupChat": {
     "placeholders": {
-      "room": {"type": "String"}
+      "room": {
+        "type": "String"
+      }
     }
   },
   "botsRoomMemberDetails": "{name}'s conversation details",
   "@botsRoomMemberDetails": {
     "placeholders": {
-      "name": {"type": "String"}
+      "name": {
+        "type": "String"
+      }
     }
   },
   "botsRoomMemberSessionMissing": "This member has not started a conversation in this group yet",
   "botsRoomMemberScope": "Only {name} · this group",
-  "@botsRoomMemberScope": {"placeholders": {"name": {"type": "String"}}}
+  "@botsRoomMemberScope": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "botsOthersRunning": "{count} more running",
+  "botsSendFailed": "Could not send",
+  "botsSendStillWaiting": "Still waiting for the server"
 }

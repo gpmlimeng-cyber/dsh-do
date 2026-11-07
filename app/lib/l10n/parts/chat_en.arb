@@ -317,5 +317,9 @@
       }
     }
   },
-  "chatGeneratingQueueHint": "Working \u00b7 queued sends wait"
+  "chatGeneratingQueueHint": "Working · queued sends wait",
+  "chatAttachmentNoPreview": "This kind of file can’t be previewed here",
+  "chatQueueGone": "That message is no longer in the queue",
+  "lastConversationMissingObject": "That Bot or group is gone",
+  "lastConversationMissingSession": "The conversation you left is gone"
 }

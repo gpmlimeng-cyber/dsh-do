@@ -1980,6 +1980,16 @@
       }
     }
   },
+  "botsOthersRunning": "另外还有 {count} 位在跑",
+  "@botsOthersRunning": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "botsSendFailed": "没能发送",
+  "botsSendStillWaiting": "还在等服务器确认",
   "brandXiaomi": "小米 / Redmi",
   "brandHuawei": "华为",
   "brandHonor": "荣耀",
@@ -2860,6 +2870,10 @@
     }
   },
   "chatGeneratingQueueHint": "生成中 · 可排队",
+  "chatAttachmentNoPreview": "这类文件不能直接预览",
+  "chatQueueGone": "这条已经不在队列里了",
+  "lastConversationMissingObject": "上次的 Bot 或群已不存在",
+  "lastConversationMissingSession": "上次的会话已不存在",
   "commonCancel": "取消",
   "commonRetry": "重试",
   "commonClose": "关闭",
@@ -5218,6 +5232,7 @@
   "hubQuickPanelSwipeHint": "在对话里从右向左滑。代码块、表格这些能横向滚动的内容不受影响。",
   "hubQuickPanelItems": "显示的入口",
   "hubQuickPanelItemsNone": "没有选择，左滑不会打开",
+  "aboutPitch": "Coka，Your AI Coworker",
   "launchScreenTitle": "启动画面",
   "launchDefault": "默认",
   "launchCustom": "自定义",
@@ -9864,6 +9879,32 @@
       }
     }
   },
+  "shellFolderSessions": "{count} 个会话",
+  "@shellFolderSessions": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "shellGroups": "分组",
+  "shellNewFolderName": "分组名称",
+  "shellNewFolderTaken": "已经有叫这个名字的分组了",
+  "shellNewNamedBot": "新建 Bot「{name}」",
+  "@shellNewNamedBot": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "shellNewPanelBots": "Bot",
+  "shellNewPanelGroups": "群",
+  "shellNewPanelNew": "新建",
+  "shellNewPanelRecent": "最近 3 个",
+  "shellNewPanelSearch": "搜索 Bot、群、分组，或直接写名字",
+  "shellNewPanelStart": "开始对话",
+  "shellNewPanelTitle": "新建",
   "starPromptTitle": "{hours, plural, =0{本鱼已经在 DSH Go 里陪你半个小时啦⁠~} =1{本鱼已经在 DSH Go 里陪你一个小时啦⁠~} other{本鱼已经在 DSH Go 里陪你 {hours} 个小时啦⁠~}}",
   "@starPromptTitle": {
     "description": "The star prompt's first line. hours is the whole hours of use so far, rounded down; 0 is half an hour (the first ask comes after 30 minutes). The word joiner keeps the ~ on the line of the word before it.",
@@ -12327,6 +12368,15 @@
   },
   "voiceModelNoticePreparing": "正在校验语音模型",
   "voiceModelNoticeFailed": "语音模型下载失败，打开 App 重试",
+  "voiceEngineBusy": "引擎正忙或响应超时，语音模型暂时用不了，稍后再点一次",
+  "voiceEngineModelMissing": "语音模型已下载，但引擎没有加载它；请重启 App，或在语音设置里检查插件",
+  "voiceEnginePreparing": "正在准备语音模型…",
+  "voiceEnginePreparingTimeout": "语音模型还在准备，稍后再点一次",
+  "voiceModelEngineMissing": "引擎没加载语音插件",
+  "voiceModelEngineMissingNote": "语音插件没在引擎里，重启引擎后再试",
+  "voiceModelFailLost": "语音模型文件不在了，请重新下载",
+  "voiceModelLostNote": "本地模型已丢失，重新下载后可用",
+  "voiceModelRestartEngine": "重启引擎",
   "voiceScribeReadFailed": "没能读取语音设置，请重试。",
   "voiceScribeSavedReadFailed": "已保存，刷新后可查看最新设置。",
   "voiceScribeSaveUnconfirmed": "没能确认保存，请刷新或重试。",

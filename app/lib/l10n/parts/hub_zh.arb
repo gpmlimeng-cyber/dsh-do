@@ -336,5 +336,6 @@
   "hubQuickPanelSwipe": "左滑打开",
   "hubQuickPanelSwipeHint": "在对话里从右向左滑。代码块、表格这些能横向滚动的内容不受影响。",
   "hubQuickPanelItems": "显示的入口",
-  "hubQuickPanelItemsNone": "没有选择，左滑不会打开"
+  "hubQuickPanelItemsNone": "没有选择，左滑不会打开",
+  "aboutPitch": "Coka，Your AI Coworker"
 }

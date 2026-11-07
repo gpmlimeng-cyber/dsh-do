@@ -420,7 +420,13 @@
   "botsDuplicateHint": "沿用设置，对话与记忆从头开始",
   "botsDuplicateNamed": "复制 {name}？",
   "botsDuplicateBody": "新 Bot 沿用职责、指令和模型设置，对话与个人记忆从头开始，名称由主机分配。模型可用时，它会先发送一句问候。",
-  "@botsDuplicateNamed": {"placeholders": {"name": {"type": "String"}}},
+  "@botsDuplicateNamed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "botsChooseModelStart": "选一个模型开始",
   "botsNoChats": "还没有对话",
   "botsUnreadCount": "{count} 条未读",
@@ -969,8 +975,14 @@
   "botsMessageModeRelevant": "仅与我相关",
   "botsMessageModeEmpty": "该成员在本群还没有发言",
   "botsMessageModeEmptyRelevant": "这里没有与你相关的消息",
-  "botsNamedDone": "{name} \u5df2\u5b8c\u6210",
-  "@botsNamedDone": {"placeholders": {"name": {"type": "String"}}},
+  "botsNamedDone": "{name} 已完成",
+  "@botsNamedDone": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "botsRoomSwitchChat": "切换会话",
   "botsRoomSwitchTo": "切换会话：{target}",
   "@botsRoomSwitchTo": {
@@ -1002,16 +1014,36 @@
   "botsRoomBackToGroupChat": "回到群聊 {room}",
   "@botsRoomBackToGroupChat": {
     "placeholders": {
-      "room": {"type": "String"}
+      "room": {
+        "type": "String"
+      }
     }
   },
   "botsRoomMemberDetails": "{name} 的对话详情",
   "@botsRoomMemberDetails": {
     "placeholders": {
-      "name": {"type": "String"}
+      "name": {
+        "type": "String"
+      }
     }
   },
   "botsRoomMemberSessionMissing": "该成员还没在本群开始会话",
   "botsRoomMemberScope": "只看 {name} · 本群",
-  "@botsRoomMemberScope": {"placeholders": {"name": {"type": "String"}}}
+  "@botsRoomMemberScope": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "botsOthersRunning": "另外还有 {count} 位在跑",
+  "@botsOthersRunning": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "botsSendFailed": "没能发送",
+  "botsSendStillWaiting": "还在等服务器确认"
 }

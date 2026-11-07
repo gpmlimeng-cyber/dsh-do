@@ -738,5 +738,9 @@
       }
     }
   },
-  "chatGeneratingQueueHint": "\u751f\u6210\u4e2d \u00b7 \u53ef\u6392\u961f"
+  "chatGeneratingQueueHint": "生成中 · 可排队",
+  "chatAttachmentNoPreview": "这类文件不能直接预览",
+  "chatQueueGone": "这条已经不在队列里了",
+  "lastConversationMissingObject": "上次的 Bot 或群已不存在",
+  "lastConversationMissingSession": "上次的会话已不存在"
 }
