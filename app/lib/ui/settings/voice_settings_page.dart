@@ -1,6 +1,7 @@
 import 'dart:async';
 
-import 'package:dsh_client/dsh_client.dart' show SpeechProviderView;
+// The client's settings model shares the name with this page's section widget.
+import 'package:dsh_client/dsh_client.dart' hide SettingsSection;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
