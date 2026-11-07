@@ -13828,6 +13828,8 @@ abstract class L10n {
   /// In zh, this message translates to:
   /// **'预览'**
   String get launchPreview;
+  /// No description provided for @launchAnimation.
+  String get launchAnimation;
 
   /// No description provided for @launchFooter.
   ///

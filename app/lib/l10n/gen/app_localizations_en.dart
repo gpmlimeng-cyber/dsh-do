@@ -7982,6 +7982,9 @@ class L10nEn extends L10n {
   String get launchPreview => 'Preview';
 
   @override
+  String get launchAnimation => "Launch animation";
+
+  @override
   String get launchFooter =>
       'Pictures and animations up to 8 MB, videos up to 30 MB. Plays through once on a cold start; tap to skip.';
 

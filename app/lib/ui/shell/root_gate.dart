@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../state/splash_choice.dart';
 import '../../launch/launch_state.dart';
 import '../../runtime/local_footprint.dart';
 import '../../diagnostics/diagnostics_publish.dart';
@@ -423,10 +424,36 @@ class _SplashState extends State<_Splash> {
           child: AnimatedOpacity(
             opacity: _visible ? 1 : 0,
             duration: AppMotion.of(context, AppMotion.slow),
-            child: const BrandMark(size: 64, tile: true),
+            // The designer's launch animation, as drawn: it plays while the
+            // app settles, and the static mark stands in when motion is off.
+            child: const SplashAnimation(),
           ),
         ),
       ),
+    );
+  }
+}
+
+/// The launch animation (the 480 square the UI made), at the brand mark's size.
+///
+/// It is a GIF, so it loops; the splash is short enough that the loop is the
+/// animation running once, and a second pass would be cut off by the first
+/// frame anyway. 「减弱动态效果」 shows the mark instead.
+class SplashAnimation extends ConsumerWidget {
+  const SplashAnimation({super.key});
+
+  /// Side of the animated square.
+  static const side = 132.0;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final choice = ref.watch(splashChoiceProvider);
+    final reduce = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    final asset = choice.asset;
+    if (reduce || asset == null) return const BrandMark(size: 64, tile: true);
+    return SizedBox.square(
+      dimension: side,
+      child: Image.asset(asset, fit: BoxFit.contain, gaplessPlayback: true, filterQuality: FilterQuality.medium),
     );
   }
 }

@@ -7551,6 +7551,9 @@ class L10nZh extends L10n {
   String get launchPreview => '预览';
 
   @override
+  String get launchAnimation => "启动动画";
+
+  @override
   String get launchFooter => '图片、动图 8 MB 以内，视频 30 MB 以内。冷启动时完整播放一遍，轻点可跳过';
 
   @override

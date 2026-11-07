@@ -2315,6 +2315,7 @@
   "launchBackdropWhite": "White",
   "launchBackdropBlack": "Black",
   "launchReplace": "Replace picture or video",
+  "launchAnimation": "Launch animation",
   "launchPreview": "Preview",
   "launchFooter": "Pictures and animations up to 8 MB, videos up to 30 MB. Plays through once on a cold start; tap to skip.",
   "launchChanged": "Launch screen changed",
