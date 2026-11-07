@@ -141,11 +141,8 @@ class BotChatHeader extends StatelessWidget {
           left: 0,
           right: 0,
           top: 0,
-          child: BackdropVeil.top(
-            height: top + barHeightOf(context) + 10,
-            feather: 12,
-            opacity: 0.86,
-          ),
+          // The native chat's own numbers, so the two plates are one size.
+          child: TopFade(height: top + barHeightOf(context) + 12),
         ),
         Padding(
           padding: EdgeInsets.fromLTRB(12, top, 12, 0),
