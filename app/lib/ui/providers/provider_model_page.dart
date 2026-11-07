@@ -70,9 +70,20 @@ enum _Input {
 
   final List<String> capability;
 
+  /// 音频 / 图片 as the model's own id or name says, for an entry that has not
+  /// declared a list: a speech model is added with its type already right.
+  static final _audioHint = RegExp(r'(asr|whisper|transcri|speech|audio|sensevoice)', caseSensitive: false);
+  static final _imageHint = RegExp(r'(vision|-vl|vl-|omni|multimodal|image)', caseSensitive: false);
+
   static _Input of(ProviderModelSpec model, List<String> routeDefault) {
     if (model.acceptsImages(routeDefault: routeDefault)) return _Input.textImage;
     if (model.acceptsAudio(routeDefault: routeDefault)) return _Input.textAudio;
+    // Nothing declared: read the name, so 配置好就自动选对类型.
+    if (model.input == null || model.input!.isEmpty) {
+      final name = '${model.id} ${model.name ?? ''}';
+      if (_audioHint.hasMatch(name)) return _Input.textAudio;
+      if (_imageHint.hasMatch(name)) return _Input.textImage;
+    }
     return _Input.text;
   }
 }

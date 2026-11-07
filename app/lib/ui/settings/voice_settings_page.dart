@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/l10n.dart';
 import '../../state/connection_state.dart';
 import '../../state/engine_control.dart';
+import '../../state/providers_state.dart';
 import '../../state/voice_model_state.dart';
 import '../../state/voice_settings.dart';
 import '../common/app_dialog.dart';
@@ -422,10 +423,11 @@ class _CloudVoiceModelsState extends ConsumerState<CloudVoiceModels> {
       setState(() {
         _loading = false;
         _error = null;
-        _providers = [
+        final cloud = [
           for (final provider in catalog?.providers ?? const <SpeechProviderView>[])
             if (provider.location == 'cloud') provider,
         ];
+        _providers = _audioOnly(cloud);
         _selected = catalog?.providerId;
       });
     } catch (e) {
@@ -449,6 +451,26 @@ class _CloudVoiceModelsState extends ConsumerState<CloudVoiceModels> {
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+  }
+
+  /// The recognizers whose model declares audio input: a text model with a key
+  /// is not something to recognize speech with. A host that does not say which
+  /// model a recognizer comes from keeps its whole list.
+  List<SpeechProviderView> _audioOnly(List<SpeechProviderView> providers) {
+    final snapshot = ref.read(customProvidersProvider).value;
+    if (snapshot == null) return providers;
+    final audioModels = <String>{
+      for (final provider in snapshot.providers)
+        for (final model in provider.models)
+          if (model.acceptsAudio(routeDefault: provider.defaults.input))
+            model.id,
+    };
+    if (audioModels.isEmpty) return providers;
+    bool isAudio(SpeechProviderView view) => audioModels.any(
+      (id) => view.id == id || view.id.endsWith('/$id') || view.id.endsWith(':$id'),
+    );
+    final filtered = [for (final view in providers) if (isAudio(view)) view];
+    return filtered.isEmpty ? providers : filtered;
   }
 
   @override
