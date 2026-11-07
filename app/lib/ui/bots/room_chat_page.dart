@@ -1018,9 +1018,16 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
                   ),
                   BotToolGroupRow(:final items) => BotToolGroup(items: items),
                   BotItemRow(:final item, :final continued) => switch (item.kind) {
+                    // As in a Bot's chat: the echoed line names what it carried,
+                    // so the picture stays on screen after the round settles.
                     DsBotItemKind.user => BotUserMessage(
                       text: botLineText(item),
                       images: item.images,
+                      attachments: botLineAttachments(
+                        item,
+                        roomSession,
+                        onOpenFile: (file) => openBotAttachmentFile(context, ref, file: file, roomId: room.id),
+                      ),
                       onQuote: _setQuote,
                     ),
                     DsBotItemKind.bot => _groupRow(

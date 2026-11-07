@@ -540,9 +540,22 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
                     items: items,
                   ),
                   BotItemRow(:final item) => switch (item.kind) {
+                    // The host names the pictures this line was sent with; without
+                    // them the row swaps in when the round settles and the image
+                    // the person just sent vanishes.
                     DsBotItemKind.user => BotUserMessage(
                       text: botLineText(item),
                       images: item.images,
+                      attachments: botLineAttachments(
+                        item,
+                        bot.sessionId,
+                        onOpenFile: (file) => openBotAttachmentFile(
+                          context,
+                          ref,
+                          file: file,
+                          botId: bot.id,
+                        ),
+                      ),
                       onQuote: _setQuote,
                     ),
                     DsBotItemKind.bot => Column(
