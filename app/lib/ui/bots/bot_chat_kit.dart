@@ -15,6 +15,7 @@ import 'package:flutter/services.dart';
 import '../../l10n/l10n.dart';
 import '../../state/artifacts.dart' show TurnArtifacts;
 import '../../state/bots_state.dart';
+import '../../state/settings_state.dart';
 import '../chat/render/markdown_body.dart';
 import '../chat/widgets/chat_card.dart';
 import '../chat/dsh_ui/dsh_ui.dart';
@@ -1286,7 +1287,34 @@ class BotReplyText extends StatelessWidget {
 ///    @Writer 写个初稿
 ///    第二句接着同一个人
 /// ```
-class GroupMessage extends StatelessWidget {
+/// 消息布局: a Bot's line as the web draws it — a bubble tinted with the
+/// speaker's ink — or, in 平铺, plain text at the column's width.
+class BotTextBubble extends StatelessWidget {
+  const BotTextBubble({super.key, required this.child, required this.ink, required this.flat});
+
+  final Widget child;
+  final Color ink;
+  final bool flat;
+
+  @override
+  Widget build(BuildContext context) {
+    if (flat) return child;
+    final base = Theme.of(context).colorScheme.surface;
+    return DecoratedBox(
+      decoration: ShapeDecoration(
+        // 3% of the member's ink, over the surface: the web's own tint.
+        color: Color.alphaBlend(ink.withValues(alpha: 0.06), base),
+        shape: AppShape.bubble,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+        child: child,
+      ),
+    );
+  }
+}
+
+class GroupMessage extends ConsumerWidget {
   const GroupMessage({
     super.key,
     required this.item,
@@ -1321,10 +1349,11 @@ class GroupMessage extends StatelessWidget {
   static const gap = 10.0;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final dsh = DshColors.of(context);
+    final flat = ref.watch(settingsProvider.select((s) => s.flatBubbles));
     final text = botLineText(item);
     final name = bot?.name ?? item.name ?? 'Bot';
     final color = bot?.ink ?? item.color ?? dsBotDefaultColor(item.botId ?? name);
@@ -1367,7 +1396,10 @@ class GroupMessage extends StatelessWidget {
               ],
             ),
           ),
-        BotReplyText(
+        BotTextBubble(
+          ink: color,
+          flat: flat,
+          child: BotReplyText(
           text: text,
           // One menu, not two: the inner one wins the gesture arena anyway.
           // A file-only line has no text worth copying, selecting or sharing.
@@ -1376,6 +1408,7 @@ class GroupMessage extends StatelessWidget {
               : const [MessageAction.copy, MessageAction.selectText, MessageAction.share],
           onQuote: onQuote,
           onLinkTap: onLinkTap,
+          ),
         ),
         if (onShowAll != null)
           TextButton(

@@ -582,11 +582,15 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
                           shown,
                           const SizedBox(height: 6),
                         ],
-                        BotReplyText(
-                          text: botLineText(item),
-                          onQuote: _setQuote,
-                          // A path in the reply is a file in this Bot's Session.
-                          onLinkTap: (href) => openLinkedFile(context, sessionId: bot.sessionId, href: href),
+                        BotTextBubble(
+                          ink: bot.ink,
+                          flat: ref.watch(settingsProvider.select((s) => s.flatBubbles)),
+                          child: BotReplyText(
+                            text: botLineText(item),
+                            onQuote: _setQuote,
+                            // A path in the reply is a file in this Bot's Session.
+                            onLinkTap: (href) => openLinkedFile(context, sessionId: bot.sessionId, href: href),
+                          ),
                         ),
                       ],
                     ),
