@@ -85,16 +85,21 @@ class SessionUsage {
   /// the first request.
   double? get cacheHitRate => input == 0 ? null : cacheRead / input;
 
+  /// Estimated next request, or the most recent provider sample as a fallback.
+  int? get contextTokens => projectedTokens ?? pressureTokens;
+
   /// Fraction of the context window in use; null until DSH has measured it.
   ///
-  /// A missing [pressureTokens] is "not measured yet", never "empty": the ring
-  /// hides instead of claiming 0 %. A reported 0 is no measurement either — the
-  /// prompt of a real request is never 0 tokens — so it is treated the same way
-  /// and never turns into a 0 % ring.
+  /// An estimate of 0 is a real one (right after a compaction the next request
+  /// is nearly empty), so it draws a ring at 0 %. A *sample* of 0 is not: the
+  /// prompt of a real request is never empty, so a provider reporting 0 has not
+  /// measured it yet — the ring hides instead of claiming 0 %.
   double? get contextFraction {
     final window = contextWindow;
+    if (window == null || window <= 0) return null;
+    if (projectedTokens case final projected?) return (projected / window).clamp(0.0, 1.0);
     final used = pressureTokens;
-    if (window == null || window <= 0 || used == null || used <= 0) return null;
+    if (used == null || used <= 0) return null;
     return (used / window).clamp(0.0, 1.0);
   }
 
