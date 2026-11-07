@@ -51,6 +51,14 @@ class _ModeHomeState extends ConsumerState<ModeHome> {
       // page itself left off.
       final id = ref.read(currentSessionProvider);
       _handoff = id == null ? const DshWebTarget(newSession: true) : DshWebTarget(sessionId: id);
+      // A native page open over this home (a Bot chat, a group, a details
+      // page) would otherwise stay on top of the web page: the switch would
+      // look like it did nothing. The home is the first route; the page opens
+      // under it, so the page has to go.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !ref.read(uiModeProvider).web) return;
+        Navigator.maybeOf(context)?.popUntil((route) => route.isFirst);
+      });
     }
     _shown = mode.mode;
     final Widget home = mode.web
@@ -99,12 +107,18 @@ class WebModeKey extends ConsumerWidget {
   }
 
   Future<void> _switch(BuildContext context, WidgetRef ref) async {
-    // Taken before the drawer goes: its context is gone by the time a failure
-    // arrives, and a silent failure looks exactly like a dead key.
+    // Everything is taken before the drawer goes: its context is gone by the
+    // time a failure arrives, and — in a Bot or group page, where closing the
+    // drawer tears the page down with it — this widget's `ref` is gone too, so
+    // reading the controller after [onSwitch] throws and the key looks dead on
+    // that page only. (It did: the key worked on a conversation page and did
+    // nothing at all on a group page.)
     final messenger = ScaffoldMessenger.maybeOf(context);
+    final container = ProviderScope.containerOf(context, listen: false);
+    final controller = container.read(uiModeProvider.notifier);
     onSwitch?.call();
     try {
-      await ref.read(uiModeProvider.notifier).set(UiMode.web);
+      await controller.set(UiMode.web);
     } catch (error) {
       messenger?.showSnackBar(SnackBar(content: Text('$error')));
       return;
@@ -112,7 +126,7 @@ class WebModeKey extends ConsumerWidget {
     // If the state did not move, say what it is: a switch that quietly does
     // nothing is otherwise indistinguishable from a dead key.
     await Future<void>.delayed(const Duration(milliseconds: 400));
-    final now = ref.read(uiModeProvider).mode;
+    final now = container.read(uiModeProvider).mode;
     if (now != UiMode.web) {
       messenger?.showSnackBar(SnackBar(content: Text('界面模式=${now.name}')));
     }
