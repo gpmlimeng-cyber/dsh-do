@@ -47,6 +47,7 @@ import 'bots_page.dart' show BotTag;
 /// ```
 class BotChatHeader extends StatelessWidget {
   const BotChatHeader({
+    this.showLeading = true,
     super.key,
     required this.face,
     required this.title,
@@ -78,6 +79,10 @@ class BotChatHeader extends StatelessWidget {
   /// What that key says: 返回 on a phone; folding the sidebar on a wide window.
   final String? leadingTooltip;
   final ValueNotifier<double>? scrolledUnder;
+
+  /// The leading key (back, or the chats button). Off in a three-column
+  /// layout: the rail already has that button, and two of them read wrong.
+  final bool showLeading;
 
   /// The model this Bot runs on, before the details key.
   final Widget? chip;
@@ -153,6 +158,7 @@ class BotChatHeader extends StatelessWidget {
               height: barHeightOf(context),
               child: Row(
                 children: [
+                  if (showLeading)
                   _RoundKey(
                     key: const ValueKey('bot-back'),
                     icon: onLeading == null ? AppIcons.back : AppIcons.menu,

@@ -478,6 +478,8 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
       panel: SessionDetailPage.panel(key: ValueKey('bot-detail-${bot.sessionId}'), sessionId: bot.sessionId),
       builder: (context, layout) => BotChatFrame(
       header: BotChatHeader(
+        // Three columns: the rail owns the chats key, the header drops its own.
+        showLeading: !layout.isExpanded,
         face: BotAvatar(bot: bot, size: BotChatHeader.faceSize),
         title: bot.name,
         status: label,

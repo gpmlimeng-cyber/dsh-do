@@ -889,6 +889,8 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
             ),
       builder: (context, layout) => BotChatFrame(
       header: BotChatHeader(
+        // Three columns: the rail owns the chats key, the header drops its own.
+        showLeading: !layout.isExpanded,
         // The group is what the page is about, in either conversation: its face
         // and its title stay, and the member is named on the line below.
         face: RoomAvatar(room: room, team: team, size: BotChatHeader.faceSize),
