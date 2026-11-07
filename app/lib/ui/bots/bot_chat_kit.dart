@@ -543,8 +543,10 @@ List<BotRow> transcriptRows(
 /// still be "what the Bot is doing": as soon as a reply or a tool row follows
 /// it, that step is over, and [running] false (a finished turn, or a part read
 /// from history) drops it too.
-List<DsBotItem> botTranscriptItems(List<DsBotItem> items, {required bool running}) {
+List<DsBotItem> botTranscriptItems(List<DsBotItem> items, {required bool running, bool fold = true}) {
   if (items.isEmpty) return items;
+  // 完成后收起过程 off: every step's thinking stays where it was written.
+  if (!fold) return items;
   final newest = items.last;
   final rest = [
     for (final item in items)
@@ -775,11 +777,12 @@ final class BotToolGroupRow extends BotRow {
 
 /// [rows] with runs of [toolGroupThreshold] or more tool calls folded into one
 /// [BotToolGroupRow]; a shorter run stays as the lines it was.
-List<BotRow> groupToolRows(List<BotRow> rows) {
+List<BotRow> groupToolRows(List<BotRow> rows, {bool fold = true}) {
   final out = <BotRow>[];
   var run = <BotItemRow>[];
+  final threshold = fold ? toolGroupThreshold : 1 << 30;
   void flush() {
-    if (run.length >= toolGroupThreshold) {
+    if (run.length >= threshold) {
       out.add(BotToolGroupRow([for (final row in run) row.item]));
     } else {
       out.addAll(run);

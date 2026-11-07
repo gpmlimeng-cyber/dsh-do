@@ -436,16 +436,19 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
     final artifacts = ref.watch(sessionArtifactsProvider(bot.sessionId));
     final delivered = !(visible && engineUp) || artifacts.isEmpty ? null : artifacts.last;
     // What its memory tools changed, one quiet line under the turn that did it.
+    // 完成后收起过程: off leaves every step's thinking and every tool row out.
+    final fold = ref.watch(settingsProvider.select((s) => s.foldCompletedTurns));
     final memoryNotices = visible && engineUp
         ? ref.watch(sessionMemoryNoticesProvider(bot.sessionId))
         : const <int, MemoryNotice>{};
     final rows = attachMemoryNotices(attachArtifacts(
       groupToolRows(
+        fold: fold,
         transcriptRows(
           // 「{name} 完成了工作」 after every turn says what the reply already
           // said. The group chat has dropped that echo since it was written;
           // a Bot's own chat keeps the line only when it is the only trace.
-          botTranscriptItems(withoutDoneEchoes(chat.items), running: ownTurn),
+          botTranscriptItems(withoutDoneEchoes(chat.items), running: ownTurn, fold: fold),
           pending: chat.pending,
           streaming: ownTurn ? chat.streaming : null,
         ),
