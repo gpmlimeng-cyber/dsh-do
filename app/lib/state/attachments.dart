@@ -269,6 +269,32 @@ final attachmentPickerProvider = Provider<AttachmentPicker>((ref) => const Devic
 
 /// Bytes of an image a session's log refers to (`session/attachment`), for
 /// thumbnails of sent messages. Dropped once no bubble shows it.
+/// The images this app run sent, by file name.
+///
+/// An echoed message only names its picture; the bytes the person sent are the
+/// same picture, and they are already here. The bubble shows those while the
+/// Host's copy is read, so a message never loses its picture in between.
+class SentImages extends Notifier<Map<String, Uint8List>> {
+  static const keep = 24;
+
+  @override
+  Map<String, Uint8List> build() => const {};
+
+  void remember(String? name, Uint8List bytes) {
+    if (name == null || name.isEmpty) return;
+    final next = {...state, name: bytes};
+    if (next.length > keep) {
+      final drop = next.keys.take(next.length - keep).toList();
+      for (final key in drop) {
+        next.remove(key);
+      }
+    }
+    state = next;
+  }
+}
+
+final sentImagesProvider = NotifierProvider<SentImages, Map<String, Uint8List>>(SentImages.new);
+
 final sessionImageProvider = FutureProvider.autoDispose.family<Uint8List, (String, ImageAttachment)>((ref, key) async {
   final (sessionId, attachment) = key;
   // The whole connection state, not just its client: an engine restart keeps
