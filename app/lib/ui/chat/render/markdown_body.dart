@@ -3,6 +3,7 @@
 import 'dart:async';
 
 import 'package:dsh_client/dsh_client.dart' show DshRemoteException;
+import 'package:flutter/foundation.dart' show listEquals, mapEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
