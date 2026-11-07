@@ -19320,4 +19320,40 @@ class L10nZh extends L10n {
   @override
   String get workspaceRecoveryFailed => '操作未完成，请查看本机引擎状态和日志。已切换的模式可在本页确认。';
 
+
+  @override
+  String get chatGoalRunning => '进行中';
+
+  String get chatGoalPaused => '已暂停';
+
+  String get chatGoalStopped => '已停止';
+
+  String get chatGoalNone => '还没有目标';
+
+  String get chatGoalPanel => '目标与验收';
+
+  String get chatGoalStageCurrent => '当前阶段';
+
+  String get chatGoalStageDone => '完成标准';
+
+  String get chatGoalTasks => '成员任务';
+
+  String get chatGoalTaskPending => '待办';
+
+  String get chatGoalTaskWorking => '在做';
+
+  String get chatGoalTaskReported => '已交';
+
+  String get chatGoalTaskDone => '已完成';
+
+  String get chatGoalAcceptance => '验收';
+
+  String get chatGoalAcceptanceDone => '达成条件';
+
+  String get chatGoalRule => '约束';
+
+  @override
+  String chatGoalRework(int count) {
+    return '已打回 $count 次';
+  }
 }

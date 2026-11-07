@@ -30,6 +30,7 @@ import '../chat/balance_widgets.dart' show LowBalanceBanner;
 import '../chat/usage_sheet.dart' show ContextRing, showUsageSheet;
 import '../session/session_tab.dart';
 import '../chat/voice/voice_controller.dart';
+import 'group_goal.dart';
 import '../chat/widgets/activity_strip.dart';
 import '../chat/widgets/permission_pill.dart';
 import '../chat/widgets/plus_panel.dart' show showPermissionSheet;
@@ -55,10 +56,16 @@ class BotComposerDeck extends ConsumerWidget {
     this.activitySessionId,
     this.showActivity = true,
     this.onRoomActivityTap,
+    this.roomId,
   });
 
   final String sessionId;
   final bool running;
+
+  /// The group this deck belongs to. A group's goal is the group's own (ds-bot
+  /// keeps its stages and tasks), so it is asked for by room id; a Bot's chat
+  /// leaves this null and its goal stays the Session's own.
+  final String? roomId;
 
   /// The todo, goal and permission parts speak of one conversation. A group has
   /// no single one of those, so its deck keeps the activity and plugin strips.
@@ -133,6 +140,8 @@ class BotComposerDeck extends ConsumerWidget {
                 TodoDockSlot(sessionId: sessionId),
                 GoalDockSlot(sessionId: sessionId),
               ],
+              // A group's goal: stages and the members' tasks, from ds-bot.
+              if (roomId case final id?) GroupGoalBar(roomId: id),
               // A group speaks through the upstream strip alone: it shows the
               // member who is running, read from that member's Session in this
               // group, and how many are running is in the group's own header.

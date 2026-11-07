@@ -1136,6 +1136,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
         // bars would read an id that has no modes, so they stay off.
         BotComposerDeck(
           sessionId: roomSession,
+          roomId: room.id,
           running: chat.running,
           showSessionBars: room.sessionId != null,
           // The deck speaks for whatever the page shows: the group's own

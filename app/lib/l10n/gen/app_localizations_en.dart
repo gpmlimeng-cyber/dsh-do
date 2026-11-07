@@ -20373,4 +20373,40 @@ class L10nEn extends L10n {
   String get workspaceRecoveryFailed =>
       'The operation did not finish. Check the local engine status and logs. This page shows whether the index mode changed.';
 
+
+  @override
+  String get chatGoalRunning => 'Running';
+
+  String get chatGoalPaused => 'Paused';
+
+  String get chatGoalStopped => 'Stopped';
+
+  String get chatGoalNone => 'No goal yet';
+
+  String get chatGoalPanel => 'Goal and checks';
+
+  String get chatGoalStageCurrent => 'Current stage';
+
+  String get chatGoalStageDone => 'Done when';
+
+  String get chatGoalTasks => 'Members' tasks';
+
+  String get chatGoalTaskPending => 'To do';
+
+  String get chatGoalTaskWorking => 'Working';
+
+  String get chatGoalTaskReported => 'Reported';
+
+  String get chatGoalTaskDone => 'Done';
+
+  String get chatGoalAcceptance => 'Checks';
+
+  String get chatGoalAcceptanceDone => 'Done when';
+
+  String get chatGoalRule => 'Rule';
+
+  @override
+  String chatGoalRework(int count) {
+    return 'Sent back $count×';
+  }
 }

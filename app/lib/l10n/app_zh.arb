@@ -2874,6 +2874,29 @@
   "chatQueueGone": "这条已经不在队列里了",
   "lastConversationMissingObject": "上次的 Bot 或群已不存在",
   "lastConversationMissingSession": "上次的会话已不存在",
+  "chatGoalRunning": "进行中",
+  "chatGoalPaused": "已暂停",
+  "chatGoalStopped": "已停止",
+  "chatGoalNone": "还没有目标",
+  "chatGoalPanel": "目标与验收",
+  "chatGoalStageCurrent": "当前阶段",
+  "chatGoalStageDone": "完成标准",
+  "chatGoalTasks": "成员任务",
+  "chatGoalTaskPending": "待办",
+  "chatGoalTaskWorking": "在做",
+  "chatGoalTaskReported": "已交",
+  "chatGoalTaskDone": "已完成",
+  "chatGoalAcceptance": "验收",
+  "chatGoalAcceptanceDone": "达成条件",
+  "chatGoalRule": "约束",
+  "chatGoalRework": "已打回 {count} 次",
+  "@chatGoalRework": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "commonCancel": "取消",
   "commonRetry": "重试",
   "commonClose": "关闭",

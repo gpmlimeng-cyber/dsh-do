@@ -1890,6 +1890,18 @@ class DsBotApi {
   Future<DsBotGoalView> goalView(String roomId) async =>
       DsBotGoalView.fromJson(await call('goal-view', {'roomId': roomId}));
 
+  /// The user's own pause, resume, stop or clear on a group's goal, from the
+  /// panel. [goalId] comes from [goalView]: a goal that changed meanwhile is
+  /// refused rather than acted on.
+  Future<void> goalControl(String roomId, String goalId, String action, {bool stopWork = false}) async {
+    await call('goal-control', {
+      'roomId': roomId,
+      'goalId': goalId,
+      'action': action,
+      if (stopWork) 'stopWork': true,
+    });
+  }
+
   /// A running round's progress: who has spoken, who is speaking. A read, so
   /// watching it never starts a turn. Empty when no round is under way.
   Future<DsBotRoomProgress> roomProgress(String roomId) async {

@@ -35043,4 +35043,37 @@ L10n lookupL10n(Locale locale) {
     'on GitHub with a reproducible sample app and the gen-l10n configuration '
     'that was used.',
   );
+
+
+  String get chatGoalRunning;
+
+  String get chatGoalPaused;
+
+  String get chatGoalStopped;
+
+  String get chatGoalNone;
+
+  String get chatGoalPanel;
+
+  String get chatGoalStageCurrent;
+
+  String get chatGoalStageDone;
+
+  String get chatGoalTasks;
+
+  String get chatGoalTaskPending;
+
+  String get chatGoalTaskWorking;
+
+  String get chatGoalTaskReported;
+
+  String get chatGoalTaskDone;
+
+  String get chatGoalAcceptance;
+
+  String get chatGoalAcceptanceDone;
+
+  String get chatGoalRule;
+
+  String chatGoalRework(int count);
 }
