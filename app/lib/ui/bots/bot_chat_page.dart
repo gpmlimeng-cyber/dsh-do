@@ -583,7 +583,7 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
                           const SizedBox(height: 6),
                         ],
                         BotTextBubble(
-                          ink: bot.ink,
+                          ink: botInk(context, bot.ink),
                           flat: ref.watch(settingsProvider.select((s) => s.flatBubbles)),
                           child: BotReplyText(
                             text: botLineText(item),

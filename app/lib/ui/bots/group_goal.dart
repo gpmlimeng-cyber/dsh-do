@@ -14,7 +14,6 @@ import '../common/app_sheet.dart';
 import '../common/sheet_title_bar.dart';
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
-import '../theme/typography.dart';
 
 /// 群的目标，随群消息和回合变化重新取一次。
 final groupGoalProvider = FutureProvider.autoDispose.family<DsBotGroupGoal?, String>((ref, roomId) async {
@@ -71,7 +70,6 @@ class _Bar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final theme = Theme.of(context);
     final dsh = DshColors.of(context);
     final stage = goal.stage;
     return Semantics(
@@ -127,7 +125,7 @@ class _Bar extends StatelessWidget {
 
 /// 「目标与验收」面板。
 Future<void> showGroupGoalSheet(BuildContext context, String roomId) =>
-    showAppSheet<void>(context: context, builder: (_) => GroupGoalSheet(roomId: roomId));
+    showAppSheet<void>(context, isScrollControlled: true, builder: (_) => GroupGoalSheet(roomId: roomId));
 
 class GroupGoalSheet extends ConsumerStatefulWidget {
   const GroupGoalSheet({super.key, required this.roomId});

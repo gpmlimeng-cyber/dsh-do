@@ -24,7 +24,6 @@ import '../../l10n/l10n.dart';
 import '../common/app_sheet.dart' show SheetGroup, showAppSheet;
 import '../common/sheet_title_bar.dart' show SheetTitleBar;
 import '../chat/dock/chat_dock.dart';
-import '../chat/dock/dock_pill.dart' show DockSlot;
 import '../chat/dock/dock_stack.dart';
 import '../chat/balance_widgets.dart' show LowBalanceBanner;
 import '../chat/usage_sheet.dart' show ContextRing, showUsageSheet;
@@ -39,7 +38,6 @@ import '../plugins/native/native_composer_bar.dart';
 import '../safe_mode/safe_mode_banner.dart';
 import '../settings/settings_widgets.dart' show SettingsTile;
 import '../theme/app_icons.dart';
-import '../theme/theme.dart' show DshColors;
 import 'room_activity_strip.dart' show RoomStatus;
 import 'room_aggregate_details_page.dart';
 
