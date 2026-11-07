@@ -1220,6 +1220,140 @@ class DsBotRoomProgress {
   bool get isEmpty => speaking.isEmpty && replies.isEmpty;
 }
 
+
+/// A group's goal, as the goal panel draws it: the stages, each with its
+/// acceptance and the members' tasks, plus the goal's own words.
+class DsBotGoalView {
+  const DsBotGoalView({
+    required this.roomId,
+    this.goal,
+  });
+
+  factory DsBotGoalView.fromJson(Object? json) {
+    final map = asMapOrEmpty(json);
+    return DsBotGoalView(
+      roomId: asString(map['roomId']) ?? '',
+      goal: map['goal'] == null ? null : DsBotGroupGoal.fromJson(map['goal']),
+    );
+  }
+
+  final String roomId;
+  final DsBotGroupGoal? goal;
+}
+
+class DsBotGroupGoal {
+  const DsBotGroupGoal({
+    required this.id,
+    required this.revision,
+    required this.status,
+    required this.title,
+    this.objective = '',
+    this.acceptance = '',
+    this.constraints = const [],
+    this.current = -1,
+    this.stageCount = 0,
+    this.stages = const [],
+  });
+
+  factory DsBotGroupGoal.fromJson(Object? json) {
+    final map = asMapOrEmpty(json);
+    return DsBotGroupGoal(
+      id: asString(map['id']) ?? '',
+      revision: asInt(map['revision']) ?? 0,
+      status: asString(map['status']) ?? '',
+      title: asString(map['title']) ?? '',
+      objective: asString(map['objective']) ?? '',
+      acceptance: asString(map['acceptance']) ?? '',
+      constraints: [for (final rule in asListOrEmpty(map['constraints'])) ?asString(rule)],
+      current: asInt(map['current']) ?? -1,
+      stageCount: asInt(map['stageCount']) ?? 0,
+      stages: [for (final stage in asListOrEmpty(map['stages'])) DsBotGoalStage.fromJson(stage)],
+    );
+  }
+
+  final String id;
+  final int revision;
+
+  /// `drafting`, `active`, `paused`, `complete` or `stopped`.
+  final String status;
+  final String title;
+  final String objective;
+  final String acceptance;
+  final List<String> constraints;
+
+  /// Index of the stage being worked on; -1 before the goal starts.
+  final int current;
+  final int stageCount;
+  final List<DsBotGoalStage> stages;
+
+  /// The stage being worked on, when there is one.
+  DsBotGoalStage? get stage => current >= 0 && current < stages.length ? stages[current] : null;
+
+  /// 「2/3」: which stage out of how many. Empty before the goal starts.
+  String get position => current < 0 || stageCount == 0 ? '' : '${current + 1}/$stageCount';
+}
+
+class DsBotGoalStage {
+  const DsBotGoalStage({
+    required this.title,
+    this.acceptance = '',
+    this.status = 'pending',
+    this.tasks = const [],
+  });
+
+  factory DsBotGoalStage.fromJson(Object? json) {
+    final map = asMapOrEmpty(json);
+    return DsBotGoalStage(
+      title: asString(map['title']) ?? '',
+      acceptance: asString(map['acceptance']) ?? '',
+      status: asString(map['status']) ?? 'pending',
+      tasks: [for (final task in asListOrEmpty(map['tasks'])) DsBotGoalTask.fromJson(task)],
+    );
+  }
+
+  final String title;
+  final String acceptance;
+
+  /// `pending`, `active` or `passed`.
+  final String status;
+  final List<DsBotGoalTask> tasks;
+
+  bool get passed => status == 'passed';
+  bool get active => status == 'active';
+}
+
+class DsBotGoalTask {
+  const DsBotGoalTask({
+    required this.botId,
+    required this.bot,
+    required this.task,
+    this.status = 'pending',
+    this.rework = 0,
+    this.feedback,
+  });
+
+  factory DsBotGoalTask.fromJson(Object? json) {
+    final map = asMapOrEmpty(json);
+    return DsBotGoalTask(
+      botId: asString(map['botId']) ?? '',
+      bot: asString(map['bot']) ?? '',
+      task: asString(map['task']) ?? '',
+      status: asString(map['status']) ?? 'pending',
+      rework: asInt(map['rework']) ?? 0,
+      feedback: asString(map['feedback']),
+    );
+  }
+
+  final String botId;
+  final String bot;
+  final String task;
+
+  /// `pending`, `working`, `reported` or `done`.
+  final String status;
+  final int rework;
+  final String? feedback;
+}
+
 class DsBotRoomPage {
   const DsBotRoomPage({
     required this.roomId,
@@ -1750,6 +1884,11 @@ class DsBotApi {
 
   Future<DsBotRoomPage> roomChat(String roomId, {Object? cursor}) async =>
       DsBotRoomPage.fromJson(await call('room-chat', {'roomId': roomId, 'cursor': ?cursor}));
+
+  /// The group's goal with its stages and tasks; `goal` is null when the group
+  /// has none. A read, so opening the panel never starts a turn.
+  Future<DsBotGoalView> goalView(String roomId) async =>
+      DsBotGoalView.fromJson(await call('goal-view', {'roomId': roomId}));
 
   /// A running round's progress: who has spoken, who is speaking. A read, so
   /// watching it never starts a turn. Empty when no round is under way.
