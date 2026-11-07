@@ -32486,6 +32486,8 @@ abstract class L10n {
   String get voiceCloudFooter;
   /// No description provided for @voiceCloudEmpty.
   String get voiceCloudEmpty;
+  /// No description provided for @voiceCloudConfigure.
+  String get voiceCloudConfigure;
   /// No description provided for @voiceCloudNeedPick.
   String get voiceCloudNeedPick;
 

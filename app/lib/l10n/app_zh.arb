@@ -11878,6 +11878,7 @@
   "voiceModeCloudHint": "用云端识别服务，在下方选一个已配置的模型",
   "voiceCloudSection": "云端语音模型",
   "voiceCloudFooter": "列表来自引擎里已配置的、支持语音的服务商；换一个就选中它。",
+  "voiceCloudConfigure": "去配置云端语音模型",
   "voiceCloudEmpty": "还没有配置云端语音模型",
   "voiceCloudNeedPick": "先在设置里选一个云端语音模型",
   "voiceModeAuto": "自动",

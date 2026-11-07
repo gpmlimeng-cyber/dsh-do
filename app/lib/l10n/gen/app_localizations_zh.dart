@@ -17954,6 +17954,9 @@ class L10nZh extends L10n {
   String get voiceCloudEmpty => "还没有配置云端语音模型";
 
   @override
+  String get voiceCloudConfigure => "去配置云端语音模型";
+
+  @override
   String get voiceCloudNeedPick => "先在设置里选一个云端语音模型";
 
   @override

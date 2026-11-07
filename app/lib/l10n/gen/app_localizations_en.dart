@@ -18969,6 +18969,9 @@ class L10nEn extends L10n {
   String get voiceCloudEmpty => "No cloud speech model is configured";
 
   @override
+  String get voiceCloudConfigure => "Configure a cloud speech model";
+
+  @override
   String get voiceCloudNeedPick => "Pick a cloud speech model in Settings first";
 
   @override

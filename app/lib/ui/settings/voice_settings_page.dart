@@ -10,6 +10,7 @@ import '../../state/engine_control.dart';
 import '../../state/voice_model_state.dart';
 import '../../state/voice_settings.dart';
 import '../common/app_dialog.dart';
+import '../providers/providers_page.dart';
 import '../shell/page_frame.dart';
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
@@ -463,15 +464,12 @@ class _CloudVoiceModelsState extends ConsumerState<CloudVoiceModels> {
             child: Center(child: SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2))),
           )
         else if (_providers.isEmpty)
-          Padding(
+          // Nothing configured: the way there, not a dead sentence.
+          SettingsTile(
             key: const ValueKey('voice-cloud-empty'),
-            padding: const EdgeInsets.fromLTRB(SettingsMetrics.inset, 0, SettingsMetrics.inset, 14),
-            child: Text(
-              _error ?? l10n.voiceCloudEmpty,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: DshColors.of(context).textTertiary),
-            ),
+            title: l10n.voiceCloudConfigure,
+            subtitle: _error ?? l10n.voiceCloudEmpty,
+            onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ProvidersPage())),
           )
         else
           for (final provider in _providers)

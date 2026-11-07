@@ -5447,6 +5447,7 @@
   "voiceModeCloudHint": "Use a cloud recognizer: pick a configured one below",
   "voiceCloudSection": "Cloud speech models",
   "voiceCloudFooter": "The list is the speech-capable providers configured in the engine; pick one to use it.",
+  "voiceCloudConfigure": "Configure a cloud speech model",
   "voiceCloudEmpty": "No cloud speech model is configured",
   "voiceCloudNeedPick": "Pick a cloud speech model in Settings first",
   "voiceModeAuto": "Automatic",
