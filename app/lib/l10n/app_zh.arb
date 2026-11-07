@@ -3642,6 +3642,7 @@
   "engineModelCapabilities": "能力",
   "engineModelInputType": "输入类型",
   "engineModelInputText": "文本",
+  "engineModelInputTextAudio": "文本和音频",
   "engineModelInputTextImage": "文本和图片",
   "engineModelThinking": "思考",
   "engineModelVision": "识图",

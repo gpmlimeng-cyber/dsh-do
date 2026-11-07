@@ -1743,6 +1743,7 @@
   "engineModelCapabilities": "Capabilities",
   "engineModelInputType": "Input",
   "engineModelInputText": "Text",
+  "engineModelInputTextAudio": "Text and audio",
   "engineModelInputTextImage": "Text + image",
   "engineModelThinking": "Thinking",
   "engineModelVision": "Vision",

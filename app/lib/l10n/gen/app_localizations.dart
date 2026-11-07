@@ -10388,6 +10388,8 @@ abstract class L10n {
   /// In zh, this message translates to:
   /// **'文本和图片'**
   String get engineModelInputTextImage;
+  /// No description provided for @engineModelInputTextAudio.
+  String get engineModelInputTextAudio;
 
   /// No description provided for @engineModelThinking.
   ///

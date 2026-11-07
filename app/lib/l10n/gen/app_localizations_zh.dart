@@ -5655,6 +5655,9 @@ class L10nZh extends L10n {
   String get engineModelInputTextImage => '文本和图片';
 
   @override
+  String get engineModelInputTextAudio => "文本和音频";
+
+  @override
   String get engineModelThinking => '思考';
 
   @override

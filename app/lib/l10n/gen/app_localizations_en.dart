@@ -5986,6 +5986,9 @@ class L10nEn extends L10n {
   String get engineModelInputTextImage => 'Text + image';
 
   @override
+  String get engineModelInputTextAudio => "Text and audio";
+
+  @override
   String get engineModelThinking => 'Thinking';
 
   @override

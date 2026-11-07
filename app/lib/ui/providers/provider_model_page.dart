@@ -60,6 +60,23 @@ class ProviderModelPage extends StatefulWidget {
 
 enum _F { context, maxOutput, effort }
 
+/// What a model takes in: 文本, 文本和图片, or 文本和音频 (a speech model).
+enum _Input {
+  text(['text']),
+  textImage(['text', 'image']),
+  textAudio(['text', 'audio']);
+
+  const _Input(this.capability);
+
+  final List<String> capability;
+
+  static _Input of(ProviderModelSpec model, List<String> routeDefault) {
+    if (model.acceptsImages(routeDefault: routeDefault)) return _Input.textImage;
+    if (model.acceptsAudio(routeDefault: routeDefault)) return _Input.textAudio;
+    return _Input.text;
+  }
+}
+
 class _ProviderModelPageState extends State<ProviderModelPage> {
   ProviderModelSpec get _model => widget.model;
 
@@ -72,8 +89,8 @@ class _ProviderModelPageState extends State<ProviderModelPage> {
   late final _contextText = TextEditingController(text: _format(_context));
   late final _maxOutputText = TextEditingController(text: _format(_maxOutput));
 
-  late final bool _initialImages = _model.acceptsImages(routeDefault: widget.defaults.input);
-  late bool _images = _initialImages;
+  late final _Input _initialInput = _Input.of(_model, widget.defaults.input);
+  late _Input _input = _initialInput;
 
   /// What the entry declared when the page opened, `off` included.
   late final Set<String> _initialLevels = _model.thinks ? _model.thinkingLevels.toSet() : const {};
@@ -116,7 +133,7 @@ class _ProviderModelPageState extends State<ProviderModelPage> {
       name: name.isEmpty ? null : name,
       contextWindow: _context,
       maxTokens: _maxOutput,
-      input: _images == _initialImages ? _model.input : (_images ? const ['text', 'image'] : const ['text']),
+      input: _input == _initialInput ? _model.input : _input.capability,
       extra: _model.extra,
     );
     if (!setEquals(_declared, _initialLevels)) spec = spec.withReasoningEfforts(_declared);
@@ -273,13 +290,14 @@ class _ProviderModelPageState extends State<ProviderModelPage> {
                   children: [
                     FormFieldBlock(
                       label: l10n.engineModelInputType,
-                      child: SegmentedPill<bool>(
+                      child: SegmentedPill<_Input>(
                         segments: [
-                          PillSegment(false, l10n.engineModelInputText),
-                          PillSegment(true, l10n.engineModelInputTextImage),
+                          PillSegment(_Input.text, l10n.engineModelInputText),
+                          PillSegment(_Input.textImage, l10n.engineModelInputTextImage),
+                          PillSegment(_Input.textAudio, l10n.engineModelInputTextAudio),
                         ],
-                        selected: _images,
-                        onChanged: _saving ? null : (v) => setState(() => _images = v),
+                        selected: _input,
+                        onChanged: _saving ? null : (v) => setState(() => _input = v),
                       ),
                     ),
                     Padding(

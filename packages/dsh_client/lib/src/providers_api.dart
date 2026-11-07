@@ -171,6 +171,11 @@ class ProviderModelSpec {
   bool acceptsImages({List<String> routeDefault = const ['text']}) =>
       (input == null || input!.isEmpty ? routeDefault : input!).contains('image');
 
+  /// The model takes audio in (a speech recognition model). The engine reads
+  /// the same declaration when it lists cloud recognizers.
+  bool acceptsAudio({List<String> routeDefault = const ['text']}) =>
+      (input == null || input!.isEmpty ? routeDefault : input!).contains('audio');
+
   /// This entry with [levels] as its `reasoningEfforts`, in escalation order.
   /// A level kept from before keeps its configured value; a new one sends
   /// its own name, `off` nothing. Empty or null declares no levels: the
