@@ -32584,6 +32584,12 @@ abstract class L10n {
   /// **'上次的 Bot 或群已不存在'**
   String get lastConversationMissingObject;
 
+  /// No description provided for @botsOthersRunning.
+  ///
+  /// In zh, this message translates to:
+  /// **'另外还有 {count} 位在跑'**
+  String botsOthersRunning(int count);
+
   /// No description provided for @voiceErrorNetworkTimeout.
   ///
   /// In zh, this message translates to:

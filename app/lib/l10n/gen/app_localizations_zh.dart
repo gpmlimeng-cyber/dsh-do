@@ -18011,6 +18011,11 @@ class L10nZh extends L10n {
   String get lastConversationMissingObject => '上次的 Bot 或群已不存在';
 
   @override
+  String botsOthersRunning(int count) {
+    return '另外还有 $count 位在跑';
+  }
+
+  @override
   String get voiceErrorNetworkTimeout => '语音识别连接超时，请检查网络';
 
   @override

@@ -19028,6 +19028,11 @@ class L10nEn extends L10n {
   String get lastConversationMissingObject => 'That Bot or group is gone';
 
   @override
+  String botsOthersRunning(int count) {
+    return '$count more running';
+  }
+
+  @override
   String get voiceErrorNetworkTimeout => 'Speech recognition timed out. Check your connection.';
 
   @override
