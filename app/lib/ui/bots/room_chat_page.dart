@@ -783,8 +783,17 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
     }
     final speaker = statusLine.bot;
 
-    // No synthesized「名字 · 正在写」row: the transcript's own thinking row is
-    // the line now (web's reasoning row), and the streaming text follows it.
+    // 「名字 · 正在写」 while a member is speaking: the web draws this row too,
+    // and a group's log carries no thinking of its own to draw instead.
+    final typing =
+        speaker == null ||
+            (target.memberId != null && speaker.id != target.memberId) ||
+            statusLine.activity != null
+        ? null
+        : BotTypingRow(
+            speaker,
+            l10n.botsNamedActivity(speaker.name, workPhrase(status.live.bots[speaker.id]) ?? l10n.botsTyping),
+          );
     // What each member delivered in this group, from their Session here; the card
     // goes under their last line. The group Session's own delivery keeps the
     // single-conversation placement by turn.
@@ -851,7 +860,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
     ref.listen(roomChatProvider(widget.roomId).select((s) => s.items), (_, _) {
       if (mounted) _rememberFlash(room, team, mode, names, target);
     });
-    final transcript = transcriptRows(withoutDoneEchoes(visible), pending: chat.pending, typing: null);
+    final transcript = transcriptRows(withoutDoneEchoes(visible), pending: chat.pending, typing: typing);
     // The group's own Session is what the admin's memory tools write to; in a
     // member's conversation the line would belong to another conversation.
     final memoryNotices = target.memberId == null && room.sessionId != null
