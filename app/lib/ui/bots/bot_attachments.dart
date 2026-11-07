@@ -95,7 +95,15 @@ Widget? botLineAttachments(
   if (sessionId == null || item.files.isEmpty) return null;
   final images = [
     for (final file in item.files)
-      if (file.isImage) ImageAttachment(attachmentId: file.id, mediaType: file.mediaType ?? 'image', name: file.name),
+      if (file.isImage)
+        ImageAttachment(
+          attachmentId: file.id,
+          mediaType: file.mediaType ?? 'image',
+          name: file.name,
+          bytes: file.bytes,
+          width: file.width,
+          height: file.height,
+        ),
   ];
   final files = [
     for (final file in item.files)

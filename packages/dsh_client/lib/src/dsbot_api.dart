@@ -894,7 +894,7 @@ enum DsBotItemKind { user, bot, event, answer, divider, tool, thinking, unknown 
 /// One attachment a line carries: enough to fetch an image by id, and to name
 /// a file. Files have no media type on the host; the name's extension is all.
 class DsBotAttachmentRef {
-  const DsBotAttachmentRef({required this.id, this.name, this.mediaType});
+  const DsBotAttachmentRef({required this.id, this.name, this.mediaType, this.bytes, this.width, this.height});
 
   factory DsBotAttachmentRef.fromJson(Object? json) {
     final map = asMapOrEmpty(json);
@@ -906,12 +906,22 @@ class DsBotAttachmentRef {
       id: asString(map['id']) ?? asString(map['attachmentId']) ?? '',
       name: asString(map['name']),
       mediaType: asString(map['mediaType']),
+      bytes: asInt(map['bytes']),
+      width: asInt(map['width']),
+      height: asInt(map['height']),
     );
   }
 
   final String id;
   final String? name;
   final String? mediaType;
+
+  /// What an image needs to be asked for again: `session/attachment` takes the
+  /// byte length and the dimensions with the id. A Host that sends only the id
+  /// leaves them null, and the picture cannot be read back.
+  final int? bytes;
+  final int? width;
+  final int? height;
 
   bool get isImage => mediaType?.startsWith('image/') ?? false;
 }
