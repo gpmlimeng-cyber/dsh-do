@@ -434,7 +434,13 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
     // only what is drawn, so a card that lands after the first frame is not lost by
     // a rebuild that happens to fall on an invisible moment.
     final artifacts = ref.watch(sessionArtifactsProvider(bot.sessionId));
-    final delivered = !(visible && engineUp) || artifacts.isEmpty ? null : artifacts.last;
+    // Only the newest finished turn's own deliverables: a card from an earlier
+    // turn must not reappear under a later one (turn numbers restart per part,
+    // so "the last group" is not the same question as "this turn's group").
+    final finished = [for (final trace in chat.turns) if (!trace.running && trace.endSeq != null) trace];
+    final newestEnd = finished.isEmpty ? null : finished.last.endSeq;
+    final newest = artifacts.isEmpty ? null : artifacts.last;
+    final delivered = !(visible && engineUp) || newest == null || newest.endSeq != newestEnd ? null : newest;
     // What its memory tools changed, one quiet line under the turn that did it.
     // 完成后收起过程: off leaves every step's thinking and every tool row out.
     final fold = ref.watch(settingsProvider.select((s) => s.foldCompletedTurns));
