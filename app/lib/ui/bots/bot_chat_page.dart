@@ -600,8 +600,8 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
                           : BotThinkingLine(
                               text: item.text,
                               // Still thinking only while nothing else has arrived.
-                              active: chat.running && item == chat.items.last,
-                              streaming: chat.running,
+                              active: ownTurn && item == chat.items.last,
+                              streaming: ownTurn,
                             ),
                     DsBotItemKind.unknown => const SizedBox.shrink(),
                   },
