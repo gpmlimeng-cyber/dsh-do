@@ -22,6 +22,7 @@ import '../../state/last_conversation.dart';
 import '../../state/connection_state.dart';
 import '../chat/chat_text_scale.dart';
 import '../chat/composer.dart';
+import '../chat/render/message_mentions.dart';
 import '../../state/voice_model_state.dart';
 import '../../state/voice_state.dart';
 import '../../state/chat_state.dart' show SendMode, chatProvider;
@@ -469,6 +470,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
     required DsBotTeam team,
     required String? roomSession,
     required BotActionScope fullTextScope,
+    required List<InlineMention> mentions,
   }) {
     // `botId` is the Bot id (it looks like a Session id, hence the old naming;
     // a line that lost it still names its sender). The member's Session in this
@@ -492,6 +494,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
           item: item,
           bot: speaker,
           continued: continued,
+          mentions: mentions,
           admin: speakerId != null && speakerId == room.admin,
           onOpenBot: speaker == null ? null : () => Navigator.of(context).push(BotChatPage.route(speaker.id)),
           onShowAll: item.whole == null ? null : () => _showAll(item, fullTextScope),
@@ -726,6 +729,10 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
     }
     final members = [for (final id in room.members) ?team.bot(id)];
     _mentions.setMembers(members, room.admin);
+    // 「@名字」画成该成员自己的墨色,和网页版一致;名单就是本群成员。
+    final memberMentions = [
+      for (final bot in members) InlineMention(name: bot.name, color: botNameInk(context, bot.ink)),
+    ];
     final chat = ref.watch(roomChatProvider(widget.roomId));
     // Which lines this group shows. Filtering is rendering only: pending,
     // unread counts, 「已说 N」 and the round's progress keep the full list.
@@ -1040,6 +1047,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
                       team: team,
                       roomSession: roomSession,
                       fullTextScope: fullTextScope,
+                      mentions: memberMentions,
                     ),
                     DsBotItemKind.event => BotEventLine(
                       text: roomEventText(item),

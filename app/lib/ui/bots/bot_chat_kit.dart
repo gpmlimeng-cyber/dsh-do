@@ -17,6 +17,7 @@ import '../../state/artifacts.dart' show TurnArtifacts;
 import '../../state/bots_state.dart';
 import '../../state/settings_state.dart';
 import '../chat/render/markdown_body.dart';
+import '../chat/render/message_mentions.dart';
 import '../chat/widgets/chat_card.dart';
 import '../chat/dsh_ui/dsh_ui.dart';
 import '../chat/secret_mask.dart';
@@ -1223,6 +1224,7 @@ class BotReplyText extends StatelessWidget {
     this.actions = const [MessageAction.copy, MessageAction.selectText, MessageAction.share],
     this.onQuote,
     this.onLinkTap,
+    this.mentions = const [],
   });
 
   final String text;
@@ -1238,6 +1240,10 @@ class BotReplyText extends StatelessWidget {
   /// A link in the reply that the page can open itself (a file in the workspace);
   /// null keeps every link on its default path.
   final bool Function(String href)? onLinkTap;
+
+  /// The group's members, so an `@名字` in the line wears that member's ink, as
+  /// the web draws it. Empty in a Bot's own chat, where nobody can be called.
+  final List<InlineMention> mentions;
 
   Future<void> _menu(BuildContext context) async {
     if (actions.isEmpty) return;
@@ -1274,6 +1280,7 @@ class BotReplyText extends StatelessWidget {
       streaming: streaming,
       selectable: false,
       repairBareViews: true,
+      mentions: mentions,
       onLinkTap: onLinkTap,
     ),
   );
@@ -1325,6 +1332,7 @@ class GroupMessage extends ConsumerWidget {
     this.onShowAll,
     this.onQuote,
     this.onLinkTap,
+    this.mentions = const [],
   });
 
   final DsBotItem item;
@@ -1344,6 +1352,9 @@ class GroupMessage extends ConsumerWidget {
   /// A link in the line that the page opens itself (the speaker's Session resolves
   /// the path); null keeps the default link behaviour.
   final bool Function(String href)? onLinkTap;
+
+  /// The group's members: `@名字` in the line wears that member's ink.
+  final List<InlineMention> mentions;
 
   static const face = 28.0;
   static const gap = 10.0;
@@ -1401,6 +1412,7 @@ class GroupMessage extends ConsumerWidget {
           flat: flat,
           child: BotReplyText(
           text: text,
+          mentions: mentions,
           // One menu, not two: the inner one wins the gesture arena anyway.
           // A file-only line has no text worth copying, selecting or sharing.
           actions: text.isEmpty

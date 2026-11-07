@@ -25,6 +25,7 @@ import 'markdown_blocks.dart';
 import 'markdown_image.dart';
 import 'markdown_math.dart';
 import 'math_syntax.dart';
+import 'message_mentions.dart';
 import 'stream_repair.dart';
 import 'table_syntax.dart';
 
@@ -59,6 +60,7 @@ class MarkdownBody extends StatefulWidget {
     this.selectable = true,
     this.secondary = false,
     this.repairBareViews = false,
+    this.mentions = const [],
     this.onLinkTap,
   });
 
@@ -84,6 +86,10 @@ class MarkdownBody extends StatefulWidget {
   /// 助手回复:模型把 `dsh-ui` 的 JSON 裸着写进正文时,也当成视图画
   /// (见 [fenceBareDshUiViews])。别的 Markdown(文档、说明页)不开。
   final bool repairBareViews;
+
+  /// 这一行里能叫到的成员:正文里的 `@名字` 用该成员自己的墨色画,像网页
+  /// 版那样(见 [markMentions])。空 —— 文档、说明页、私聊 —— 不做任何处理。
+  final List<InlineMention> mentions;
 
   /// 表格单列最宽多少;更长的单元格在列内换行,而不是把整表拉得很长。
   static const _maxColumnWidth = 260.0;
@@ -225,6 +231,18 @@ class MarkdownBody extends StatefulWidget {
   }
 
   static final _streamingPatterns = [_cursorPattern];
+
+  /// A marked mention ([markMentions]) → the member's own ink, the way the web
+  /// paints a called name. The colour is looked up under it, in [_MentionInk],
+  /// so this pattern is built once and never per message.
+  static final _mentionPattern = InlinePattern(
+    pattern: RegExp('$mentionMarkOpen([^$mentionMarkClose]*)$mentionMarkClose'),
+    builder: (context, match, style) {
+      final marked = match[1] ?? '';
+      final ink = _MentionInk.maybeOf(context)?[marked.toLowerCase()];
+      return TextSpan(text: marked, style: ink == null ? style : style.copyWith(color: ink));
+    },
+  );
 
   // Builders stay static. gpt_markdown 1.4.0's config.isSame ignores
   // onLinkTap identity; its cached spans may retain this context-only callback.
@@ -437,6 +455,8 @@ class MarkdownBody extends StatefulWidget {
   static String? workspaceLinkPath(String url, {String? baseDir}) => resolveWorkspaceLink(url, baseDir: baseDir);
 
   static Widget _codeBuilder(BuildContext context, String name, String code, bool closed) {
+    // 围栏里的 `@` 不圈(见 [mentionSpans]),这里只是兜底:记号永远不进代码。
+    code = unmarkMentions(code);
     // A closed block won't change. Handing back the same widget lets Flutter skip it,
     // or every block of the reply would rebuild on every update.
     final reveal = closed ? context.getInheritedWidgetOfExactType<_RevealStreaming>() : null;
@@ -567,7 +587,7 @@ class MarkdownBody extends StatefulWidget {
 
   static InlineSpan _inlineCodeBuilder(BuildContext context, String code, TextStyle style, InlineCodeStyle codeStyle) =>
       CodeTextSpan(
-        text: code.replaceAll(_cursorSentinel, ''),
+        text: unmarkMentions(code).replaceAll(_cursorSentinel, ''),
         codeStyle: codeStyle,
         style: style.copyWith(fontFeatures: AppType.monoFeatures),
       );
@@ -585,12 +605,15 @@ class _MarkdownBodyState extends State<MarkdownBody> {
   late String _source = _prepare();
 
   String _prepare() {
+    // `@成员` 先圈出来,再交给 Markdown —— 圈出来的只多了两个私用区字符,
+    // 记号之外一字不动,所以语法照旧。
+    final source = widget.mentions.isEmpty ? widget.text : markMentions(widget.text, widget.mentions);
     if (widget.reveal) {
-      return MarkdownBody._prepareRevealed(widget.text, repairBareViews: widget.repairBareViews);
+      return MarkdownBody._prepareRevealed(source, repairBareViews: widget.repairBareViews);
     }
     _repair = widget.streaming ? (_repair ?? StreamingMarkdownRepair()) : null;
     return MarkdownBody._prepareSource(
-      widget.text,
+      source,
       streaming: widget.streaming,
       repairBareViews: widget.repairBareViews,
       repair: _repair,
@@ -619,7 +642,8 @@ class _MarkdownBodyState extends State<MarkdownBody> {
     if (oldWidget.text != widget.text ||
         oldWidget.streaming != widget.streaming ||
         oldWidget.reveal != widget.reveal ||
-        oldWidget.repairBareViews != widget.repairBareViews) {
+        oldWidget.repairBareViews != widget.repairBareViews ||
+        !listEquals(_mentionNames(oldWidget.mentions), _mentionNames(widget.mentions))) {
       _source = _prepare();
     }
   }
@@ -647,7 +671,15 @@ class _MarkdownBodyState extends State<MarkdownBody> {
       blockAnimation: widget.reveal ? GptMarkdownBlockAnimation.fadeIn : GptMarkdownBlockAnimation.none,
       charactersPerSecond: MarkdownBody._revealPace,
       revealFadeSeconds: MarkdownBody._revealFade,
-      inlinePatterns: widget.streaming && !widget.reveal ? MarkdownBody._streamingPatterns : null,
+      inlinePatterns: switch ((
+        widget.mentions.isNotEmpty,
+        widget.streaming && !widget.reveal,
+      )) {
+        (true, true) => [MarkdownBody._mentionPattern, ...MarkdownBody._streamingPatterns],
+        (true, false) => [MarkdownBody._mentionPattern],
+        (false, true) => MarkdownBody._streamingPatterns,
+        (false, false) => null,
+      },
       onLinkTap: (url, title) {
         if (widget.onLinkTap?.call(url) ?? false) return;
         MarkdownBody._onLinkTap(context, url, title);
@@ -670,12 +702,37 @@ class _MarkdownBodyState extends State<MarkdownBody> {
     Widget markdown = _scoped
         ? Consumer(builder: (context, ref, _) => withTint(ref.watch(tableTintProvider)))
         : withTint(TableTint.follow);
+    // 正文里的 `@成员` 要按各人的墨色画;没有成员就不套这一层。
+    if (widget.mentions.isNotEmpty) {
+      markdown = _MentionInk(ink: _mentionInk(widget.mentions), child: markdown);
+    }
     // 表格、成块公式横向放不下时,两端淡出提示还能横滑。
     markdown = ScrollConfiguration(behavior: const EdgeFadeScrollBehavior(), child: markdown);
     if (widget.reveal) markdown = _RevealStreaming(streaming: widget.streaming, blocks: _blocks, child: markdown);
     if (widget.selectable) markdown = SelectionArea(child: markdown);
     return MarkdownGalleryScope(child: markdown);
   }
+}
+
+/// 成员名(只这一点影响正文的准备,颜色不影响)。
+List<String> _mentionNames(List<InlineMention> mentions) => [for (final mention in mentions) mention.name];
+
+/// `@名字`(小写,`@` 保留)→ 该成员的墨色。
+Map<String, Color> _mentionInk(List<InlineMention> mentions) => {
+  for (final mention in mentions) '@${mention.name.toLowerCase()}': mention.color,
+};
+
+/// The ink of each called member, looked up by the body's mention pattern.
+class _MentionInk extends InheritedWidget {
+  const _MentionInk({required this.ink, required super.child});
+
+  final Map<String, Color> ink;
+
+  static Map<String, Color>? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_MentionInk>()?.ink;
+
+  @override
+  bool updateShouldNotify(_MentionInk oldWidget) => !mapEquals(oldWidget.ink, ink);
 }
 
 /// 当前子树里有没有 ProviderScope;没有就按默认表格底色画。
