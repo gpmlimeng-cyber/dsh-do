@@ -15,6 +15,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/l10n.dart';
 import '../../state/adaptive_layout_state.dart';
 import '../session/session_detail_page.dart';
+import '../shell/home_shell.dart' show SideParallax;
 import '../shell/session_search_page.dart' show showSessionSearch;
 import '../theme/backdrop.dart' show AppBackdrop;
 import '../shell/adaptive/adaptive_layout.dart';
@@ -54,8 +55,16 @@ class BotAdaptiveFrame extends ConsumerWidget {
     // The columns this shell draws sit outside the page's own frame: without
     // the app's backdrop they fall back to the default (dark) surfaces while
     // the chat in the middle is drawn on the page's. One backdrop for all three.
+    final width = drawer.controller.widthOf(context);
     return AppBackdrop(
-      child: AdaptiveChrome(
+      // The same pull home has: opening the drawer slides the three columns
+      // back, so the list never stands behind it unmoved.
+      child: SideParallax(
+        drawer: drawer.controller.animation,
+        drawerWidth: width,
+        quickPanel: kAlwaysCompleteAnimation,
+        quickPanelWidth: 0,
+        child: AdaptiveChrome(
       layout: layout,
       child: AdaptiveScaffold(
         layout: layout,
@@ -97,6 +106,7 @@ class BotAdaptiveFrame extends ConsumerWidget {
         // As home does: the panel is handed over whenever there is room, and the
         // scaffold plays its slide-away; gating it on the pref would cut that.
         panel: layout.panelAvailable ? panel : null,
+      ),
       ),
       ),
     );
