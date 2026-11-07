@@ -895,6 +895,7 @@ class BotTranscript extends StatefulWidget {
     required this.rows,
     required this.rowBuilder,
     required this.topInset,
+    this.bottomInset = 0,
     this.hasEarlier = false,
     this.loadingEarlier = false,
     this.onEarlier,
@@ -905,6 +906,11 @@ class BotTranscript extends StatefulWidget {
   final List<BotRow> rows;
   final Widget Function(BuildContext context, BotRow row) rowBuilder;
   final double topInset;
+
+  /// How much of the transcript the composer covers: the last row keeps this
+  /// much clear at the bottom, measured from the composer's real height.
+  final double bottomInset;
+
   final bool hasEarlier;
   final bool loadingEarlier;
   final VoidCallback? onEarlier;
@@ -1006,7 +1012,7 @@ class _BotTranscriptState extends State<BotTranscript> {
     final rows = _away ? (_frozen ?? widget.rows) : widget.rows;
     if (rows.isEmpty && widget.empty != null) {
       return Padding(
-        padding: EdgeInsets.only(top: widget.topInset),
+        padding: EdgeInsets.only(top: widget.topInset, bottom: widget.bottomInset),
         child: Center(child: widget.empty),
       );
     }
