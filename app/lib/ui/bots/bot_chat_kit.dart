@@ -8,6 +8,7 @@ import 'dart:math' as math;
 
 import 'package:dsh_client/dsh_client.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
@@ -354,7 +355,6 @@ class _BotChatFrameState extends State<BotChatFrame> {
     final header = widget.header;
     final body = widget.body;
     final bottom = widget.bottom;
-    final drawer = widget.drawer;
     final frame = AnnotatedRegion<SystemUiOverlayStyle>(
       value: dshSystemOverlay(Theme.of(context).brightness),
       child: AppBackdrop(
@@ -419,8 +419,8 @@ class _BotChatFrameState extends State<BotChatFrame> {
         ),
       ),
     );
-    final drawer = this.drawer;
-    return drawer == null ? frame : SessionDrawerHost(config: drawer, child: frame);
+    final shell = widget.drawer;
+    return shell == null ? frame : SessionDrawerHost(config: shell, child: frame);
   }
 }
 
