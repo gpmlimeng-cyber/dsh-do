@@ -23,7 +23,6 @@ import '../../share_code/conversation_share.dart';
 import '../../state/attachments.dart' show sessionImageProvider;
 import '../../state/compose_inbox.dart';
 import '../../state/goal_dock_state.dart' show DockGoal;
-import '../../state/settings_state.dart';
 import '../chat/chat_text_scale.dart';
 import '../chat/dock/dock_pill.dart' show DockSlot;
 import '../chat/dock/goal_bar.dart';

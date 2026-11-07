@@ -1135,7 +1135,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
         BotComposerDeck(
           sessionId: roomSession,
           running: chat.running,
-          showSessionBars: room?.sessionId != null,
+          showSessionBars: room.sessionId != null,
           // The deck speaks for whatever the page shows: the group's own
           // line on the group chat, that member's line on a member target.
           roomActivity: target.memberId == null ? statusLine : null,
