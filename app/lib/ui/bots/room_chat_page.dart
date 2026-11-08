@@ -21,6 +21,7 @@ import '../../state/bots_state.dart';
 import '../../state/last_conversation.dart';
 import '../../state/connection_state.dart';
 import '../chat/chat_text_scale.dart';
+import '../chat/usage_sheet.dart' show showUsageSheet;
 import '../chat/composer.dart';
 import '../chat/render/message_mentions.dart';
 import '../../state/voice_model_state.dart';
@@ -495,6 +496,8 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
           bot: speaker,
           continued: continued,
           mentions: mentions,
+          // 这一轮的用量面板：成员在本群的那个 Session。
+          onStats: speaker == null ? null : () => showUsageSheet(context, sessionId: speakerSession),
           admin: speakerId != null && speakerId == room.admin,
           onOpenBot: speaker == null ? null : () => Navigator.of(context).push(BotChatPage.route(speaker.id)),
           onShowAll: item.whole == null ? null : () => _showAll(item, fullTextScope),

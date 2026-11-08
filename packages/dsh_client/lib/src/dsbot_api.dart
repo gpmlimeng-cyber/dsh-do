@@ -991,6 +991,8 @@ class DsBotItem {
     this.seq,
     this.rpcId,
     this.duration,
+    this.steps,
+    this.tokens,
     this.live = false,
     this.whole,
   });
@@ -1030,6 +1032,8 @@ class DsBotItem {
       // removed by this, not by matching its text.
       rpcId: asString(map['rpcId']),
       duration: asInt(map['duration']) == null ? null : Duration(milliseconds: asInt(map['duration'])!),
+      steps: asInt(map['steps']),
+      tokens: asInt(map['tokens']),
       live: asBool(map['live']) ?? false,
       whole: whole == null ? null : DsBotLongText(asInt(whole['length']) ?? 0, asMapOrEmpty(whole['file'])),
     );
@@ -1073,6 +1077,10 @@ class DsBotItem {
   final int? seq;
   final String? rpcId;
   final Duration? duration;
+
+  /// 这一轮的工具步数与 token 花费（群消息的脚注）；旧 Host 不发。
+  final int? steps;
+  final int? tokens;
 
   /// Said in the round still running; replaced by the logged one later.
   final bool live;

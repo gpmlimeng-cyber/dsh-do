@@ -19,6 +19,8 @@ import '../../state/bots_state.dart';
 import '../../state/settings_state.dart';
 import '../chat/render/markdown_body.dart';
 import '../chat/render/message_mentions.dart';
+import '../chat/run_info.dart' show formatSpan;
+import '../chat/usage_sheet.dart' show formatTokens;
 import '../chat/widgets/chat_card.dart';
 import '../chat/dsh_ui/dsh_ui.dart';
 import '../chat/secret_mask.dart';
@@ -1322,6 +1324,57 @@ class BotTextBubble extends StatelessWidget {
   }
 }
 
+/// A group line's footnote: `39 秒 · 7 步 · 109K tokens ›`, the same sentence a
+/// Bot's own reply ends with. Tapping it opens the member Session's 用量 panel.
+class BotGroupFootnote extends StatelessWidget {
+  const BotGroupFootnote({
+    super.key,
+    required this.duration,
+    this.steps = 0,
+    this.tokens = 0,
+    this.onTap,
+  });
+
+  final Duration duration;
+  final int steps;
+  final int tokens;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final dsh = DshColors.of(context);
+    final label = [
+      formatSpan(duration),
+      if (steps > 0) l10n.chatTurnSteps(steps),
+      if (tokens > 0) '${formatTokens(tokens)} tokens',
+    ].join(' · ');
+    final style = AppType.tabular(
+      theme.textTheme.labelSmall!.copyWith(fontSize: 12, color: dsh.textTertiary, height: 1.3),
+    );
+    return Semantics(
+      button: onTap != null,
+      label: label,
+      onTap: onTap,
+      child: InkWell(
+        onTap: onTap,
+        customBorder: Squircle.border(AppShape.sm),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 3),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(label, maxLines: 1, softWrap: false, style: style),
+              Icon(AppIcons.disclosure, size: 14, color: dsh.textTertiary),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class GroupMessage extends ConsumerWidget {
   const GroupMessage({
     super.key,
@@ -1334,6 +1387,7 @@ class GroupMessage extends ConsumerWidget {
     this.onQuote,
     this.onLinkTap,
     this.mentions = const [],
+    this.onStats,
   });
 
   final DsBotItem item;
@@ -1356,6 +1410,10 @@ class GroupMessage extends ConsumerWidget {
 
   /// The group's members: `@名字` in the line wears that member's ink.
   final List<InlineMention> mentions;
+
+  /// The 统计面板 behind the line's footnote (用量 of the member's Session in this
+  /// group). Null on a line without one, which draws no footnote.
+  final VoidCallback? onStats;
 
   static const face = 28.0;
   static const gap = 10.0;
@@ -1397,14 +1455,6 @@ class GroupMessage extends ConsumerWidget {
                     style: AppType.tabular(theme.textTheme.labelSmall!.copyWith(color: dsh.textTertiary)),
                   ),
                 ],
-                // 网页版的名字行后面还有耗时（不足一秒不写）；同一套口径。
-                if (item.duration case final took? when took >= const Duration(seconds: 1)) ...[
-                  const SizedBox(width: 6),
-                  Text(
-                    l10n.activitySpanSecondsText('${took.inSeconds}'),
-                    style: AppType.tabular(theme.textTheme.labelSmall!.copyWith(color: dsh.textTertiary)),
-                  ),
-                ],
               ],
             ),
           ),
@@ -1423,6 +1473,17 @@ class GroupMessage extends ConsumerWidget {
           onLinkTap: onLinkTap,
           ),
         ),
+        // 这一轮的统计和普通回复的脚注同一条：耗时 · 步数 · tokens，点开是统计面板。
+        if (item.duration case final took? when took >= const Duration(seconds: 1))
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: BotGroupFootnote(
+              duration: took,
+              steps: item.steps ?? 0,
+              tokens: item.tokens ?? 0,
+              onTap: onStats,
+            ),
+          ),
         if (onShowAll != null)
           TextButton(
             onPressed: onShowAll,
