@@ -5,7 +5,7 @@
 
 import 'dart:async';
 
-import 'package:dsh_client/dsh_client.dart' show ModelSelection;
+import 'package:dsh_client/dsh_client.dart' show DsBot, ModelSelection;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
