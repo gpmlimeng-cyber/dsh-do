@@ -165,7 +165,13 @@ class BotComposerDeck extends ConsumerWidget {
                   name: (status.bot ?? activityBot)?.name,
                 ),
               ] else
-                ActivityStripSlot(sessionId: activitySessionId ?? sessionId, dock: true),
+                ActivityStripSlot(
+                  sessionId: activitySessionId ?? sessionId,
+                  dock: true,
+                  // 成员视图这条分支也要脸和名字，不然只剩一句短语。
+                  face: activityBot == null ? null : BotAvatar(bot: activityBot!, size: 22),
+                  name: activityBot?.name,
+                ),
               ComposerStripSlot(sessionId: sessionId, visible: !running),
             ],
             // Running: the permission chip rides beside the activity strip,
