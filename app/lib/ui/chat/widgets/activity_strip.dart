@@ -252,12 +252,12 @@ class _ActivityStripState extends State<ActivityStrip> {
     final whale = widget.whaleColor ?? (a.waiting ? dsh.warning : whaleColorFor(theme.brightness));
 
     if (widget.typing) {
-      // 网页版那条:一张脸 + 「名字 · 短语…」 + 计时,而不是光一句状态。
+      // 网页版那条:一张脸 + 「名字 · 短语…」 + 计时。短语用 App 自己的池子
+      // （思考/等待/写作/深夜/周末/节日都算在里面），不是干巴巴一句「思考中」。
       final style = theme.textTheme.bodySmall?.copyWith(color: dsh.textTertiary);
+      final phrase = activityFlavor(a, runClock())?.text ?? a.title;
       final name = widget.name;
-      final label = name == null ? '${a.title}…' : '$name · ${a.title}…';
-      final since = a.turnStart ?? a.since;
-      final clock = since == null ? null : formatClock(LiveElapsed.elapsedSince(since, a.skew));
+      final label = name == null ? '$phrase…' : '$name · $phrase…';
       final face = widget.face;
       return Semantics(
         liveRegion: true,
@@ -276,8 +276,14 @@ class _ActivityStripState extends State<ActivityStrip> {
                 const SizedBox(width: 8),
                 SizedBox(height: 14, child: TypingIndicator(color: dsh.textTertiary)),
                 const Spacer(),
-                if (clock != null)
-                  Text(clock, style: AppType.tabular(style!)),
+                LiveElapsed(
+                  since: a.turnStart ?? a.since,
+                  skew: a.skew,
+                  builder: (context, elapsed) => Text(
+                    elapsed == null ? '' : formatClock(elapsed),
+                    style: AppType.tabular(style!),
+                  ),
+                ),
               ],
             ),
           ),
