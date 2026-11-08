@@ -340,7 +340,15 @@ class GroupTaskPanel extends ConsumerStatefulWidget {
 class _GroupTaskPanelState extends ConsumerState<GroupTaskPanel> {
   bool _busy = false;
 
-  DsBotTask get _task => widget.task;
+  /// The task as the board has it now, not the copy the sheet opened with:
+  /// a write bumps its revision and the sheet has to show the new one.
+  DsBotTask get _task {
+    final view = ref.read(groupTasksProvider(widget.roomId)).value;
+    for (final task in view?.tasks ?? const <DsBotTask>[]) {
+      if (task.id == widget.task.id) return task;
+    }
+    return widget.task;
+  }
 
   Future<void> _update({String? status, String? assignee, String? verdict, String? acceptance}) async {
     if (_busy) return;
@@ -353,12 +361,30 @@ class _GroupTaskPanelState extends ConsumerState<GroupTaskPanel> {
         widget.roomId,
         _task.id,
         attemptId: _task.attemptId,
+        rev: _task.rev,
         status: status,
         assignee: assignee,
         verdict: verdict,
         acceptance: acceptance,
       );
       ref.invalidate(groupTasksProvider(widget.roomId));
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text('$error')));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _remove() async {
+    if (_busy) return;
+    final api = ref.read(dsBotProvider.notifier).api;
+    if (api == null) return;
+    HapticFeedback.selectionClick();
+    setState(() => _busy = true);
+    try {
+      await api.taskRemove(widget.roomId, _task.id, attemptId: _task.attemptId);
+      ref.invalidate(groupTasksProvider(widget.roomId));
+      if (mounted) Navigator.of(context).maybePop();
     } catch (error) {
       if (mounted) ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text('$error')));
     } finally {
@@ -403,6 +429,7 @@ class _GroupTaskPanelState extends ConsumerState<GroupTaskPanel> {
     final dsh = DshColors.of(context);
     final small = theme.textTheme.labelSmall?.copyWith(color: dsh.textTertiary);
     final team = ref.watch(dsBotProvider.select((s) => s.team));
+    ref.watch(groupTasksProvider(widget.roomId));
     final task = _task;
     final waiting = widget.view.waitingOn(task);
     final owner = task.assignee == null ? l10n.botsUnassigned : (team?.bot(task.assignee!)?.name ?? task.assignee!);
@@ -487,6 +514,12 @@ class _GroupTaskPanelState extends ConsumerState<GroupTaskPanel> {
                 style: controlStyle.copyWith(foregroundColor: WidgetStatePropertyAll(theme.colorScheme.error)),
                 child: Text(l10n.botsTaskCancel),
               ),
+              if (task.pending || task.cancelled)
+                TextButton(
+                  onPressed: _busy ? null : _remove,
+                  style: controlStyle,
+                  child: Text(l10n.commonDelete),
+                ),
             ],
           ),
         if (task.failed && !task.fromGoal)

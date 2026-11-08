@@ -1318,6 +1318,7 @@ class DsBotTask {
     this.createdBy = 'user',
     this.attempt = 1,
     this.attemptId = '',
+    this.rev = 1,
     this.deps = const [],
     this.kind = 'work',
     this.gate = false,
@@ -1342,6 +1343,7 @@ class DsBotTask {
       createdBy: asString(map['createdBy']) ?? 'user',
       attempt: asInt(map['attempt']) ?? 1,
       attemptId: asString(map['attemptId']) ?? '',
+      rev: asInt(map['rev']) ?? 1,
       deps: asStringList(map['deps']),
       kind: asString(map['kind']) ?? 'work',
       gate: asBool(map['gate']) ?? false,
@@ -1377,6 +1379,10 @@ class DsBotTask {
   /// Identifies this attempt: a late update from the previous holder carries an
   /// old one and is refused.
   final String attemptId;
+
+  /// The task's revision: a write must send the one it read, or the Host
+  /// answers `task/conflict` and the page pulls again.
+  final int rev;
 
   /// Tasks that must be done before this one starts.
   final List<String> deps;
@@ -2173,6 +2179,7 @@ class DsBotApi {
     String roomId,
     String id, {
     required String attemptId,
+    required int rev,
     String? status,
     String? assignee,
     String? title,
@@ -2186,6 +2193,7 @@ class DsBotApi {
         'roomId': roomId,
         'id': id,
         'attemptId': attemptId,
+        'rev': rev,
         'status': ?status,
         'assignee': ?assignee,
         'title': ?title,
