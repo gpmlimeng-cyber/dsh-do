@@ -564,7 +564,7 @@ String otherToolVerb(String name) {
 
 /// 一条 shell 命令「在干什么」的一句话。用户不需要读命令本身,只需要知道这一下
 /// 是在装依赖、跑测试、还是在推代码。
-const _commandPhrases = <(RegExp, String)>[
+final _commandPhrases = <(RegExp, String)>[
   (RegExp(r'\bgit\s+push'), '推送代码'),
   (RegExp(r'\bgit\s+(commit|add|switch|checkout|merge|rebase|stash)'), '提交或整理改动'),
   (RegExp(r'\bgit\s'), '看仓库状态'),
