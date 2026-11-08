@@ -1301,27 +1301,43 @@ class BotReplyText extends StatelessWidget {
 /// 消息布局: a Bot's line as the web draws it — a bubble tinted with the
 /// speaker's ink — or, in 平铺, plain text at the column's width.
 class BotTextBubble extends StatelessWidget {
-  const BotTextBubble({super.key, required this.child, required this.ink, required this.flat});
+  const BotTextBubble({
+    super.key,
+    required this.child,
+    required this.ink,
+    required this.flat,
+    this.leftInset = 14,
+    this.offset,
+  });
 
   final Widget child;
   final Color ink;
   final bool flat;
 
+  /// 文字离气泡左沿多远。群里把它缩成头像和正文之间的那段距离，气泡再整体
+  /// 往左让出同样的 10dp，正文的左边就和名字的左边落在一条线上。
+  final double leftInset;
+
+  /// 整个气泡的平移（群里往左让出 [leftInset]）。
+  final Offset? offset;
+
   @override
   Widget build(BuildContext context) {
     if (flat) return child;
     final base = Theme.of(context).colorScheme.surface;
-    return DecoratedBox(
+    final bubble = DecoratedBox(
       decoration: ShapeDecoration(
         // 3% of the member's ink, over the surface: the web's own tint.
         color: Color.alphaBlend(ink.withValues(alpha: 0.06), base),
         shape: AppShape.bubble,
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+        padding: EdgeInsets.fromLTRB(leftInset, 9, 14, 9),
         child: child,
       ),
     );
+    final shift = offset;
+    return shift == null ? bubble : Transform.translate(offset: shift, child: bubble);
   }
 }
 
@@ -1462,6 +1478,12 @@ class GroupMessage extends ConsumerWidget {
         BotTextBubble(
           ink: botInk(context, color),
           flat: flat,
+          // 正文左边与名字左边对齐：气泡自己往左让出头像和正文之间的 10dp，
+          // 左边距也用这 10dp，于是没有气泡时文字落在哪儿，有气泡时也落在哪儿。
+          leftInset: gap,
+          // 气泡整体往左让出这一段（不缩内容宽度），正文左边就落在名字左边；
+          // 头像那一列刚好到这儿，气泡的圆角贴着头像的右沿。
+          offset: flat ? null : Offset(-gap, 0),
           child: BotReplyText(
           text: text,
           mentions: mentions,
