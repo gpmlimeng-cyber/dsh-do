@@ -29,6 +29,7 @@ import '../chat/balance_widgets.dart' show LowBalanceBanner;
 import '../chat/usage_sheet.dart' show ContextRing, showUsageSheet;
 import '../session/session_tab.dart';
 import '../chat/voice/voice_controller.dart';
+import 'bot_avatar.dart';
 import 'group_goal.dart';
 import '../chat/widgets/activity_strip.dart';
 import '../chat/widgets/permission_pill.dart';
@@ -153,6 +154,9 @@ class BotComposerDeck extends ConsumerWidget {
                   todoProgress: !showSessionBars,
                   // 底部只有一层渐变：活动行站在渐变上，不再自带卡片底。
                   flat: true,
+                  // 打字行里要有「谁在写」：那张脸和那个名字。
+                  face: status.bot == null ? null : BotAvatar(bot: status.bot!, size: 22),
+                  name: status.bot?.name,
                 ),
               ] else
                 ActivityStripSlot(sessionId: activitySessionId ?? sessionId, flat: true),

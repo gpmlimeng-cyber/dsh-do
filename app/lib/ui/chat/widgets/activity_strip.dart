@@ -37,7 +37,15 @@ class ActivityStripSlot extends ConsumerStatefulWidget {
     this.onTap,
     this.todoProgress = true,
     this.flat = false,
+    this.face,
+    this.name,
   });
+
+  /// 打字行左边的脸（群里是正在发言的成员）；没有就不画。
+  final Widget? face;
+
+  /// 打字行里「名字 · …」的名字。
+  final String? name;
 
   /// 底部的活动行不要自己的卡片底(见 [ActivityStrip] 的 flat)。
   final bool flat;
@@ -139,6 +147,8 @@ class _ActivityStripSlotState extends ConsumerState<ActivityStripSlot> with Sing
                   activity: strip,
                   // 模型还在想、还没动工具：底部画打字行；开始跑工具才换成活动行。
                   typing: widget.flat && _modelPhase(strip),
+                  face: widget.face,
+                  name: widget.name,
                   speedLevel: _lastLevel,
                   tokensPerSecond: () => pulse.tokensPerSecond,
                   onTap: shown == null ? null : widget.onTap,
@@ -176,7 +186,13 @@ class ActivityStrip extends StatefulWidget {
     this.whale = true,
     this.flat = false,
     this.typing = false,
+    this.face,
+    this.name,
   });
+
+  /// 打字行左边的脸与名字。
+  final Widget? face;
+  final String? name;
 
   /// 画成打字行（三个跳动的点 + 一句话），而不是活动行：模型还在想的时候。
   final bool typing;
@@ -236,22 +252,32 @@ class _ActivityStripState extends State<ActivityStrip> {
     final whale = widget.whaleColor ?? (a.waiting ? dsh.warning : whaleColorFor(theme.brightness));
 
     if (widget.typing) {
+      // 网页版那条:一张脸 + 「名字 · 短语…」 + 计时,而不是光一句状态。
       final style = theme.textTheme.bodySmall?.copyWith(color: dsh.textTertiary);
+      final name = widget.name;
+      final label = name == null ? '${a.title}…' : '$name · ${a.title}…';
+      final since = a.turnStart ?? a.since;
+      final clock = since == null ? null : formatClock(LiveElapsed.elapsedSince(since, a.skew));
+      final face = widget.face;
       return Semantics(
         liveRegion: true,
-        label: a.title,
+        label: label,
         excludeSemantics: true,
         child: ConstrainedBox(
           constraints: const BoxConstraints(minHeight: 36),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 6, 14, 6),
+            padding: const EdgeInsets.fromLTRB(10, 6, 14, 6),
             child: Row(
               children: [
+                if (face != null) ...[face, const SizedBox(width: 8)],
                 Flexible(
-                  child: Text(a.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: style),
+                  child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: style),
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 8),
                 SizedBox(height: 14, child: TypingIndicator(color: dsh.textTertiary)),
+                const Spacer(),
+                if (clock != null)
+                  Text(clock, style: AppType.tabular(style!)),
               ],
             ),
           ),
