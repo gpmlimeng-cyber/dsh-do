@@ -12,6 +12,7 @@ import '../../../l10n/l10n.dart';
 import '../../../state/chat_state.dart';
 import '../../../state/run_pulse.dart';
 import '../../pets/pet_perch.dart';
+import '../../common/typing_indicator.dart';
 import '../../theme/theme.dart';
 import '../activity_copy.dart';
 import '../run_info.dart';
@@ -136,6 +137,8 @@ class _ActivityStripSlotState extends ConsumerState<ActivityStripSlot> with Sing
                 valueListenable: perches?.occupied ?? _noPet,
                 builder: (context, occupied, _) => ActivityStrip(
                   activity: strip,
+                  // 模型还在想、还没动工具：底部画打字行；开始跑工具才换成活动行。
+                  typing: widget.flat && _modelPhase(strip),
                   speedLevel: _lastLevel,
                   tokensPerSecond: () => pulse.tokensPerSecond,
                   onTap: shown == null ? null : widget.onTap,
@@ -152,6 +155,12 @@ class _ActivityStripSlotState extends ConsumerState<ActivityStripSlot> with Sing
   }
 }
 
+/// 这一轮还在等模型（或正文在流）：还没有工具在跑，底部显示打字行。
+bool _modelPhase(RunActivity activity) => switch (activity.kind) {
+  ActivityKind.waiting || ActivityKind.thinking || ActivityKind.writing || ActivityKind.retry => true,
+  _ => false,
+};
+
 /// Outside a pet stage nothing ever stands on the strip.
 final _noPet = ValueNotifier<PerchKind?>(null);
 
@@ -166,7 +175,11 @@ class ActivityStrip extends StatefulWidget {
     this.todoProgress = true,
     this.whale = true,
     this.flat = false,
+    this.typing = false,
   });
+
+  /// 画成打字行（三个跳动的点 + 一句话），而不是活动行：模型还在想的时候。
+  final bool typing;
 
   /// 不要自己的玻璃底:底部那条直接站在页面的渐变上(见 [GlassSurface.clear])。
   final bool flat;
@@ -221,6 +234,30 @@ class _ActivityStripState extends State<ActivityStrip> {
     final dsh = DshColors.of(context);
     final a = widget.activity;
     final whale = widget.whaleColor ?? (a.waiting ? dsh.warning : whaleColorFor(theme.brightness));
+
+    if (widget.typing) {
+      final style = theme.textTheme.bodySmall?.copyWith(color: dsh.textTertiary);
+      return Semantics(
+        liveRegion: true,
+        label: a.title,
+        excludeSemantics: true,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 36),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 6, 14, 6),
+            child: Row(
+              children: [
+                Flexible(
+                  child: Text(a.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: style),
+                ),
+                const SizedBox(width: 6),
+                SizedBox(height: 14, child: TypingIndicator(color: dsh.textTertiary)),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     return Semantics(
       button: widget.onTap != null,
