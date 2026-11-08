@@ -1609,11 +1609,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
                               // Keyed by conversation: opening another one fades it in.
                               child: FluidFadeIn(
                                 key: ValueKey(sessionId),
-                                child: ChatList(
+                                // 末尾留出输入条的真实高度:正文从托板下面穿过去,
+                                // 最后一条又滚得到上方。
+                                child: ValueListenableBuilder<double>(
+                                  valueListenable: _veilHeight,
+                                  builder: (context, veil, _) => ChatList(
                                   key: ValueKey(sessionId),
                                   sessionId: sessionId,
                                   topInset: headerHeight,
-                                  bottomInset: _ChatLayout.overlap,
+                                  bottomInset: _ChatLayout.overlap + veil,
                                   scrolledUnder: _scrolledUnder,
                                   onWithdraw: _withdraw,
                                   onSendNow: _sendNow,
@@ -1622,6 +1626,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
                                   onQuote: readOnly ? null : (passage) => _quote(sessionId, passage),
                                   onToast: _composerToast,
                                   onSwitchModel: readOnly ? null : _switchModel,
+                                  ),
                                 ),
                               ),
                             ),
@@ -2254,7 +2259,9 @@ class _ChatLayout extends MultiChildLayoutDelegate {
     positionChild(_Slot.composer, Offset(0, top));
     veilHeight.value = math.max(0, composer.height - overlap);
 
-    layoutChild(_Slot.body, BoxConstraints.tight(Size(width, math.max(0, top + overlap))));
+    // 正文一直铺到屏幕底,从托板下面穿过去(末尾留白由列表自己的
+    // bottomInset 负责,最后一条仍能滚到输入框上方)。
+    layoutChild(_Slot.body, BoxConstraints.tight(Size(width, size.height)));
     positionChild(_Slot.body, Offset.zero);
     layoutChild(_Slot.veil, BoxConstraints.tight(size));
     positionChild(_Slot.veil, Offset.zero);
