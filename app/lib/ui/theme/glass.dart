@@ -51,6 +51,7 @@ class GlassSurface extends StatelessWidget {
     this.style,
     this.onTap,
     this.onLongPress,
+    this.clear = false,
     this.child,
   }) : assert(!(circle && stadium), 'circle 与 stadium 只能二选一' /* l10n:keep developer-only assertion */);
 
@@ -83,6 +84,10 @@ class GlassSurface extends StatelessWidget {
 
   /// 覆盖主题给的材质(极少用;例如审批卡要换警示色描边)。
   final GlassStyle? style;
+
+  /// 只留内容与点击区,不要底、不要描边、不要模糊 —— 底部那层渐变里的一条
+  /// 状态行就是这样站在页面上,而不是又叠一张卡片。
+  final bool clear;
 
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
@@ -135,6 +140,8 @@ class GlassSurface extends StatelessWidget {
         ),
       );
     }
+
+    if (clear) return content;
 
     content = CustomPaint(
       foregroundPainter: _GlassEdgePainter(

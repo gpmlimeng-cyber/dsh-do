@@ -30,7 +30,16 @@ import 'whale_tail.dart';
 /// 只订阅 [runActivityOf] 的结果(值相等不重建)和 [RunPulse](换档、压缩
 /// 开始结束时才通知);走秒和文案轮换只重建文字那一段。
 class ActivityStripSlot extends ConsumerStatefulWidget {
-  const ActivityStripSlot({super.key, required this.sessionId, this.onTap, this.todoProgress = true});
+  const ActivityStripSlot({
+    super.key,
+    required this.sessionId,
+    this.onTap,
+    this.todoProgress = true,
+    this.flat = false,
+  });
+
+  /// 底部的活动行不要自己的卡片底(见 [ActivityStrip] 的 flat)。
+  final bool flat;
 
   final String sessionId;
   final VoidCallback? onTap;
@@ -132,6 +141,7 @@ class _ActivityStripSlotState extends ConsumerState<ActivityStripSlot> with Sing
                   onTap: shown == null ? null : widget.onTap,
                   todoProgress: widget.todoProgress,
                   whale: occupied != PerchKind.strip,
+                  flat: widget.flat,
                 ),
               ),
             ),
@@ -155,7 +165,11 @@ class ActivityStrip extends StatefulWidget {
     this.whaleColor,
     this.todoProgress = true,
     this.whale = true,
+    this.flat = false,
   });
+
+  /// 不要自己的玻璃底:底部那条直接站在页面的渐变上(见 [GlassSurface.clear])。
+  final bool flat;
 
   final RunActivity activity;
 
@@ -218,6 +232,7 @@ class _ActivityStripState extends State<ActivityStrip> {
       child: GlassSurface(
         tier: GlassTier.chrome,
         stadium: true,
+        clear: widget.flat,
         onTap: widget.onTap,
         onLongPress: _showStats,
         child: ConstrainedBox(

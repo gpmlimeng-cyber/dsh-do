@@ -151,9 +151,11 @@ class BotComposerDeck extends ConsumerWidget {
                   sessionId: status.sessionId ?? activitySessionId ?? sessionId,
                   onTap: onRoomActivityTap,
                   todoProgress: !showSessionBars,
+                  // 底部只有一层渐变：活动行站在渐变上，不再自带卡片底。
+                  flat: true,
                 ),
               ] else
-                ActivityStripSlot(sessionId: activitySessionId ?? sessionId),
+                ActivityStripSlot(sessionId: activitySessionId ?? sessionId, flat: true),
               ComposerStripSlot(sessionId: sessionId, visible: !running),
             ],
             // Running: the permission chip rides beside the activity strip,

@@ -1851,6 +1851,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
                                             onTap: () => _openRunningTrajectory(sessionId),
                                             // The todo bar shows it, unless it is folded behind the strip.
                                             todoProgress: ref.watch(dockFoldedProvider),
+                                            flat: true,
                                           ),
                                         ],
                                         // It gives the activity strip its place while a reply generates.
