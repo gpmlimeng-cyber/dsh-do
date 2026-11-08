@@ -96,8 +96,10 @@ class _GroupTaskBarState extends ConsumerState<GroupTaskBar> {
       return DockSlot(key: const ValueKey('group-tasks'), child: null);
     }
     final current = view.current;
-    final total = view.tasks.length;
-    final done = view.doneCount;
+    // 已取消的不进分母，也不进分子：它是一件不做的事，不是欠着的活。
+    final counted = [for (final task in view.tasks) if (!task.cancelled) task];
+    final total = counted.length;
+    final done = counted.where((task) => task.done).length;
     // 和普通会话那条 todo 一个说法：在跑的写「正在」，没人跑就写「下一步」。
     final label = current != null
         ? l10n.botsTaskRunning(current.title)
@@ -265,6 +267,8 @@ class GroupTaskRow extends ConsumerWidget {
     final owner = task.assignee == null ? null : (team?.bot(task.assignee!)?.name ?? task.assignee!);
     final side = waiting.isNotEmpty
         ? l10n.botsTaskWaitingFor(waiting.map((t) => t.shortId).join('、'))
+        : ready && !task.closed
+        ? '${owner ?? l10n.botsUnassigned} · ${l10n.botsTaskReady}'
         : owner ?? l10n.botsUnassigned;
     return InkWell(
       onTap: () => openGroupTaskPanel(context, roomId: roomId, id: task.id),
@@ -370,6 +374,7 @@ class _GroupTaskPanelState extends ConsumerState<GroupTaskPanel> {
         acceptance: acceptance,
       );
       ref.invalidate(groupTasksProvider(widget.roomId));
+      ref.invalidate(_taskEventsProvider((roomId: widget.roomId, id: _task.id)));
     } catch (error) {
       if (mounted) ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text('$error')));
     } finally {
@@ -386,6 +391,7 @@ class _GroupTaskPanelState extends ConsumerState<GroupTaskPanel> {
     try {
       await api.taskRemove(widget.roomId, _task.id, attemptId: _task.attemptId);
       ref.invalidate(groupTasksProvider(widget.roomId));
+      ref.invalidate(_taskEventsProvider((roomId: widget.roomId, id: _task.id)));
       if (mounted) Navigator.of(context).maybePop();
     } catch (error) {
       if (mounted) ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text('$error')));

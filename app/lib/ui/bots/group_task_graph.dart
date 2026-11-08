@@ -25,7 +25,8 @@ class GroupTaskGraphPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
-    final view = ref.watch(groupTasksProvider(roomId)).value;
+    final all = ref.watch(groupTasksProvider(roomId)).value;
+    final view = all?.manual;
     return Scaffold(
       appBar: AppBar(title: Text(l10n.botsTasks)),
       body: view == null
