@@ -55,6 +55,7 @@ class BotComposerDeck extends ConsumerWidget {
     this.activitySessionId,
     this.showActivity = true,
     this.onRoomActivityTap,
+    this.activityBot,
     this.roomId,
   });
 
@@ -74,6 +75,10 @@ class BotComposerDeck extends ConsumerWidget {
   /// A tap on the group's status line: the group's own activity figures. Null
   /// leaves the line without one.
   final VoidCallback? onRoomActivityTap;
+
+  /// 这一页代表谁:群聊是正在跑的那位成员,成员视图与 Bot 私聊是这个 Bot。
+  /// 打字行左边的头像和名字靠它,不然只有一句短语,看不出谁在写。
+  final DsBot? activityBot;
 
   /// A group's own status line. Null in a Bot's chat, where the activity strip
   /// reads a single turn; a group has no single turn to read.
@@ -155,8 +160,10 @@ class BotComposerDeck extends ConsumerWidget {
                   // 底部只有一层渐变：活动行站在渐变上，不再自带卡片底。
                   flat: true,
                   // 打字行里要有「谁在写」：那张脸和那个名字。
-                  face: status.bot == null ? null : BotAvatar(bot: status.bot!, size: 22),
-                  name: status.bot?.name,
+                  face: (status.bot ?? activityBot) == null
+                      ? null
+                      : BotAvatar(bot: (status.bot ?? activityBot)!, size: 22),
+                  name: (status.bot ?? activityBot)?.name,
                 ),
               ] else
                 ActivityStripSlot(sessionId: activitySessionId ?? sessionId, flat: true),

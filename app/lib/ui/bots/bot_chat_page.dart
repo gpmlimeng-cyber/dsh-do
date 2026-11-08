@@ -661,6 +661,7 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
         BotComposerDeck(
           sessionId: bot.sessionId,
           running: ownTurn,
+          activityBot: bot,
           // 活动行点开本轮轨迹，和普通会话一致。
           onRoomActivityTap: () => _openRunningTrajectory(bot.sessionId),
         ),

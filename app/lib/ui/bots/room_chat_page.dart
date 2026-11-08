@@ -1179,6 +1179,8 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
           // line on the group chat, that member's line on a member target.
           roomActivity: target.memberId == null ? statusLine : null,
           activitySessionId: memberSession,
+          // 成员视图里也要知道是谁在写：拿这个成员的 Bot 当打字行的脸和名字。
+          activityBot: targetBot,
           // 点活动行看这一轮：普通会话点它是「本轮轨迹」，群里跑的是某位成员，
           // 就打开那位成员在本群的这一轮；还没有轮次时退到用量面板。
           onRoomActivityTap: () {
