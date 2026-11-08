@@ -93,6 +93,12 @@ class _GroupTaskBarState extends ConsumerState<GroupTaskBar> {
     final current = view.current;
     final total = view.tasks.length;
     final done = view.doneCount;
+    // 和普通会话那条 todo 一个说法：在跑的写「正在」，没人跑就写「下一步」。
+    final label = current != null
+        ? l10n.botsTaskRunning(current.title)
+        : view.open.isEmpty
+        ? l10n.chatTodoAllDone
+        : l10n.chatTodoNext(view.open.first.title);
     final header = Semantics(
       button: true,
       expanded: _open,
@@ -113,10 +119,8 @@ class _GroupTaskBarState extends ConsumerState<GroupTaskBar> {
                   text: '$done/$total',
                   style: AppType.tabular(DockText.title(context)),
                 ),
-                if (current != null) ...[
-                  TextSpan(text: ' · ', style: DockText.detail(context)),
-                  TextSpan(text: l10n.botsTaskRunning(current.title), style: DockText.detail(context)),
-                ],
+                TextSpan(text: ' · ', style: DockText.detail(context)),
+                TextSpan(text: label, style: DockText.detail(context)),
               ],
             ),
             maxLines: 1,
@@ -254,10 +258,9 @@ class GroupTaskRow extends ConsumerWidget {
     final waiting = view.waitingOn(task);
     final ready = view.ready.contains(task.id);
     final owner = task.assignee == null ? null : (team?.bot(task.assignee!)?.name ?? task.assignee!);
-    final meta = <String>[
-      owner ?? l10n.botsUnassigned,
-      if (waiting.isNotEmpty) l10n.botsTaskWaitingFor(waiting.map((t) => t.shortId).join('、')) else if (ready && !task.closed) l10n.botsTaskReady,
-    ];
+    final side = waiting.isNotEmpty
+        ? l10n.botsTaskWaitingFor(waiting.map((t) => t.shortId).join('、'))
+        : owner ?? l10n.botsUnassigned;
     return InkWell(
       onTap: () => openGroupTaskPanel(context, roomId: roomId, id: task.id),
       child: Padding(
@@ -271,32 +274,26 @@ class GroupTaskRow extends ConsumerWidget {
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    task.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      decoration: task.done || task.cancelled ? TextDecoration.lineThrough : null,
-                      color: task.closed ? dsh.textTertiary : null,
-                    ),
-                  ),
-                  const SizedBox(height: 1),
-                  Text(
-                    meta.join(' · '),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: waiting.isNotEmpty ? dsh.warning : dsh.textTertiary,
-                    ),
-                  ),
-                ],
+              child: Text(
+                task.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  decoration: task.done || task.cancelled ? TextDecoration.lineThrough : null,
+                  color: task.closed ? dsh.textTertiary : null,
+                  fontWeight: task.doing ? FontWeight.w600 : null,
+                ),
               ),
             ),
             const SizedBox(width: 8),
-            Text(taskStateWord(l10n, task), style: theme.textTheme.labelSmall?.copyWith(color: taskStateColor(context, task))),
+            Text(
+              side,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: waiting.isNotEmpty ? dsh.warning : dsh.textTertiary,
+              ),
+            ),
           ],
         ),
       ),
