@@ -497,7 +497,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
           continued: continued,
           mentions: mentions,
           // 这一轮的用量面板：成员在本群的那个 Session。
-          onStats: speaker == null ? null : () => showUsageSheet(context, sessionId: speakerSession),
+          onStats: speakerSession == null ? null : () => showUsageSheet(context, sessionId: speakerSession),
           admin: speakerId != null && speakerId == room.admin,
           onOpenBot: speaker == null ? null : () => Navigator.of(context).push(BotChatPage.route(speaker.id)),
           onShowAll: item.whole == null ? null : () => _showAll(item, fullTextScope),
