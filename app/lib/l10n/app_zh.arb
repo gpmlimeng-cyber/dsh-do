@@ -1072,6 +1072,43 @@
   "botsWaitingDependencies": "等依赖",
   "botsReadyToStart": "可开始",
   "botsTaskId": "编号",
+  "botsTaskRunning": "正在：{title}",
+  "@botsTaskRunning": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "botsTaskAdd": "加一条",
+  "botsTaskNoneOpen": "没有未完成的任务",
+  "botsTaskReady": "可开工",
+  "botsTaskClaimed": "已领取",
+  "botsTaskDoing": "进行中",
+  "botsTaskFailed": "失败",
+  "botsTaskCancelled": "已取消",
+  "botsTaskPending": "未开始",
+  "botsTaskReassign": "改派",
+  "botsTaskDepsDone": "前置都已完成",
+  "botsTaskBlocked": "前置未完成：{ids}",
+  "@botsTaskBlocked": {
+    "placeholders": {
+      "ids": {
+        "type": "String"
+      }
+    }
+  },
+  "botsTaskNote": "说明",
+  "botsTaskFromGoal": "由群目标管理，不能在这里改",
+  "botsTaskTimeline": "时间线",
+  "botsTaskNoEvents": "还没有记录",
+  "botsTaskLoading": "读取中…",
+  "botsTaskStart": "开始",
+  "botsTaskCancel": "取消任务",
+  "botsTaskReopen": "重新开始",
+  "botsTaskTitleHint": "要做什么",
+  "botsTaskSave": "添加",
+  "botsTaskGone": "这条任务已不存在",
   "botsDependencies": "依赖",
   "botsWriteScopes": "写入范围",
   "botsMessagesReadFailed": "没能读到消息",

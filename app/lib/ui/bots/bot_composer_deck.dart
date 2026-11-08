@@ -39,6 +39,7 @@ import '../plugins/native/native_composer_bar.dart';
 import '../safe_mode/safe_mode_banner.dart';
 import '../settings/settings_widgets.dart' show SettingsTile;
 import '../theme/app_icons.dart';
+import 'group_tasks.dart' show GroupTaskBar;
 import 'room_activity_strip.dart' show RoomStatus;
 import 'room_aggregate_details_page.dart';
 
@@ -146,6 +147,8 @@ class BotComposerDeck extends ConsumerWidget {
               ],
               // A group's goal: stages and the members' tasks, from ds-bot.
               if (roomId case final id?) GroupGoalBar(roomId: id),
+              // The same group's task board, over the same messages.
+              if (roomId case final id?) GroupTaskBar(roomId: id),
               // A group speaks through the upstream strip alone: it shows the
               // member who is running, read from that member's Session in this
               // group, and how many are running is in the group's own header.

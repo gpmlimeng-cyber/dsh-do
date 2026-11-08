@@ -1835,6 +1835,79 @@ class L10nEn extends L10n {
   String get botsTaskId => 'ID';
 
   @override
+  String botsTaskRunning(String title) {
+    return 'Now: $title';
+  }
+
+  @override
+  String get botsTaskAdd => 'Add a task';
+
+  @override
+  String get botsTaskNoneOpen => 'Nothing open';
+
+  @override
+  String get botsTaskReady => 'Ready to start';
+
+  @override
+  String get botsTaskClaimed => 'Claimed';
+
+  @override
+  String get botsTaskDoing => 'In progress';
+
+  @override
+  String get botsTaskFailed => 'Failed';
+
+  @override
+  String get botsTaskCancelled => 'Cancelled';
+
+  @override
+  String get botsTaskPending => 'Not started';
+
+  @override
+  String get botsTaskReassign => 'Reassign';
+
+  @override
+  String get botsTaskDepsDone => 'Dependencies done';
+
+  @override
+  String botsTaskBlocked(String ids) {
+    return 'Waiting for $ids';
+  }
+
+  @override
+  String get botsTaskNote => 'Note';
+
+  @override
+  String get botsTaskFromGoal => 'Owned by the group goal';
+
+  @override
+  String get botsTaskTimeline => 'Timeline';
+
+  @override
+  String get botsTaskNoEvents => 'Nothing recorded yet';
+
+  @override
+  String get botsTaskLoading => 'Loading…';
+
+  @override
+  String get botsTaskStart => 'Start';
+
+  @override
+  String get botsTaskCancel => 'Cancel task';
+
+  @override
+  String get botsTaskReopen => 'Reopen';
+
+  @override
+  String get botsTaskTitleHint => 'What needs doing';
+
+  @override
+  String get botsTaskSave => 'Add';
+
+  @override
+  String get botsTaskGone => 'This task is gone';
+
+  @override
   String get botsDependencies => 'Dependencies';
 
   @override
@@ -20389,7 +20462,7 @@ class L10nEn extends L10n {
 
   String get chatGoalStageDone => 'Done when';
 
-  String get chatGoalTasks => 'Members' tasks';
+  String get chatGoalTasks => 'Members\' tasks';
 
   String get chatGoalTaskPending => 'To do';
 

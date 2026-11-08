@@ -1724,6 +1724,79 @@ class L10nZh extends L10n {
   String get botsTaskId => '编号';
 
   @override
+  String botsTaskRunning(String title) {
+    return '正在：$title';
+  }
+
+  @override
+  String get botsTaskAdd => '加一条';
+
+  @override
+  String get botsTaskNoneOpen => '没有未完成的任务';
+
+  @override
+  String get botsTaskReady => '可开工';
+
+  @override
+  String get botsTaskClaimed => '已领取';
+
+  @override
+  String get botsTaskDoing => '进行中';
+
+  @override
+  String get botsTaskFailed => '失败';
+
+  @override
+  String get botsTaskCancelled => '已取消';
+
+  @override
+  String get botsTaskPending => '未开始';
+
+  @override
+  String get botsTaskReassign => '改派';
+
+  @override
+  String get botsTaskDepsDone => '前置都已完成';
+
+  @override
+  String botsTaskBlocked(String ids) {
+    return '前置未完成：$ids';
+  }
+
+  @override
+  String get botsTaskNote => '说明';
+
+  @override
+  String get botsTaskFromGoal => '由群目标管理，不能在这里改';
+
+  @override
+  String get botsTaskTimeline => '时间线';
+
+  @override
+  String get botsTaskNoEvents => '还没有记录';
+
+  @override
+  String get botsTaskLoading => '读取中…';
+
+  @override
+  String get botsTaskStart => '开始';
+
+  @override
+  String get botsTaskCancel => '取消任务';
+
+  @override
+  String get botsTaskReopen => '重新开始';
+
+  @override
+  String get botsTaskTitleHint => '要做什么';
+
+  @override
+  String get botsTaskSave => '添加';
+
+  @override
+  String get botsTaskGone => '这条任务已不存在';
+
+  @override
   String get botsDependencies => '依赖';
 
   @override

@@ -3236,6 +3236,75 @@ abstract class L10n {
   /// **'编号'**
   String get botsTaskId;
 
+  /// No description provided for @botsTaskRunning.
+  String botsTaskRunning(String title);
+
+  /// No description provided for @botsTaskAdd.
+  String get botsTaskAdd;
+
+  /// No description provided for @botsTaskNoneOpen.
+  String get botsTaskNoneOpen;
+
+  /// No description provided for @botsTaskReady.
+  String get botsTaskReady;
+
+  /// No description provided for @botsTaskClaimed.
+  String get botsTaskClaimed;
+
+  /// No description provided for @botsTaskDoing.
+  String get botsTaskDoing;
+
+  /// No description provided for @botsTaskFailed.
+  String get botsTaskFailed;
+
+  /// No description provided for @botsTaskCancelled.
+  String get botsTaskCancelled;
+
+  /// No description provided for @botsTaskPending.
+  String get botsTaskPending;
+
+  /// No description provided for @botsTaskReassign.
+  String get botsTaskReassign;
+
+  /// No description provided for @botsTaskDepsDone.
+  String get botsTaskDepsDone;
+
+  /// No description provided for @botsTaskBlocked.
+  String botsTaskBlocked(String ids);
+
+  /// No description provided for @botsTaskNote.
+  String get botsTaskNote;
+
+  /// No description provided for @botsTaskFromGoal.
+  String get botsTaskFromGoal;
+
+  /// No description provided for @botsTaskTimeline.
+  String get botsTaskTimeline;
+
+  /// No description provided for @botsTaskNoEvents.
+  String get botsTaskNoEvents;
+
+  /// No description provided for @botsTaskLoading.
+  String get botsTaskLoading;
+
+  /// No description provided for @botsTaskStart.
+  String get botsTaskStart;
+
+  /// No description provided for @botsTaskCancel.
+  String get botsTaskCancel;
+
+  /// No description provided for @botsTaskReopen.
+  String get botsTaskReopen;
+
+  /// No description provided for @botsTaskTitleHint.
+  String get botsTaskTitleHint;
+
+  /// No description provided for @botsTaskSave.
+  String get botsTaskSave;
+
+  /// No description provided for @botsTaskGone.
+  String get botsTaskGone;
+
   /// No description provided for @botsDependencies.
   ///
   /// In zh, this message translates to:
@@ -35026,23 +35095,7 @@ class _L10nDelegate extends LocalizationsDelegate<L10n> {
 
   @override
   bool shouldReload(_L10nDelegate old) => false;
-}
 
-L10n lookupL10n(Locale locale) {
-  // Lookup logic when only language code is specified.
-  switch (locale.languageCode) {
-    case 'en':
-      return L10nEn();
-    case 'zh':
-      return L10nZh();
-  }
-
-  throw FlutterError(
-    'L10n.delegate failed to load unsupported locale "$locale". This is likely '
-    'an issue with the localizations generation tool. Please file an issue '
-    'on GitHub with a reproducible sample app and the gen-l10n configuration '
-    'that was used.',
-  );
 
 
   String get chatGoalRunning;
@@ -35082,4 +35135,21 @@ L10n lookupL10n(Locale locale) {
   String get hubBotThinking;
   String get hubFlatBubbles;
   String get hubBubbleWidth;
+}
+
+L10n lookupL10n(Locale locale) {
+  // Lookup logic when only language code is specified.
+  switch (locale.languageCode) {
+    case 'en':
+      return L10nEn();
+    case 'zh':
+      return L10nZh();
+  }
+
+  throw FlutterError(
+    'L10n.delegate failed to load unsupported locale "$locale". This is likely '
+    'an issue with the localizations generation tool. Please file an issue '
+    'on GitHub with a reproducible sample app and the gen-l10n configuration '
+    'that was used.',
+  );
 }

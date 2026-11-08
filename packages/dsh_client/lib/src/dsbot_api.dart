@@ -1239,6 +1239,212 @@ class DsBotRoomProgress {
 }
 
 
+/// A group's task board: every task of this group, which of them can start
+/// now, and the room's version for change detection.
+class DsBotTasksView {
+  const DsBotTasksView({
+    required this.roomId,
+    this.version = 0,
+    this.tasks = const [],
+    this.ready = const {},
+  });
+
+  factory DsBotTasksView.fromJson(Object? json) {
+    final map = asMapOrEmpty(json);
+    return DsBotTasksView(
+      roomId: asString(map['roomId']) ?? '',
+      version: asInt(map['version']) ?? 0,
+      tasks: [for (final task in asListOrEmpty(map['tasks'])) DsBotTask.fromJson(task)],
+      ready: {for (final id in asStringList(map['ready'])) id},
+    );
+  }
+
+  final String roomId;
+
+  /// Bumped by the Host whenever a task changes; lets a page skip a redraw.
+  final int version;
+  final List<DsBotTask> tasks;
+
+  /// Ids that can start now: pending, every dependency done, someone assigned.
+  final Set<String> ready;
+
+  bool get isEmpty => tasks.isEmpty;
+
+  /// Not done and not cancelled: 「还剩几件事」.
+  List<DsBotTask> get open => [for (final task in tasks) if (!task.closed) task];
+
+  int get doneCount => [for (final task in tasks) if (task.done) task].length;
+
+  /// The one in progress (or handed out, waiting to start): what the folded bar
+  /// says besides the count.
+  DsBotTask? get current {
+    for (final task in tasks) {
+      if (task.status == 'doing') return task;
+    }
+    for (final task in tasks) {
+      if (task.status == 'claimed') return task;
+    }
+    return null;
+  }
+
+  DsBotTask? task(String id) {
+    for (final task in tasks) {
+      if (task.id == id) return task;
+    }
+    return null;
+  }
+
+  /// The dependencies of [task] that are not done yet: what it waits for.
+  List<DsBotTask> waitingOn(DsBotTask task) {
+    final waiting = <DsBotTask>[];
+    for (final id in task.deps) {
+      final other = this.task(id);
+      if (other != null && !other.done) waiting.add(other);
+    }
+    return waiting;
+  }
+}
+
+/// One task of a group's board.
+class DsBotTask {
+  const DsBotTask({
+    required this.id,
+    required this.roomId,
+    required this.title,
+    this.note = '',
+    this.status = 'pending',
+    this.assignee,
+    this.createdBy = 'user',
+    this.attempt = 1,
+    this.attemptId = '',
+    this.deps = const [],
+    this.kind = 'work',
+    this.gate = false,
+    this.source = 'manual',
+    this.goalStage,
+    this.order = 0,
+    this.createdAt = 0,
+    this.updatedAt = 0,
+    this.doneAt,
+  });
+
+  factory DsBotTask.fromJson(Object? json) {
+    final map = asMapOrEmpty(json);
+    return DsBotTask(
+      id: asString(map['id']) ?? '',
+      roomId: asString(map['roomId']) ?? '',
+      title: asString(map['title']) ?? '',
+      note: asString(map['note']) ?? '',
+      status: asString(map['status']) ?? 'pending',
+      assignee: asString(map['assignee']),
+      createdBy: asString(map['createdBy']) ?? 'user',
+      attempt: asInt(map['attempt']) ?? 1,
+      attemptId: asString(map['attemptId']) ?? '',
+      deps: asStringList(map['deps']),
+      kind: asString(map['kind']) ?? 'work',
+      gate: asBool(map['gate']) ?? false,
+      source: asString(map['source']) ?? 'manual',
+      goalStage: asInt(map['goalStage']),
+      order: asInt(map['order']) ?? 0,
+      createdAt: asInt(map['createdAt']) ?? 0,
+      updatedAt: asInt(map['updatedAt']) ?? 0,
+      doneAt: asInt(map['doneAt']),
+    );
+  }
+
+  final String id;
+  final String roomId;
+  final String title;
+  final String note;
+
+  /// `pending`, `claimed`, `doing`, `done`, `failed` or `cancelled`.
+  final String status;
+
+  /// The member whose task it is; null means nobody was named.
+  final String? assignee;
+
+  /// `user`, or the id of the member who added it.
+  final String createdBy;
+
+  /// One more every time the task is handed to someone else.
+  final int attempt;
+
+  /// Identifies this attempt: a late update from the previous holder carries an
+  /// old one and is refused.
+  final String attemptId;
+
+  /// Tasks that must be done before this one starts.
+  final List<String> deps;
+
+  /// `work`, `requirements`, `implementation`, `verification`, `review`,
+  /// `repair` or `integration`.
+  final String kind;
+
+  /// Whether finishing goes through the quality gate.
+  final bool gate;
+
+  /// `manual`, or `goal` for a stage of the group's goal (read-only here).
+  final String source;
+
+  /// The goal stage it came from, when `source` is `goal`.
+  final int? goalStage;
+
+  final int order;
+  final int createdAt;
+  final int updatedAt;
+  final int? doneAt;
+
+  bool get pending => status == 'pending';
+  bool get claimed => status == 'claimed';
+  bool get doing => status == 'doing';
+  bool get done => status == 'done';
+  bool get failed => status == 'failed';
+  bool get cancelled => status == 'cancelled';
+
+  /// Finished either way: done or cancelled. 「还剩几件事」 counts the rest.
+  bool get closed => done || cancelled;
+
+  /// No more work without reopening: the three end states.
+  bool get terminal => closed || failed;
+
+  /// The goal's stage owns this task's state; the page offers no controls.
+  bool get fromGoal => source == 'goal';
+
+  /// A stable number for 「等 3 号」: the last five characters of the id.
+  String get shortId => id.length <= 5 ? id : id.substring(id.length - 5);
+}
+
+/// One line of a task's timeline: who changed what, at what time.
+class DsBotTaskEvent {
+  const DsBotTaskEvent({
+    required this.at,
+    this.by = '',
+    this.kind = '',
+    this.from,
+    this.to,
+    this.text = '',
+  });
+
+  factory DsBotTaskEvent.fromJson(Object? json) {
+    final map = asMapOrEmpty(json);
+    return DsBotTaskEvent(
+      at: asInt(map['at']) ?? 0,
+      by: asString(map['by']) ?? '',
+      kind: asString(map['kind']) ?? '',
+      from: asString(map['from']),
+      to: asString(map['to']),
+      text: asString(map['text']) ?? '',
+    );
+  }
+
+  final int at;
+  final String by;
+  final String kind;
+  final String? from;
+  final String? to;
+  final String text;
+}
+
 /// A group's goal, as the goal panel draws it: the stages, each with its
 /// acceptance and the members' tasks, plus the goal's own words.
 class DsBotGoalView {
@@ -1918,6 +2124,78 @@ class DsBotApi {
       'action': action,
       if (stopWork) 'stopWork': true,
     });
+  }
+
+  /// The group's task board: the tasks, which can start now, and the room's
+  /// version. A read, so opening the bar never starts a turn.
+  Future<DsBotTasksView> tasksView(String roomId) async =>
+      DsBotTasksView.fromJson(await call('tasks-view', {'roomId': roomId}));
+
+  /// One task's timeline: who changed what, and what was said about it.
+  Future<List<DsBotTaskEvent>> taskEvents(String roomId, String id) async {
+    final map = asMapOrEmpty(await call('task-events', {'roomId': roomId, 'id': id}));
+    return [for (final event in asListOrEmpty(map['events'])) DsBotTaskEvent.fromJson(event)];
+  }
+
+  /// Adds a task to the group's board. The Host decides its id, attempt and
+  /// order; the page reads them back from the answer.
+  Future<DsBotTask> taskAdd(
+    String roomId, {
+    required String title,
+    String? note,
+    String? assignee,
+    List<String> deps = const [],
+    String? kind,
+    bool gate = false,
+  }) async {
+    final map = asMapOrEmpty(
+      await call('task-add', {
+        'roomId': roomId,
+        'title': title,
+        'note': ?note,
+        'assignee': ?assignee,
+        'deps': deps,
+        'kind': ?kind,
+        if (gate) 'gate': true,
+      }),
+    );
+    return DsBotTask.fromJson(map['task']);
+  }
+
+  /// Changes a task. [attemptId] is the one the page last read: an update from
+  /// an attempt that was replaced meanwhile is refused (`task/stale`).
+  Future<DsBotTask> taskUpdate(
+    String roomId,
+    String id, {
+    required String attemptId,
+    String? status,
+    String? assignee,
+    String? title,
+    String? note,
+    List<String>? deps,
+    String? verdict,
+    String? acceptance,
+  }) async {
+    final map = asMapOrEmpty(
+      await call('task-update', {
+        'roomId': roomId,
+        'id': id,
+        'attemptId': attemptId,
+        'status': ?status,
+        'assignee': ?assignee,
+        'title': ?title,
+        'note': ?note,
+        'deps': ?deps,
+        'verdict': ?verdict,
+        'acceptance': ?acceptance,
+      }),
+    );
+    return DsBotTask.fromJson(map['task']);
+  }
+
+  /// Removes a task that was added by mistake; a real ending is `cancelled`.
+  Future<void> taskRemove(String roomId, String id, {required String attemptId}) async {
+    await call('task-remove', {'roomId': roomId, 'id': id, 'attemptId': attemptId});
   }
 
   /// A running round's progress: who has spoken, who is speaking. A read, so

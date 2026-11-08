@@ -524,6 +524,43 @@
   "botsWaitingDependencies": "Waiting on dependencies",
   "botsReadyToStart": "Ready to start",
   "botsTaskId": "ID",
+  "botsTaskRunning": "Now: {title}",
+  "@botsTaskRunning": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "botsTaskAdd": "Add a task",
+  "botsTaskNoneOpen": "Nothing open",
+  "botsTaskReady": "Ready to start",
+  "botsTaskClaimed": "Claimed",
+  "botsTaskDoing": "In progress",
+  "botsTaskFailed": "Failed",
+  "botsTaskCancelled": "Cancelled",
+  "botsTaskPending": "Not started",
+  "botsTaskReassign": "Reassign",
+  "botsTaskDepsDone": "Dependencies done",
+  "botsTaskBlocked": "Waiting for {ids}",
+  "@botsTaskBlocked": {
+    "placeholders": {
+      "ids": {
+        "type": "String"
+      }
+    }
+  },
+  "botsTaskNote": "Note",
+  "botsTaskFromGoal": "Owned by the group goal",
+  "botsTaskTimeline": "Timeline",
+  "botsTaskNoEvents": "Nothing recorded yet",
+  "botsTaskLoading": "Loading…",
+  "botsTaskStart": "Start",
+  "botsTaskCancel": "Cancel task",
+  "botsTaskReopen": "Reopen",
+  "botsTaskTitleHint": "What needs doing",
+  "botsTaskSave": "Add",
+  "botsTaskGone": "This task is gone",
   "botsDependencies": "Dependencies",
   "botsWriteScopes": "Write scopes",
   "botsMessagesReadFailed": "Couldn’t load messages",
