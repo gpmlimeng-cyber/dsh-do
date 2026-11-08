@@ -1150,12 +1150,14 @@ class _BotTranscriptState extends State<BotTranscript> {
 }
 
 /// Space above a row: tight inside one speaker's run, wider between turns.
+/// Rows start where the composer starts (12), so a member's face sits on the
+/// same left edge as the field below it; the right keeps the old air.
 EdgeInsets rowPadding(BotRow row) => switch (row) {
-  BotItemRow(continued: true) => const EdgeInsets.fromLTRB(16, 4, 16, 0),
-  BotTimeRow() => const EdgeInsets.fromLTRB(16, 20, 16, 4),
-  BotArtifactsRow() => const EdgeInsets.fromLTRB(16, 12, 16, 0),
-  BotMemoryNoticeRow() => const EdgeInsets.fromLTRB(16, 2, 16, 0),
-  _ => const EdgeInsets.fromLTRB(16, 16, 16, 0),
+  BotItemRow(continued: true) => const EdgeInsets.fromLTRB(12, 4, 16, 0),
+  BotTimeRow() => const EdgeInsets.fromLTRB(12, 20, 16, 4),
+  BotArtifactsRow() => const EdgeInsets.fromLTRB(12, 12, 16, 0),
+  BotMemoryNoticeRow() => const EdgeInsets.fromLTRB(12, 2, 16, 0),
+  _ => const EdgeInsets.fromLTRB(12, 16, 16, 0),
 };
 
 /// 「14:05」 between messages far apart, with a hairline on each side so the
