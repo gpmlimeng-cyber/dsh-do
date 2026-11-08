@@ -111,9 +111,7 @@ class UserBubble extends ConsumerWidget {
       );
     }
 
-    // 消息布局: 平铺 draws the person's line as plain text at the column's
-    // width; the bubble is the default.
-    final flat = ref.watch(settingsProvider.select((s) => s.flatBubbles));
+    // 消息布局只管 Bot 怎么说：自己发的永远是气泡，一眼能认出哪句是自己说的。
 
     // Its own semantics node, carrying the text and the long-press action.
     final bubble = Semantics(
@@ -123,12 +121,9 @@ class UserBubble extends ConsumerWidget {
       child: HoldLift(
         onLongPress: () => _menu(context),
         child: DecoratedBox(
-          decoration: ShapeDecoration(
-            color: flat ? Colors.transparent : surfaces.userBubble,
-            shape: AppShape.bubble,
-          ),
+          decoration: ShapeDecoration(color: surfaces.userBubble, shape: AppShape.bubble),
           child: Padding(
-            padding: flat ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: content,
           ),
         ),
