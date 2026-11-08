@@ -473,6 +473,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
     required String? roomSession,
     required BotActionScope fullTextScope,
     required List<InlineMention> mentions,
+    BotRunFigures? figures,
   }) {
     // `botId` is the Bot id (it looks like a Session id, hence the old naming;
     // a line that lost it still names its sender). The member's Session in this
@@ -496,6 +497,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
           item: item,
           bot: speaker,
           continued: continued,
+          figures: figures,
           mentions: mentions,
           // 这一轮的用量面板：成员在本群的那个 Session。
           onStats: speakerSession == null ? null : () => showUsageSheet(context, sessionId: speakerSession),
@@ -1042,7 +1044,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
                     ).push(BotMemoryPage.route(botId: botId, roomId: botId == null ? room.id : null)),
                   ),
                   BotToolGroupRow(:final items) => BotToolGroup(items: items),
-                  BotItemRow(:final item, :final continued) => switch (item.kind) {
+                  BotItemRow(:final item, :final continued, :final figures) => switch (item.kind) {
                     // As in a Bot's chat: the echoed line names what it carried,
                     // so the picture stays on screen after the round settles.
                     DsBotItemKind.user => BotUserMessage(
@@ -1059,6 +1061,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
                       context,
                       item,
                       continued: continued,
+                      figures: figures,
                       room: room,
                       team: team,
                       roomSession: roomSession,

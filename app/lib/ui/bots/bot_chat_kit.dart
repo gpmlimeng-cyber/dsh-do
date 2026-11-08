@@ -511,12 +511,18 @@ List<BotRow> attachMemoryNotices(
   return out;
 }
 
+/// 这一轮的这一段（首行加它的续行）的数字:耗时、步数、tokens。
+typedef BotRunFigures = ({Duration duration, int steps, int tokens});
+
 final class BotItemRow extends BotRow {
-  const BotItemRow(this.item, {this.continued = false});
+  const BotItemRow(this.item, {this.continued = false, this.figures});
   final DsBotItem item;
 
   /// Same speaker as the row above: no face, no name.
   final bool continued;
+
+  /// 这一段这一轮的统计,摆在首行的成员行上;续行自己不再重复一遍。
+  final BotRunFigures? figures;
 }
 
 final class BotTimeRow extends BotRow {
@@ -578,7 +584,36 @@ List<BotRow> transcriptRows(
   }
   if (streaming != null) rows.add(BotStreamingRow(streaming));
   if (typing != null) rows.add(typing);
-  return rows;
+  return _withRunFigures(rows);
+}
+
+/// 一段话只说一次账:续行不再各带一份耗时,把这一段最后一行的数字合到首行的
+/// 成员行上。没有数字的段原样返回。
+List<BotRow> _withRunFigures(List<BotRow> rows) {
+  final out = [...rows];
+  for (var i = 0; i < out.length; i++) {
+    final row = out[i];
+    if (row is! BotItemRow) continue;
+    var last = i;
+    while (last + 1 < out.length && out[last + 1] is BotItemRow && (out[last + 1] as BotItemRow).continued) {
+      last++;
+    }
+    BotRunFigures? figures;
+    for (var k = last; k >= i; k--) {
+      final item = (out[k] as BotItemRow).item;
+      final took = item.duration;
+      if (took != null && took >= const Duration(seconds: 1)) {
+        figures = (duration: took, steps: item.steps ?? 0, tokens: item.tokens ?? 0);
+        break;
+      }
+    }
+    if (figures != null) {
+      final first = out[i] as BotItemRow;
+      out[i] = BotItemRow(first.item, figures: figures);
+    }
+    i = last;
+  }
+  return out;
 }
 
 /// The entries a Bot's chat draws: a turn's thinking is **one** line, and only
@@ -1410,6 +1445,7 @@ class GroupMessage extends ConsumerWidget {
     this.onLinkTap,
     this.mentions = const [],
     this.onStats,
+    this.figures,
   });
 
   final DsBotItem item;
@@ -1436,6 +1472,9 @@ class GroupMessage extends ConsumerWidget {
   /// The 统计面板 behind the line's footnote (用量 of the member's Session in this
   /// group). Null on a line without one, which draws no footnote.
   final VoidCallback? onStats;
+
+  /// 这一段这一轮的统计（首行才有）：摆在这一行的成员行上。
+  final BotRunFigures? figures;
 
   static const face = 28.0;
   static const gap = 10.0;
@@ -1477,14 +1516,15 @@ class GroupMessage extends ConsumerWidget {
                     style: AppType.tabular(theme.textTheme.labelSmall!.copyWith(color: dsh.textTertiary)),
                   ),
                 ],
-                // 这一轮的统计就摆在成员行上：耗时 · 步数 · tokens，点开是统计面板。
-                if (item.duration case final took? when took >= const Duration(seconds: 1)) ...[
+                // 这一轮的统计摆在成员行上：耗时 · 步数 · tokens，点开是统计面板。
+                // 数字来自这一段的最后一行（见 _withRunFigures），续行不再各带一份。
+                if (figures case final run?) ...[
                   const SizedBox(width: 8),
                   Flexible(
                     child: BotGroupFootnote(
-                      duration: took,
-                      steps: item.steps ?? 0,
-                      tokens: item.tokens ?? 0,
+                      duration: run.duration,
+                      steps: run.steps,
+                      tokens: run.tokens,
                       onTap: onStats,
                     ),
                   ),
@@ -1513,18 +1553,6 @@ class GroupMessage extends ConsumerWidget {
           onLinkTap: onLinkTap,
           ),
         ),
-        // 续行没有成员行，统计就留在气泡下面，别让这一轮的账丢在半路。
-        if (continued)
-          if (item.duration case final took? when took >= const Duration(seconds: 1))
-            Padding(
-              padding: const EdgeInsets.only(top: 2),
-              child: BotGroupFootnote(
-                duration: took,
-                steps: item.steps ?? 0,
-                tokens: item.tokens ?? 0,
-                onTap: onStats,
-              ),
-            ),
         if (onShowAll != null)
           TextButton(
             onPressed: onShowAll,
