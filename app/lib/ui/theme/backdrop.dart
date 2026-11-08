@@ -124,6 +124,7 @@ class BackdropVeil extends StatelessWidget {
   BackdropVeil.top({super.key, required double height, this.feather = 14, this.glow = true, this.opacity = 1})
     : solidHeight = _FixedHeight(height),
       featherShare = null,
+      inside = false,
       fromTop = true;
 
   /// The page's own backdrop over the whole box it is given (the composer's

@@ -1514,16 +1514,17 @@ class GroupMessage extends ConsumerWidget {
           ),
         ),
         // 续行没有成员行，统计就留在气泡下面，别让这一轮的账丢在半路。
-        if (continued && item.duration case final took? when took >= const Duration(seconds: 1))
-          Padding(
-            padding: const EdgeInsets.only(top: 2),
-            child: BotGroupFootnote(
-              duration: took,
-              steps: item.steps ?? 0,
-              tokens: item.tokens ?? 0,
-              onTap: onStats,
+        if (continued)
+          if (item.duration case final took? when took >= const Duration(seconds: 1))
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: BotGroupFootnote(
+                duration: took,
+                steps: item.steps ?? 0,
+                tokens: item.tokens ?? 0,
+                onTap: onStats,
+              ),
             ),
-          ),
         if (onShowAll != null)
           TextButton(
             onPressed: onShowAll,
