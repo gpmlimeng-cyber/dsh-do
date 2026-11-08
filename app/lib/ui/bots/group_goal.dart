@@ -1,17 +1,21 @@
-// 群目标：输入区上方一条胶囊，点开是「目标与验收」面板。
+// 群目标：输入区上方一条，点开在原地展开成一张「目标与验收」清单。
 //
-// 数据来自 ds-bot 的 goal-view（阶段、完成标准、成员任务都在它的 room.goal 里）,
-// 样式沿用 App 自己的 DockRow / SheetGroup：网页版的信息层级，原生的样子。
+// 壳照输入区上方的 todo 条（ui/chat/dock/todo_bar.dart）：一条折叠，点一下
+// 原地长出来，再点收起，最多占屏幕四成，多了在壳里滚。里面的信息照网页版
+// ds-bot 的 goal.js：一排阶段点、这一段的验收、成员任务、三个键。
+//
+// 同一份内容也单独弹成抽屉（对话详情的进度页点一下就打开它）。
 
 import 'package:dsh_client/dsh_client.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
 import '../../state/bots_state.dart';
 import '../chat/dock/dock_pill.dart';
 import '../common/app_sheet.dart';
-import '../common/sheet_title_bar.dart';
+import '../common/expand_reveal.dart';
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
 
@@ -56,94 +60,165 @@ class GroupGoalBar extends ConsumerWidget {
     final goal = ref.watch(groupGoalProvider(roomId)).value;
     return DockSlot(
       key: const ValueKey('group-goal'),
-      child: goal == null || goal.title.isEmpty ? null : _Bar(goal: goal, roomId: roomId),
+      child: goal == null || goal.title.isEmpty ? null : _GoalCard(goal: goal, roomId: roomId),
     );
   }
 }
 
-class _Bar extends StatelessWidget {
-  const _Bar({required this.goal, required this.roomId});
+/// 同一份内容单独弹成抽屉：对话详情的进度页点目标或某一步时打开。
+Future<void> showGroupGoalSheet(BuildContext context, String roomId) => showAppSheet<void>(
+  context,
+  isScrollControlled: true,
+  builder: (sheetContext) => Consumer(
+    builder: (context, ref, _) {
+      final l10n = context.l10n;
+      final goal = ref.watch(groupGoalProvider(roomId)).value;
+      return SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          child: goal == null || goal.title.isEmpty
+              ? Text(l10n.chatGoalNone, style: Theme.of(context).textTheme.bodyMedium)
+              : GroupGoalPanel(goal: goal, roomId: roomId),
+        ),
+      );
+    },
+  ),
+);
+
+class _GoalCard extends ConsumerStatefulWidget {
+  const _GoalCard({required this.goal, required this.roomId});
 
   final DsBotGroupGoal goal;
   final String roomId;
 
   @override
+  ConsumerState<_GoalCard> createState() => _GoalCardState();
+}
+
+class _GoalCardState extends ConsumerState<_GoalCard> {
+  bool _open = false;
+
+  void _toggle() {
+    HapticFeedback.selectionClick();
+    setState(() => _open = !_open);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final dsh = DshColors.of(context);
+    final goal = widget.goal;
     final stage = goal.stage;
-    return Semantics(
+    final word = goalStateWord(l10n, goal);
+    final done = goal.status == 'complete';
+    final header = Semantics(
       button: true,
+      expanded: _open,
       label: l10n.botsGlyphViewGoal,
-      child: GlassSurface(
-        tier: GlassTier.chrome,
-        borderRadius: DockMetrics.shape,
-        grouped: true,
-        onTap: () => showGroupGoalSheet(context, roomId),
+      excludeSemantics: true,
+      child: InkWell(
+        onTap: _toggle,
+        customBorder: const RoundedSuperellipseBorder(borderRadius: DockMetrics.shape),
         child: DockRow(
-          leading: DockGlyph.icon(AppIcons.goal, color: dsh.textTertiary),
-          content: Row(
-            children: [
-              Text(l10n.chatGoal, style: DockText.title(context)),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  goal.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+          leading: DockGlyph.icon(
+            done ? AppIcons.success : AppIcons.goal,
+            color: done ? dsh.success : dsh.textTertiary,
+          ),
+          content: Text.rich(
+            TextSpan(
+              children: [
+                if (goal.position.isNotEmpty) ...[
+                  TextSpan(text: goal.position, style: AppType.tabular(DockText.title(context))),
+                  TextSpan(text: ' · ', style: DockText.detail(context)),
+                ],
+                TextSpan(
+                  text: stage != null && stage.title.isNotEmpty ? stage.title : goal.title,
                   style: DockText.detail(context),
                 ),
-              ),
-              if (goal.position.isNotEmpty) ...[
-                const SizedBox(width: 6),
-                Text(goal.position, style: DockText.detail(context, color: dsh.textTertiary)),
+                if (word != null) TextSpan(text: ' · $word', style: DockText.detail(context, color: goalStateColor(context, goal))),
               ],
-              if (stage != null) ...[
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    stage.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: DockText.detail(context, color: dsh.textTertiary),
-                  ),
-                ),
-              ],
-            ],
+            ),
+            maxLines: 1,
+            softWrap: false,
+            overflow: TextOverflow.ellipsis,
           ),
-          accessory: goalStateWord(l10n, goal) == null
-              ? null
-              : Text(goalStateWord(l10n, goal)!, style: DockText.title(context, color: goalStateColor(context, goal))),
+          accessory: goal.stages.length > 1 ? _Segments(goal: goal, at: goal.current) : null,
           trailing: DockGlyph(
-            child: Icon(AppIcons.more, size: DockGlyph.iconSize, color: dsh.textTertiary),
+            child: AnimatedRotation(
+              turns: _open ? 0.5 : 0,
+              duration: AppMotion.of(context, AppMotion.standard),
+              curve: AppMotion.std,
+              child: Icon(AppIcons.collapse, size: DockGlyph.iconSize, color: dsh.textTertiary),
+            ),
           ),
+        ),
+      ),
+    );
+    final maxBody = (MediaQuery.sizeOf(context).height * 0.4).clamp(180.0, 360.0);
+    return GlassSurface(
+      tier: GlassTier.chrome,
+      borderRadius: DockMetrics.shape,
+      grouped: true,
+      child: Material(
+        type: MaterialType.transparency,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            header,
+            ExpandReveal(
+              open: _open,
+              duration: AppMotion.standard,
+              curve: AppMotion.std,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: maxBody),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(DockMetrics.edge, 0, DockMetrics.edge, DockMetrics.edge),
+                  child: GroupGoalPanel(goal: goal, roomId: widget.roomId),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-/// 「目标与验收」面板。
-Future<void> showGroupGoalSheet(BuildContext context, String roomId) =>
-    showAppSheet<void>(context, isScrollControlled: true, builder: (_) => GroupGoalSheet(roomId: roomId));
+/// 目标的内容：阶段条、这一段、目标与验收、三个键。条里和抽屉里同一份。
+class GroupGoalPanel extends ConsumerStatefulWidget {
+  const GroupGoalPanel({super.key, required this.goal, required this.roomId});
 
-class GroupGoalSheet extends ConsumerStatefulWidget {
-  const GroupGoalSheet({super.key, required this.roomId});
-
+  final DsBotGroupGoal goal;
   final String roomId;
 
   @override
-  ConsumerState<GroupGoalSheet> createState() => _GroupGoalSheetState();
+  ConsumerState<GroupGoalPanel> createState() => _GroupGoalPanelState();
 }
 
-class _GroupGoalSheetState extends ConsumerState<GroupGoalSheet> {
+class _GroupGoalPanelState extends ConsumerState<GroupGoalPanel> {
   bool _busy = false;
 
-  Future<void> _control(DsBotGroupGoal goal, String action) async {
+  /// 正在看的是哪一段；空 = 当前段。
+  int? _selected;
+
+  DsBotGroupGoal get _goal => widget.goal;
+
+  int get _at => _selected ?? _goal.current;
+
+  DsBotGoalStage? get _stage {
+    final at = _at;
+    if (at < 0 || at >= _goal.stages.length) return null;
+    return _goal.stages[at];
+  }
+
+  Future<void> _control(String action) async {
     if (_busy) return;
+    HapticFeedback.selectionClick();
     setState(() => _busy = true);
     try {
-      await ref.read(dsBotProvider.notifier).api?.goalControl(widget.roomId, goal.id, action);
+      await ref.read(dsBotProvider.notifier).api?.goalControl(widget.roomId, _goal.id, action);
       ref.invalidate(groupGoalProvider(widget.roomId));
     } catch (error) {
       if (mounted) ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text('$error')));
@@ -157,111 +232,73 @@ class _GroupGoalSheetState extends ConsumerState<GroupGoalSheet> {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final dsh = DshColors.of(context);
-    final goal = ref.watch(groupGoalProvider(widget.roomId)).value;
-    return SafeArea(
-      top: false,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.only(bottom: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SheetTitleBar(l10n.chatGoalPanel),
-            if (goal == null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-                child: Text(l10n.chatGoalNone, style: theme.textTheme.bodyMedium?.copyWith(color: dsh.textTertiary)),
-              )
-            else ...[
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(goal.title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
-                    ),
-                    if (goal.position.isNotEmpty)
-                      Text(goal.position, style: AppType.tabular(theme.textTheme.labelMedium!.copyWith(color: dsh.textTertiary))),
-                    if (goalStateWord(l10n, goal) case final word?) ...[
-                      const SizedBox(width: 8),
-                      Text(word, style: theme.textTheme.labelMedium?.copyWith(color: goalStateColor(context, goal))),
-                    ],
-                  ],
-                ),
+    final goal = _goal;
+    final stage = _stage;
+    final small = theme.textTheme.labelSmall?.copyWith(color: dsh.textTertiary);
+    final controlStyle = TextButton.styleFrom(
+      visualDensity: VisualDensity.compact,
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      textStyle: theme.textTheme.labelMedium,
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (goal.stages.length > 1)
+          _StageBar(
+            goal: goal,
+            at: _at,
+            onSelect: (index) => setState(() => _selected = index),
+          ),
+        if (stage != null) ...[
+          Row(
+            children: [
+              Expanded(
+                child: Text(stage.title, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
               ),
-              if (goal.stages.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-                  child: _StageDots(goal: goal),
-                ),
-              if (goal.stage case final stage?) ...[
-                SheetGroup(title: l10n.chatGoalStageCurrent, children: [
-                  _Labeled(label: l10n.chatGoalStageDone, value: stage.acceptance),
-                ]),
-                if (stage.tasks.isNotEmpty)
-                  SheetGroup(title: l10n.chatGoalTasks, children: [
-                    for (final task in stage.tasks) _TaskRow(task: task),
-                  ]),
-              ],
-              if (goal.objective.isNotEmpty || goal.acceptance.isNotEmpty || goal.constraints.isNotEmpty)
-                SheetGroup(title: l10n.chatGoalAcceptance, children: [
-                  if (goal.objective.isNotEmpty) _Labeled(label: l10n.chatGoal, value: goal.objective),
-                  if (goal.acceptance.isNotEmpty) _Labeled(label: l10n.chatGoalAcceptanceDone, value: goal.acceptance),
-                  for (final rule in goal.constraints) _Labeled(label: l10n.chatGoalRule, value: rule),
-                ]),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
-                child: Row(
-                  children: [
-                    if (goal.status == 'active')
-                      Expanded(child: OutlinedButton(onPressed: _busy ? null : () => _control(goal, 'pause'), child: Text(l10n.chatPauseGoal))),
-                    if (goal.status == 'paused')
-                      Expanded(child: FilledButton(onPressed: _busy ? null : () => _control(goal, 'resume'), child: Text(l10n.chatResumeGoal))),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: _busy ? null : () => _control(goal, 'stop'),
-                        style: OutlinedButton.styleFrom(foregroundColor: theme.colorScheme.error),
-                        child: Text(l10n.chatClearGoal),
-                      ),
-                    ),
-                  ],
-                ),
+              if (stage.passed)
+                Text(l10n.commonCompleted, style: theme.textTheme.labelSmall?.copyWith(color: dsh.success))
+              else if (_at == goal.current)
+                Text(l10n.chatGoalStageCurrent, style: theme.textTheme.labelSmall?.copyWith(color: dsh.textTertiary)),
+            ],
+          ),
+          if (stage.acceptance.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(l10n.chatGoalStageDone, style: small),
+            const SizedBox(height: 1),
+            Text(stage.acceptance, style: theme.textTheme.bodyMedium),
+          ],
+          if (stage.tasks.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(l10n.chatGoalTasks, style: small),
+            const SizedBox(height: 2),
+            for (final task in stage.tasks) _TaskRow(task: task),
+          ],
+        ] else if (goal.status == 'drafting')
+          Text(l10n.chatGoalHint, style: theme.textTheme.bodyMedium?.copyWith(color: dsh.textTertiary)),
+        if (goal.objective.isNotEmpty || goal.acceptance.isNotEmpty || goal.constraints.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Text(l10n.chatGoalAcceptance, style: small),
+          const SizedBox(height: 2),
+          if (goal.objective.isNotEmpty) _Labeled(value: goal.objective),
+          if (goal.acceptance.isNotEmpty) _Labeled(value: goal.acceptance),
+          for (final rule in goal.constraints) _Labeled(value: rule),
+        ],
+        if (goal.status == 'active' || goal.status == 'paused') ...[
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              if (goal.status == 'active')
+                TextButton(onPressed: _busy ? null : () => _control('pause'), style: controlStyle, child: Text(l10n.chatPauseGoal))
+              else
+                TextButton(onPressed: _busy ? null : () => _control('resume'), style: controlStyle, child: Text(l10n.chatResumeGoal)),
+              const SizedBox(width: 4),
+              TextButton(
+                onPressed: _busy ? null : () => _control('stop'),
+                style: controlStyle.copyWith(foregroundColor: WidgetStatePropertyAll(theme.colorScheme.error)),
+                child: Text(l10n.chatClearGoal),
               ),
             ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _StageDots extends StatelessWidget {
-  const _StageDots({required this.goal});
-
-  final DsBotGroupGoal goal;
-
-  @override
-  Widget build(BuildContext context) {
-    final dsh = DshColors.of(context);
-    final primary = Theme.of(context).colorScheme.primary;
-    return Row(
-      children: [
-        for (final (index, stage) in goal.stages.indexed) ...[
-          if (index > 0)
-            Expanded(
-              child: Container(
-                height: 2,
-                margin: const EdgeInsets.symmetric(horizontal: 6),
-                color: stage.passed ? dsh.success : dsh.textTertiary.withValues(alpha: 0.3),
-              ),
-            ),
-          Container(
-            width: index == goal.current ? 12 : 9,
-            height: index == goal.current ? 12 : 9,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: stage.passed ? dsh.success : index == goal.current ? primary : dsh.textTertiary.withValues(alpha: 0.35),
-            ),
           ),
         ],
       ],
@@ -269,6 +306,97 @@ class _StageDots extends StatelessWidget {
   }
 }
 
+/// 折叠条右端的一排阶段点：过的是勾，当前那颗亮着。
+class _Segments extends StatelessWidget {
+  const _Segments({required this.goal, required this.at});
+
+  final DsBotGroupGoal goal;
+  final int at;
+
+  @override
+  Widget build(BuildContext context) {
+    final dsh = DshColors.of(context);
+    final primary = Theme.of(context).colorScheme.primary;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (final (index, stage) in goal.stages.indexed)
+          Container(
+            width: 5,
+            height: 5,
+            margin: const EdgeInsets.only(left: 3),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: stage.passed
+                  ? dsh.success
+                  : index == at
+                  ? primary
+                  : dsh.textTertiary.withValues(alpha: 0.28),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// 展开后的阶段条：一颗一段，点哪段看哪段。
+class _StageBar extends StatelessWidget {
+  const _StageBar({required this.goal, required this.at, required this.onSelect});
+
+  final DsBotGroupGoal goal;
+  final int at;
+  final ValueChanged<int> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final dsh = DshColors.of(context);
+    final primary = theme.colorScheme.primary;
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.only(top: 2, bottom: 8),
+      child: Row(
+        children: [
+          for (final (index, stage) in goal.stages.indexed)
+            Padding(
+              padding: const EdgeInsets.only(right: 5),
+              child: InkWell(
+                onTap: () => onSelect(index),
+                customBorder: const StadiumBorder(),
+                child: Container(
+                  width: 22,
+                  height: 22,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: stage.passed
+                        ? dsh.success.withValues(alpha: 0.16)
+                        : index == at
+                        ? primary.withValues(alpha: 0.16)
+                        : dsh.textTertiary.withValues(alpha: 0.08),
+                    border: index == at ? Border.all(color: primary, width: 1.2) : null,
+                  ),
+                  child: stage.passed
+                      ? Icon(AppIcons.success, size: 13, color: dsh.success)
+                      : Text(
+                          '${index + 1}',
+                          style: AppType.tabular(
+                            theme.textTheme.labelSmall!.copyWith(
+                              color: index == at ? primary : dsh.textTertiary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 一个成员这一步：状态图标 + 名字 + 状态词（+ 被打回几次），下一行是活。
 class _TaskRow extends StatelessWidget {
   const _TaskRow({required this.task});
 
@@ -279,35 +407,54 @@ class _TaskRow extends StatelessWidget {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final dsh = DshColors.of(context);
-    final word = switch (task.status) {
-      'working' => l10n.chatGoalTaskWorking,
-      'reported' => l10n.chatGoalTaskReported,
-      'done' => l10n.chatGoalTaskDone,
-      _ => l10n.chatGoalTaskPending,
+    final (word, tone, icon) = switch (task.status) {
+      'working' => (l10n.chatGoalTaskWorking, dsh.warning, AppIcons.inProgress),
+      'reported' => (l10n.chatGoalTaskReported, theme.colorScheme.primary, AppIcons.inProgress),
+      'done' => (l10n.chatGoalTaskDone, dsh.success, AppIcons.success),
+      _ => (l10n.chatGoalTaskPending, dsh.textTertiary, AppIcons.pending),
     };
-    final tone = switch (task.status) {
-      'working' => dsh.warning,
-      'reported' => theme.colorScheme.primary,
-      'done' => dsh.success,
-      _ => dsh.textTertiary,
-    };
+    final style = theme.textTheme.bodySmall!.copyWith(
+      color: task.status == 'done' ? dsh.textTertiary : theme.colorScheme.onSurfaceVariant,
+    );
+    final line = MediaQuery.textScalerOf(context).scale(style.fontSize ?? 12) * (style.height ?? 1.4);
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
-      child: Column(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(child: Text(task.bot, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.labelLarge)),
-              if (task.rework > 0) ...[
-                Text(l10n.chatGoalRework(task.rework), style: theme.textTheme.labelSmall?.copyWith(color: dsh.warning)),
-                const SizedBox(width: 6),
-              ],
-              Text(word, style: theme.textTheme.labelSmall?.copyWith(color: tone)),
-            ],
+          SizedBox(
+            width: DockMetrics.glyph,
+            height: line,
+            child: Center(child: Icon(icon, size: 15, color: tone)),
           ),
-          const SizedBox(height: 2),
-          Text(task.task, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          const SizedBox(width: DockMetrics.glyphGap),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        task.bot,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(word, style: theme.textTheme.labelSmall?.copyWith(color: tone)),
+                    if (task.rework > 0) ...[
+                      const SizedBox(width: 6),
+                      Text(l10n.chatGoalRework(task.rework), style: theme.textTheme.labelSmall?.copyWith(color: dsh.warning)),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 1),
+                Text(task.task, style: style, maxLines: 3, overflow: TextOverflow.ellipsis),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -315,23 +462,19 @@ class _TaskRow extends StatelessWidget {
 }
 
 class _Labeled extends StatelessWidget {
-  const _Labeled({required this.label, required this.value});
+  const _Labeled({required this.value});
 
-  final String label;
   final String value;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final dsh = DshColors.of(context);
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
-      child: Column(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: theme.textTheme.labelSmall?.copyWith(color: dsh.textTertiary)),
-          const SizedBox(height: 2),
-          Text(value, style: theme.textTheme.bodyMedium),
+          const SizedBox(width: 2),
+          Expanded(child: Text(value, style: Theme.of(context).textTheme.bodySmall)),
         ],
       ),
     );

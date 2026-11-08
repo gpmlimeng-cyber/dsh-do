@@ -11,10 +11,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/l10n.dart';
 import '../../state/adaptive_layout_state.dart';
 import '../../state/agents_state.dart';
+import '../../state/bots_state.dart';
 import '../../state/chat_state.dart';
 import '../../state/session_detail_state.dart';
 import '../../state/usage_state.dart';
 import '../agents/agent_widgets.dart';
+import '../bots/group_goal.dart';
 import '../chat/chat_header.dart';
 import '../chat/diff_page.dart';
 import '../chat/run_info.dart';
@@ -1052,7 +1054,109 @@ class _ChangesTabState extends ConsumerState<ChangesTab> {
 // -----------------------------------------------------------------------------
 // 进度 (progress)
 
-/// The goal, plan mode and the todo list.
+/// 这条会话属于哪个群:群自己的会话,或某成员在本群的会话。
+final _sessionRoomProvider = Provider.autoDispose.family<DsBotRoom?, String>((ref, sessionId) {
+  final team = ref.watch(dsBotProvider.select((s) => s.team));
+  if (team == null) return null;
+  for (final room in team.rooms) {
+    if (room.sessionId == sessionId) return room;
+    if (room.sessions.containsValue(sessionId)) return room;
+  }
+  return null;
+});
+
+/// 进度页上的群目标:目标一张卡,后面一段一张卡,点一下打开目标面板。
+class _GoalProgress extends StatelessWidget {
+  const _GoalProgress({required this.goal, required this.roomId});
+
+  final DsBotGroupGoal goal;
+  final String roomId;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final dsh = DshColors.of(context);
+    final (icon, color) = switch (goal.status) {
+      'complete' => (AppIcons.success, dsh.success),
+      'paused' => (AppIcons.paused, dsh.warning),
+      'stopped' => (AppIcons.error, dsh.textTertiary),
+      _ => (AppIcons.goal, theme.colorScheme.primary),
+    };
+    return ListView(
+      padding: _listPadding(context),
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(goal.title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+              ),
+              if (goal.position.isNotEmpty)
+                Text(goal.position, style: AppType.tabular(theme.textTheme.labelMedium!.copyWith(color: dsh.textTertiary))),
+            ],
+          ),
+        ),
+        ListPageCard(
+          children: [
+            if (goal.objective.isNotEmpty)
+              _TextBlock(
+                child: Text(goal.objective, style: theme.textTheme.bodyLarge?.copyWith(fontSize: 15, height: 1.6)),
+              ),
+            ListPageRow(
+              icon: icon,
+              iconColor: color,
+              title: goalStateWord(l10n, goal) ?? '',
+              chevron: true,
+              onTap: () => showGroupGoalSheet(context, roomId),
+            ),
+          ],
+        ),
+        for (final stage in goal.stages) ...[
+          const SizedBox(height: 16),
+          ListPageCard(
+            children: [
+              ListPageRow(
+                icon: stage.passed
+                    ? AppIcons.success
+                    : stage.active
+                    ? AppIcons.inProgress
+                    : AppIcons.pending,
+                iconColor: stage.passed
+                    ? dsh.success
+                    : stage.active
+                    ? theme.colorScheme.primary
+                    : dsh.textTertiary,
+                title: stage.title,
+                subtitle: stage.acceptance.isEmpty ? null : stage.acceptance,
+                subtitleMaxLines: 3,
+                chevron: true,
+                onTap: () => showGroupGoalSheet(context, roomId),
+              ),
+              for (final task in stage.tasks)
+                ListPageRow(
+                  icon: task.status == 'done' ? AppIcons.success : task.status == 'pending' ? AppIcons.pending : AppIcons.inProgress,
+                  iconColor: switch (task.status) {
+                    'working' => dsh.warning,
+                    'reported' => theme.colorScheme.primary,
+                    'done' => dsh.success,
+                    _ => dsh.textTertiary,
+                  },
+                  title: task.bot,
+                  subtitle: task.task,
+                  subtitleMaxLines: 2,
+                  meta: task.rework > 0 ? l10n.chatGoalRework(task.rework) : null,
+                ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// The group goal, else the plan mode and the todo list.
 class ProgressTab extends ConsumerWidget {
   const ProgressTab({super.key, required this.sessionId});
 
@@ -1064,6 +1168,11 @@ class ProgressTab extends ConsumerWidget {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final dsh = DshColors.of(context);
+    final room = ref.watch(_sessionRoomProvider(sessionId));
+    final groupGoal = room == null ? null : ref.watch(groupGoalProvider(room.id)).value;
+    if (room != null && groupGoal != null && groupGoal.title.isNotEmpty) {
+      return _GoalProgress(goal: groupGoal, roomId: room.id);
+    }
     final panels = ref.watch(sessionPanelsProvider(sessionId));
     final logged = ref.watch(chatProvider(sessionId).select((s) => s.todos));
     final todos = panels.todos ?? logged ?? const <TodoItem>[];
