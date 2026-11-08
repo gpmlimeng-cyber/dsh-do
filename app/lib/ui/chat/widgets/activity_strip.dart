@@ -37,9 +37,13 @@ class ActivityStripSlot extends ConsumerStatefulWidget {
     this.onTap,
     this.todoProgress = true,
     this.flat = false,
+    this.dock = false,
     this.face,
     this.name,
   });
+
+  /// 底部那一层：模型阶段画打字行，工具阶段仍画 App 的胶囊活动行。
+  final bool dock;
 
   /// 打字行左边的脸（群里是正在发言的成员）；没有就不画。
   final Widget? face;
@@ -146,7 +150,7 @@ class _ActivityStripSlotState extends ConsumerState<ActivityStripSlot> with Sing
                 builder: (context, occupied, _) => ActivityStrip(
                   activity: strip,
                   // 模型还在想、还没动工具：底部画打字行；开始跑工具才换成活动行。
-                  typing: widget.flat && _modelPhase(strip),
+                  typing: widget.dock && _modelPhase(strip),
                   face: widget.face,
                   name: widget.name,
                   speedLevel: _lastLevel,

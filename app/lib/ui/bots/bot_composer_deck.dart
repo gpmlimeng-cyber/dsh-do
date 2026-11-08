@@ -157,8 +157,7 @@ class BotComposerDeck extends ConsumerWidget {
                   sessionId: status.sessionId ?? activitySessionId ?? sessionId,
                   onTap: onRoomActivityTap,
                   todoProgress: !showSessionBars,
-                  // 底部只有一层渐变：活动行站在渐变上，不再自带卡片底。
-                  flat: true,
+                  dock: true,
                   // 打字行里要有「谁在写」：那张脸和那个名字。
                   face: (status.bot ?? activityBot) == null
                       ? null
@@ -166,7 +165,7 @@ class BotComposerDeck extends ConsumerWidget {
                   name: (status.bot ?? activityBot)?.name,
                 ),
               ] else
-                ActivityStripSlot(sessionId: activitySessionId ?? sessionId, flat: true),
+                ActivityStripSlot(sessionId: activitySessionId ?? sessionId, dock: true),
               ComposerStripSlot(sessionId: sessionId, visible: !running),
             ],
             // Running: the permission chip rides beside the activity strip,
