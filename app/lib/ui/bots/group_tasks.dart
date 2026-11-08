@@ -444,7 +444,7 @@ class _GroupTaskPanelState extends ConsumerState<GroupTaskPanel> {
           const SizedBox(height: 2),
           Text(
             waiting.isEmpty
-                ? l10n.botsDependenciesDone
+                ? l10n.botsTaskReady
                 : l10n.botsTaskBlocked(waiting.map((t) => t.shortId).join('、')),
             style: theme.textTheme.bodyMedium?.copyWith(color: waiting.isEmpty ? dsh.success : dsh.warning),
           ),
