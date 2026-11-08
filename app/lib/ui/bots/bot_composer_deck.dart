@@ -43,6 +43,10 @@ import 'group_tasks.dart' show GroupTaskBar;
 import 'room_activity_strip.dart' show RoomStatus;
 import 'room_aggregate_details_page.dart';
 
+/// 停靠条与下面那行权限/插件胶囊之间的距离。
+const double _deckToChipGap = 6;
+
+
 /// Everything the native composer carries above itself: the safe-mode banner,
 /// the permission pill, the status deck (todo, goal, activity, a plugin's status
 /// line) and the plugin / ui.json capsule row. Each is zero high when empty.
@@ -182,6 +186,9 @@ class BotComposerDeck extends ConsumerWidget {
             accessory: running ? stripRisk() : null,
           ),
         ),
+        // 展开的面板（目标、任务）和下面这行（权限胶囊、插件）之间留一点空，
+        // 不然面板一长就贴上去。
+        const SizedBox(height: _deckToChipGap),
         // The capsules (ui.json's and plugins') and, while idle, the permission
         // chip as their leading: one row, as the chat page has it.
         // The status line already rides in the deck as a card; not twice.
