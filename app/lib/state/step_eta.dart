@@ -7,7 +7,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart' show listEquals;
+import 'package:flutter/foundation.dart' show listEquals, visibleForTesting;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class StepEta {
