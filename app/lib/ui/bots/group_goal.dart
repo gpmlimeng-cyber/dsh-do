@@ -58,9 +58,14 @@ class GroupGoalBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final goal = ref.watch(groupGoalProvider(roomId)).value;
+    // 只有还在走的目标才占着输入框上方：做完的、停掉的收起来，
+    // 结果去对话详情的进度页看，不一直挂在那儿。
+    final showing = goal != null &&
+        goal.title.isNotEmpty &&
+        (goal.status == 'drafting' || goal.status == 'active' || goal.status == 'paused');
     return DockSlot(
       key: const ValueKey('group-goal'),
-      child: goal == null || goal.title.isEmpty ? null : _GoalCard(goal: goal, roomId: roomId),
+      child: showing ? _GoalCard(goal: goal, roomId: roomId) : null,
     );
   }
 }
