@@ -1270,6 +1270,15 @@ class DsBotTasksView {
 
   bool get isEmpty => tasks.isEmpty;
 
+  /// The tasks somebody added by hand: a goal's stage tasks are the goal's
+  /// business, and counting them here would make 「还剩几件事」 lie.
+  DsBotTasksView get manual => DsBotTasksView(
+    roomId: roomId,
+    version: version,
+    tasks: [for (final task in tasks) if (!task.fromGoal) task],
+    ready: {for (final task in tasks) if (!task.fromGoal && ready.contains(task.id)) task.id},
+  );
+
   /// Not done and not cancelled: 「还剩几件事」.
   List<DsBotTask> get open => [for (final task in tasks) if (!task.closed) task];
 

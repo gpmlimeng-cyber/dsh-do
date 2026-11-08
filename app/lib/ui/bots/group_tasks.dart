@@ -85,9 +85,14 @@ class _GroupTaskBarState extends ConsumerState<GroupTaskBar> {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final dsh = DshColors.of(context);
-    final view = ref.watch(groupTasksProvider(widget.roomId)).value;
-    final open = view?.open ?? const <DsBotTask>[];
-    if (view == null || view.isEmpty) {
+    final all = ref.watch(groupTasksProvider(widget.roomId)).value;
+    if (all == null) {
+      return DockSlot(key: const ValueKey('group-tasks'), child: null);
+    }
+    // 目标推进时同步进来的阶段任务不算在这条条上：那条归目标条。
+    final view = all.manual;
+    final open = view.open;
+    if (view.isEmpty) {
       return DockSlot(key: const ValueKey('group-tasks'), child: null);
     }
     final current = view.current;
@@ -168,7 +173,7 @@ class _GroupTaskBarState extends ConsumerState<GroupTaskBar> {
                           style: theme.textTheme.bodySmall?.copyWith(color: dsh.textTertiary),
                         )
                       else
-                        for (final task in open) GroupTaskRow(view: view, task: task, roomId: widget.roomId),
+                        for (final task in open) GroupTaskRow(view: all, task: task, roomId: widget.roomId),
                       const SizedBox(height: 6),
                       Row(
                         children: [
