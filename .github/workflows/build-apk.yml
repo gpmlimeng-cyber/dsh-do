@@ -51,8 +51,32 @@ jobs:
           java -version
           python3 --version
 
+      # The runtime only changes when runtime/** changes: without this, every
+      # build re-downloads and re-packs the whole rootfs (ten-ish minutes).
+      - name: Restore the bundled runtime
+        id: runtime-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            runtime/out
+            runtime/.cache
+          key: runtime-arm64-${{ hashFiles('runtime/**') }}
+          restore-keys: runtime-arm64-
+
       - name: Build the bundled runtime (arm64)
+        if: steps.runtime-cache.outputs.cache-hit != 'true'
         run: runtime/build-runtime.sh arm64-v8a
+
+      # Gradle's daemon and dependency caches: the second build in a row skips
+      # most of the dependency resolution.
+      - name: Restore Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('app/android/**/*.gradle*', 'app/android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-
 
       - name: Sign with the repository's test key
         # A throwaway key, committed on purpose: the CI build must install
