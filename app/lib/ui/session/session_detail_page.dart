@@ -17,6 +17,7 @@ import '../../state/session_detail_state.dart';
 import '../../state/usage_state.dart';
 import '../agents/agent_widgets.dart';
 import '../bots/group_goal.dart';
+import '../bots/group_tasks.dart';
 import '../chat/chat_header.dart';
 import '../chat/diff_page.dart';
 import '../chat/run_info.dart';
@@ -1067,9 +1068,10 @@ final _sessionRoomProvider = Provider.autoDispose.family<DsBotRoom?, String>((re
 
 /// 进度页上的群目标:目标一张卡,后面一段一张卡,点一下打开目标面板。
 class _GoalProgress extends StatelessWidget {
-  const _GoalProgress({required this.goal, required this.roomId});
+  const _GoalProgress({required this.goal, required this.tasks, required this.roomId});
 
-  final DsBotGroupGoal goal;
+  final DsBotGroupGoal? goal;
+  final DsBotTasksView? tasks;
   final String roomId;
 
   @override
@@ -1077,7 +1079,8 @@ class _GoalProgress extends StatelessWidget {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final dsh = DshColors.of(context);
-    final (icon, color) = switch (goal.status) {
+    final goal = this.goal;
+    final (icon, color) = switch (goal?.status) {
       'complete' => (AppIcons.success, dsh.success),
       'paused' => (AppIcons.paused, dsh.warning),
       'stopped' => (AppIcons.error, dsh.textTertiary),
@@ -1086,68 +1089,91 @@ class _GoalProgress extends StatelessWidget {
     return ListView(
       padding: _listPadding(context),
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(goal.title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
-              ),
-              if (goal.position.isNotEmpty)
-                Text(goal.position, style: AppType.tabular(theme.textTheme.labelMedium!.copyWith(color: dsh.textTertiary))),
-            ],
-          ),
-        ),
-        ListPageCard(
-          children: [
-            if (goal.objective.isNotEmpty)
-              _TextBlock(
-                child: Text(goal.objective, style: theme.textTheme.bodyLarge?.copyWith(fontSize: 15, height: 1.6)),
-              ),
-            ListPageRow(
-              icon: icon,
-              iconColor: color,
-              title: goalStateWord(l10n, goal) ?? '',
-              chevron: true,
-              onTap: () => showGroupGoalSheet(context, roomId),
+        if (goal != null) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(goal.title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+                ),
+                if (goal.position.isNotEmpty)
+                  Text(goal.position, style: AppType.tabular(theme.textTheme.labelMedium!.copyWith(color: dsh.textTertiary))),
+              ],
             ),
-          ],
-        ),
-        for (final stage in goal.stages) ...[
-          const SizedBox(height: 16),
+          ),
           ListPageCard(
             children: [
+              if (goal.objective.isNotEmpty)
+                _TextBlock(
+                  child: Text(goal.objective, style: theme.textTheme.bodyLarge?.copyWith(fontSize: 15, height: 1.6)),
+                ),
               ListPageRow(
-                icon: stage.passed
-                    ? AppIcons.success
-                    : stage.active
-                    ? AppIcons.inProgress
-                    : AppIcons.pending,
-                iconColor: stage.passed
-                    ? dsh.success
-                    : stage.active
-                    ? theme.colorScheme.primary
-                    : dsh.textTertiary,
-                title: stage.title,
-                subtitle: stage.acceptance.isEmpty ? null : stage.acceptance,
-                subtitleMaxLines: 3,
+                icon: icon,
+                iconColor: color,
+                title: goalStateWord(l10n, goal) ?? '',
                 chevron: true,
                 onTap: () => showGroupGoalSheet(context, roomId),
               ),
-              for (final task in stage.tasks)
+            ],
+          ),
+          for (final stage in goal.stages) ...[
+            const SizedBox(height: 16),
+            ListPageCard(
+              children: [
                 ListPageRow(
-                  icon: task.status == 'done' ? AppIcons.success : task.status == 'pending' ? AppIcons.pending : AppIcons.inProgress,
-                  iconColor: switch (task.status) {
-                    'working' => dsh.warning,
-                    'reported' => theme.colorScheme.primary,
-                    'done' => dsh.success,
-                    _ => dsh.textTertiary,
-                  },
-                  title: task.bot,
-                  subtitle: task.task,
-                  subtitleMaxLines: 2,
-                  meta: task.rework > 0 ? l10n.chatGoalRework(task.rework) : null,
+                  icon: stage.passed
+                      ? AppIcons.success
+                      : stage.active
+                      ? AppIcons.inProgress
+                      : AppIcons.pending,
+                  iconColor: stage.passed
+                      ? dsh.success
+                      : stage.active
+                      ? theme.colorScheme.primary
+                      : dsh.textTertiary,
+                  title: stage.title,
+                  subtitle: stage.acceptance.isEmpty ? null : stage.acceptance,
+                  subtitleMaxLines: 3,
+                  chevron: true,
+                  onTap: () => showGroupGoalSheet(context, roomId),
                 ),
+                for (final task in stage.tasks)
+                  ListPageRow(
+                    icon: task.status == 'done' ? AppIcons.success : task.status == 'pending' ? AppIcons.pending : AppIcons.inProgress,
+                    iconColor: switch (task.status) {
+                      'working' => dsh.warning,
+                      'reported' => theme.colorScheme.primary,
+                      'done' => dsh.success,
+                      _ => dsh.textTertiary,
+                    },
+                    title: task.bot,
+                    subtitle: task.task,
+                    subtitleMaxLines: 2,
+                    meta: task.rework > 0 ? l10n.chatGoalRework(task.rework) : null,
+                  ),
+              ],
+            ),
+          ],
+        ],
+        if (tasks case final view? when !view.isEmpty) ...[
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+            child: Row(
+              children: [
+                Text(l10n.botsTasks, style: theme.textTheme.labelLarge?.copyWith(color: dsh.textTertiary)),
+                const Spacer(),
+                Text(
+                  '${view.doneCount}/${view.tasks.length}',
+                  style: AppType.tabular(theme.textTheme.labelMedium!.copyWith(color: dsh.textTertiary)),
+                ),
+              ],
+            ),
+          ),
+          ListPageCard(
+            children: [
+              for (final task in view.open) GroupTaskRow(view: view, task: task, roomId: roomId),
             ],
           ),
         ],
@@ -1170,8 +1196,14 @@ class ProgressTab extends ConsumerWidget {
     final dsh = DshColors.of(context);
     final room = ref.watch(_sessionRoomProvider(sessionId));
     final groupGoal = room == null ? null : ref.watch(groupGoalProvider(room.id)).value;
-    if (room != null && groupGoal != null && groupGoal.title.isNotEmpty) {
-      return _GoalProgress(goal: groupGoal, roomId: room.id);
+    final groupTasks = room == null ? null : ref.watch(groupTasksProvider(room.id)).value;
+    final hasGoal = groupGoal != null && groupGoal.title.isNotEmpty;
+    if (room != null && (hasGoal || groupTasks?.isEmpty == false)) {
+      return _GoalProgress(
+        goal: hasGoal ? groupGoal : null,
+        tasks: groupTasks,
+        roomId: room.id,
+      );
     }
     final panels = ref.watch(sessionPanelsProvider(sessionId));
     final logged = ref.watch(chatProvider(sessionId).select((s) => s.todos));

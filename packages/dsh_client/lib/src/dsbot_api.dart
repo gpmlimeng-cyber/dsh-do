@@ -1311,6 +1311,7 @@ class DsBotTask {
     required this.id,
     required this.roomId,
     required this.title,
+    this.no,
     this.note = '',
     this.status = 'pending',
     this.assignee,
@@ -1334,6 +1335,7 @@ class DsBotTask {
       id: asString(map['id']) ?? '',
       roomId: asString(map['roomId']) ?? '',
       title: asString(map['title']) ?? '',
+      no: asInt(map['no']),
       note: asString(map['note']) ?? '',
       status: asString(map['status']) ?? 'pending',
       assignee: asString(map['assignee']),
@@ -1356,6 +1358,9 @@ class DsBotTask {
   final String roomId;
   final String title;
   final String note;
+
+  /// The group's own numbering: what 「等 3 号」 points at. Never reused.
+  final int? no;
 
   /// `pending`, `claimed`, `doing`, `done`, `failed` or `cancelled`.
   final String status;
@@ -1411,7 +1416,7 @@ class DsBotTask {
   bool get fromGoal => source == 'goal';
 
   /// A stable number for 「等 3 号」: the last five characters of the id.
-  String get shortId => id.length <= 5 ? id : id.substring(id.length - 5);
+  String get shortId => no?.toString() ?? (id.length <= 5 ? id : id.substring(id.length - 5));
 }
 
 /// One line of a task's timeline: who changed what, at what time.

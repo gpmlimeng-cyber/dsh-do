@@ -18,6 +18,7 @@ import '../common/app_sheet.dart';
 import '../common/expand_reveal.dart';
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
+import 'group_task_graph.dart';
 
 /// 群的任务板，随群消息和回合变化重新取一次。
 final groupTasksProvider = FutureProvider.autoDispose.family<DsBotTasksView?, String>((ref, roomId) async {
@@ -165,19 +166,31 @@ class _GroupTaskBarState extends ConsumerState<GroupTaskBar> {
                       else
                         for (final task in open) GroupTaskRow(view: view, task: task, roomId: widget.roomId),
                       const SizedBox(height: 6),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: TextButton.icon(
-                          onPressed: () => showAddGroupTaskSheet(context, widget.roomId),
-                          icon: const Icon(AppIcons.add, size: 16),
-                          label: Text(l10n.botsTaskAdd),
-                          style: TextButton.styleFrom(
-                            visualDensity: VisualDensity.compact,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                            textStyle: theme.textTheme.labelMedium,
+                      Row(
+                        children: [
+                          TextButton.icon(
+                            onPressed: () => showAddGroupTaskSheet(context, widget.roomId),
+                            icon: const Icon(AppIcons.add, size: 16),
+                            label: Text(l10n.botsTaskAdd),
+                            style: TextButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              textStyle: theme.textTheme.labelMedium,
+                            ),
                           ),
-                        ),
+                          const Spacer(),
+                          IconButton(
+                            tooltip: l10n.botsTasks,
+                            onPressed: () => Navigator.of(context).push(GroupTaskGraphPage.route(widget.roomId)),
+                            icon: const Icon(AppIcons.diagram, size: 18),
+                            visualDensity: VisualDensity.compact,
+                            style: IconButton.styleFrom(
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              padding: const EdgeInsets.all(6),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
