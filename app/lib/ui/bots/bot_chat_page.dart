@@ -678,6 +678,12 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
                   ),
           ),
           hasAttachments: _drafts.isNotEmpty,
+          // As in the chat: the model this Bot answers with sits inside the open
+          // composer, beside the keys, and opens the same sheet the header's chip does.
+          footer: ComposerModelPill(
+            selection: botModelSelection(bot),
+            onSelected: (selection) => unawaited(applyBotModel(context, ref, bot, selection)),
+          ),
           running: ownTurn,
           onSend: () => _send(sendTarget, bot.sessionId),
           onSendOptions: () => _sendOptions(sendTarget, bot, running: ownTurn),
