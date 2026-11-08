@@ -514,12 +514,6 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
         infoTooltip: layout.isExpanded && layout.panelAvailable
             ? (ref.watch(layoutPrefsProvider).panelOpen ? l10n.shellCollapseDetails : l10n.shellChatDetails)
             : null,
-        // The chat page's own chip: same height, padding, chevron and type.
-        chip: ModelChip(
-          selection: botModelSelection(bot),
-          grouped: true,
-          onSelected: (selection) => applyBotModel(context, ref, bot, selection, scope: modelScope),
-        ),
       ),
       body: chat.loading && chat.items.isEmpty
           ? Padding(
