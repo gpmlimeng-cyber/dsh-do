@@ -21,6 +21,7 @@ import '../../state/bots_state.dart';
 import '../../state/last_conversation.dart';
 import '../../state/connection_state.dart';
 import '../chat/chat_text_scale.dart';
+import '../chat/trajectory_sheet.dart' show showTrajectorySheet;
 import '../chat/usage_sheet.dart' show showUsageSheet;
 import '../chat/composer.dart';
 import '../chat/render/message_mentions.dart';
@@ -610,6 +611,18 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
   /// The Session the round runs in now, not the group's first part.
   String _roomSession() => ref.read(dsBotProvider).team?.room(widget.roomId)?.sessionId ?? widget.roomId;
 
+  /// 活动行点开的是这一轮：还在跑就是它，跑完了就是最后一轮；一轮都还没有
+  /// 时打开用量面板，至少告诉点什么，而不是点了没反应。
+  void _openRunningTrajectory(String sessionId) {
+    final chat = ref.read(chatProvider(sessionId));
+    final turn = chat.runningTurn?.turn ?? (chat.turns.isEmpty ? null : chat.turns.last.turn);
+    if (turn == null) {
+      unawaited(showUsageSheet(context, sessionId: sessionId));
+      return;
+    }
+    unawaited(showTrajectorySheet(context, sessionId: sessionId, turn: turn));
+  }
+
   /// 长按发送键: while the round runs, choose how the message reaches it;
   /// otherwise send at once.
   Future<void> _sendOptions(BotActionScope target, DsBotRoom room, {required bool running}) async {
@@ -1163,6 +1176,12 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
           // line on the group chat, that member's line on a member target.
           roomActivity: target.memberId == null ? statusLine : null,
           activitySessionId: memberSession,
+          // 点活动行看这一轮：普通会话点它是「本轮轨迹」，群里跑的是某位成员，
+          // 就打开那位成员在本群的这一轮；还没有轮次时退到用量面板。
+          onRoomActivityTap: () {
+            final running = target.memberId == null ? statusLine.sessionId : memberSession;
+            if (running != null) _openRunningTrajectory(running);
+          },
           showActivity: target.memberId == null || (memberSession != null && memberSession.isNotEmpty),
         ),
         // One member's conversation still sends to the group, so say it above

@@ -31,6 +31,8 @@ import '../chat/voice/voice_controller.dart';
 import '../chat/widgets/attachments.dart';
 import '../chat/widgets/quote_chip.dart' show ComposerTrayStack, QuoteChip;
 import '../chat/model_sheet.dart';
+import '../chat/trajectory_sheet.dart' show showTrajectorySheet;
+import '../chat/usage_sheet.dart' show showUsageSheet;
 import '../chat/widgets/approval_card.dart';
 import '../common/status_dot.dart';
 import '../session/session_detail_page.dart';
@@ -91,6 +93,18 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final resumed = state == AppLifecycleState.resumed;
     if (resumed != _resumed && mounted) setState(() => _resumed = resumed);
+  }
+
+  /// 活动行点开的是这一轮（还在跑就是它，跑完了是最后一轮）；一轮都没有时
+  /// 打开用量面板。
+  void _openRunningTrajectory(String sessionId) {
+    final chat = ref.read(chatProvider(sessionId));
+    final turn = chat.runningTurn?.turn ?? (chat.turns.isEmpty ? null : chat.turns.last.turn);
+    if (turn == null) {
+      unawaited(showUsageSheet(context, sessionId: sessionId));
+      return;
+    }
+    unawaited(showTrajectorySheet(context, sessionId: sessionId, turn: turn));
   }
 
   @override
@@ -650,7 +664,12 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
           error: chat.error,
           onDismiss: () => ref.read(botChatProvider(widget.botId).notifier).dismissError(),
         ),
-        BotComposerDeck(sessionId: bot.sessionId, running: ownTurn),
+        BotComposerDeck(
+          sessionId: bot.sessionId,
+          running: ownTurn,
+          // 活动行点开本轮轨迹，和普通会话一致。
+          onRoomActivityTap: () => _openRunningTrajectory(bot.sessionId),
+        ),
         Composer(
           hardwareEnterSends: ref.watch(settingsProvider.select((s) => s.hardwareEnterSends)),
           // The native chat's own line count for the same screen and text
