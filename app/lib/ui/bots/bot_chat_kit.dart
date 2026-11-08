@@ -376,12 +376,13 @@ class _BotChatFrameState extends State<BotChatFrame> {
               children: [
                 // The transcript keeps clear of the composer's measured height:
                 // the last row stops above it instead of running under it.
+                // The transcript runs to the bottom of the screen: its last rows
+                // slide under the composer's plate and show faintly through the
+                // ramp instead of being cut at the plate's edge. It keeps that
+                // much blank at its own end, so the newest row can still scroll
+                // clear of the plate.
                 Positioned.fill(
-                  child: ValueListenableBuilder<double>(
-                    valueListenable: _composer,
-                    builder: (context, height, child) => Padding(padding: EdgeInsets.only(bottom: height), child: child),
-                    child: body,
-                  ),
+                  child: ComposerInsetScope(height: _composer, child: body),
                 ),
                 // The composer's own plate: the page again, a little
                 // see-through, feathered where the transcript meets it.
@@ -964,6 +965,19 @@ class _BotToolGroupState extends State<BotToolGroup> {
   }
 }
 
+/// The composer's measured height, for the transcript below it.
+class ComposerInsetScope extends InheritedWidget {
+  const ComposerInsetScope({super.key, required this.height, required super.child});
+
+  final ValueListenable<double> height;
+
+  static ValueListenable<double>? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<ComposerInsetScope>()?.height;
+
+  @override
+  bool updateShouldNotify(ComposerInsetScope oldWidget) => oldWidget.height != height;
+}
+
 /// The transcript, newest at the bottom; scrolling up to the oldest row asks
 /// for the page before.
 class BotTranscript extends StatefulWidget {
@@ -1086,10 +1100,21 @@ class _BotTranscriptState extends State<BotTranscript> {
 
   @override
   Widget build(BuildContext context) {
+    final composer = ComposerInsetScope.maybeOf(context);
+    if (composer != null) {
+      return ValueListenableBuilder<double>(
+        valueListenable: composer,
+        builder: (context, height, _) => _body(context, widget.bottomInset + height),
+      );
+    }
+    return _body(context, widget.bottomInset);
+  }
+
+  Widget _body(BuildContext context, double bottomInset) {
     final rows = _away ? (_frozen ?? widget.rows) : widget.rows;
     if (rows.isEmpty && widget.empty != null) {
       return Padding(
-        padding: EdgeInsets.only(top: widget.topInset, bottom: widget.bottomInset),
+        padding: EdgeInsets.only(top: widget.topInset, bottom: bottomInset),
         child: Center(child: widget.empty),
       );
     }
@@ -1099,7 +1124,9 @@ class _BotTranscriptState extends State<BotTranscript> {
         ListView.builder(
             controller: _controller,
             reverse: true,
-        padding: EdgeInsets.fromLTRB(0, widget.topInset, 0, 8),
+        // 末尾留出托板的高度：最后一条仍能滚到托板上方,同时往下滚时正文
+        // 会从托板下面穿过去。
+        padding: EdgeInsets.fromLTRB(0, widget.topInset, 0, 8 + bottomInset),
         itemCount: rows.length + extra,
         itemBuilder: (context, index) {
           if (index == rows.length) {
