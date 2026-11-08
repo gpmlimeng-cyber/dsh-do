@@ -109,19 +109,27 @@ class _BackdropScope extends InheritedWidget {
 /// 整页、和页面左上角对齐。分栏布局里的一栏(宽屏的聊天栏、详情栏)由
 /// [BackdropFrame] 告知它在整张背景里的位置,照样对得上。
 class BackdropVeil extends StatelessWidget {
-  const BackdropVeil({super.key, required this.solidHeight, this.feather = 14, this.glow = true, this.opacity = 1})
-    : fromTop = false;
+  const BackdropVeil({
+    super.key,
+    required this.solidHeight,
+    this.feather = 14,
+    this.featherShare,
+    this.glow = true,
+    this.opacity = 1,
+  }) : fromTop = false;
 
   /// 顶部版:从顶边往下 [height] 实心,再往下 [feather] 缓缓淡出(页面顶栏
   /// 后面)。同样要铺满整页、和页面左上角对齐。
   BackdropVeil.top({super.key, required double height, this.feather = 14, this.glow = true, this.opacity = 1})
     : solidHeight = _FixedHeight(height),
+      featherShare = null,
       fromTop = true;
 
   /// The page's own backdrop over the whole box it is given (the composer's
   /// plate): [opacity] below 1 lets the conversation behind show through.
   BackdropVeil.area({super.key, this.feather = 14, this.glow = true, this.opacity = 0.86})
     : solidHeight = const _FixedHeight(100000),
+      featherShare = null,
       fromTop = false;
 
   /// 从底边往上实心的高度。由页面布局在排好浮动控件时写入:遮罩画在布局
@@ -130,6 +138,11 @@ class BackdropVeil extends StatelessWidget {
 
   /// 实心区之外(底部版在上、顶部版在下)的淡出高度。
   final double feather;
+
+  /// 按实心区的比例算淡出高度,而不是固定 dp:底部的输入区告诉它自己多高,
+  /// 托板和内容之间就有一段跟着变长的渐变,看不出边 —— 和顶栏一个道理。
+  /// 设了就盖过 [feather]。
+  final double? featherShare;
   final bool glow;
 
   /// How opaque the plate is: 1 hides the content behind it, below that the
@@ -149,6 +162,7 @@ class BackdropVeil extends StatelessWidget {
         painter: _VeilPainter(
           solidHeight: solidHeight,
           feather: feather,
+          featherShare: featherShare,
           fromTop: fromTop,
           opacity: opacity,
           backdrop: _BackdropPainter(
@@ -192,6 +206,7 @@ class _VeilPainter extends CustomPainter {
     required this.solidHeight,
     required this.feather,
     required this.backdrop,
+    this.featherShare,
     this.fromTop = false,
     this.opacity = 1,
   })
@@ -199,18 +214,23 @@ class _VeilPainter extends CustomPainter {
 
   final ValueListenable<double> solidHeight;
   final double feather;
+  final double? featherShare;
   final _BackdropPainter backdrop;
   final bool fromTop;
   final double opacity;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final band = (solidHeight.value + feather).clamp(0.0, size.height);
+    final solid = solidHeight.value.clamp(0.0, size.height);
+    // A share of the plate ramps over a share of the plate: a short fixed feather
+    // draws the edge the eye picks out; this one hands the eye a gradient.
+    final ramp = featherShare == null ? feather : (solid * featherShare!).clamp(0.0, 140.0);
+    final band = (solid + ramp).clamp(0.0, size.height);
     if (band <= 0) return;
     final rect = fromTop
         ? Rect.fromLTWH(0, 0, size.width, band)
         : Rect.fromLTWH(0, size.height - band, size.width, band);
-    final fade = (feather / band).clamp(0.0, 1.0);
+    final fade = (ramp / band).clamp(0.0, 1.0);
     // Eased ramp: a linear one reads as a crease at both ends.
     const samples = 8;
     final stops = <double>[];
@@ -253,6 +273,7 @@ class _VeilPainter extends CustomPainter {
   bool shouldRepaint(_VeilPainter old) =>
       old.solidHeight != solidHeight ||
       old.feather != feather ||
+      old.featherShare != featherShare ||
       old.fromTop != fromTop ||
       old.opacity != opacity ||
       backdrop.shouldRepaint(old.backdrop);

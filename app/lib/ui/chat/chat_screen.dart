@@ -1634,7 +1634,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
                   // the list's 8dp bottom padding, so the last message is untouched.
                   LayoutId(
                     id: _Slot.veil,
-                    child: BackdropVeil(solidHeight: _veilHeight, opacity: _ChatLayout.veilOpacity),
+                    // The top bar's twin: the plate ramps into the conversation
+                    // over a share of its own height instead of a 14dp feather.
+                    child: BackdropVeil(
+                      solidHeight: _veilHeight,
+                      featherShare: 0.9,
+                      opacity: _ChatLayout.veilOpacity,
+                    ),
                   ),
                   LayoutId(
                     id: _Slot.header,

@@ -390,7 +390,8 @@ class _BotChatFrameState extends State<BotChatFrame> {
                 // height of the composer would clip the feather into a hard edge.
                 Positioned.fill(
                   child: IgnorePointer(
-                    child: BackdropVeil(solidHeight: _composer, feather: 14, opacity: 0.86),
+                    // 和顶栏同一套：托板自己多高，就在上面留多长的一段渐变。
+                    child: BackdropVeil(solidHeight: _composer, featherShare: 0.9, opacity: 0.86),
                   ),
                 ),
                 Positioned(
