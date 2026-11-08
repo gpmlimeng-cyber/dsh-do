@@ -441,7 +441,10 @@ RunActivity? runActivityOf(ChatState s) {
         return make(
           ActivityKind.tool,
           toolVerb(item, view),
-          detail: [view.summary, more].where((p) => p.isNotEmpty).join('  '),
+          // MCP 工具的 summary 往往是命令原文，用户读不懂；有那句人话就够了。
+          detail: item.name.startsWith('mcp__')
+              ? ''
+              : [view.summary, more].where((p) => p.isNotEmpty).join('  '),
           code: view.summaryIsCode,
           toolName: item.name,
           since: openSince((sp) => sp.callId == item.callId) ?? openSince((sp) => sp.kind == TraceKind.model),
@@ -529,6 +532,33 @@ AfterTool? _afterTool(List<TraceSpan> spans, List<ChatItem> items) {
 }
 
 /// 活动条用的短动词:跑 / 读 / 改 / 写 / 搜 / 找……
+/// 工具的「人话」:模型能调到的工具越来越多,名字是给程序用的。手机操控、MCP
+/// 这类在活动行上翻成一句正在做什么,原文(command 之类)就不往上摆了。
+const _otherVerbs = <String, String>{
+  'screen': '看一眼手机屏幕',
+  'collect': '翻手机上的列表',
+  'tap': '点手机上的按钮',
+  'tap_xy': '点手机屏幕',
+  'scroll': '滑手机屏幕',
+  'type': '在手机上打字',
+  'open': '打开手机上的应用',
+  'key': '按手机的系统键',
+  'intent': '调用手机功能',
+  'notify': '发一条手机通知',
+  'clipboard': '看手机剪贴板',
+  'handoff': '把手机交给你操作',
+};
+
+String otherToolVerb(String name) {
+  if (name.startsWith('mcp__')) {
+    final parts = name.split('__');
+    final tool = parts.length > 2 ? parts.sublist(2).join('__') : name;
+    final server = parts.length > 1 ? parts[1] : '外部';
+    return _otherVerbs[tool] ?? '用「$server」做点事';
+  }
+  return _otherVerbs[name] ?? '';
+}
+
 String toolVerb(ToolChatItem tool, ToolView view) {
   return switch (toolKindOf(tool)) {
     ToolKind.command => appL10n.activityVerbRun,
@@ -539,6 +569,6 @@ String toolVerb(ToolChatItem tool, ToolView view) {
     ToolKind.web => tool.name == 'web_search' ? appL10n.activityVerbWebSearch : appL10n.activityVerbWebView,
     ToolKind.agent => tool.name == 'subagent' ? appL10n.activityVerbSubagent : view.verb,
     ToolKind.todo => appL10n.activityVerbTodo,
-    ToolKind.other => view.verb,
+    ToolKind.other => otherToolVerb(tool.name).isEmpty ? view.verb : otherToolVerb(tool.name),
   };
 }
