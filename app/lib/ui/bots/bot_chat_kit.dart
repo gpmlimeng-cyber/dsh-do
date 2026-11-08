@@ -1384,7 +1384,9 @@ class BotGroupFootnote extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(label, maxLines: 1, softWrap: false, style: style),
+              Flexible(
+                child: Text(label, maxLines: 1, softWrap: false, overflow: TextOverflow.fade, style: style),
+              ),
               Icon(AppIcons.disclosure, size: 14, color: dsh.textTertiary),
             ],
           ),
@@ -1474,6 +1476,18 @@ class GroupMessage extends ConsumerWidget {
                     style: AppType.tabular(theme.textTheme.labelSmall!.copyWith(color: dsh.textTertiary)),
                   ),
                 ],
+                // 这一轮的统计就摆在成员行上：耗时 · 步数 · tokens，点开是统计面板。
+                if (item.duration case final took? when took >= const Duration(seconds: 1)) ...[
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: BotGroupFootnote(
+                      duration: took,
+                      steps: item.steps ?? 0,
+                      tokens: item.tokens ?? 0,
+                      onTap: onStats,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -1498,8 +1512,8 @@ class GroupMessage extends ConsumerWidget {
           onLinkTap: onLinkTap,
           ),
         ),
-        // 这一轮的统计和普通回复的脚注同一条：耗时 · 步数 · tokens，点开是统计面板。
-        if (item.duration case final took? when took >= const Duration(seconds: 1))
+        // 续行没有成员行，统计就留在气泡下面，别让这一轮的账丢在半路。
+        if (continued && item.duration case final took? when took >= const Duration(seconds: 1))
           Padding(
             padding: const EdgeInsets.only(top: 2),
             child: BotGroupFootnote(
