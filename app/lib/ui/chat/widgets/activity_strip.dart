@@ -267,7 +267,17 @@ class _ActivityStripState extends State<ActivityStrip> {
         liveRegion: true,
         label: label,
         excludeSemantics: true,
-        child: ConstrainedBox(
+        // 和活动行同一颗胶囊：只有里面的内容在变（打字时说谁在写，干活时说在跑什么），
+        // 不会一会儿有边一会儿没边。
+        child: GlassSurface(
+          tier: GlassTier.chrome,
+          stadium: true,
+          clear: widget.flat,
+          style: DshSurfaces.of(context).glass(GlassTier.chrome).copyWith(
+            hairline: dsh.textTertiary.withValues(alpha: 0.22),
+            hairlineWidth: 0.8,
+          ),
+          child: ConstrainedBox(
           constraints: const BoxConstraints(minHeight: 36),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(10, 6, 14, 6),
@@ -290,6 +300,7 @@ class _ActivityStripState extends State<ActivityStrip> {
                 ),
               ],
             ),
+          ),
           ),
         ),
       );
