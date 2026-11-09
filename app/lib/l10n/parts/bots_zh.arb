@@ -993,6 +993,7 @@
   "botsRoomMemberChats": "成员会话",
   "botsRoomOnlyWhose": "只看谁的发言",
   "botsRoomFilter": "群聊过滤",
+  "botsMessageScope": "消息范围",
   "botsRoomFilterGroupOnly": "只在群聊里生效",
   "botsRoomWatching": "正在看",
   "botsRoomNeverSpoke": "还没在本群说过话",

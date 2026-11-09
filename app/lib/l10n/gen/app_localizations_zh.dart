@@ -19220,6 +19220,9 @@ class L10nZh extends L10n {
   String get botsRoomFilter => '群聊过滤';
 
   @override
+  String get botsMessageScope => '消息范围';
+
+  @override
   String get botsRoomFilterGroupOnly => '只在群聊里生效';
 
   @override

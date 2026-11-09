@@ -444,6 +444,7 @@
   "botsRoomMemberChats": "Member conversations",
   "botsRoomOnlyWhose": "Whose messages only",
   "botsRoomFilter": "Group chat filters",
+  "botsMessageScope": "Message range",
   "botsRoomFilterGroupOnly": "Works in the group chat only",
   "botsRoomWatching": "Viewing",
   "botsRoomNeverSpoke": "Has not spoken in this group yet",

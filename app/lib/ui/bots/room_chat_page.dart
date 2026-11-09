@@ -24,6 +24,7 @@ import '../chat/chat_text_scale.dart';
 import '../chat/trajectory_sheet.dart' show showTrajectorySheet;
 import '../chat/usage_sheet.dart' show showUsageSheet;
 import '../chat/composer.dart';
+import '../chat/widgets/message_menu.dart' show MenuItem, MenuSheet;
 import '../chat/render/message_mentions.dart';
 import '../../state/voice_model_state.dart';
 import '../../state/voice_state.dart';
@@ -65,6 +66,7 @@ import 'room_approval_action.dart';
 import 'room_activity_strip.dart' show roomStatusOf;
 import 'room_aggregate_details_page.dart';
 import 'room_details_page.dart';
+import 'room_session_sheet.dart' show showMessageScopeSheet;
 import 'room_full_text_sheet.dart';
 
 class RoomChatPage extends ConsumerStatefulWidget {
@@ -756,6 +758,31 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
       progress: _progress,
       flash: _flash == null ? null : (label: _flash!, tone: _flashTone ?? StatusTone.busy),
     );
+
+    // The last key opens a menu when the page has one; its long press and the
+    // menu's 对话详情 item both land here, on whatever this page shows.
+    final infoGreyed = targetBot != null && memberSession == null;
+    void openInfo() {
+      if (targetBot == null) {
+        // The group's aggregate page has no panel form: beside the chat it is
+        // the group Session's own details, which the key folds away.
+        if (layout.isExpanded && layout.panelAvailable) {
+          ref.read(layoutPrefsProvider.notifier).setPanelOpen(!ref.read(layoutPrefsProvider).panelOpen);
+        } else {
+          Navigator.of(context).push(RoomAggregateDetailsPage.route(room.id));
+        }
+      } else if (memberSession == null) {
+        ScaffoldMessenger.maybeOf(context)?.showBriefNotice(l10n.botsRoomMemberSessionMissing);
+      } else {
+        openBotDetail(
+          context,
+          ref,
+          layout: layout,
+          sessionId: memberSession,
+          scopeLabel: l10n.botsRoomMemberScope(targetBot.name),
+        );
+      }
+    }
     // The six seconds start when the line can actually be seen: a run or a
     // pending approval keeps the header's own state first.
     if (_flash != null &&
@@ -848,6 +875,14 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
     ref.listen(roomChatProvider(widget.roomId).select((s) => s.items), (_, _) {
       if (mounted) _rememberFlash(room, team, mode, target);
     });
+    // 「只看某人」 keeps the user's own lines, so an empty list no longer means
+    // the member is silent. Say it over those lines instead of not at all.
+    final memberSilent =
+        !mode.isAll &&
+        target.memberId == null &&
+        !visible.any(
+          (item) => item.kind != DsBotItemKind.user && roomSpeakerOf(room, team, item) == mode.memberId,
+        );
     final transcript = transcriptRows(withoutDoneEchoes(visible), pending: chat.pending, typing: typing);
     // The group's own Session is what the admin's memory tools write to; in a
     // member's conversation the line would belong to another conversation.
@@ -912,22 +947,11 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
         // Right key = this conversation's details: the group's aggregate in the
         // group chat, the member's own Session in this group otherwise — never a
         // private one, and never the group's numbers under a member's name.
-        onInfo: targetBot == null
-            // The group's aggregate page has no panel form: beside the chat it
-            // is the group Session's own details, which the key folds away.
-            ? (layout.isExpanded && layout.panelAvailable
-                  ? () => ref.read(layoutPrefsProvider.notifier).setPanelOpen(!ref.read(layoutPrefsProvider).panelOpen)
-                  : () => Navigator.of(context).push(RoomAggregateDetailsPage.route(room.id)))
-            : memberSession == null
-            ? () => ScaffoldMessenger.maybeOf(context)?.showBriefNotice(l10n.botsRoomMemberSessionMissing)
-            : () => openBotDetail(
-                context,
-                ref,
-                layout: layout,
-                sessionId: memberSession,
-                scopeLabel: l10n.botsRoomMemberScope(targetBot.name),
-              ),
-        infoGreyed: targetBot != null && memberSession == null,
+        onInfo: openInfo,
+        // ⋯: the page's menu in one sheet. Details leads it — the key no longer
+        // carries that job alone — then the message range, then the members.
+        onMenu: () => showRoomMenu(context, ref, room: room, team: team, onDetails: openInfo),
+        infoGreyed: infoGreyed,
         infoTooltip: layout.isExpanded && layout.panelAvailable
             // Beside the chat the key is a switch for the column.
             ? (ref.watch(layoutPrefsProvider).panelOpen ? l10n.shellCollapseDetails : l10n.shellChatDetails)
@@ -962,6 +986,18 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
               loadingEarlier: chat.loadingEarlier,
               onEarlier: () =>
                   ref.read(roomChatProvider(widget.roomId).notifier).loadEarlier(session: memberSource),
+              notice: memberSilent
+                  ? Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      child: Text(
+                        l10n.botsMessageModeEmptyStretch,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.copyWith(color: DshColors.of(context).textTertiary),
+                      ),
+                    )
+                  : null,
               empty: targetBot != null
                   ? Center(
                       child: Text(
@@ -1441,4 +1477,51 @@ class _MessageFilterChip extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 群聊顶栏 ⋯ 的菜单：对话详情、消息范围、成员。样式照消息菜单（MenuSheet +
+/// SheetGroup 的行），行高 52。清空会话、搜索此群这一版不做。
+Future<void> showRoomMenu(
+  BuildContext context,
+  WidgetRef ref, {
+  required DsBotRoom room,
+  required DsBotTeam team,
+  required VoidCallback onDetails,
+}) {
+  final l10n = context.l10n;
+  return showAppSheet<void>(
+    context,
+    isScrollControlled: true,
+    builder: (sheet) => MenuSheet(
+      preview: const SizedBox.shrink(),
+      groups: [
+        [
+          MenuItem(
+            icon: AppIcons.info,
+            label: l10n.commonDetails,
+            onTap: () {
+              Navigator.of(sheet).maybePop();
+              onDetails();
+            },
+          ),
+          MenuItem(
+            icon: AppIcons.multiSelect,
+            label: l10n.botsMessageScope,
+            onTap: () {
+              Navigator.of(sheet).maybePop();
+              showMessageScopeSheet(context, ref, room: room, team: team);
+            },
+          ),
+          MenuItem(
+            icon: AppIcons.groupChat,
+            label: l10n.botsMembers,
+            onTap: () {
+              Navigator.of(sheet).maybePop();
+              Navigator.of(context).push(RoomDetailsPage.route(room.id));
+            },
+          ),
+        ],
+      ],
+    ),
+  );
 }

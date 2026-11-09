@@ -65,6 +65,7 @@ class BotChatHeader extends StatelessWidget {
     this.scrolledUnder,
     this.chip,
     this.onInfo,
+    this.onMenu,
     this.onMessages,
     this.messagesIcon,
     this.messagesTooltip,
@@ -98,6 +99,11 @@ class BotChatHeader extends StatelessWidget {
   /// The right key: 对话详情 (trajectory, files, progress). Without it the key
   /// opens the same place as the title capsule.
   final VoidCallback? onInfo;
+
+  /// When set, the last key is ⋯ and [onMenu] opens the page's menu instead of
+  /// going straight to details; a long press still runs [onInfo]. Null keeps
+  /// the details key.
+  final VoidCallback? onMenu;
 
   /// 消息模式: only a group passes it, and the key sits left of the details one.
   final VoidCallback? onMessages;
@@ -251,7 +257,9 @@ class BotChatHeader extends StatelessWidget {
                   ),
                   if (trailing case final trailing?) ...[
                     const SizedBox(width: 4),
-                    trailing,
+                    // 目标胶囊要和标题分这点宽度：不给它弹性，长标题会把
+                    // 群名那种「只剩一颗圆头像」的收起态挤成一条竖杠。
+                    Flexible(child: trailing),
                   ],
                   if (onMessages case final onMessages?) ...[
                     const SizedBox(width: 8),
@@ -268,13 +276,24 @@ class BotChatHeader extends StatelessWidget {
                     chip,
                   ],
                   const SizedBox(width: 8),
-                  _RoundKey(
-                    key: const ValueKey('bot-details'),
-                    icon: AppIcons.info,
-                    tooltip: infoTooltip ?? l10n.commonDetails,
-                    onTap: onInfo ?? onDetails,
-                    iconColor: infoGreyed ? DshColors.of(context).textTertiary : null,
-                  ),
+                  if (onMenu case final onMenu?)
+                    _RoundKey(
+                      key: const ValueKey('bot-menu-key'),
+                      icon: AppIcons.more,
+                      tooltip: l10n.commonMore,
+                      onTap: onMenu,
+                      // One more way in, not a second menu: the details key is
+                      // still one long press away.
+                      onLongPress: onInfo,
+                    )
+                  else
+                    _RoundKey(
+                      key: const ValueKey('bot-details'),
+                      icon: AppIcons.info,
+                      tooltip: infoTooltip ?? l10n.commonDetails,
+                      onTap: onInfo ?? onDetails,
+                      iconColor: infoGreyed ? DshColors.of(context).textTertiary : null,
+                    ),
                 ],
               ),
             ),
@@ -291,12 +310,16 @@ class _RoundKey extends StatelessWidget {
     required this.icon,
     required this.tooltip,
     this.onTap,
+    this.onLongPress,
     this.iconWidget,
     this.iconColor,
   });
 
   final IconData icon;
   final String tooltip;
+
+  /// A second way in that the key's tooltip does not need to name.
+  final VoidCallback? onLongPress;
 
   /// Null disables the key: it still says what it would do, but does nothing.
   final VoidCallback? onTap;
@@ -317,6 +340,7 @@ class _RoundKey extends StatelessWidget {
         circle: true,
         grouped: true,
         onTap: onTap,
+        onLongPress: onLongPress,
         child: Tooltip(
           message: tooltip,
           child: Stack(
@@ -1008,6 +1032,7 @@ class BotTranscript extends StatefulWidget {
     this.onEarlier,
     this.scrolledUnder,
     this.empty,
+    this.notice,
   });
 
   final List<BotRow> rows;
@@ -1025,6 +1050,11 @@ class BotTranscript extends StatefulWidget {
 
   /// Shown when there are no rows.
   final Widget? empty;
+
+  /// One line the list carries under the newest row, while it still holds
+  /// rows: 「这一段里没有他的发言」 over the user's own lines. Not [empty],
+  /// which replaces the whole list.
+  final Widget? notice;
 
   @override
   State<BotTranscript> createState() => _BotTranscriptState();
@@ -1135,6 +1165,8 @@ class _BotTranscriptState extends State<BotTranscript> {
       );
     }
     final extra = widget.hasEarlier ? 1 : 0;
+    final notice = widget.notice;
+    final noticeCount = notice == null ? 0 : 1;
     return Stack(
       children: [
         ListView.builder(
@@ -1143,15 +1175,23 @@ class _BotTranscriptState extends State<BotTranscript> {
         // 末尾留出托板的高度：最后一条仍能滚到托板上方,同时往下滚时正文
         // 会从托板下面穿过去。
         padding: EdgeInsets.fromLTRB(0, widget.topInset, 0, 8 + bottomInset),
-        itemCount: rows.length + extra,
+        itemCount: rows.length + extra + noticeCount,
         itemBuilder: (context, index) {
-          if (index == rows.length) {
+          if (notice != null && index == 0) {
+            return Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: AppSpace.readingWidth),
+                child: notice,
+              ),
+            );
+          }
+          if (index == rows.length + noticeCount) {
             return const Padding(
               padding: EdgeInsets.symmetric(vertical: 16),
               child: Center(child: SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2))),
             );
           }
-          final row = rows[rows.length - 1 - index];
+          final row = rows[rows.length - 1 - (index - noticeCount)];
           return Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: AppSpace.readingWidth),

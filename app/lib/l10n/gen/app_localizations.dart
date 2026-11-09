@@ -34852,6 +34852,9 @@ abstract class L10n {
   /// In zh, this message translates to:
   /// **'群聊过滤'**
   String get botsRoomFilter;
+
+  /// No description provided for @botsMessageScope.
+  String get botsMessageScope;
   /// No description provided for @botsRoomFilterGroupOnly.
   ///
   /// In zh, this message translates to:

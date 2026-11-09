@@ -42,7 +42,8 @@ void main() {
     await pump(tester, const RoomChatPage(roomId: 'r1'));
     final screen = tester.getSize(find.byType(Scaffold).first);
     final back = tester.getRect(find.byKey(const ValueKey('bot-back')));
-    final details = tester.getRect(find.byKey(const ValueKey('bot-details')));
+    // The group's last key is the ⋯ menu now; it keeps the same 44 dp target.
+    final details = tester.getRect(find.byKey(const ValueKey('bot-menu-key')));
     final pill = tester.getRect(find.byKey(const ValueKey('bot-title')));
     final face = tester.getRect(find.byKey(const ValueKey('bot-face')));
     expect(back.size, const Size(44, 44));

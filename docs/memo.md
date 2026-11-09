@@ -31,3 +31,10 @@
 
 - 群任务板提交 `5f999c36`（含 `GroupTaskBar`）**不在 `feat/2.1.9` 树上**，拣不拣回还没定。
 - `2.2.0-rc.8` 出包待真机验证（顶栏目标胶囊、面板、停止语义）。
+
+## 2026-11-10 · 群内搜索与清空（架构师判断，未实现）
+
+- **群内搜索**：要新开 Host 端点 `room/message-search {roomId, query, limit, cursor}`，返回 `{sessionId, seq, at, by, text}`，App 按 seq 跳。现有 `session/search` 每会话只出一条最佳命中、不返回位置，且 FTS5 索引默认关闭，解决不了「跳到群里那条」。**不做「只搜已加载」**，那是把不确定当确定。
+- **清空会话**：不做真删。群消息真相在 `room.log` 预览与各 session 历史里，真删会毁掉成员上下文、目标/任务/审批的 seq 引用。要做就加 `room-clear {roomId, throughSeq}`：只清预览并在群数据里记 `clearedThroughSeq`，App 用这个截断点过滤旧消息。语义是「界面不再显示，底层保留」。
+- 两条都**不碰现有契约**（`goal-control`、`session/search` 都不动）。
+- 菜单里加「清空会话」时按 UI 危险项规则：单独分组、二次确认、文案写清后果、读屏念出后果。

@@ -20267,6 +20267,9 @@ class L10nEn extends L10n {
   String get botsRoomFilter => 'Group chat filters';
 
   @override
+  String get botsMessageScope => 'Message range';
+
+  @override
   String get botsRoomFilterGroupOnly => 'Works in the group chat only';
 
   @override
