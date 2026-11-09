@@ -20,17 +20,22 @@ import '../theme/theme.dart';
 
 /// 群的目标，随群消息和回合变化重新取一次。
 final groupGoalProvider = FutureProvider.autoDispose.family<DsBotGroupGoal?, String>((ref, roomId) async {
-  // 连接就绪后要重算一次：冷启动时这一次请求可能还没人能发，返回空之后
-  // 不会自己再试，顶栏就会一直空着。hello 与 team 两个信号任一变化都重算。
-  ref.watch(dsBotProvider.select((s) => (s.hello != null, s.team?.revision, s.feedConnected)));
-  final api = ref.watch(dsBotProvider.notifier).api;
-  if (api == null) return null;
+  // 顶栏比连接先建好是常态：那时 controller 还没有 api，一次就直接返回空，
+  // 之后又不会自己重算，于是这条胶囊永远不出现。这里等它，最多等十秒。
+  ref.watch(dsBotProvider.select((s) => (s.availability, s.hello != null, s.team?.revision, s.feedConnected)));
   ref.watch(roomChatProvider(roomId).select((s) => (s.items.length, s.running)));
-  try {
-    return (await api.goalView(roomId)).goal;
-  } catch (_) {
-    return null;
+  for (var i = 0; i < 40; i++) {
+    final api = ref.read(dsBotProvider.notifier).api;
+    if (api != null) {
+      try {
+        return (await api.goalView(roomId)).goal;
+      } catch (_) {
+        return null;
+      }
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 250));
   }
+  return null;
 });
 
 String? goalStateWord(L10n l10n, DsBotGroupGoal goal) => switch (goal.status) {
@@ -162,7 +167,8 @@ class GoalBarProbe extends ConsumerWidget {
         onTap: () => ScaffoldMessenger.maybeOf(context)?.showSnackBar(
           SnackBar(
             content: Text(
-              'goal: ${async.runtimeType} · room: $roomId',
+              'goal: ${async.value == null ? 'null' : 'title=${async.value!.title} · status=${async.value!.status}'}'
+              ' · room: $roomId',
             ),
             duration: const Duration(seconds: 6),
           ),
