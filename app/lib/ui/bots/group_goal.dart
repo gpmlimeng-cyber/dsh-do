@@ -20,12 +20,20 @@ import '../theme/theme.dart';
 
 /// 群的目标，随群消息和回合变化重新取一次。
 final groupGoalProvider = FutureProvider.autoDispose.family<DsBotGroupGoal?, String>((ref, roomId) async {
-  // 连接还没建好就先空着：顶栏比连接先建好是常态，这里不再自己等——由
-  // GoalBarProbe 在连接状态变化时回头取一次（等在这会踩 provider 销毁）。
-  final api = ref.read(dsBotProvider.notifier).api;
-  if (api == null) return null;
-  final view = await api.goalView(roomId);
-  return view.goal;
+  // 顶栏比连接先建好是常态，那一刻控制器还没有 api。这里等它，但用
+  // onDispose 记住自己是否已被销毁：销毁后立刻收手，不再拿着空值静默结束。
+  var disposed = false;
+  ref.onDispose(() => disposed = true);
+  ref.watch(dsBotProvider.select((s) => s.availability));
+  for (var i = 0; i < 40; i++) {
+    if (disposed) return null;
+    final api = ref.read(dsBotProvider.notifier).api;
+    if (api != null) {
+      return (await api.goalView(roomId)).goal;
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 250));
+  }
+  return null;
 });
 
 String? goalStateWord(L10n l10n, DsBotGroupGoal goal) => switch (goal.status) {
