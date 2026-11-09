@@ -57,9 +57,9 @@ jobs:
         id: runtime-cache
         uses: actions/cache@v4
         with:
-          path: |
-            runtime/out
-            runtime/.cache
+          # Only the built outputs: a half-restored download cache made the
+          # runtime step trust files it did not have (and then fail on a 504).
+          path: runtime/out
           key: runtime-arm64-${{ hashFiles('runtime/**') }}
           restore-keys: runtime-arm64-
 
