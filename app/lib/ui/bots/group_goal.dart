@@ -20,10 +20,10 @@ import '../theme/theme.dart';
 
 /// 群的目标，随群消息和回合变化重新取一次。
 final groupGoalProvider = FutureProvider.autoDispose.family<DsBotGroupGoal?, String>((ref, roomId) async {
-  final api = ref.watch(dsBotProvider.notifier).api;
   // 连接就绪后要重算一次：冷启动时这一次请求可能还没人能发，返回空之后
-  // 不会自己再试，顶栏就会一直空着。
-  ref.watch(dsBotProvider.select((s) => s.team?.revision));
+  // 不会自己再试，顶栏就会一直空着。hello 与 team 两个信号任一变化都重算。
+  ref.watch(dsBotProvider.select((s) => (s.hello != null, s.team?.revision, s.feedConnected)));
+  final api = ref.watch(dsBotProvider.notifier).api;
   if (api == null) return null;
   ref.watch(roomChatProvider(roomId).select((s) => (s.items.length, s.running)));
   try {
