@@ -20389,7 +20389,7 @@ class L10nEn extends L10n {
 
   String get chatGoalStageDone => 'Done when';
 
-  String get chatGoalTasks => 'Members' tasks';
+  String get chatGoalTasks => 'Members\' tasks';
 
   String get chatGoalTaskPending => 'To do';
 
@@ -20409,6 +20409,28 @@ class L10nEn extends L10n {
   String chatGoalRework(int count) {
     return 'Sent back $count×';
   }
+
+  @override
+  String get botsGoalBackToCurrent => 'Back to current stage';
+
+  @override
+  String get chatGoalEvidence => 'Evidence';
+
+  @override
+  String chatGoalReworkBy(String admin, String feedback) {
+    return 'Sent back by $admin: $feedback';
+  }
+
+  @override
+  String chatGoalReworkByTimes(int count, String admin, String feedback) {
+    return 'Sent back $count times by $admin. Last: $feedback';
+  }
+
+  @override
+  String get botsABot => 'a Bot';
+
+  @override
+  String get chatStopWorkToo => 'Stop current work too';
 
   @override
   String get hubGroupBot => 'Bots';

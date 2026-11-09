@@ -35026,23 +35026,7 @@ class _L10nDelegate extends LocalizationsDelegate<L10n> {
 
   @override
   bool shouldReload(_L10nDelegate old) => false;
-}
 
-L10n lookupL10n(Locale locale) {
-  // Lookup logic when only language code is specified.
-  switch (locale.languageCode) {
-    case 'en':
-      return L10nEn();
-    case 'zh':
-      return L10nZh();
-  }
-
-  throw FlutterError(
-    'L10n.delegate failed to load unsupported locale "$locale". This is likely '
-    'an issue with the localizations generation tool. Please file an issue '
-    'on GitHub with a reproducible sample app and the gen-l10n configuration '
-    'that was used.',
-  );
 
 
   String get chatGoalRunning;
@@ -35077,6 +35061,24 @@ L10n lookupL10n(Locale locale) {
 
   String chatGoalRework(int count);
 
+  /// No description provided for @botsGoalBackToCurrent.
+  String get botsGoalBackToCurrent;
+
+  /// No description provided for @chatGoalEvidence.
+  String get chatGoalEvidence;
+
+  /// No description provided for @chatGoalReworkBy.
+  String chatGoalReworkBy(String admin, String feedback);
+
+  /// No description provided for @chatGoalReworkByTimes.
+  String chatGoalReworkByTimes(int count, String admin, String feedback);
+
+  /// No description provided for @botsABot.
+  String get botsABot;
+
+  /// No description provided for @chatStopWorkToo.
+  String get chatStopWorkToo;
+
   String get hubGroupBot;
 
   String get hubBotThinking;
@@ -35089,4 +35091,21 @@ L10n lookupL10n(Locale locale) {
   String get hubGoalBarSimple;
 
   String get hubGoalBarFull;
+}
+
+L10n lookupL10n(Locale locale) {
+  // Lookup logic when only language code is specified.
+  switch (locale.languageCode) {
+    case 'en':
+      return L10nEn();
+    case 'zh':
+      return L10nZh();
+  }
+
+  throw FlutterError(
+    'L10n.delegate failed to load unsupported locale "$locale". This is likely '
+    'an issue with the localizations generation tool. Please file an issue '
+    'on GitHub with a reproducible sample app and the gen-l10n configuration '
+    'that was used.',
+  );
 }

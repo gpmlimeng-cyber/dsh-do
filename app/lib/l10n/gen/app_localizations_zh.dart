@@ -19358,6 +19358,28 @@ class L10nZh extends L10n {
   }
 
   @override
+  String get botsGoalBackToCurrent => '回到当前阶段';
+
+  @override
+  String get chatGoalEvidence => '证据';
+
+  @override
+  String chatGoalReworkBy(String admin, String feedback) {
+    return '被 $admin 打回：$feedback';
+  }
+
+  @override
+  String chatGoalReworkByTimes(int count, String admin, String feedback) {
+    return '被 $admin 打回 $count 次。上次：$feedback';
+  }
+
+  @override
+  String get botsABot => '某个 Bot';
+
+  @override
+  String get chatStopWorkToo => '连当前工作一起停';
+
+  @override
   String get hubGroupBot => 'Bot';
 
   @override

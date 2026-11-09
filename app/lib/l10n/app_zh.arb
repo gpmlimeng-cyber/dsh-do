@@ -2897,6 +2897,35 @@
       }
     }
   },
+  "botsGoalBackToCurrent": "回到当前阶段",
+  "chatGoalEvidence": "证据",
+  "chatGoalReworkBy": "被 {admin} 打回：{feedback}",
+  "@chatGoalReworkBy": {
+    "placeholders": {
+      "admin": {
+        "type": "String"
+      },
+      "feedback": {
+        "type": "String"
+      },
+    }
+  },
+  "chatGoalReworkByTimes": "被 {admin} 打回 {count} 次。上次：{feedback}",
+  "botsABot": "某个 Bot",
+  "chatStopWorkToo": "连当前工作一起停",
+  "@chatGoalReworkByTimes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "admin": {
+        "type": "String"
+      },
+      "feedback": {
+        "type": "String"
+      },
+    }
+  },
   "commonCancel": "取消",
   "commonRetry": "重试",
   "commonClose": "关闭",

@@ -65,11 +65,15 @@ bool goalChecking(DsBotGroupGoal goal) {
 
 /// 圆形进度环：已过的段数 / 总段数，环内写「3/4」。
 class GoalRing extends StatelessWidget {
-  const GoalRing({super.key, required this.goal, this.size = 30, this.onTap});
+  const GoalRing({super.key, required this.goal, this.size = 30, this.onTap, this.announce = true});
 
   final DsBotGroupGoal goal;
   final double size;
   final VoidCallback? onTap;
+
+  /// False where a visible title sits beside the ring: the screen reader reads
+  /// the title once, from that text, not twice.
+  final bool announce;
 
   @override
   Widget build(BuildContext context) {
@@ -100,7 +104,7 @@ class GoalRing extends StatelessWidget {
     );
     return Semantics(
       button: onTap != null,
-      label: goal.title,
+      label: announce ? goal.title : null,
       child: onTap == null ? ring : InkResponse(onTap: onTap, radius: size, child: ring),
     );
   }
@@ -195,6 +199,10 @@ class GoalBarProbe extends ConsumerWidget {
 }
 
 /// 收起态那颗：简单模式只有一颗环，完整模式是「图标 + 标题 + 环」。
+///
+/// 与顶栏其他键同一套：44 高的玻璃底（[BotChatHeader.key44]、chrome、grouped），
+/// 按下态由 GlassSurface 给，圆的给环、长的给胶囊。读屏只念一遍标题：外层把
+/// 标题作标签，里面的文字与环都不再单独念。
 class GroupGoalPill extends StatelessWidget {
   const GroupGoalPill({
     super.key,
@@ -215,46 +223,65 @@ class GroupGoalPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final dsh = DshColors.of(context);
-    final tone = goalStateColor(context, goal);
-    final ring = GoalRing(goal: goal, size: expandArrow ? 36 : 30);
+    final ring = GoalRing(goal: goal, size: expandArrow ? 36 : 30, announce: false);
     if (style == GoalBarStyle.simple && !expandArrow) {
       return Semantics(
         button: true,
         label: goal.title,
-        child: InkResponse(onTap: onTap, radius: 24, child: Padding(padding: const EdgeInsets.all(6), child: ring)),
+        excludeSemantics: true,
+        child: SizedBox.square(
+          dimension: BotChatHeader.key44,
+          child: GlassSurface(
+            tier: GlassTier.chrome,
+            circle: true,
+            grouped: true,
+            onTap: onTap,
+            child: Center(child: ring),
+          ),
+        ),
       );
     }
-    return Material(
-      type: MaterialType.transparency,
-      child: InkWell(
-        onTap: onTap,
-        customBorder: const StadiumBorder(),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(10, 6, 8, 6),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                goal.status == 'complete' ? AppIcons.success : AppIcons.goal,
-                size: 16,
-                color: goal.status == 'complete' ? dsh.success : dsh.textTertiary,
+    return Semantics(
+      button: true,
+      label: goal.title,
+      excludeSemantics: true,
+      child: SizedBox(
+        height: BotChatHeader.key44,
+        child: GlassSurface(
+          tier: GlassTier.chrome,
+          borderRadius: DockMetrics.shape,
+          grouped: true,
+          onTap: onTap,
+          child: Tooltip(
+            message: goal.title,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 10, 0),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    goal.status == 'complete' ? AppIcons.success : AppIcons.goal,
+                    size: 18,
+                    color: goal.status == 'complete' ? dsh.success : dsh.textTertiary,
+                  ),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      goal.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ring,
+                  if (expandArrow) ...[
+                    const SizedBox(width: 2),
+                    Icon(AppIcons.collapse, size: 16, color: dsh.textTertiary),
+                  ],
+                ],
               ),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  goal.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
-                ),
-              ),
-              const SizedBox(width: 8),
-              ring,
-              if (expandArrow) ...[
-                const SizedBox(width: 2),
-                Icon(AppIcons.collapse, size: 16, color: dsh.textTertiary),
-              ],
-            ],
+            ),
           ),
         ),
       ),
@@ -292,13 +319,13 @@ class _GoalPanelState extends ConsumerState<GoalPanel> {
     return _goal.stages[at];
   }
 
-  Future<void> _control(String action) async {
+  Future<void> _control(String action, {bool stopWork = false}) async {
     if (_busy) return;
     final api = ref.read(dsBotProvider.notifier).api;
     if (api == null) return;
     setState(() => _busy = true);
     try {
-      await api.goalControl(widget.roomId, _goal.id, action);
+      await api.goalControl(widget.roomId, _goal.id, action, stopWork: stopWork);
       ref.invalidate(groupGoalProvider(widget.roomId));
       if (action == 'clear') widget.onClose();
     } catch (error) {
@@ -308,11 +335,27 @@ class _GoalPanelState extends ConsumerState<GoalPanel> {
     }
   }
 
+  /// 已暂停、但还有人在跑：只停工作，目标保持暂停。
+  /// 网页端这颗「连当前工作一起停」走的也是 `stop-room-work`，不是 `goal-control`：
+  /// 后者在 paused 下会把整个目标停掉。
+  Future<void> _stopWorkOnly() async {
+    if (_busy) return;
+    final api = ref.read(dsBotProvider.notifier).api;
+    if (api == null) return;
+    setState(() => _busy = true);
+    try {
+      await api.stopRoomWork(widget.roomId);
+      ref.invalidate(groupGoalProvider(widget.roomId));
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text('$error')));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   void _stop() {
     if (!_armed) {
-      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-        SnackBar(content: Text('${context.l10n.commonStop}?'), duration: const Duration(seconds: 2)),
-      );
+      // 网页端把确认写在按钮里（3 秒内再点），不弹提示条：弹条会盖住底部动作。
       setState(() => _armed = true);
       Future<void>.delayed(const Duration(seconds: 3), () {
         if (mounted) setState(() => _armed = false);
@@ -339,6 +382,13 @@ class _GoalPanelState extends ConsumerState<GoalPanel> {
       textStyle: theme.textTheme.labelMedium,
     );
     final hasChecks = goal.objective.isNotEmpty || goal.acceptance.isNotEmpty || goal.constraints.isNotEmpty;
+    // 「连当前工作一起停」 only means something while the goal is paused and a
+    // member is still running.
+    final working = ref.watch(
+      dsBotProvider.select((s) => (s.live.rooms[widget.roomId] ?? const <DsBotWork>[]).isNotEmpty),
+    );
+    final room = ref.watch(dsBotProvider.select((s) => s.team?.room(widget.roomId)));
+    final admin = room == null ? l10n.botsABot : (ref.read(dsBotProvider).team?.bot(room.admin ?? '')?.name ?? l10n.botsABot);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
@@ -351,14 +401,21 @@ class _GoalPanelState extends ConsumerState<GoalPanel> {
             onSelect: (index) => setState(() => _selected = index),
           ),
         if (goal.status == 'drafting')
-          Text(goal.brief.isEmpty ? l10n.chatGoalHint : goal.brief, style: theme.textTheme.bodyMedium)
+          Text(
+            // The title is already in the bar above: an echo here reads as two
+            // different things saying the same words.
+            goal.brief.isEmpty || goal.brief.trim() == goal.title.trim()
+                ? l10n.chatGoalHint
+                : goal.brief,
+            style: theme.textTheme.bodyMedium,
+          )
         else if (stage == null) ...[
           if (goal.summary.isNotEmpty) Text(goal.summary, style: theme.textTheme.bodyMedium),
           if (goal.evidence.isNotEmpty) ...[
             const SizedBox(height: 6),
             Text(goal.evidence, style: theme.textTheme.bodySmall?.copyWith(color: dsh.textTertiary)),
           ],
-          if (goal.reason.isNotEmpty) ...[
+          if (goal.status == 'stopped' && goal.reason.isNotEmpty) ...[
             const SizedBox(height: 6),
             Text(goal.reason, style: theme.textTheme.bodySmall?.copyWith(color: dsh.warning)),
           ],
@@ -372,6 +429,12 @@ class _GoalPanelState extends ConsumerState<GoalPanel> {
                 Text(l10n.commonCompleted, style: theme.textTheme.labelSmall?.copyWith(color: dsh.success))
               else if (_viewing == at)
                 Text(l10n.chatGoalStageCurrent, style: small),
+              if (_viewing != at && at >= 0)
+                TextButton(
+                  onPressed: () => setState(() => _selected = at),
+                  style: controlStyle,
+                  child: Text(l10n.botsGoalBackToCurrent),
+                ),
             ],
           ),
           if (stage.acceptance.isNotEmpty) ...[
@@ -383,14 +446,18 @@ class _GoalPanelState extends ConsumerState<GoalPanel> {
           if (_viewing == at && stage.reworks > 0 && stage.feedback.isNotEmpty) ...[
             const SizedBox(height: 6),
             Text(
-              '${l10n.chatGoalRework(stage.reworks)} · ${stage.feedback}',
+              stage.reworks > 1
+                  ? l10n.chatGoalReworkByTimes(stage.reworks, admin, stage.feedback)
+                  : l10n.chatGoalReworkBy(admin, stage.feedback),
               style: theme.textTheme.bodySmall?.copyWith(color: dsh.warning),
             ),
           ],
           if (stage.evidence.isNotEmpty && stage.passed) ...[
             const SizedBox(height: 6),
-            Text(l10n.chatGoalStageDone, style: small),
-            Text(stage.evidence, style: theme.textTheme.bodySmall?.copyWith(color: dsh.success)),
+            Text(
+              '${l10n.chatGoalEvidence}：${stage.evidence}',
+              style: theme.textTheme.bodySmall?.copyWith(color: dsh.success),
+            ),
           ],
           if (stage.tasks.isNotEmpty) ...[
             const SizedBox(height: 8),
@@ -399,22 +466,40 @@ class _GoalPanelState extends ConsumerState<GoalPanel> {
             for (final task in stage.tasks) _GoalTaskRow(task: task),
           ],
         ],
-        if (hasChecks) ...[
+        if (_checks && hasChecks) ...[
           const SizedBox(height: 6),
-          TextButton(
-            onPressed: () => setState(() => _checks = !_checks),
-            style: controlStyle,
-            child: Text(l10n.chatGoalAcceptance),
-          ),
-          if (_checks) ...[
-            if (goal.objective.isNotEmpty) _Block(label: l10n.chatGoal, value: goal.objective),
-            if (goal.acceptance.isNotEmpty) _Block(label: l10n.chatGoalAcceptanceDone, value: goal.acceptance),
-            for (final rule in goal.constraints) _Block(label: l10n.chatGoalRule, value: rule),
-          ],
+          if (goal.objective.isNotEmpty) _Block(label: l10n.chatGoal, value: goal.objective),
+          if (goal.acceptance.isNotEmpty) _Block(label: l10n.chatGoalAcceptanceDone, value: goal.acceptance),
+          for (final rule in goal.constraints) _Block(label: l10n.chatGoalRule, value: rule),
         ],
         const SizedBox(height: 6),
+        // The web's foot: 「目标与验收」 on the left, the actions as one cluster
+        // on the right, in the same order it uses.
         Row(
           children: [
+            if (hasChecks)
+              TextButton(
+                onPressed: () => setState(() => _checks = !_checks),
+                style: controlStyle,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(l10n.chatGoalAcceptance),
+                    AnimatedRotation(
+                      turns: _checks ? 0.5 : 0,
+                      duration: AppMotion.of(context, AppMotion.standard),
+                      child: Icon(AppIcons.collapse, size: 16, color: dsh.textTertiary),
+                    ),
+                  ],
+                ),
+              ),
+            const Spacer(),
+            if (goal.status == 'paused' && working)
+              TextButton(
+                onPressed: _busy ? null : _stopWorkOnly,
+                style: controlStyle,
+                child: Text(l10n.chatStopWorkToo),
+              ),
             if (goal.status == 'active')
               TextButton(onPressed: _busy ? null : () => _control('pause'), style: controlStyle, child: Text(l10n.chatPauseGoal)),
             if (goal.status == 'paused')
@@ -425,7 +510,7 @@ class _GoalPanelState extends ConsumerState<GoalPanel> {
                 style: _armed
                     ? controlStyle.copyWith(foregroundColor: WidgetStatePropertyAll(theme.colorScheme.error))
                     : controlStyle,
-                child: Text(l10n.commonStop),
+                child: Text(_armed ? '${l10n.commonStop}?' : l10n.commonStop),
               ),
             if (goal.status == 'complete' || goal.status == 'stopped')
               TextButton(onPressed: _busy ? null : () => _control('clear'), style: controlStyle, child: Text(l10n.chatClearGoal)),
@@ -676,20 +761,25 @@ class _GoalComposeSheetState extends ConsumerState<_GoalComposeSheet> {
 
 /// 从顶栏胶囊展开：顶栏铺满成目标本身，下面长出面板，其余内容被遮住。
 /// 收起（箭头 / 点遮罩 / 返回键）就散了，原顶栏原样回来。
-Future<void> showGoalExpand(BuildContext context, String roomId) => showGeneralDialog<void>(
-  context: context,
-  barrierDismissible: true,
-  barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
-  barrierColor: Colors.black.withValues(alpha: 0.24),
-  transitionDuration: const Duration(milliseconds: 220),
-  pageBuilder: (dialogContext, _, _) => _GoalExpandLayer(roomId: roomId),
-  transitionBuilder: (context, animation, _, child) => SlideTransition(
-    position: Tween<Offset>(begin: const Offset(0, -0.04), end: Offset.zero).animate(
-      CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+Future<void> showGoalExpand(BuildContext context, String roomId) async {
+  await showGeneralDialog<void>(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+    barrierColor: Colors.black.withValues(alpha: 0.24),
+    transitionDuration: const Duration(milliseconds: 220),
+    pageBuilder: (dialogContext, _, _) => _GoalExpandLayer(roomId: roomId),
+    transitionBuilder: (context, animation, _, child) => SlideTransition(
+      position: Tween<Offset>(begin: const Offset(0, -0.04), end: Offset.zero).animate(
+        CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+      ),
+      child: FadeTransition(opacity: animation, child: child),
     ),
-    child: FadeTransition(opacity: animation, child: child),
-  ),
-);
+  );
+  // The panel was looked at, not typed in: closing it must not hand the focus
+  // (and the keyboard) back to the composer.
+  FocusManager.instance.primaryFocus?.unfocus();
+}
 
 class _GoalExpandLayer extends ConsumerWidget {
   const _GoalExpandLayer({required this.roomId});
