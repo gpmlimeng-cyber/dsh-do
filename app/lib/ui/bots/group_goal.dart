@@ -17,6 +17,8 @@ import '../../state/bots_state.dart';
 import '../../state/settings_state.dart';
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
+import '../chat/dock/dock_pill.dart';
+import 'bot_chat_kit.dart';
 
 /// 群的目标，随群消息和回合变化重新取一次。
 final groupGoalProvider = FutureProvider.autoDispose.family<DsBotGroupGoal?, String>((ref, roomId) async {
