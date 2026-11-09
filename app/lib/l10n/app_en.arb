@@ -1095,6 +1095,8 @@
   "chatResumeGoalHint": "Resume automatic progress",
   "chatClearGoal": "Clear goal",
   "chatGoalHint": "What do you want to achieve?",
+  "chatGoalDrafting": "Drafting — waiting for the admin to start",
+  "botsMessageModeEmptyStretch": "Nothing from them in this stretch",
   "chatClearGoalTitle": "Clear goal?",
   "chatTodoCurrent": "Working on: {content}",
   "chatTodoNext": "Next: {content}",

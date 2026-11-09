@@ -975,7 +975,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
                   ? _Members(room: room, team: team)
                   : Center(
                       child: Text(
-                        l10n.botsMessageModeEmpty,
+                        l10n.botsMessageModeEmptyStretch,
                         style: Theme.of(
                           context,
                         ).textTheme.bodyMedium?.copyWith(color: DshColors.of(context).textTertiary),

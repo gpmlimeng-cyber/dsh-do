@@ -2258,6 +2258,10 @@
   "chatResumeGoalHint": "继续自动推进",
   "chatClearGoal": "清除目标",
   "chatGoalHint": "要完成什么",
+  "chatGoalDrafting": "起草中，等管理员开始",
+  "@chatGoalDrafting": {},
+  "botsMessageModeEmptyStretch": "这一段里没有他的发言",
+  "@botsMessageModeEmptyStretch": {},
   "chatClearGoalTitle": "清除目标？",
   "chatTodoCurrent": "正在：{content}",
   "@chatTodoCurrent": {

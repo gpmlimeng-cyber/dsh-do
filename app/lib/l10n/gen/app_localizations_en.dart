@@ -3708,6 +3708,12 @@ class L10nEn extends L10n {
   String get chatGoalHint => 'What do you want to achieve?';
 
   @override
+  String get chatGoalDrafting => 'Drafting — waiting for the admin to start';
+
+  @override
+  String get botsMessageModeEmptyStretch => 'Nothing from them in this stretch';
+
+  @override
   String get chatClearGoalTitle => 'Clear goal?';
 
   @override

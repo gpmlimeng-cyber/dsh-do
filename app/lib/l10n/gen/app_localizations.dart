@@ -6513,6 +6513,12 @@ abstract class L10n {
   /// **'要完成什么'**
   String get chatGoalHint;
 
+  /// No description provided for @chatGoalDrafting.
+  String get chatGoalDrafting;
+
+  /// No description provided for @botsMessageModeEmptyStretch.
+  String get botsMessageModeEmptyStretch;
+
   /// No description provided for @chatClearGoalTitle.
   ///
   /// In zh, this message translates to:

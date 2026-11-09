@@ -411,14 +411,15 @@ class _GoalPanelState extends ConsumerState<GoalPanel> {
             viewing: _viewing,
             onSelect: (index) => setState(() => _selected = index),
           ),
-        // 起草态：标题在头部，正文只在 brief 与标题不同的时候才有话可说。
-        // 同值时什么都别画——一句「要完成什么」既不是内容，也不像状态。
-        if (goal.status == 'drafting' && goal.brief.trim().isNotEmpty && goal.brief.trim() != goal.title.trim())
-          Text(
-            goal.brief,
-            style: theme.textTheme.bodyMedium,
-          )
-        else if (stage == null) ...[
+        // 起草态：标题在头部，正文先放 brief（与标题同值时不重复），再补一句
+        // 状态——整块空着会被当成没加载出来。
+        if (goal.status == 'drafting') ...[
+          if (goal.brief.trim().isNotEmpty && goal.brief.trim() != goal.title.trim()) ...[
+            Text(goal.brief, style: theme.textTheme.bodyMedium),
+            const SizedBox(height: 6),
+          ],
+          Text(l10n.chatGoalDrafting, style: theme.textTheme.bodySmall?.copyWith(color: dsh.textTertiary)),
+        ] else if (stage == null) ...[
           if (goal.summary.isNotEmpty) Text(goal.summary, style: theme.textTheme.bodyMedium),
           if (goal.evidence.isNotEmpty) ...[
             const SizedBox(height: 6),

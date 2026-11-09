@@ -74,11 +74,14 @@ List<DsBotItem> visibleRoomItems(
   if (mode.isAll) return items;
   final id = mode.memberId;
   if (id == null) return items;
+  // The member's lines and the user's own: a filter that hid what the user
+  // said would cut the conversation in half, and the member's replies would
+  // answer nobody. The same rule as [memberTargetItems], the member's page.
   // A member's line carries the sender's Session id on this Host, so the
   // caller resolves the speaker (state/room_speakers.dart) when it can.
   return [
     for (final item in items)
-      if ((speakerOf?.call(item) ?? item.botId) == id) item,
+      if (item.kind == DsBotItemKind.user || (speakerOf?.call(item) ?? item.botId) == id) item,
   ];
 }
 

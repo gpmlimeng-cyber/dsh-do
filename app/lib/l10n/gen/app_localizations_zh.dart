@@ -3521,6 +3521,12 @@ class L10nZh extends L10n {
   String get chatGoalHint => '要完成什么';
 
   @override
+  String get chatGoalDrafting => '起草中，等管理员开始';
+
+  @override
+  String get botsMessageModeEmptyStretch => '这一段里没有他的发言';
+
+  @override
   String get chatClearGoalTitle => '清除目标？';
 
   @override
