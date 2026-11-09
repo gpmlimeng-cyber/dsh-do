@@ -1949,6 +1949,11 @@ class DsBotApi {
   /// The user's own pause, resume, stop or clear on a group's goal, from the
   /// panel. [goalId] comes from [goalView]: a goal that changed meanwhile is
   /// refused rather than acted on.
+  /// 起草目标：把用户这段话交给管理员，由它在群里对齐后写成目标。
+  Future<void> goalDraft(String roomId, String text) async {
+    await call('goal-draft', {'roomId': roomId, 'text': text});
+  }
+
   Future<void> goalControl(String roomId, String goalId, String action, {bool stopWork = false}) async {
     await call('goal-control', {
       'roomId': roomId,
