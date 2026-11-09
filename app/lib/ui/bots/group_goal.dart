@@ -301,6 +301,19 @@ class _GroupGoalPanelState extends ConsumerState<GroupGoalPanel> {
               TextButton(
                 onPressed: _busy ? null : () => _control('stop'),
                 style: controlStyle.copyWith(foregroundColor: WidgetStatePropertyAll(theme.colorScheme.error)),
+                child: Text(l10n.commonStop),
+              ),
+            ],
+          ),
+        ],
+        // 走完的目标不留着：清除会把它归档，输入框上方也就彻底空了。
+        if (goal.status == 'complete' || goal.status == 'stopped') ...[
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              TextButton(
+                onPressed: _busy ? null : () => _control('clear'),
+                style: controlStyle,
                 child: Text(l10n.chatClearGoal),
               ),
             ],
