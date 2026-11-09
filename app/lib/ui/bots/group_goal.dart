@@ -20,22 +20,12 @@ import '../theme/theme.dart';
 
 /// 群的目标，随群消息和回合变化重新取一次。
 final groupGoalProvider = FutureProvider.autoDispose.family<DsBotGroupGoal?, String>((ref, roomId) async {
-  // 顶栏比连接先建好是常态：那时 controller 还没有 api，一次就直接返回空，
-  // 之后又不会自己重算，于是这条胶囊永远不出现。这里等它，最多等十秒。
-  ref.watch(dsBotProvider.select((s) => (s.availability, s.hello != null, s.team?.revision, s.feedConnected)));
-  ref.watch(roomChatProvider(roomId).select((s) => (s.items.length, s.running)));
-  for (var i = 0; i < 40; i++) {
-    final api = ref.read(dsBotProvider.notifier).api;
-    if (api != null) {
-      try {
-        return (await api.goalView(roomId)).goal;
-      } catch (_) {
-        return null;
-      }
-    }
-    await Future<void>.delayed(const Duration(milliseconds: 250));
-  }
-  return null;
+  // 连接还没建好就先空着：顶栏比连接先建好是常态，这里不再自己等——由
+  // GoalBarProbe 在连接状态变化时回头取一次（等在这会踩 provider 销毁）。
+  final api = ref.read(dsBotProvider.notifier).api;
+  if (api == null) return null;
+  final view = await api.goalView(roomId);
+  return view.goal;
 });
 
 String? goalStateWord(L10n l10n, DsBotGroupGoal goal) => switch (goal.status) {
@@ -150,8 +140,14 @@ class GoalBarProbe extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // 连接一就绪就回头取一次：api 只存在于控制器上，不改变 status，所以
+    // 光靠 watch 依赖等不到它。
+    ref.listen(dsBotProvider.select((s) => s.team != null), (previous, next) {
+      if (next && previous != true) ref.invalidate(groupGoalProvider(roomId));
+    });
     final style = ref.watch(settingsProvider.select((s) => s.goalBarStyle));
     final async = ref.watch(groupGoalProvider(roomId));
+    final api = ref.read(dsBotProvider.notifier).api;
     return switch (async) {
       AsyncData(value: final goal?) when goal.title.isNotEmpty => GroupGoalPill(
         goal: goal,
@@ -167,10 +163,11 @@ class GoalBarProbe extends ConsumerWidget {
         onTap: () => ScaffoldMessenger.maybeOf(context)?.showSnackBar(
           SnackBar(
             content: Text(
-              'goal: ${async.value == null ? 'null' : 'title=${async.value!.title} · status=${async.value!.status}'}'
-              ' · room: $roomId',
+              'api=${api == null ? 'null' : 'ok'}'
+              ' · ${async.hasError ? 'err=${async.error}' : async.value == null ? 'goal=null' : 'title=${async.value!.title}'}'
+              ' · room=$roomId',
             ),
-            duration: const Duration(seconds: 6),
+            duration: const Duration(seconds: 8),
           ),
         ),
         child: Padding(
