@@ -24,8 +24,14 @@ Future<List<DraftAttachment>?> pickBotAttachments(
   bool files = true,
   int limit = maxAttachments,
   String? sessionId,
+  String? roomId,
+  Future<void> Function()? onGoal,
 }) async {
-  final choice = await showPlusPanel(context, files: files, sessionId: sessionId);
+  final choice = await showPlusPanel(context, files: files, sessionId: sessionId, roomId: roomId);
+  if (choice is GoalChoice) {
+    if (onGoal != null) await onGoal();
+    return null;
+  }
   if (choice is! AttachChoice) return null;
   // The panel was a page: the caller may be gone by the time it closes.
   if (!context.mounted) return null;
