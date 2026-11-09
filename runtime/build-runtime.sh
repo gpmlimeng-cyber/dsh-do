@@ -203,8 +203,14 @@ python_dist() {  # $1 = aarch64|x86_64; echoes path
   local name="cpython-${PYTHON_VERSION}+${PBS_RELEASE}-$1-unknown-linux-gnu-install_only_stripped.tar.gz"
   local dir="$CACHE/python/$PBS_RELEASE" pin; pin="$(pin_of "$name")"
   if [[ -f "$dir/$name" && -n "$pin" && "$(sha256 "$dir/$name")" == "$pin" ]]; then printf '%s' "$dir/$name"; return; fi
-  fetch "$PBS_OFFICIAL/$PBS_RELEASE/SHA256SUMS" "$dir/SHA256SUMS"
-  local listed; listed="$(awk -v f="$name" '$2==f {print $1}' "$dir/SHA256SUMS")"
+  # The pinned hash already says what the file must be: with it there is no
+  # need to ask GitHub for SHA256SUMS first (that fetch 504s often enough to
+  # lose whole builds).
+  local listed="$pin"
+  if [[ -z "$listed" ]]; then
+    fetch "$PBS_OFFICIAL/$PBS_RELEASE/SHA256SUMS" "$dir/SHA256SUMS"
+    listed="$(awk -v f="$name" '$2==f {print $1}' "$dir/SHA256SUMS")"
+  fi
   [[ -n "$listed" ]] || die "$name not in SHA256SUMS of $PBS_RELEASE"
   [[ -z "$pin" || "$pin" == "$listed" ]] || die "SHA256SUMS disagrees with pinned hash for $name"
   fetch "$PBS_MIRROR/$PBS_RELEASE/$name" "$dir/$name" "$listed" 2>/dev/null \
