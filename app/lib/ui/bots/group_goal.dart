@@ -21,6 +21,9 @@ import '../theme/theme.dart';
 /// 群的目标，随群消息和回合变化重新取一次。
 final groupGoalProvider = FutureProvider.autoDispose.family<DsBotGroupGoal?, String>((ref, roomId) async {
   final api = ref.watch(dsBotProvider.notifier).api;
+  // 连接就绪后要重算一次：冷启动时这一次请求可能还没人能发，返回空之后
+  // 不会自己再试，顶栏就会一直空着。
+  ref.watch(dsBotProvider.select((s) => s.team?.revision));
   if (api == null) return null;
   ref.watch(roomChatProvider(roomId).select((s) => (s.items.length, s.running)));
   try {
@@ -514,6 +517,100 @@ class _Block extends StatelessWidget {
           Text(label, style: theme.textTheme.labelSmall?.copyWith(color: dsh.textTertiary)),
           Text(value, style: theme.textTheme.bodySmall),
         ],
+      ),
+    );
+  }
+}
+
+/// 起草：写一句这个群要达成什么，交给管理员去对齐、再写成目标。
+Future<void> showGoalCompose(BuildContext context, String roomId) => showModalBottomSheet<void>(
+  context: context,
+  isScrollControlled: true,
+  showDragHandle: true,
+  builder: (_) => _GoalComposeSheet(roomId: roomId),
+);
+
+class _GoalComposeSheet extends ConsumerStatefulWidget {
+  const _GoalComposeSheet({required this.roomId});
+
+  final String roomId;
+
+  @override
+  ConsumerState<_GoalComposeSheet> createState() => _GoalComposeSheetState();
+}
+
+class _GoalComposeSheetState extends ConsumerState<_GoalComposeSheet> {
+  final _text = TextEditingController();
+  bool _sending = false;
+
+  @override
+  void dispose() {
+    _text.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final text = _text.text.trim();
+    if (text.isEmpty || _sending) return;
+    final api = ref.read(dsBotProvider.notifier).api;
+    if (api == null) return;
+    setState(() => _sending = true);
+    try {
+      await api.goalDraft(widget.roomId, text);
+      ref.invalidate(groupGoalProvider(widget.roomId));
+      if (mounted) Navigator.of(context).maybePop();
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text('$error')));
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final dsh = DshColors.of(context);
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(20, 0, 20, 16 + MediaQuery.viewInsetsOf(context).bottom),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(l10n.chatGoal, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _text,
+              autofocus: true,
+              minLines: 2,
+              maxLines: 6,
+              textInputAction: TextInputAction.newline,
+              decoration: InputDecoration(
+                hintText: l10n.chatGoalHint,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              l10n.chatGoalHint,
+              style: theme.textTheme.bodySmall?.copyWith(color: dsh.textTertiary),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(onPressed: () => Navigator.of(context).maybePop(), child: Text(l10n.commonCancel)),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: _sending ? null : _submit,
+                  child: Text(l10n.commonSend),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
