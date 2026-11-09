@@ -662,6 +662,8 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
       ref,
       files: client?.supportsEndpoint('fileUploads/upload') ?? true,
       limit: room,
+      roomId: widget.roomId,
+      onGoal: () => showGoalCompose(context, widget.roomId),
     );
     if (!mounted || picked == null || picked.isEmpty) return;
     setState(() => _drafts = [..._drafts, ...picked]);
