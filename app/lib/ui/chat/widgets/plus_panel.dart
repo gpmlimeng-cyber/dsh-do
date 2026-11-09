@@ -55,6 +55,11 @@ final class AttachChoice extends PlusChoice {
   final AttachSource source;
 }
 
+/// 「群目标」: a group chat's draft form.
+final class GoalChoice extends PlusChoice {
+  const GoalChoice();
+}
+
 /// 「生成」: into generation mode.
 final class GenerateChoice extends PlusChoice {
   const GenerateChoice();
@@ -81,7 +86,7 @@ abstract final class PlusPanelMetrics {
 /// The ＋ panel. [files] false (DSH Remote stages no files) leaves 文件 out;
 /// [generate] adds 生成; [sessionId] adds 本对话 (a new chat has no
 /// conversation to set yet).
-Future<PlusChoice?> showPlusPanel(BuildContext context, {bool files = true, bool generate = false, String? sessionId}) {
+Future<PlusChoice?> showPlusPanel(BuildContext context, {bool files = true, bool generate = false, String? sessionId, String? roomId}) {
   return showAppSheet<PlusChoice>(
     context,
     isScrollControlled: true,
@@ -89,7 +94,7 @@ Future<PlusChoice?> showPlusPanel(BuildContext context, {bool files = true, bool
       top: false,
       child: SingleChildScrollView(
         child: SheetNavigator(
-          root: (_) => _PlusRoot(files: files, generate: generate, sessionId: sessionId),
+          root: (_) => _PlusRoot(files: files, generate: generate, sessionId: sessionId, roomId: roomId),
         ),
       ),
     ),
@@ -111,11 +116,14 @@ Future<void> showPermissionSheet(BuildContext context, String sessionId) {
 }
 
 class _PlusRoot extends ConsumerWidget {
-  const _PlusRoot({required this.files, required this.generate, required this.sessionId});
+  const _PlusRoot({required this.files, required this.generate, required this.sessionId, this.roomId});
 
   final bool files;
   final bool generate;
   final String? sessionId;
+
+  /// A group chat's id: with it the panel offers 设定群目标.
+  final String? roomId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -145,6 +153,24 @@ class _PlusRoot extends ConsumerWidget {
           ),
         ),
         const _PluginTools(),
+        if (roomId != null) ...[
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: PlusPanelMetrics.side),
+            child: Material(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(14),
+              child: ListPageRow(
+                icon: AppIcons.goal,
+                iconColor: Theme.of(context).colorScheme.primary,
+                title: l10n.chatGoal,
+                subtitle: l10n.chatGoalHint,
+                chevron: true,
+                onTap: () => Navigator.pop(context, const GoalChoice()),
+              ),
+            ),
+          ),
+        ],
         if (sessionId != null) ...[const SizedBox(height: 16), _ThisChatCard(sessionId: sessionId)],
         if (phoneOn) ...[const SizedBox(height: 24), const _PhoneCard()],
         const SizedBox(height: 20),
