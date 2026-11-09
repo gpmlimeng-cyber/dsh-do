@@ -948,19 +948,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
         // 由它把目标标题和环一起排出来。点它展开成整条顶栏 + 面板。
         titleCompact: ref.watch(settingsProvider.select((s) => s.goalBarStyle)) == GoalBarStyle.full &&
             (ref.watch(groupGoalProvider(room.id)).value?.title.isNotEmpty ?? false),
-        // 加载中和失败各画一颗灰环：空着就看不出是「没有目标」还是「没取到」。
-        trailing: switch (ref.watch(groupGoalProvider(room.id))) {
-          AsyncData(value: final goal?) when goal.title.isNotEmpty => GroupGoalPill(
-            goal: goal,
-            style: ref.watch(settingsProvider.select((s) => s.goalBarStyle)),
-            onTap: () => showGoalExpand(context, room.id),
-          ),
-          AsyncLoading() || AsyncError() => const SizedBox.square(
-            dimension: 30,
-            child: Center(child: SizedBox.square(dimension: 14, child: CircularProgressIndicator(strokeWidth: 1.6))),
-          ),
-          _ => null,
-        },
+        trailing: GoalBarProbe(roomId: room.id),
         // Right key = this conversation's details: the group's aggregate in the
         // group chat, the member's own Session in this group otherwise — never a
         // private one, and never the group's numbers under a member's name.
