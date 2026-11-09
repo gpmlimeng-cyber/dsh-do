@@ -92,7 +92,8 @@ class _GroupTaskBarState extends ConsumerState<GroupTaskBar> {
     // 目标推进时同步进来的阶段任务不算在这条条上：那条归目标条。
     final view = all.manual;
     final open = view.open;
-    if (view.isEmpty) {
+    // 没有欠着的活了就整条收起：跟目标条一样，不一直贴着输入框。
+    if (view.isEmpty || open.isEmpty) {
       return DockSlot(key: const ValueKey('group-tasks'), child: null);
     }
     final current = view.current;
@@ -522,7 +523,7 @@ class _GroupTaskPanelState extends ConsumerState<GroupTaskPanel> {
                 style: controlStyle.copyWith(foregroundColor: WidgetStatePropertyAll(theme.colorScheme.error)),
                 child: Text(l10n.botsTaskCancel),
               ),
-              if (task.pending || task.cancelled)
+              if (task.pending || task.terminal)
                 TextButton(
                   onPressed: _busy ? null : _remove,
                   style: controlStyle,
