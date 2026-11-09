@@ -5862,5 +5862,8 @@
   "workspaceRecoveryUnavailable": "This version does not support workspace index recovery. Check the local engine status and update the app.",
   "workspaceRecoveryRestartIncomplete": "The index mode changed, but the engine has not been confirmed stopped or restarted. Wait for it to stop before starting it again.",
   "workspaceRecoverySaveFailed": "The index mode could not be saved. No new start was requested. Check the local engine status and logs.",
-  "workspaceRecoveryFailed": "The operation did not finish. Check the local engine status and logs. This page shows whether the index mode changed."
+  "workspaceRecoveryFailed": "The operation did not finish. Check the local engine status and logs. This page shows whether the index mode changed.",
+  "hubGoalBarStyle": "Group goal bar",
+  "hubGoalBarSimple": "Simple",
+  "hubGoalBarFull": "Full"
 }

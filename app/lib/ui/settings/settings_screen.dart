@@ -211,6 +211,17 @@ class SettingsScreen extends ConsumerWidget {
               selected: settings.bubbleWidth,
               onChanged: (w) => unawaited(notifier.setBubbleWidth(w)),
             ),
+            SettingsSegmentTile<GoalBarStyle>(
+              icon: AppIcons.goal,
+              tint: SettingsHues.ai,
+              title: l10n.hubGoalBarStyle,
+              segments: [
+                PillSegment(GoalBarStyle.simple, l10n.hubGoalBarSimple),
+                PillSegment(GoalBarStyle.full, l10n.hubGoalBarFull),
+              ],
+              selected: settings.goalBarStyle,
+              onChanged: (style) => unawaited(notifier.setGoalBarStyle(style)),
+            ),
             const VoiceSettingsTile(tint: SettingsHues.ai),
             const NotificationSettingsTile(tint: SettingsHues.ai),
           ],

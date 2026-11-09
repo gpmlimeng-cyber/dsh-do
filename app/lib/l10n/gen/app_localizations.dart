@@ -35082,4 +35082,11 @@ L10n lookupL10n(Locale locale) {
   String get hubBotThinking;
   String get hubFlatBubbles;
   String get hubBubbleWidth;
+
+  /// 群目标在顶栏怎么摆
+  String get hubGoalBarStyle;
+
+  String get hubGoalBarSimple;
+
+  String get hubGoalBarFull;
 }

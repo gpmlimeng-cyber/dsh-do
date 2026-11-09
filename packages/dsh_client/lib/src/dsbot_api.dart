@@ -1271,6 +1271,11 @@ class DsBotGroupGoal {
     this.current = -1,
     this.stageCount = 0,
     this.stages = const [],
+    this.brief = '',
+    this.summary = '',
+    this.evidence = '',
+    this.reason = '',
+    this.idle = false,
   });
 
   factory DsBotGroupGoal.fromJson(Object? json) {
@@ -1285,6 +1290,11 @@ class DsBotGroupGoal {
       constraints: [for (final rule in asListOrEmpty(map['constraints'])) ?asString(rule)],
       current: asInt(map['current']) ?? -1,
       stageCount: asInt(map['stageCount']) ?? 0,
+      brief: asString(map['brief']) ?? '',
+      summary: asString(map['summary']) ?? '',
+      evidence: asString(map['evidence']) ?? '',
+      reason: asString(map['reason']) ?? '',
+      idle: asBool(map['idle']) ?? false,
       stages: [for (final stage in asListOrEmpty(map['stages'])) DsBotGoalStage.fromJson(stage)],
     );
   }
@@ -1304,6 +1314,19 @@ class DsBotGroupGoal {
   final int stageCount;
   final List<DsBotGoalStage> stages;
 
+  /// The user's words while the goal is only a draft.
+  final String brief;
+
+  /// What the admin wrote when the goal closed.
+  final String summary;
+  final String evidence;
+
+  /// Why the user stopped it.
+  final String reason;
+
+  /// Waiting on the user before the next step.
+  final bool idle;
+
   /// The stage being worked on, when there is one.
   DsBotGoalStage? get stage => current >= 0 && current < stages.length ? stages[current] : null;
 
@@ -1317,6 +1340,9 @@ class DsBotGoalStage {
     this.acceptance = '',
     this.status = 'pending',
     this.tasks = const [],
+    this.evidence = '',
+    this.reworks = 0,
+    this.feedback = '',
   });
 
   factory DsBotGoalStage.fromJson(Object? json) {
@@ -1325,12 +1351,24 @@ class DsBotGoalStage {
       title: asString(map['title']) ?? '',
       acceptance: asString(map['acceptance']) ?? '',
       status: asString(map['status']) ?? 'pending',
+      evidence: asString(map['evidence']) ?? '',
+      reworks: asInt(map['reworks']) ?? 0,
+      feedback: asString(map['feedback']) ?? '',
       tasks: [for (final task in asListOrEmpty(map['tasks'])) DsBotGoalTask.fromJson(task)],
     );
   }
 
   final String title;
   final String acceptance;
+
+  /// What the admin accepted this stage on.
+  final String evidence;
+
+  /// How many times it was sent back.
+  final int reworks;
+
+  /// The admin's words on the last send-back.
+  final String feedback;
 
   /// `pending`, `active` or `passed`.
   final String status;

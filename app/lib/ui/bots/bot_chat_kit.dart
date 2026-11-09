@@ -71,6 +71,8 @@ class BotChatHeader extends StatelessWidget {
     this.titleHint,
     this.infoTooltip,
     this.infoGreyed = false,
+    this.trailing,
+    this.titleCompact = false,
   });
 
   final Widget face;
@@ -119,6 +121,13 @@ class BotChatHeader extends StatelessWidget {
   /// Greys the right key's glyph when there is nothing it can open; the key
   /// keeps its tap area and says why in [infoTooltip] when tapped.
   final bool infoGreyed;
+
+  /// A widget between the title capsule and the right keys: a group's goal pill.
+  final Widget? trailing;
+
+  /// The title capsule shrinks to its face alone (圆形) so the goal pill beside
+  /// it can carry the group's name instead.
+  final bool titleCompact;
 
   static const barHeight = 56.0;
   static const key44 = 44.0;
@@ -187,11 +196,12 @@ class BotChatHeader extends StatelessWidget {
                           child: ConstrainedBox(
                             constraints: const BoxConstraints(minHeight: key44),
                             child: Padding(
-                              padding: EdgeInsets.only(left: faceInset, right: 16),
+                              padding: EdgeInsets.only(left: faceInset, right: titleCompact ? faceInset : 16),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   SizedBox.square(key: const ValueKey('bot-face'), dimension: faceSize, child: face),
+                                  if (!titleCompact) ...[
                                   const SizedBox(width: 8),
                                   Flexible(
                                     child: SmoothSize(
@@ -230,6 +240,7 @@ class BotChatHeader extends StatelessWidget {
                                       ),
                                     ),
                                   ),
+                                  ],
                                 ],
                               ),
                             ),
@@ -238,6 +249,10 @@ class BotChatHeader extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (trailing case final trailing?) ...[
+                    const SizedBox(width: 4),
+                    trailing,
+                  ],
                   if (onMessages case final onMessages?) ...[
                     const SizedBox(width: 8),
                     _RoundKey(

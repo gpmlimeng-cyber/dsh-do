@@ -12513,5 +12513,8 @@
   "workspaceRecoveryUnavailable": "当前版本尚不支持工作区索引救援，请检查本机引擎状态并更新应用。",
   "workspaceRecoveryRestartIncomplete": "索引模式已切换，但还无法确认引擎已停止，未重新启动。请等停止完成后再启动。",
   "workspaceRecoverySaveFailed": "索引模式保存失败，未请求重新启动。请查看本机引擎状态和日志。",
-  "workspaceRecoveryFailed": "操作未完成，请查看本机引擎状态和日志。已切换的模式可在本页确认。"
+  "workspaceRecoveryFailed": "操作未完成，请查看本机引擎状态和日志。已切换的模式可在本页确认。",
+  "hubGoalBarStyle": "群目标显示",
+  "hubGoalBarSimple": "简单",
+  "hubGoalBarFull": "完整"
 }

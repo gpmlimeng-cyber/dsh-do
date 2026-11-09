@@ -19366,4 +19366,13 @@ class L10nZh extends L10n {
   String get hubFlatBubbles => '消息平铺（不用气泡）';
   @override
   String get hubBubbleWidth => '气泡宽度';
+
+  @override
+  String get hubGoalBarStyle => '群目标显示';
+
+  @override
+  String get hubGoalBarSimple => '简单';
+
+  @override
+  String get hubGoalBarFull => '完整';
 }

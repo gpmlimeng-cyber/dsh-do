@@ -20419,4 +20419,13 @@ class L10nEn extends L10n {
   String get hubFlatBubbles => 'Flat messages (no bubbles)';
   @override
   String get hubBubbleWidth => 'Bubble width';
+
+  @override
+  String get hubGoalBarStyle => 'Group goal bar';
+
+  @override
+  String get hubGoalBarSimple => 'Simple';
+
+  @override
+  String get hubGoalBarFull => 'Full';
 }

@@ -30,7 +30,6 @@ import '../chat/usage_sheet.dart' show ContextRing, showUsageSheet;
 import '../session/session_tab.dart';
 import '../chat/voice/voice_controller.dart';
 import 'bot_avatar.dart';
-import 'group_goal.dart';
 import '../chat/widgets/activity_strip.dart';
 import '../chat/widgets/permission_pill.dart';
 import '../chat/widgets/plus_panel.dart' show showPermissionSheet;
@@ -144,8 +143,6 @@ class BotComposerDeck extends ConsumerWidget {
                 TodoDockSlot(sessionId: sessionId),
                 GoalDockSlot(sessionId: sessionId),
               ],
-              // A group's goal: stages and the members' tasks, from ds-bot.
-              if (roomId case final id?) GroupGoalBar(roomId: id),
               // A group speaks through the upstream strip alone: it shows the
               // member who is running, read from that member's Session in this
               // group, and how many are running is in the group's own header.

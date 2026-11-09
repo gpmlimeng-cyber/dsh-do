@@ -47,6 +47,7 @@ import '../theme/theme.dart';
 import 'bot_attachment_open.dart';
 import 'bot_attachments.dart';
 import 'bot_composer_deck.dart';
+import 'group_goal.dart';
 import 'bot_draft_send.dart';
 import 'bot_adaptive_frame.dart';
 import 'bot_avatar.dart';
@@ -941,6 +942,18 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
         onDetails: targetBot == null
             ? () => Navigator.of(context).push(RoomDetailsPage.route(room.id))
             : () => _switchTarget(RoomChatTarget.all),
+        // 群目标的胶囊：简单模式在群名右边一颗环，完整模式把标题收成圆头像、
+        // 由它把目标标题和环一起排出来。点它展开成整条顶栏 + 面板。
+        titleCompact: ref.watch(settingsProvider.select((s) => s.goalBarStyle)) == GoalBarStyle.full &&
+            (ref.watch(groupGoalProvider(room.id)).value?.title.isNotEmpty ?? false),
+        trailing: switch (ref.watch(groupGoalProvider(room.id)).value) {
+          final goal? when goal.title.isNotEmpty => GroupGoalPill(
+            goal: goal,
+            style: ref.watch(settingsProvider.select((s) => s.goalBarStyle)),
+            onTap: () => showGoalExpand(context, room.id),
+          ),
+          _ => null,
+        },
         // Right key = this conversation's details: the group's aggregate in the
         // group chat, the member's own Session in this group otherwise — never a
         // private one, and never the group's numbers under a member's name.
