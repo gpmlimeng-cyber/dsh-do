@@ -136,6 +136,53 @@ class _RingPainter extends CustomPainter {
       old.fraction != fraction || old.tone != tone || old.track != track;
 }
 
+/// 顶栏上的探针：有目标画环；没目标画一颗灰点（点一下说明它问了什么、
+/// 得到什么），方便一眼分清「后端没有目标」还是「画不出来」。
+class GoalBarProbe extends ConsumerWidget {
+  const GoalBarProbe({super.key, required this.roomId});
+
+  final String roomId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final style = ref.watch(settingsProvider.select((s) => s.goalBarStyle));
+    final async = ref.watch(groupGoalProvider(roomId));
+    return switch (async) {
+      AsyncData(value: final goal?) when goal.title.isNotEmpty => GroupGoalPill(
+        goal: goal,
+        style: style,
+        onTap: () => showGoalExpand(context, roomId),
+      ),
+      AsyncLoading() => const SizedBox.square(
+        dimension: 30,
+        child: Center(child: SizedBox.square(dimension: 14, child: CircularProgressIndicator(strokeWidth: 1.6))),
+      ),
+      _ => InkResponse(
+        radius: 18,
+        onTap: () => ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+          SnackBar(
+            content: Text(
+              'goal: ${async.runtimeType} · room: $roomId',
+            ),
+            duration: const Duration(seconds: 6),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Container(
+            width: 12,
+            height: 12,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: DshColors.of(context).textTertiary.withValues(alpha: 0.45),
+            ),
+          ),
+        ),
+      ),
+    };
+  }
+}
+
 /// 收起态那颗：简单模式只有一颗环，完整模式是「图标 + 标题 + 环」。
 class GroupGoalPill extends StatelessWidget {
   const GroupGoalPill({
