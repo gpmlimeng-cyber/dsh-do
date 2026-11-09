@@ -20290,6 +20290,11 @@ class L10nEn extends L10n {
   String get botsRoomOnlyThisMember => 'Only this member';
 
   @override
+  String botsRoomOnly(String name) {
+    return 'Only $name';
+  }
+
+  @override
   String botsRoomBackToGroupChat(String room) {
     return 'Back to $room';
   }
@@ -20307,14 +20312,10 @@ class L10nEn extends L10n {
     return 'Only $name · this group';
   }
 
-  @override
-  String get botsMessageModeRelevant => 'Only what involves me';
 
   @override
   String get botsMessageModeEmpty => 'This member has not spoken in this group yet';
 
-  @override
-  String get botsMessageModeEmptyRelevant => 'No messages involve you yet';
 
   @override
   String botsNamedDone(String name) {

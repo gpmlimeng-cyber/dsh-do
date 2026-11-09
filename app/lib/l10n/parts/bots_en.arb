@@ -423,9 +423,7 @@
   "botsAlreadySpoke": "Spoke",
   "botsMessageMode": "Message mode",
   "botsMessageModeWith": "Message mode: {mode}",
-  "botsMessageModeRelevant": "Only what involves me",
   "botsMessageModeEmpty": "This member has not spoken in this group yet",
-  "botsMessageModeEmptyRelevant": "No messages involve you yet",
   "botsNamedDone": "{name} is done",
   "@botsNamedDone": {
     "placeholders": {
@@ -462,6 +460,7 @@
   "botsRoomMemberChat": "Group conversation",
   "botsRoomSendsToGroup": "Sends to the group chat; everyone there sees it",
   "botsRoomOnlyThisMember": "Only this member",
+  "botsRoomOnly": "Only {name}",
   "botsRoomBackToGroupChat": "Back to {room}",
   "@botsRoomBackToGroupChat": {
     "placeholders": {

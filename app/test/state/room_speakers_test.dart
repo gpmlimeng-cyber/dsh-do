@@ -94,7 +94,7 @@ void main() {
         _line(DsBotItemKind.bot, 'b2'),
         _line(DsBotItemKind.bot, 'b3'),
       ];
-      final shown = visibleRoomItems(items, RoomMessageMode.member('b3'), memberNames: const []);
+      final shown = visibleRoomItems(items, RoomMessageMode.member('b3'));
       expect(shown.length, 1);
       expect(shown.single.botId, 'b3');
     });

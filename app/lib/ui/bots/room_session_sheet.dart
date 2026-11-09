@@ -7,6 +7,7 @@ import 'package:dsh_client/dsh_client.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
 import '../../state/room_chat_target.dart';
@@ -177,11 +178,6 @@ class _RoomSessionSheetState extends State<_RoomSessionSheet> {
 
   void _pickFilterMember(String id) => _setMode(RoomMessageMode.member(id));
 
-  void _toggleRelevant() {
-    if (!_filtersEnabled) return;
-    _setMode(_mode.isRelevant ? RoomMessageMode.all : RoomMessageMode.relevant);
-  }
-
   void _toggleMemberOnly() {
     if (!_filtersEnabled) return;
     if (_mode.memberId != null) {
@@ -311,15 +307,6 @@ class _RoomSessionSheetState extends State<_RoomSessionSheet> {
             ),
           ),
         ListPageRow(
-          key: const ValueKey('room-filter-relevant'),
-          title: l10n.botsMessageModeRelevant,
-          trailing: Switch(
-            value: _mode.isRelevant,
-            onChanged: filtersEnabled ? (_) => _toggleRelevant() : null,
-          ),
-          onTap: filtersEnabled ? _toggleRelevant : null,
-        ),
-        ListPageRow(
           key: const ValueKey('room-filter-member'),
           title: l10n.botsRoomOnlyThisMember,
           subtitle: filtersEnabled ? null : l10n.botsRoomFilterGroupOnly,
@@ -377,4 +364,50 @@ class _RoomSessionSheetState extends State<_RoomSessionSheet> {
       ),
     );
   }
+}
+
+/// 「只看谁的发言」: the scope one group chat shows. The chip in the group chat
+/// clears it; this is where it is set. The old session sheet also switched
+/// conversations and needs the chat's live items, which a details row does not
+/// have — so the scope gets this small sheet of its own.
+Future<void> showMessageScopeSheet(
+  BuildContext context,
+  WidgetRef ref, {
+  required DsBotRoom room,
+  required DsBotTeam team,
+}) {
+  final ids = [
+    if (room.admin != null) room.admin!,
+    ...room.members.where((id) => id != room.admin),
+  ];
+  final bots = [for (final id in ids) ?team.bot(id)];
+  final current = ref.read(roomMessageModeProvider(room.id));
+  return showAppSheet<void>(
+    context,
+    isScrollControlled: true,
+    builder: (sheet) {
+      final l10n = sheet.l10n;
+      final dsh = DshColors.of(sheet);
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SheetTitleBar(l10n.botsRoomOnlyWhose),
+          for (final bot in bots)
+            ListPageRow(
+              key: ValueKey('scope-${bot.id}'),
+              leading: BotAvatar(bot: bot, size: 32),
+              title: bot.name,
+              trailing: current.memberId == bot.id ? Icon(AppIcons.done, size: 20, color: dsh.info) : null,
+              chevron: false,
+              onTap: () {
+                ref.read(roomMessageModesProvider.notifier).set(room.id, RoomMessageMode.member(bot.id));
+                Navigator.of(sheet).maybePop();
+              },
+            ),
+          const SizedBox(height: 12),
+        ],
+      );
+    },
+  );
 }

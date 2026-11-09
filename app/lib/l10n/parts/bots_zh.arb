@@ -972,9 +972,7 @@
       }
     }
   },
-  "botsMessageModeRelevant": "仅与我相关",
   "botsMessageModeEmpty": "该成员在本群还没有发言",
-  "botsMessageModeEmptyRelevant": "这里没有与你相关的消息",
   "botsNamedDone": "{name} 已完成",
   "@botsNamedDone": {
     "placeholders": {
@@ -1011,6 +1009,14 @@
   "botsRoomMemberChat": "本群会话",
   "botsRoomSendsToGroup": "发送到群聊，群里都看得见",
   "botsRoomOnlyThisMember": "只看此成员",
+  "botsRoomOnly": "只看 {name}",
+  "@botsRoomOnly": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "botsRoomBackToGroupChat": "回到群聊 {room}",
   "@botsRoomBackToGroupChat": {
     "placeholders": {

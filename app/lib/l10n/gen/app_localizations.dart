@@ -34892,6 +34892,9 @@ abstract class L10n {
   /// **'只看此成员'**
   String get botsRoomOnlyThisMember;
 
+  /// No description provided for @botsRoomOnly.
+  String botsRoomOnly(String name);
+
   /// No description provided for @botsRoomBackToGroupChat.
   ///
   /// In zh, this message translates to:
@@ -34913,13 +34916,9 @@ abstract class L10n {
   /// In zh, this message translates to:
   /// **'只看 {name} · 本群'**
   String botsRoomMemberScope(String name);
-  /// No description provided for @botsMessageModeRelevant.
-  String get botsMessageModeRelevant;
   /// No description provided for @botsMessageModeEmpty.
   String get botsMessageModeEmpty;
 
-  /// No description provided for @botsMessageModeEmptyRelevant.
-  String get botsMessageModeEmptyRelevant;
 
   /// **'{name} 已完成'**
   String botsNamedDone(String name);

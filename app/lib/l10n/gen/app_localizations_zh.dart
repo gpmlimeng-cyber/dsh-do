@@ -19243,6 +19243,11 @@ class L10nZh extends L10n {
   String get botsRoomOnlyThisMember => '只看此成员';
 
   @override
+  String botsRoomOnly(String name) {
+    return '只看 $name';
+  }
+
+  @override
   String botsRoomBackToGroupChat(String room) {
     return '回到群聊 $room';
   }
@@ -19260,14 +19265,10 @@ class L10nZh extends L10n {
     return '只看 $name · 本群';
   }
 
-  @override
-  String get botsMessageModeRelevant => '仅与我相关';
 
   @override
   String get botsMessageModeEmpty => '该成员在本群还没有发言';
 
-  @override
-  String get botsMessageModeEmptyRelevant => '这里没有与你相关的消息';
 
   @override
   String botsNamedDone(String name) {

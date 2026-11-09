@@ -63,7 +63,6 @@ import 'bot_format.dart';
 import 'bot_mention.dart';
 import 'room_approval_action.dart';
 import 'room_activity_strip.dart' show roomStatusOf;
-import 'room_session_sheet.dart' show showRoomSessionSheet;
 import 'room_aggregate_details_page.dart';
 import 'room_details_page.dart';
 import 'room_full_text_sheet.dart';
@@ -132,7 +131,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
     return null;
   }
 
-  void _rememberFlash(DsBotRoom room, DsBotTeam team, RoomMessageMode mode, List<String> names, RoomChatTarget target) {
+  void _rememberFlash(DsBotRoom room, DsBotTeam team, RoomMessageMode mode, RoomChatTarget target) {
     final items = ref.read(roomChatProvider(widget.roomId)).items;
     final latest = _latestFlash(items);
     if (latest == null) return;
@@ -151,7 +150,6 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
     if (visibleRoomItems(
       [latest.item],
       mode,
-      memberNames: names,
       speakerOf: (item) => roomSpeakerOf(room, team, item),
     ).isEmpty) {
       return;
@@ -426,42 +424,6 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
   /// in a primary ring. A member's conversation carries no dot: filters do not
   /// apply there, and a dot would say they do. Keyed, so a switch fades and
   /// grows into place.
-  Widget _targetIcon(BuildContext context, RoomChatTarget target, DsBot? bot, {required bool filtered}) {
-    final scheme = Theme.of(context).colorScheme;
-    if (bot != null) {
-      return Container(
-        key: ValueKey('room-target-icon-${bot.id}'),
-        padding: const EdgeInsets.all(1.5),
-        decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: scheme.primary, width: 1.5)),
-        child: BotAvatar(bot: bot, size: 22),
-      );
-    }
-    return SizedBox.square(
-      key: ValueKey('room-target-icon-all-${filtered ? 'filtered' : 'plain'}'),
-      dimension: 24,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Icon(AppIcons.groupChat, size: 22, color: scheme.onSurface),
-          if (filtered)
-            Positioned(
-              right: 1,
-              bottom: 1,
-              child: Container(
-                width: 4,
-                height: 4,
-                decoration: BoxDecoration(color: scheme.primary, shape: BoxShape.circle),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  /// The conversation in words, for the key's tooltip and its screen-reader
-  /// label: 「切换会话：群聊 / 前端工程师」.
-  String _targetLabel(L10n l10n, DsBot? bot) => bot?.name ?? l10n.botsGroupChat;
-
   /// One member's line in the group. The Host names the speaker by its sender
   /// Session (older hosts by the Bot id), so the face, the admin mark and the
   /// Session a path opens come from the resolved member.
@@ -873,7 +835,6 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
         ? visibleRoomItems(
             chat.items,
             mode,
-            memberNames: [for (final bot in members) bot.name],
             speakerOf: (item) => roomSpeakerOf(room, team, item),
           )
         : memberTargetItems(
@@ -881,12 +842,11 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
             target.memberId!,
             speakerOf: (item) => roomSpeakerOf(room, team, item),
           );
-    final names = [for (final bot in members) bot.name];
     if (!_flashPrimed) {
-      _rememberFlash(room, team, mode, names, target);
+      _rememberFlash(room, team, mode, target);
     }
     ref.listen(roomChatProvider(widget.roomId).select((s) => s.items), (_, _) {
-      if (mounted) _rememberFlash(room, team, mode, names, target);
+      if (mounted) _rememberFlash(room, team, mode, target);
     });
     final transcript = transcriptRows(withoutDoneEchoes(visible), pending: chat.pending, typing: typing);
     // The group's own Session is what the admin's memory tools write to; in a
@@ -976,24 +936,15 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
             : (memberSession == null
                   ? l10n.botsRoomMemberSessionMissing
                   : l10n.botsRoomMemberDetails(targetBot.name)),
-        onMessages: () => showRoomSessionSheet(
-          context,
-          room: room,
-          team: team,
-          target: target,
-          mode: mode,
-          items: memberItems,
-          speakerOf: (item) => roomSpeakerOf(room, team, item),
-          onTarget: _switchTarget,
-          onMode: (picked) => ref.read(roomMessageModesProvider.notifier).set(room.id, picked),
-        ),
-        messagesIcon: _targetIcon(
-          context,
-          target,
-          targetBot,
-          filtered: target.isAll && !mode.isAll,
-        ),
-        messagesTooltip: l10n.botsRoomSwitchTo(_targetLabel(l10n, targetBot)),
+        // A filter is state, not an action: while one is on, a marker takes the
+        // old key's place and says what it is; with none, nothing shows and the
+        // title keeps the width.
+        chip: mode.memberId == null
+            ? null
+            : _MessageFilterChip(
+                label: l10n.botsRoomOnly(team.bot(mode.memberId!)?.name ?? mode.memberId!),
+                onClear: () => ref.read(roomMessageModesProvider.notifier).set(room.id, RoomMessageMode.all),
+              ),
       ),
       body: chat.loading && chat.items.isEmpty
           ? Padding(
@@ -1024,7 +975,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
                   ? _Members(room: room, team: team)
                   : Center(
                       child: Text(
-                        mode.isRelevant ? l10n.botsMessageModeEmptyRelevant : l10n.botsMessageModeEmpty,
+                        l10n.botsMessageModeEmpty,
                         style: Theme.of(
                           context,
                         ).textTheme.bodyMedium?.copyWith(color: DshColors.of(context).textTertiary),
@@ -1438,6 +1389,56 @@ class _Members extends StatelessWidget {
           style: theme.textTheme.bodyMedium?.copyWith(color: DshColors.of(context).textTertiary),
         ),
       ],
+    );
+  }
+}
+
+/// 顶栏的过滤标记：「只看 某人 ×」。只在过滤生效时出现，点 `×` 回「全部」；
+/// 不过滤时整颗不存在，宽度还给群名。
+class _MessageFilterChip extends StatelessWidget {
+  const _MessageFilterChip({required this.label, required this.onClear});
+
+  final String label;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final dsh = DshColors.of(context);
+    return Semantics(
+      button: true,
+      label: label,
+      excludeSemantics: true,
+      child: SizedBox(
+        height: 32,
+        child: GlassSurface(
+          tier: GlassTier.chrome,
+          stadium: true,
+          grouped: true,
+          onTap: onClear,
+          child: Tooltip(
+            message: label,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(10, 0, 8, 0),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.primary),
+                    ),
+                  ),
+                  const SizedBox(width: 5),
+                  Icon(AppIcons.close, size: 13, color: dsh.textTertiary),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

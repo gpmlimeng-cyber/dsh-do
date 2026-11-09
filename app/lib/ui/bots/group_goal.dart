@@ -293,11 +293,20 @@ class GroupGoalPill extends StatelessWidget {
 
 /// 展开后的面板：阶段圆点、选中这一段、目标与验收、底部按钮。顶栏下浮层用。
 class GoalPanel extends ConsumerStatefulWidget {
-  const GoalPanel({super.key, required this.goal, required this.roomId, required this.onClose});
+  const GoalPanel({
+    super.key,
+    required this.goal,
+    required this.roomId,
+    required this.onClose,
+    this.showActions = true,
+  });
 
   final DsBotGroupGoal goal;
   final String roomId;
   final VoidCallback onClose;
+
+  /// False when the actions live in the card's own header (the floating card)。
+  final bool showActions;
 
   @override
   ConsumerState<GoalPanel> createState() => _GoalPanelState();
@@ -402,13 +411,11 @@ class _GoalPanelState extends ConsumerState<GoalPanel> {
             viewing: _viewing,
             onSelect: (index) => setState(() => _selected = index),
           ),
-        if (goal.status == 'drafting')
+        // 起草态：标题在头部，正文只在 brief 与标题不同的时候才有话可说。
+        // 同值时什么都别画——一句「要完成什么」既不是内容，也不像状态。
+        if (goal.status == 'drafting' && goal.brief.trim().isNotEmpty && goal.brief.trim() != goal.title.trim())
           Text(
-            // The title is already in the bar above: an echo here reads as two
-            // different things saying the same words.
-            goal.brief.isEmpty || goal.brief.trim() == goal.title.trim()
-                ? l10n.chatGoalHint
-                : goal.brief,
+            goal.brief,
             style: theme.textTheme.bodyMedium,
           )
         else if (stage == null) ...[
@@ -496,17 +503,17 @@ class _GoalPanelState extends ConsumerState<GoalPanel> {
                 ),
               ),
             const Spacer(),
-            if (goal.status == 'paused' && working)
+            if (widget.showActions && goal.status == 'paused' && working)
               TextButton(
                 onPressed: _busy ? null : _stopWorkOnly,
                 style: controlStyle,
                 child: Text(l10n.chatStopWorkToo),
               ),
-            if (goal.status == 'active')
+            if (widget.showActions && goal.status == 'active')
               TextButton(onPressed: _busy ? null : () => _control('pause'), style: controlStyle, child: Text(l10n.chatPauseGoal)),
-            if (goal.status == 'paused')
+            if (widget.showActions && goal.status == 'paused')
               TextButton(onPressed: _busy ? null : () => _control('resume'), style: controlStyle, child: Text(l10n.chatResumeGoal)),
-            if (goal.status == 'active' || goal.status == 'paused')
+            if (widget.showActions && (goal.status == 'active' || goal.status == 'paused'))
               TextButton(
                 onPressed: _busy ? null : _stop,
                 style: _armed
@@ -514,9 +521,9 @@ class _GoalPanelState extends ConsumerState<GoalPanel> {
                     : controlStyle,
                 child: Text(_armed ? '${l10n.commonStop}?' : l10n.commonStop),
               ),
-            if (goal.status == 'complete' || goal.status == 'stopped')
+            if (widget.showActions && (goal.status == 'complete' || goal.status == 'stopped'))
               TextButton(onPressed: _busy ? null : () => _control('clear'), style: controlStyle, child: Text(l10n.chatClearGoal)),
-            if (goal.status == 'drafting')
+            if (widget.showActions && goal.status == 'drafting')
               TextButton(onPressed: _busy ? null : () => _control('clear'), style: controlStyle, child: Text(l10n.commonCancel)),
           ],
         ),
@@ -768,7 +775,8 @@ Future<void> showGoalExpand(BuildContext context, String roomId) async {
     context: context,
     barrierDismissible: true,
     barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
-    barrierColor: Colors.black.withValues(alpha: 0.24),
+    // 浮窗式卡片：靠边距和投影把内容让开，不铺遮罩。
+    barrierColor: Colors.transparent,
     transitionDuration: const Duration(milliseconds: 220),
     pageBuilder: (dialogContext, _, _) => _GoalExpandLayer(roomId: roomId),
     transitionBuilder: (context, animation, _, child) => SlideTransition(
@@ -791,67 +799,217 @@ class _GoalExpandLayer extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final goal = ref.watch(groupGoalProvider(roomId)).value;
-    final style = ref.watch(settingsProvider.select((s) => s.goalBarStyle));
     final theme = Theme.of(context);
     final dsh = DshColors.of(context);
     final top = MediaQuery.paddingOf(context).top;
     final maxHeight = MediaQuery.sizeOf(context).height * 0.62;
     return Material(
       type: MaterialType.transparency,
-      child: Align(
-        alignment: Alignment.topCenter,
-        child: Container(
-          margin: EdgeInsets.only(top: top),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.12), blurRadius: 24)],
+      child: Stack(
+        children: [
+          // 浮窗的规矩：卡片浮在内容上，不铺遮罩；点卡外收起。
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => Navigator.of(context).maybePop(),
+            ),
           ),
-          child: SafeArea(
-            top: false,
-            bottom: false,
-            child: goal == null
-                ? const SizedBox(height: 60)
-                : Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SizedBox(
-                        height: 56,
-                        child: Row(
+          Align(
+            alignment: Alignment.topCenter,
+            child: Padding(
+              // 尺寸照手机控制的浮窗卡：左右 12、状态栏下 6、圆角 24、头部 48。
+              padding: EdgeInsets.fromLTRB(12, top + 6, 12, 0),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: maxHeight),
+                child: GlassSurface(
+                  tier: GlassTier.chrome,
+                  borderRadius: BorderRadius.circular(24),
+                  child: goal == null
+                      ? const SizedBox(height: 48)
+                      : Column(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Expanded(
-                              child: GroupGoalPill(
-                                goal: goal,
-                                style: GoalBarStyle.full,
-                                expandArrow: true,
-                                onTap: () => Navigator.of(context).maybePop(),
+                            SizedBox(
+                              height: 48,
+                              child: Row(
+                                children: [
+                                  const SizedBox(width: 14),
+                                  Icon(AppIcons.goal, size: 18, color: dsh.textTertiary),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      goal.title,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
+                                    ),
+                                  ),
+                                  // 动作在头部，跟浮窗一致，不在底部堆一排按钮。
+                                  _GoalHeaderActions(roomId: roomId, goal: goal),
+                                  IconButton(
+                                    tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+                                    onPressed: () => Navigator.of(context).maybePop(),
+                                    icon: Icon(AppIcons.collapse, size: 18, color: dsh.textTertiary),
+                                  ),
+                                ],
                               ),
                             ),
-                            Padding(
-                              padding: const EdgeInsets.only(right: 8),
-                              child: IconButton(
-                                tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
-                                onPressed: () => Navigator.of(context).maybePop(),
-                                icon: Icon(AppIcons.close, size: 18, color: dsh.textTertiary),
+                            const Divider(height: 1),
+                            Flexible(
+                              child: SingleChildScrollView(
+                                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                                child: GoalPanel(
+                                  goal: goal,
+                                  roomId: roomId,
+                                  onClose: () => Navigator.of(context).maybePop(),
+                                  showActions: false,
+                                ),
                               ),
                             ),
+                            _GoalClearLink(roomId: roomId, goal: goal),
                           ],
                         ),
-                      ),
-                      ConstrainedBox(
-                        constraints: BoxConstraints(maxHeight: maxHeight - 56),
-                        child: SingleChildScrollView(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                          child: GoalPanel(
-                            goal: goal,
-                            roomId: roomId,
-                            onClose: () => Navigator.of(context).maybePop(),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                ),
+              ),
+            ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 卡片头部的两颗：暂停/恢复、停止。停止两段式，3 秒内再点才执行。
+class _GoalHeaderActions extends ConsumerStatefulWidget {
+  const _GoalHeaderActions({required this.roomId, required this.goal});
+
+  final String roomId;
+  final DsBotGroupGoal goal;
+
+  @override
+  ConsumerState<_GoalHeaderActions> createState() => _GoalHeaderActionsState();
+}
+
+class _GoalHeaderActionsState extends ConsumerState<_GoalHeaderActions> {
+  bool _busy = false;
+  bool _armed = false;
+
+  Future<void> _control(String action) async {
+    if (_busy) return;
+    final api = ref.read(dsBotProvider.notifier).api;
+    if (api == null) return;
+    setState(() => _busy = true);
+    try {
+      await api.goalControl(widget.roomId, widget.goal.id, action);
+      ref.invalidate(groupGoalProvider(widget.roomId));
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text('$error')));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  void _stop() {
+    if (!_armed) {
+      setState(() => _armed = true);
+      Future<void>.delayed(const Duration(seconds: 3), () {
+        if (mounted) setState(() => _armed = false);
+      });
+      return;
+    }
+    setState(() => _armed = false);
+    _control('stop');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final status = widget.goal.status;
+    final l10n = context.l10n;
+    final dsh = DshColors.of(context);
+    if (status != 'active' && status != 'paused') return const SizedBox.shrink();
+    final paused = status == 'paused';
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _disc(
+          tooltip: paused ? l10n.chatResumeGoal : l10n.chatPauseGoal,
+          icon: paused ? AppIcons.play : AppIcons.pause,
+          color: dsh.textTertiary,
+          onTap: _busy ? null : () => _control(paused ? 'resume' : 'pause'),
+        ),
+        _disc(
+          tooltip: _armed ? '${l10n.commonStop}?' : l10n.commonStop,
+          icon: AppIcons.stop,
+          color: _armed ? Theme.of(context).colorScheme.error : dsh.textTertiary,
+          onTap: _busy ? null : _stop,
+        ),
+      ],
+    );
+  }
+
+  Widget _disc({
+    required String tooltip,
+    required IconData icon,
+    required Color color,
+    required VoidCallback? onTap,
+  }) =>
+      SizedBox.square(
+        // 浮窗的规矩：触控 48、看的圆盘 36，指头够得着，视觉不重。
+        dimension: 48,
+        child: IconButton(
+          tooltip: tooltip,
+          padding: EdgeInsets.zero,
+          onPressed: onTap,
+          icon: Icon(icon, size: 20, color: color),
+        ),
+      );
+}
+
+/// 卡片底部：清除/取消留成文字链，不做大按钮（浮窗的「收成小球」就是这种位置）。
+class _GoalClearLink extends ConsumerStatefulWidget {
+  const _GoalClearLink({required this.roomId, required this.goal});
+
+  final String roomId;
+  final DsBotGroupGoal goal;
+
+  @override
+  ConsumerState<_GoalClearLink> createState() => _GoalClearLinkState();
+}
+
+class _GoalClearLinkState extends ConsumerState<_GoalClearLink> {
+  bool _busy = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final status = widget.goal.status;
+    if (status != 'drafting' && status != 'complete' && status != 'stopped') {
+      return const SizedBox(height: 8);
+    }
+    final l10n = context.l10n;
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+        child: TextButton(
+          onPressed: _busy
+              ? null
+              : () async {
+                  final api = ref.read(dsBotProvider.notifier).api;
+                  if (api == null) return;
+                  setState(() => _busy = true);
+                  try {
+                    await api.goalControl(widget.roomId, widget.goal.id, 'clear');
+                    ref.invalidate(groupGoalProvider(widget.roomId));
+                    if (mounted) Navigator.of(context).maybePop();
+                  } catch (error) {
+                    if (mounted) {
+                      ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text('$error')));
+                    }
+                  } finally {
+                    if (mounted) setState(() => _busy = false);
+                  }
+                },
+          child: Text(status == 'drafting' ? l10n.commonCancel : l10n.chatClearGoal),
         ),
       ),
     );
