@@ -2907,7 +2907,7 @@
       },
       "feedback": {
         "type": "String"
-      },
+      }
     }
   },
   "chatGoalReworkByTimes": "被 {admin} 打回 {count} 次。上次：{feedback}",
@@ -2923,7 +2923,7 @@
       },
       "feedback": {
         "type": "String"
-      },
+      }
     }
   },
   "commonCancel": "取消",
