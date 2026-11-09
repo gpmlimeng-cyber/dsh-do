@@ -59,6 +59,10 @@ SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-1767225600}"  # 2026-01-01T00:00:00Z, fi
 UBUNTU_MIRROR="https://mirrors.tuna.tsinghua.edu.cn/ubuntu-cdimage/ubuntu-base/releases/24.04/release"
 NODE_MIRROR="https://npmmirror.com/mirrors/node"
 NPM_REGISTRY="https://registry.npmmirror.com"
+# The mirror answers 500 from time to time (its own database), which fails the build
+# after four minutes of downloads. One retry on the official registry turns that into
+# a slow green build instead of a red one.
+NPM_REGISTRY_FALLBACK="${NPM_REGISTRY_FALLBACK:-https://registry.npmjs.org}"
 TERMUX_REPO="https://packages.termux.dev/apt/termux-main"
 UBUNTU_ARCHIVE_AMD64="https://mirrors.tuna.tsinghua.edu.cn/ubuntu"        # InRelease verified with gpgv
 UBUNTU_ARCHIVE_ARM64="https://mirrors.tuna.tsinghua.edu.cn/ubuntu-ports"
@@ -236,6 +240,21 @@ host_npm() {
 # ---------------------------------------------------------------------------
 # DSH npm tree
 # ---------------------------------------------------------------------------
+# npm with one fallback attempt: the mirror's 500s are transient and outside our control.
+# Reads `bin` and `npm_flags` from the caller (bash's dynamic scoping).
+npm_with_fallback() {
+  if PATH="$bin:$PATH" npm "$@" "${npm_flags[@]}"; then return 0; fi
+  log "npm failed against $NPM_REGISTRY; retrying on $NPM_REGISTRY_FALLBACK"
+  local -a alt=() f
+  for f in "${npm_flags[@]}"; do
+    case "$f" in
+      --registry=*) alt+=("--registry=$NPM_REGISTRY_FALLBACK" "--replace-registry-host=always") ;;
+      *) alt+=("$f") ;;
+    esac
+  done
+  PATH="$bin:$PATH" npm "$@" "${alt[@]}"
+}
+
 # npm flags for a host-side install into a prefix (no user/global config, no scripts).
 npm_prefix_flags() {  # $1 = npm cpu, $2 = prefix dir; sets the caller's npm_flags array
   : > "$WORK/empty-user-npmrc"; : > "$WORK/empty-global-npmrc"
@@ -255,17 +274,17 @@ install_dsh() {  # $1 = npm cpu, $2 = prefix dir
   if [[ -f "$lockdir/package-lock.json" ]]; then
     log "npm ci @deepseek-ai/dsh@$DSH_VERSION (cpu=$cpu, pinned lock)"
     cp "$lockdir/package.json" "$lockdir/package-lock.json" "$prefix/"
-    PATH="$bin:$PATH" npm ci "${npm_flags[@]}"
+    npm_with_fallback ci
   else
     log "npm install @deepseek-ai/dsh@$DSH_VERSION (cpu=$cpu) — first run, will pin the lock"
-    PATH="$bin:$PATH" npm install "${npm_flags[@]}" --save-exact "@deepseek-ai/dsh@$DSH_VERSION"
+    npm_with_fallback install --save-exact "@deepseek-ai/dsh@$DSH_VERSION"
     # npm nests an exact-pinned dependency in every dependent when another version wins the top
     # level (0.2.1-rc.2: 50 copies of zod 4.4.3, ~26k files). Pin those as direct dependencies so
     # one copy is hoisted, then reinstall.
     local -a hoist=(); mapfile -t hoist < <("${PY[@]}" hoist-candidates "$prefix/package-lock.json")
     if [[ ${#hoist[@]} -gt 0 ]]; then
       log "hoisting duplicated exact dependencies: ${hoist[*]}"
-      PATH="$bin:$PATH" npm install "${npm_flags[@]}" --save-exact "@deepseek-ai/dsh@$DSH_VERSION" "${hoist[@]}"
+      npm_with_fallback install --save-exact "@deepseek-ai/dsh@$DSH_VERSION" "${hoist[@]}"
     fi
     mkdir -p "$lockdir"
     cp "$prefix/package.json" "$prefix/package-lock.json" "$lockdir/"
@@ -285,10 +304,10 @@ install_pnpm() {  # $1 = npm cpu, $2 = prefix dir
   if [[ -f "$lockdir/package-lock.json" ]]; then
     log "npm ci pnpm@$PNPM_VERSION (pinned lock)"
     cp "$lockdir/package.json" "$lockdir/package-lock.json" "$prefix/"
-    PATH="$bin:$PATH" npm ci "${npm_flags[@]}"
+    npm_with_fallback ci
   else
     log "npm install pnpm@$PNPM_VERSION — first run, will pin the lock"
-    PATH="$bin:$PATH" npm install "${npm_flags[@]}" --save-exact "pnpm@$PNPM_VERSION"
+    npm_with_fallback install --save-exact "pnpm@$PNPM_VERSION"
     mkdir -p "$lockdir"
     cp "$prefix/package.json" "$prefix/package-lock.json" "$lockdir/"
   fi
