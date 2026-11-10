@@ -71,8 +71,9 @@ import 'room_details_page.dart';
 import 'room_session_sheet.dart' show showMessageScopeSheet;
 import 'room_full_text_sheet.dart';
 
-/// 目标胶囊的形态：默认完整；本轮内记住用户收起的选择，重启回到完整。
-bool _goalExpandedInThisRun = true;
+/// 各群目标胶囊的形态：默认完整；本轮内按群记住用户收起的选择，重启回到
+/// 完整。按群记，别让 A 群收成小球串到 B 群。
+final Map<String, bool> _goalExpandedByRoom = <String, bool>{};
 
 class RoomChatPage extends ConsumerStatefulWidget {
   const RoomChatPage({super.key, required this.roomId, this.initialTarget = RoomChatTarget.all});
@@ -105,12 +106,12 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
   /// no route is pushed, so one back still lands on the group's details.
   late RoomChatTarget _target = widget.initialTarget;
 
-  /// 顶栏的目标：默认完整胶囊；点了「收起成小球」才收成小球。选择只在本轮
-  /// 内记住（重启回到完整），不跨启动、也不由设置决定。
-  bool _goalExpanded = _goalExpandedInThisRun;
+  /// 顶栏的目标：默认完整胶囊；点了「收起成小球」才收成小球。选择按群记、
+  /// 只在本轮内有效（重启回到完整），不跨启动、也不由设置决定。
+  late bool _goalExpanded = _goalExpandedByRoom[widget.roomId] ?? true;
 
   void _setGoalExpanded(bool value) {
-    _goalExpandedInThisRun = value;
+    _goalExpandedByRoom[widget.roomId] = value;
     setState(() => _goalExpanded = value);
   }
 
