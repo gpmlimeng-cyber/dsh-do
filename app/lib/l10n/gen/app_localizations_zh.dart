@@ -19422,7 +19422,7 @@ class L10nZh extends L10n {
   String get botsABot => '某个 Bot';
 
   @override
-  String get chatStopWorkToo => '连当前工作一起停';
+  String get chatStopWorkToo => '同时停止当前工作';
 
   @override
   String get hubGroupBot => 'Bot';

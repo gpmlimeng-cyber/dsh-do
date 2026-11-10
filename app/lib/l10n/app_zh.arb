@@ -2946,7 +2946,7 @@
   },
   "chatGoalReworkByTimes": "{admin} 已打回 {count} 次，最近一次：{feedback}",
   "botsABot": "某个 Bot",
-  "chatStopWorkToo": "连当前工作一起停",
+  "chatStopWorkToo": "同时停止当前工作",
   "@chatGoalReworkByTimes": {
     "placeholders": {
       "count": {

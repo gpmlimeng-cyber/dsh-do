@@ -307,6 +307,76 @@ class _GoalBarMark extends StatelessWidget {
   }
 }
 
+/// 胶囊那第二行：状态点 + 「状态 · 阶段/进度」。胶囊与面板顶部共用这一份数据
+/// 与同一套整段省略规则，不再各写一套。
+class _GoalBarLine extends StatelessWidget {
+  const _GoalBarLine({required this.goal, required this.style, required this.maxWidth, this.topGap = 0});
+
+  final DsBotGroupGoal goal;
+  final TextStyle style;
+  final double maxWidth;
+
+  /// 上面留几像素：胶囊里第二行跟标题之间要 2，面板里单独一行不要。
+  final double topGap;
+
+  @override
+  Widget build(BuildContext context) {
+    final mark = _GoalBarMark(goal: goal);
+    final line = goalDynamicLine(context.l10n, goal);
+    final text = splitForPill(
+      head: line.head,
+      tail: line.tail,
+      maxWidth: math.max(0, maxWidth - mark.width - 6),
+      style: style,
+      scaler: MediaQuery.textScalerOf(context),
+    );
+    // 两行同字就不写第二遍。
+    if (text == goal.title) return const SizedBox.shrink();
+    return Padding(
+      padding: EdgeInsets.only(top: topGap),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          mark,
+          const SizedBox(width: 6),
+          Flexible(child: Text(text, maxLines: 1, overflow: TextOverflow.clip, style: style)),
+        ],
+      ),
+    );
+  }
+}
+
+/// 面板顶部那份第二行：浮卡把胶囊整颗盖住了，这一行就在面板里接着显示，
+/// 内容与省略规则跟胶囊那行完全一样。
+class _GoalPanelSecondLine extends StatelessWidget {
+  const _GoalPanelSecondLine({required this.goal});
+
+  final DsBotGroupGoal goal;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: LayoutBuilder(
+        builder: (context, constraints) => Align(
+          alignment: Alignment.centerLeft,
+          child: _GoalBarLine(
+            goal: goal,
+            maxWidth: constraints.maxWidth,
+            style: theme.textTheme.labelSmall!.copyWith(
+              fontSize: 12,
+              height: 16 / 12,
+              fontWeight: FontWeight.w400,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// 顶栏那颗：小球（环）或完整胶囊（图标 + 标题 + 环）。
 ///
 /// 与顶栏其他键同一套：44 高的玻璃底（[BotChatHeader.key44]、chrome、
@@ -373,8 +443,6 @@ class GroupGoalPill extends StatelessWidget {
         ),
       );
     }
-    final l10n = context.l10n;
-    final line = goalDynamicLine(l10n, goal);
     // 文字列：上行目标，下行当前动态。宽度由外层给——撑满时吃满余量，定宽时
     // 只占内容宽。
     final text = LayoutBuilder(
@@ -387,16 +455,6 @@ class GroupGoalPill extends StatelessWidget {
           fontWeight: FontWeight.w400,
           color: theme.colorScheme.onSurfaceVariant,
         );
-        final mark = _GoalBarMark(goal: goal);
-        final dynamicLine = splitForPill(
-          head: line.head,
-          tail: line.tail,
-          maxWidth: math.max(0, constraints.maxWidth - mark.width - 6),
-          style: small,
-          scaler: MediaQuery.textScalerOf(context),
-        );
-        // 两行同字就不写第二遍。
-        final showSecond = dynamicLine != goal.title;
         return Column(
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
@@ -412,24 +470,7 @@ class GroupGoalPill extends StatelessWidget {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            if (showSecond) ...[
-              const SizedBox(height: 2),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  mark,
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: Text(
-                      dynamicLine,
-                      maxLines: 1,
-                      overflow: TextOverflow.clip,
-                      style: small,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+            _GoalBarLine(goal: goal, style: small, maxWidth: constraints.maxWidth, topGap: 2),
           ],
         );
       },
@@ -627,14 +668,24 @@ class _GoalPanelState extends ConsumerState<GoalPanel> {
   }
 }
 
-/// 卡片底部的固定折叠栏：「目标与验收」，图标在小字前面，整行可点。它不在正文
-/// 的滚动区里，滚正文时这一行不走；展开的三块在滚动区末尾、就在这条栏上方。
+/// 卡片底部的固定折叠栏：「目标与验收」（浅色，图标在小字前面，整行可点），
+/// 右侧可挂一颗动作（「同时停止当前工作」）。它不在正文的滚动区里，滚正文时
+/// 这一行不走；展开的三块在它上方、正文之后，自己一块滚动区。
 class GoalChecksBar extends StatelessWidget {
-  const GoalChecksBar({super.key, required this.goal, required this.open, required this.onToggle});
+  const GoalChecksBar({
+    super.key,
+    required this.goal,
+    required this.open,
+    required this.onToggle,
+    this.trailing,
+  });
 
   final DsBotGroupGoal goal;
   final bool open;
   final VoidCallback onToggle;
+
+  /// 这一行最右那颗：「同时停止当前工作」（网页端在底栏的 facts 区）。
+  final Widget? trailing;
 
   /// 有没有可展开的东西：目标 / 验收方法 / 规则，一样都没有就不出这一行，
   /// 也不出它下面的内容。
@@ -646,35 +697,49 @@ class GoalChecksBar extends StatelessWidget {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final dsh = DshColors.of(context);
-    if (!has(goal)) return const SizedBox.shrink();
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: TextButton(
-        onPressed: onToggle,
-        style: TextButton.styleFrom(
-          padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
-          visualDensity: VisualDensity.compact,
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          textStyle: theme.textTheme.labelMedium?.copyWith(fontSize: 14),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AnimatedRotation(
-              turns: open ? 0.5 : 0,
-              duration: AppMotion.of(context, AppMotion.standard),
-              child: Icon(AppIcons.collapse, size: 14, color: dsh.textTertiary),
+    // 这一行左边是可折叠的「目标与验收」，右边是页面挂过来的那颗（同时停止
+    // 当前工作）；两个都没有就不占位。
+    final toggle = has(goal)
+        ? Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              onPressed: onToggle,
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
+                visualDensity: VisualDensity.compact,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                // 网页端这一行是浅色（`.bt-goal-checks` 用 ink-2），不是正文色。
+                foregroundColor: theme.colorScheme.onSurfaceVariant,
+                textStyle: theme.textTheme.labelMedium?.copyWith(fontSize: 14),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AnimatedRotation(
+                    turns: open ? 0.5 : 0,
+                    duration: AppMotion.of(context, AppMotion.standard),
+                    child: Icon(AppIcons.collapse, size: 14, color: dsh.textTertiary),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(l10n.chatGoalAcceptance),
+                ],
+              ),
             ),
-            const SizedBox(width: 6),
-            Text(l10n.chatGoalAcceptance),
-          ],
-        ),
-      ),
+          )
+        : null;
+    if (toggle == null && trailing == null) return const SizedBox.shrink();
+    return Row(
+      children: [
+        Expanded(child: toggle ?? const SizedBox.shrink()),
+        if (trailing case final trailing?)
+          Padding(padding: const EdgeInsets.only(right: 8), child: trailing),
+      ],
     );
   }
 }
 
-/// 展开的三块：目标 / 验收方法 / 规则。放在滚动区末尾，跟着正文走。
+/// 展开的三块：目标 / 验收方法 / 规则。在折叠行上方、正文之后（网页端
+/// `bt-goal-ckbody` 在 `bt-goal-foot` 之前），自己一块滚动区。
 class GoalChecksBody extends StatelessWidget {
   const GoalChecksBody({super.key, required this.goal});
 
@@ -1071,7 +1136,9 @@ class _GoalExpandLayerState extends ConsumerState<_GoalExpandLayer> {
     final theme = Theme.of(context);
     final dsh = DshColors.of(context);
     final top = MediaQuery.paddingOf(context).top;
-    final maxHeight = MediaQuery.sizeOf(context).height * 0.62;
+    final screenHeight = MediaQuery.sizeOf(context).height;
+    // 展开「目标与验收」时卡片整体长高（内容在折叠行上方），平时维持 62%。
+    final maxHeight = screenHeight * (_checks ? 0.86 : 0.62);
     // 胶囊顶边：顶栏在状态栏下起算、高 barHeightOf，胶囊在栏里垂直居中、高
     // pillHeightOf。卡片从这条线起，整颗胶囊才盖得住（原来固定 +6，胶囊比它
     // 高，顶上漏一截）。
@@ -1145,6 +1212,9 @@ class _GoalExpandLayerState extends ConsumerState<_GoalExpandLayer> {
                               ),
                             ),
                             const Divider(height: 1),
+                            // 浮卡把胶囊整颗盖住了，胶囊那第二行就在面板里接着
+                            // 显示：同一份数据、同一套省略规则。
+                            _GoalPanelSecondLine(goal: goal),
                             Flexible(
                               child: SingleChildScrollView(
                                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
@@ -1155,38 +1225,36 @@ class _GoalExpandLayerState extends ConsumerState<_GoalExpandLayer> {
                                 ),
                               ),
                             ),
-                            // 「连当前工作一起停」在固定区里、分割线之上：最底下
-                            // 只剩「目标与验收」那一行。
-                            if (goal.status == 'paused' && working)
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: Padding(
-                                  padding: const EdgeInsets.only(right: 8),
-                                  child: TextButton(
-                                    onPressed: _stopWorkBusy ? null : _stopWork,
-                                    child: Text(l10n.chatStopWorkToo),
-                                  ),
+                            // 展开的三块在折叠行上方（网页端 ckbody 在 foot 之前）：
+                            // 卡片据此长高，内容再长也只在自己这条里滚。
+                            if (_checks && GoalChecksBar.has(goal))
+                              ConstrainedBox(
+                                constraints: BoxConstraints(maxHeight: screenHeight * 0.45),
+                                child: SingleChildScrollView(
+                                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+                                  child: GoalChecksBody(goal: goal),
                                 ),
                               ),
-                            // 固定栏：滚正文时这一行不走。
+                            // 固定栏：滚正文时这一行不走。右侧那颗照网页端只放
+                            // 「同时停止当前工作」：暂停且群里有人在跑才有。
                             const Divider(height: 1),
                             GoalChecksBar(
                               goal: goal,
                               open: _checks,
                               onToggle: () => setState(() => _checks = !_checks),
+                              trailing: goal.status == 'paused' && working
+                                  ? TextButton(
+                                      onPressed: _stopWorkBusy ? null : _stopWork,
+                                      style: TextButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                                        visualDensity: VisualDensity.compact,
+                                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                        textStyle: theme.textTheme.labelSmall?.copyWith(fontSize: 12),
+                                      ),
+                                      child: Text(l10n.chatStopWorkToo),
+                                    )
+                                  : null,
                             ),
-                            // 展开的三块在折叠行下侧、自己的滚动区里，不占正文
-                            // 那块地方；卡片有最大高度，内容再长也在这条里滚。
-                            if (_checks && GoalChecksBar.has(goal)) ...[
-                              const Divider(height: 1),
-                              ConstrainedBox(
-                                constraints: BoxConstraints(maxHeight: maxHeight * 0.45),
-                                child: SingleChildScrollView(
-                                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
-                                  child: GoalChecksBody(goal: goal),
-                                ),
-                              ),
-                            ],
                           ],
                         ),
                 ),
