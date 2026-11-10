@@ -1569,29 +1569,25 @@ class BotTextBubble extends StatelessWidget {
   }
 }
 
-/// A group line's figures: `7 步 · 109K tokens ›`, under the name line. 时间在
-/// 名字后面（网页端 `cells.js` 的 `SpeakerHead`），这里不再重复；点开是成员
-/// Session 的用量面板。
-class BotGroupFootnote extends StatelessWidget {
-  const BotGroupFootnote({super.key, this.steps = 0, this.tokens = 0, this.onTap});
+/// 消息名字行里的统计那一段：`7 步 · 109K tokens ›`，整段可点开统计面板。
+/// 放不下时整段换成 `…`（[elided]），不把数字截成半个。
+class _RunFiguresSegment extends StatelessWidget {
+  const _RunFiguresSegment({required this.label, this.elided = false, this.onTap});
 
-  final int steps;
-  final int tokens;
+  final String label;
+  final bool elided;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final dsh = DshColors.of(context);
-    // 步数 · tokens：和输入框上方活动行同一个拼法（那边还要带时间，所以走
-    // [runFigures] 的同一份实现，这里只是不传时长）。
-    final label = runFigures(steps: steps, tokens: tokens);
     final style = AppType.tabular(
       theme.textTheme.labelSmall!.copyWith(fontSize: 12, color: dsh.textTertiary, height: 1.3),
     );
     return Semantics(
       button: onTap != null,
-      label: label,
+      label: elided ? null : label,
       onTap: onTap,
       child: InkWell(
         onTap: onTap,
@@ -1601,10 +1597,8 @@ class BotGroupFootnote extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Flexible(
-                child: Text(label, maxLines: 1, softWrap: false, overflow: TextOverflow.fade, style: style),
-              ),
-              Icon(AppIcons.disclosure, size: 14, color: dsh.textTertiary),
+              Text(label, maxLines: 1, softWrap: false, overflow: TextOverflow.clip, style: style),
+              if (!elided) Icon(AppIcons.disclosure, size: 14, color: dsh.textTertiary),
             ],
           ),
         ),
@@ -1612,6 +1606,14 @@ class BotGroupFootnote extends StatelessWidget {
     );
   }
 }
+
+/// 一行文字按当前字号量出来的宽度：算名字行那几段的分配用。
+double _textWidth(BuildContext context, String text, TextStyle? style, {bool noScaling = false}) => (TextPainter(
+  text: TextSpan(text: text, style: style),
+  textDirection: TextDirection.ltr,
+  textScaler: noScaling ? TextScaler.noScaling : MediaQuery.textScalerOf(context),
+  maxLines: 1,
+)..layout()).width;
 
 class GroupMessage extends ConsumerWidget {
   const GroupMessage({
@@ -1676,44 +1678,63 @@ class GroupMessage extends ConsumerWidget {
         if (!continued)
           Padding(
             padding: const EdgeInsets.only(bottom: 2),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 名字 → admin 标签 → 时间，紧挨着（网页端 `SpeakerHead` 就是
-                // name 后面直接跟时间，没有把它推到行尾）。名字长了先缩名字，
-                // 时间与统计都不许被挤掉。
-                Row(
+            // 名字、admin 标签、时间、统计全在同一行（网页端 `SpeakerHead` 就是
+            // 名字后面直接跟时间）。名字是唯一让位的那一项；名字缩到只够一个
+            // 「…」还放不下时，统计整段换成「…」，不把数字截成半个。
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final nameStyle = theme.textTheme.labelLarge?.copyWith(
+                  color: botNameInk(context, color),
+                  fontWeight: FontWeight.w600,
+                );
+                final smallStyle = AppType.tabular(
+                  theme.textTheme.labelSmall!.copyWith(color: dsh.textTertiary),
+                );
+                final clock = item.time == null ? null : shortTime(item.time);
+                final run = figures;
+                final stats = run == null || (run.steps == 0 && run.tokens == 0)
+                    ? null
+                    : runFigures(steps: run.steps, tokens: run.tokens);
+                // 定宽的两段：时间、统计（统计是文字 + 尾箭头 + 左右各 2 的留白）。
+                final tagWidth = admin
+                    ? 12 + _textWidth(context, l10n.botsAdmin, theme.textTheme.labelSmall, noScaling: true)
+                    : 0.0;
+                final clockWidth = clock == null ? 0.0 : _textWidth(context, clock, smallStyle);
+                final statsWidth = stats == null ? 0.0 : _textWidth(context, stats, smallStyle) + 14 + 4;
+                final dotWidth = 4 + _textWidth(context, '…', smallStyle);
+                // 已经占死的部分：admin 标签、时间，以及它们前面的 6。
+                final fixed = tagWidth + clockWidth + 6.0 * ((admin ? 1 : 0) + (clock == null ? 0 : 1));
+                // 名字至少留一个「…」的宽度，剩下的才轮到统计。
+                final floor = _textWidth(context, '…', nameStyle);
+                final room = constraints.maxWidth - fixed;
+                final fullStats = stats != null && room >= floor + statsWidth + 6;
+                final dotStats = stats != null && !fullStats && room >= floor + dotWidth + 6;
+                return Row(
                   children: [
                     Flexible(
                       child: Text(
                         name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          color: botNameInk(context, color),
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: nameStyle,
                       ),
                     ),
                     if (admin) ...[const SizedBox(width: 6), BotTag(l10n.botsAdmin)],
-                    if (item.time != null) ...[
+                    if (clock != null) ...[
                       const SizedBox(width: 6),
-                      Text(
-                        shortTime(item.time),
-                        style: AppType.tabular(theme.textTheme.labelSmall!.copyWith(color: dsh.textTertiary)),
+                      Text(clock, style: smallStyle),
+                    ],
+                    if (stats != null && (fullStats || dotStats)) ...[
+                      const SizedBox(width: 6),
+                      _RunFiguresSegment(
+                        label: fullStats ? stats : '…',
+                        elided: !fullStats,
+                        onTap: fullStats ? onStats : null,
                       ),
                     ],
                   ],
-                ),
-                // 这一轮的统计自己一行：步数 · tokens，点开是统计面板。名字长短、
-                // 有没有 admin 标签、有没有时间，都挤不到它。数字来自这一段的最后
-                // 一行（见 _withRunFigures），续行不再各带一份。
-                if (figures case final run? when run.steps > 0 || run.tokens > 0) ...[
-                  const SizedBox(height: 1),
-                  BotGroupFootnote(steps: run.steps, tokens: run.tokens, onTap: onStats),
-                ],
-              ],
+                );
+              },
             ),
           ),
         BotTextBubble(
