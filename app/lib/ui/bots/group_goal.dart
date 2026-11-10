@@ -16,6 +16,7 @@ import '../../l10n/l10n.dart';
 import '../../state/bots_state.dart';
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
+import '../chat/chat_header.dart' show ChatHeader;
 import '../chat/dock/dock_pill.dart';
 import 'bot_avatar.dart';
 import 'bot_chat_kit.dart';
@@ -265,12 +266,10 @@ String splitForPill({
   return '$head · …';
 }
 
-/// 两行胶囊的高度：网页那条 bar 是 12/16，这里按内容长高（默认字号约 45.5），
-/// 大字号继续跟着长。
-double pillHeightOf(BuildContext context) {
-  final scaler = MediaQuery.textScalerOf(context);
-  return math.max(44, scaler.scale(14) * 1.25 + 2 + scaler.scale(12) * (16 / 12) + 10);
-}
+/// 目标胶囊的高度：严格等于群名那颗标题胶囊——直接用同一份公式
+///（[ChatHeader.pillHeightOf]），不再自己算一套。两行文字、32 的环都放得下，
+/// 不许为了塞文字把它撑回去；字放大时也跟着同一个公式长。
+double pillHeightOf(BuildContext context) => ChatHeader.pillHeightOf(context);
 
 /// 胶囊第二行前面那颗：网页 `.bt-goal-dot` 的 8px 圆点，完成后换成
 /// `.bt-goal-check` 的 14px 勾。颜色照 CSS：进行中绿、起草强调色、暂停与等你
@@ -379,8 +378,8 @@ class _GoalPanelSecondLine extends StatelessWidget {
 
 /// 顶栏那颗：小球（环）或完整胶囊（图标 + 标题 + 环）。
 ///
-/// 与顶栏其他键同一套：44 高的玻璃底（[BotChatHeader.key44]、chrome、
-/// grouped），按下态由 GlassSurface 给。读屏只念一遍标题。
+/// 高度严格等于群名那颗标题胶囊（同一个公式），玻璃底与按下态由 GlassSurface
+/// 给。读屏只念一遍标题。
 class GroupGoalPill extends StatelessWidget {
   const GroupGoalPill({
     super.key,
@@ -419,7 +418,8 @@ class GroupGoalPill extends StatelessWidget {
         label: goal.title,
         excludeSemantics: true,
         child: SizedBox.square(
-          dimension: BotChatHeader.key44,
+          // 小球也照群名那颗的高度，换形态时不吃掉一行的高度。
+          dimension: pillHeightOf(context),
           child: GlassSurface(
             tier: GlassTier.chrome,
             circle: true,

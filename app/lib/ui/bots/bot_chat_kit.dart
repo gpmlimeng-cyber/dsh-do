@@ -21,6 +21,7 @@ import '../../state/settings_state.dart';
 import '../chat/render/markdown_body.dart';
 import '../chat/render/message_mentions.dart';
 import '../chat/run_info.dart' show runFigures;
+import '../chat/chat_header.dart' show ChatHeader;
 import '../chat/widgets/chat_card.dart';
 import '../chat/dsh_ui/dsh_ui.dart';
 import '../chat/secret_mask.dart';
@@ -195,7 +196,9 @@ class BotChatHeader extends StatelessWidget {
                           grouped: true,
                           onTap: onDetails,
                           child: ConstrainedBox(
-                            constraints: const BoxConstraints(minHeight: key44),
+                            // 群名这颗用标题胶囊那套高度公式：目标胶囊读同一个
+                            // 函数，两颗才严格一样高（大字号下也一样）。
+                            constraints: BoxConstraints(minHeight: ChatHeader.pillHeightOf(context)),
                             child: Padding(
                               padding: EdgeInsets.only(left: faceInset, right: titleCompact ? faceInset : 16),
                               child: Row(
