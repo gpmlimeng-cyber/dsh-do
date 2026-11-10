@@ -268,8 +268,10 @@ class BotChatHeader extends StatelessWidget {
         ),
       ),
     );
-    // 合体胶囊：一颗 stadium 玻璃底，左段群名（左圆角）、右段目标（右圆角），
-    // 中间 1px 竖线归右段。按压水波按段裁剪，这是「一颗但两段」的唯一提示。
+    // 大胶囊（目标进行中）：一颗 stadium 玻璃底，左段只有群头像（圆心与胶囊
+    // 的圆头对齐、整段可点 = 群详情），右段是完整目标段、吃掉剩余宽度（右端
+    // 的进度环因此贴住胶囊尾端）。中间 1px 竖线归右段；水波按段裁剪，这是
+    // 「一颗但两段」的唯一提示。
     Widget mergedTitlePill(
       BuildContext context, {
       required Widget Function({required bool compact, required bool stretch}) titleRow,
@@ -287,22 +289,20 @@ class BotChatHeader extends StatelessWidget {
             height: height,
             child: Row(
               children: [
-                Expanded(
-                  child: Semantics(
-                    button: true,
-                    hint: titleHint ?? l10n.botsViewDetails,
-                    child: InkWell(
-                      onTap: onDetails,
-                      customBorder: RoundedRectangleBorder(borderRadius: leftRadius),
-                      child: Padding(
-                        padding: EdgeInsets.only(left: 6, right: titleCompact ? 6 : 8),
-                        child: titleRow(compact: titleCompact, stretch: true),
-                      ),
+                Semantics(
+                  button: true,
+                  hint: titleHint ?? l10n.botsViewDetails,
+                  child: InkWell(
+                    onTap: onDetails,
+                    customBorder: RoundedRectangleBorder(borderRadius: leftRadius),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: (height - faceSize) / 2),
+                      child: titleRow(compact: true, stretch: false),
                     ),
                   ),
                 ),
                 // 分隔线画在右段里面，所以那 13px 也是「点它开面板」，不是死区。
-                goal,
+                Expanded(child: goal),
               ],
             ),
           ),

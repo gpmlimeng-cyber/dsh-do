@@ -162,16 +162,12 @@ class GoalBarProbe extends ConsumerWidget {
     this.onExpand,
     this.onCollapse,
     this.bare = false,
-    this.narrow = false,
   });
 
   final String roomId;
 
   /// 并进群名那颗胶囊里：只画内容，不带玻璃底（外壳由顶栏给）。
   final bool bare;
-
-  /// 合体态且窄屏：右段只留进度环与暂停角标。
-  final bool narrow;
 
   /// False: the ball. True: the full pill (the person tapped the ball).
   final bool expanded;
@@ -198,7 +194,6 @@ class GoalBarProbe extends ConsumerWidget {
       return bare && expanded
           ? GoalInlineSegment(
               goal: goal,
-              narrow: narrow,
               onTap: () => showGoalExpand(context, roomId),
               onLongPress: onCollapse,
             )
@@ -278,19 +273,17 @@ String splitForPill({
 /// 不许为了塞文字把它撑回去；字放大时也跟着同一个公式长。
 double pillHeightOf(BuildContext context) => ChatHeader.pillHeightOf(context);
 
-/// 合体胶囊的右段：目标那两行（宽屏）或只一颗环（窄屏），自己带右圆角的
-/// 水波，点它开面板、长按收成小球。外壳由顶栏那颗胶囊给。
+/// 合体胶囊的右段：第一行旗帜 + 目标标题，第二行动态，右端进度环；自己带
+/// 右圆角的水波，点它开面板、长按收成小球。外壳由顶栏那颗胶囊给。
 class GoalInlineSegment extends StatelessWidget {
   const GoalInlineSegment({
     super.key,
     required this.goal,
-    required this.narrow,
     required this.onTap,
     this.onLongPress,
   });
 
   final DsBotGroupGoal goal;
-  final bool narrow;
   final VoidCallback onTap;
   final VoidCallback? onLongPress;
 
@@ -323,72 +316,81 @@ class GoalInlineSegment extends StatelessWidget {
       ),
     );
 
-    if (narrow) {
-      return segment(
-        child: SizedBox(
-          width: 48,
-          child: Stack(
-            alignment: Alignment.center,
-            clipBehavior: Clip.none,
-            children: [
-              ring,
-              if (paused)
-                Positioned(left: 2, top: 2, child: Icon(AppIcons.paused, size: 11, color: dsh.warning)),
-            ],
-          ),
-        ),
-      );
-    }
     final line = goalDynamicLine(context.l10n, goal);
-    return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 132, maxWidth: 220),
-      child: segment(
-        child: Padding(
-          padding: const EdgeInsets.only(left: 4, right: 8),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final small = theme.textTheme.labelSmall!.copyWith(
-                fontSize: 10.5,
-                height: 1.3,
-                color: dsh.textTertiary,
-              );
-              final text = splitForPill(
-                head: line.head,
-                tail: line.tail,
-                maxWidth: constraints.maxWidth - 6 - 24,
-                style: small,
-                scaler: MediaQuery.textScalerOf(context),
-              );
-              return Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          goal.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.labelMedium?.copyWith(
-                            fontSize: 12.5,
-                            height: 1.25,
-                            fontWeight: FontWeight.w600,
+    // 第一行：旗帜 + 目标标题（旗帜跟标题同一行，不再在整段里垂直居中）；
+    // 第二行（动态）缩进到标题左边，不从旗帜底下起。
+    const flagSize = 16.0;
+    const flagGap = 6.0;
+    final flag = Icon(
+      paused
+          ? AppIcons.paused
+          : goal.status == 'complete'
+          ? AppIcons.success
+          : AppIcons.goal,
+      size: flagSize,
+      color: paused
+          ? dsh.warning
+          : goal.status == 'complete'
+          ? dsh.success
+          : dsh.textTertiary,
+    );
+    return segment(
+      child: Padding(
+        padding: const EdgeInsets.only(left: 4, right: 8),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final small = theme.textTheme.labelSmall!.copyWith(
+              fontSize: 10.5,
+              height: 1.3,
+              color: dsh.textTertiary,
+            );
+            final text = splitForPill(
+              head: line.head,
+              tail: line.tail,
+              maxWidth: constraints.maxWidth - 6 - 24 - flagSize - flagGap,
+              style: small,
+              scaler: MediaQuery.textScalerOf(context),
+            );
+            return Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          flag,
+                          const SizedBox(width: flagGap),
+                          Expanded(
+                            child: Text(
+                              goal.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.labelMedium?.copyWith(
+                                fontSize: 12.5,
+                                height: 1.25,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
-                        ),
-                        if (text != goal.title) ...[
-                          const SizedBox(height: 1),
-                          Text(text, maxLines: 1, overflow: TextOverflow.clip, style: small),
                         ],
+                      ),
+                      if (text != goal.title) ...[
+                        const SizedBox(height: 1),
+                        Padding(
+                          padding: const EdgeInsets.only(left: flagSize + flagGap),
+                          child: Text(text, maxLines: 1, overflow: TextOverflow.clip, style: small),
+                        ),
                       ],
-                    ),
+                    ],
                   ),
-                  const SizedBox(width: 6),
-                  ring,
-                ],
-              );
-            },
-          ),
+                ),
+                const SizedBox(width: 6),
+                ring,
+              ],
+            );
+          },
         ),
       ),
     );

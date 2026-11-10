@@ -71,9 +71,10 @@ import 'room_details_page.dart';
 import 'room_session_sheet.dart' show showMessageScopeSheet;
 import 'room_full_text_sheet.dart';
 
-/// 各群目标胶囊的形态：默认完整；本轮内按群记住用户收起的选择，重启回到
-/// 完整。按群记，别让 A 群收成小球串到 B 群。
-final Map<String, bool> _goalExpandedByRoom = <String, bool>{};
+/// 各群目标胶囊的形态：默认由目标状态决定（进行中 = 完整大胶囊、暂停 = 收成
+/// 小球）；用户手动收 / 展过之后，到目标状态再变一次之前以手动的为准，所以记
+/// 住「手动那一下时的状态」。按群记，别让 A 群串到 B 群；只在本轮内有效。
+final Map<String, ({String status, bool expanded})> _goalExpandedByRoom = <String, ({String status, bool expanded})>{};
 
 class RoomChatPage extends ConsumerStatefulWidget {
   const RoomChatPage({super.key, required this.roomId, this.initialTarget = RoomChatTarget.all});
@@ -106,13 +107,19 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBinding
   /// no route is pushed, so one back still lands on the group's details.
   late RoomChatTarget _target = widget.initialTarget;
 
-  /// 顶栏的目标：默认完整胶囊；点了「收起成小球」才收成小球。选择按群记、
-  /// 只在本轮内有效（重启回到完整），不跨启动、也不由设置决定。
-  late bool _goalExpanded = _goalExpandedByRoom[widget.roomId] ?? true;
+  /// 顶栏目标的形态：进行中 = 完整大胶囊（左段只有群头像），暂停 = 自动收成
+  /// 小球（群名完整、球在尾端）。用户手动收 / 展过之后，以手动的为准，直到
+  /// 目标状态再变一次——那时又回到「状态说了算」。
+  bool _goalExpandedFor(DsBotGroupGoal? goal) {
+    if (goal == null) return true;
+    final manual = _goalExpandedByRoom[widget.roomId];
+    if (manual != null && manual.status == goal.status) return manual.expanded;
+    return goal.status != 'paused';
+  }
 
-  void _setGoalExpanded(bool value) {
-    _goalExpandedByRoom[widget.roomId] = value;
-    setState(() => _goalExpanded = value);
+  void _setGoalExpanded(DsBotGroupGoal? goal, {required bool expanded}) {
+    if (goal != null) _goalExpandedByRoom[widget.roomId] = (status: goal.status, expanded: expanded);
+    setState(() {});
   }
 
   /// ⋯ 下拉菜单的开合：菜单锚在这颗键上，页面拿它管「返回先收菜单」。
@@ -970,6 +977,8 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBinding
     // 目标在不在，决定群名要不要让位给胶囊：没有目标时群名必须是完整那颗。
     final goalNow = ref.watch(groupGoalProvider(room.id)).value;
     final hasGoal = goalNow != null && goalNow.title.isNotEmpty;
+    // 形态：进行中 = 大胶囊，暂停 = 小球；手动收 / 展过就以手动的为准。
+    final goalExpanded = _goalExpandedFor(goalNow);
     // 目标不会自己推过来：Host 只给 `goal-view`，而目标多半是在管理员的回合
     // 里建出来的（用户说一句、Bot 去对齐并写成目标）。所以本群工作状态一变
     // （回合起 / 回合止）、对话里多一条消息，就回头取一次——否则刚建好的目标
@@ -988,7 +997,6 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBinding
       // 目标没了：按群记的「收起成小球」一并作废、回到默认完整。顶栏形态这一
       // 帧已经按 hasGoal 判了，所以群名立刻恢复，不用 setState 也不等交互。
       _goalExpandedByRoom.remove(room.id);
-      _goalExpanded = true;
     });
 
     return BotAdaptiveFrame(
@@ -1030,27 +1038,25 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBinding
         onDetails: targetBot == null
             ? () => Navigator.of(context).push(RoomDetailsPage.route(room.id))
             : () => _switchTarget(RoomChatTarget.all),
-        // 群目标的顶栏：默认完整胶囊，点了才收成小球。窄屏（非三栏）时标题
-        // 让给胶囊——它撑满一行，群名缩成圆头像；宽屏时两者都完整。
-        //
-        // 群名始终完整：合体态头像是「组内最左那颗、可点」，小球态群名也完整。
-        // （旧的「窄屏把群名缩成头像」按用户口径去掉了。）
+        // 群目标的顶栏，三种形态：
+        // 进行中——大胶囊：左段只有群头像（圆心与胶囊圆头对齐、可点进群详情），
+        // 右段是完整目标段；暂停——自动收成小球：群名完整，球在胶囊尾端；
+        // 没有目标——回到普通的「头像 + 群名」胶囊（所以这里给 false）。
         titleCompact: false,
-        // 有目标且没收成小球：目标并进群名那颗胶囊（一颗外壳、两段可点）。
-        mergeTrailing: hasGoal && _goalExpanded,
-        // 收成小球时也不另立一颗：球挂在同一颗胶囊的尾端（同心 36 的圆球）。
-        endTrailing: hasGoal && !_goalExpanded,
+        // 进行中：目标并进那颗大胶囊（一颗外壳、两段可点）。
+        mergeTrailing: hasGoal && goalExpanded,
+        // 暂停 / 手动收起：球挂在同一颗胶囊的尾端（同心 36 的圆球）。
+        endTrailing: hasGoal && !goalExpanded,
         trailing: GoalBarProbe(
           roomId: room.id,
-          expanded: _goalExpanded,
+          expanded: goalExpanded,
           // 两种态都在胶囊里，所以只要有目标就是「裸」的（外壳由顶栏给）。
           bare: hasGoal,
-          narrow: !layout.isExpanded,
-          onExpand: () => _setGoalExpanded(true),
-          onCollapse: () => _setGoalExpanded(false),
+          onExpand: () => _setGoalExpanded(goalNow, expanded: true),
+          onCollapse: () => _setGoalExpanded(goalNow, expanded: false),
         ),
         // 没有目标时也不撑满：否则标题那颗仍按「展开态」布局，群名回不到正常。
-        trailingExpand: hasGoal && _goalExpanded && !layout.isExpanded,
+        trailingExpand: hasGoal && goalExpanded && !layout.isExpanded,
         // Right key = this conversation's details: the group's aggregate in the
         // group chat, the member's own Session in this group otherwise — never a
         // private one, and never the group's numbers under a member's name.
