@@ -20311,6 +20311,9 @@ class L10nEn extends L10n {
   }
 
   @override
+  String get botsRoomScopeAll => 'All messages';
+
+  @override
   String botsRoomBackToGroupChat(String room) {
     return 'Back to $room';
   }

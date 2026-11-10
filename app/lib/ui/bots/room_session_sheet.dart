@@ -393,6 +393,18 @@ Future<void> showMessageScopeSheet(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SheetTitleBar(l10n.botsRoomOnlyWhose),
+          // 「全部」在最上面：进了面板也要能退出来，不用回去点顶栏那颗 ×。
+          ListPageRow(
+            key: const ValueKey('scope-all'),
+            leading: Icon(AppIcons.groupChat, size: 20, color: dsh.textTertiary),
+            title: l10n.botsRoomScopeAll,
+            trailing: current.memberId == null ? Icon(AppIcons.done, size: 20, color: dsh.info) : null,
+            chevron: false,
+            onTap: () {
+              ref.read(roomMessageModesProvider.notifier).set(room.id, RoomMessageMode.all);
+              Navigator.of(sheet).maybePop();
+            },
+          ),
           for (final bot in bots)
             ListPageRow(
               key: ValueKey('scope-${bot.id}'),

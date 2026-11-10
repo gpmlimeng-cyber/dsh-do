@@ -1010,6 +1010,8 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
             ? null
             : _MessageFilterChip(
                 label: l10n.botsRoomOnly(team.bot(mode.memberId!)?.name ?? mode.memberId!),
+                // 窄屏群名要让出来：标记收成一颗 ×，宽屏才带名字。
+                compact: !layout.isExpanded,
                 onClear: () => ref.read(roomMessageModesProvider.notifier).set(room.id, RoomMessageMode.all),
               ),
       ),
@@ -1475,15 +1477,38 @@ class _Members extends StatelessWidget {
 /// 顶栏的过滤标记：「只看 某人 ×」。只在过滤生效时出现，点 `×` 回「全部」；
 /// 不过滤时整颗不存在，宽度还给群名。
 class _MessageFilterChip extends StatelessWidget {
-  const _MessageFilterChip({required this.label, required this.onClear});
+  const _MessageFilterChip({required this.label, required this.onClear, this.compact = false});
 
   final String label;
   final VoidCallback onClear;
+
+  /// 窄屏只留这颗 ×：名字在 tooltip 与读屏里，群名不被挤窄。
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final dsh = DshColors.of(context);
+    if (compact) {
+      return Semantics(
+        button: true,
+        label: label,
+        excludeSemantics: true,
+        child: SizedBox.square(
+          dimension: 32,
+          child: GlassSurface(
+            tier: GlassTier.chrome,
+            circle: true,
+            grouped: true,
+            onTap: onClear,
+            child: Tooltip(
+              message: label,
+              child: Center(child: Icon(AppIcons.close, size: 15, color: theme.colorScheme.primary)),
+            ),
+          ),
+        ),
+      );
+    }
     return Semantics(
       button: true,
       label: label,

@@ -1054,5 +1054,6 @@
   "botsSendFailed": "没能发送",
   "botsSendStillWaiting": "还在等服务器确认",
    "chatGoalDrafting": "起草中，等管理员开始",
-   "botsMessageModeEmptyStretch": "这一段里没有他的发言"
+   "botsMessageModeEmptyStretch": "这一段里没有他的发言",
+   "botsRoomScopeAll": "全部消息"
 }

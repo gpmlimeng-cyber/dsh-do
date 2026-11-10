@@ -11,7 +11,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/l10n.dart';
 import '../../state/bots_state.dart';
 import '../../state/room_chat_target.dart';
-import '../../state/room_message_mode.dart';
 import '../common/app_sheet.dart';
 import '../common/list_page_row.dart';
 import '../common/page_hero.dart';
@@ -208,7 +207,6 @@ class RoomDetailsPage extends ConsumerWidget {
     // "working", which can be true at the same time.
     final awaiting = {for (final approval in approvals) approval.botId};
     final memory = ref.watch(dsBotMemoryProvider((botId: null, roomId: room.id))).value;
-    final mode = ref.watch(roomMessageModeProvider(room.id));
     final adminName = team.bot(room.admin)?.name;
     final subtitle = [
       if (adminName != null) l10n.botsNamedAdmin(adminName),
@@ -315,21 +313,6 @@ class RoomDetailsPage extends ConsumerWidget {
                       }
                     },
                   ),
-              ],
-            ),
-            gap,
-            ListPageCard(
-              title: l10n.botsMessageMode,
-              children: [
-                ListPageRow(
-                  key: const ValueKey('room-message-scope'),
-                  icon: AppIcons.chat,
-                  title: l10n.botsRoomOnlyWhose,
-                  value: mode.memberId == null
-                      ? null
-                      : l10n.botsRoomOnly(team.bot(mode.memberId!)?.name ?? mode.memberId!),
-                  onTap: () => showMessageScopeSheet(context, ref, room: room, team: team),
-                ),
               ],
             ),
             gap,

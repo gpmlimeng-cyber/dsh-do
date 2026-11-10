@@ -1955,6 +1955,7 @@
   "botsRoomSendsToGroup": "发送到群聊，群里都看得见",
   "botsRoomOnlyThisMember": "只看此成员",
   "botsRoomOnly": "只看 {name}",
+  "botsRoomScopeAll": "全部消息",
   "@botsRoomOnly": {
     "placeholders": {
       "name": {

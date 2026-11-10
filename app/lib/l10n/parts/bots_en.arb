@@ -491,5 +491,6 @@
   "botsSendFailed": "Could not send",
   "botsSendStillWaiting": "Still waiting for the server",
    "chatGoalDrafting": "Drafting — waiting for the admin to start",
-   "botsMessageModeEmptyStretch": "Nothing from them in this stretch"
+   "botsMessageModeEmptyStretch": "Nothing from them in this stretch",
+   "botsRoomScopeAll": "All messages"
 }

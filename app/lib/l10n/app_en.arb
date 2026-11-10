@@ -896,6 +896,7 @@
   "botsRoomSendsToGroup": "Sends to the group chat; everyone there sees it",
   "botsRoomOnlyThisMember": "Only this member",
   "botsRoomOnly": "Only {name}",
+  "botsRoomScopeAll": "All messages",
   "botsRoomBackToGroupChat": "Back to {room}",
   "botsRoomMemberDetails": "{name}'s conversation details",
   "botsRoomMemberSessionMissing": "This member has not started a conversation in this group yet",

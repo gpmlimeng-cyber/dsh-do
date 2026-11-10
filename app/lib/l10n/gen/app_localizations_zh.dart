@@ -19264,6 +19264,9 @@ class L10nZh extends L10n {
   }
 
   @override
+  String get botsRoomScopeAll => '全部消息';
+
+  @override
   String botsRoomBackToGroupChat(String room) {
     return '回到群聊 $room';
   }

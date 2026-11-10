@@ -34911,6 +34911,9 @@ abstract class L10n {
   /// No description provided for @botsRoomOnly.
   String botsRoomOnly(String name);
 
+  /// No description provided for @botsRoomScopeAll.
+  String get botsRoomScopeAll;
+
   /// No description provided for @botsRoomBackToGroupChat.
   ///
   /// In zh, this message translates to:
