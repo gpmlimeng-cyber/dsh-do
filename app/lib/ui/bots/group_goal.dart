@@ -440,14 +440,17 @@ class GroupGoalPill extends StatelessWidget {
       excludeSemantics: true,
       child: SizedBox(
         height: pillHeightOf(context),
-        child: GlassSurface(
-          tier: GlassTier.chrome,
-          stadium: true,
-          grouped: true,
-          onTap: onTap,
-          onLongPress: onLongPress,
-          child: Tooltip(
-            message: goal.title,
+        // Tooltip 在 GlassSurface 外面：它在触屏上默认用长按出现，套在里面会
+        // 抢走长按（更靠近手指），胶囊就永远收不成小球。放外面后 InkWell 更
+        // 深，长按归它，桌面悬停提示照旧。
+        child: Tooltip(
+          message: goal.title,
+          child: GlassSurface(
+            tier: GlassTier.chrome,
+            stadium: true,
+            grouped: true,
+            onTap: onTap,
+            onLongPress: onLongPress,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(10, 0, 12, 0),
               child: LayoutBuilder(
