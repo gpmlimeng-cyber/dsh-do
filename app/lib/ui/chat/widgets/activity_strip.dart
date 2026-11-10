@@ -245,11 +245,16 @@ class _ActivityStripState extends State<ActivityStrip> {
     return rest == 0 ? '$minutes 分' : '$minutes 分 $rest 秒';
   }
 
-  /// 右侧那点空位:上一步失败没有、做到第几步、这类步骤通常要多久。
-  String? _trailing(RunActivity a) {
-    final bits = <String>[];
-    if (a.after?.failed == true) bits.add('上一步失败');
-    if (a.toolsDone > 0) bits.add('${a.toolsDone} 步');
+  /// 右侧那点空位：时间 · 步数（与消息脚注同一个函数、同一个顺序），必要时
+  /// 前面加「上一步失败」、后面加这类步骤通常多久。
+  String? _trailing(RunActivity a, Duration? elapsed) {
+    // 不足一秒不报时间：免得一上来就闪一个「0」。
+    final live = elapsed != null && elapsed.inSeconds >= 1 ? Duration(seconds: elapsed.inSeconds) : null;
+    final figures = runFigures(duration: live, steps: a.toolsDone);
+    final bits = <String>[
+      if (a.after?.failed == true) '上一步失败',
+      if (figures.isNotEmpty) figures,
+    ];
     final key = _etaKey(a);
     final since = a.since;
     if (key != null && since != null) {
@@ -342,7 +347,7 @@ class _ActivityStripState extends State<ActivityStrip> {
                   since: a.turnStart ?? a.since,
                   skew: a.skew,
                   builder: (context, elapsed) => Text(
-                    elapsed == null ? '' : formatClock(elapsed),
+                    elapsed == null ? '' : formatLiveSpan(elapsed),
                     style: AppType.tabular(style!),
                   ),
                 ),
@@ -411,8 +416,8 @@ class _ActivityStripState extends State<ActivityStrip> {
                       skew: a.skew,
                       builder: (context, elapsed) => _Line(
                         activity: a,
-                        elapsed: elapsed,
-                        trailing: _trailing(a),
+                        // 时间并进右侧那串（时间 · 步数），这一行不再单独摆时钟。
+                        trailing: _trailing(a, elapsed),
                         stats: _statsTimer == null ? null : _stats(a, widget.tokensPerSecond?.call() ?? 0),
                       ),
                     ),
@@ -438,7 +443,7 @@ class _ActivityStripState extends State<ActivityStrip> {
   /// 长按的那几秒:这一步多久了 + 估算的出字速度。
   static String _stats(RunActivity a, double tps) {
     final since = a.since;
-    final step = since == null ? null : formatClock(LiveElapsed.elapsedSince(since, a.skew));
+    final step = since == null ? null : formatLiveSpan(LiveElapsed.elapsedSince(since, a.skew));
     final speed = tps >= 1 ? appL10n.chatTokensPerSecond(tps.round()) : appL10n.chatNoTokensStreaming;
     return [if (step != null) appL10n.chatCurrentStep(step), speed].join(' · ');
   }
@@ -446,10 +451,9 @@ class _ActivityStripState extends State<ActivityStrip> {
 
 /// 标题 + 第二段(工具目标 / 自述 / 文案 / 统计)+ 本轮用时。
 class _Line extends StatelessWidget {
-  const _Line({required this.activity, required this.elapsed, this.trailing, this.stats});
+  const _Line({required this.activity, this.trailing, this.stats});
 
   final RunActivity activity;
-  final Duration? elapsed;
 
   /// 计时左边那一小串:上一步失败、第几步、这类步骤通常多久。
   final String? trailing;
@@ -498,10 +502,6 @@ class _Line extends StatelessWidget {
       color: alarming ? dsh.warning : colors.onSurface,
       height: 1.3,
     );
-    final clockStyle = AppType.tabular(
-      theme.textTheme.labelSmall!.copyWith(fontSize: 12, color: alarming ? dsh.warning : dsh.textTertiary),
-    );
-
     return Row(
       children: [
         Expanded(
@@ -540,7 +540,6 @@ class _Line extends StatelessWidget {
             ),
           ),
         ],
-        if (elapsed != null) ...[const SizedBox(width: 8), Text(formatClock(elapsed!), style: clockStyle)],
       ],
     );
   }

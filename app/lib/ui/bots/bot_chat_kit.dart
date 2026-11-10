@@ -20,8 +20,7 @@ import '../../state/bots_state.dart';
 import '../../state/settings_state.dart';
 import '../chat/render/markdown_body.dart';
 import '../chat/render/message_mentions.dart';
-import '../chat/run_info.dart' show formatSpan;
-import '../chat/usage_sheet.dart' show formatTokens;
+import '../chat/run_info.dart' show runFigures;
 import '../chat/widgets/chat_card.dart';
 import '../chat/dsh_ui/dsh_ui.dart';
 import '../chat/secret_mask.dart';
@@ -1582,14 +1581,10 @@ class BotGroupFootnote extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.l10n;
     final theme = Theme.of(context);
     final dsh = DshColors.of(context);
-    final label = [
-      formatSpan(duration),
-      if (steps > 0) l10n.chatTurnSteps(steps),
-      if (tokens > 0) '${formatTokens(tokens)} tokens',
-    ].join(' · ');
+    // 时间 · 步数 · tokens：和输入框上方的活动行同一个函数。
+    final label = runFigures(duration: duration, steps: steps, tokens: tokens);
     final style = AppType.tabular(
       theme.textTheme.labelSmall!.copyWith(fontSize: 12, color: dsh.textTertiary, height: 1.3),
     );
@@ -1680,41 +1675,43 @@ class GroupMessage extends ConsumerWidget {
         if (!continued)
           Padding(
             padding: const EdgeInsets.only(bottom: 2),
-            child: Row(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Flexible(
-                  child: Text(
-                    name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      color: botNameInk(context, color),
-                      fontWeight: FontWeight.w600,
+                // 名字只占自己需要的宽度，时间固定在行尾；统计不跟它们挤一行。
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: botNameInk(context, color),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
-                  ),
+                    if (admin) ...[const SizedBox(width: 6), BotTag(l10n.botsAdmin)],
+                    const Spacer(),
+                    if (item.time != null)
+                      Text(
+                        shortTime(item.time),
+                        style: AppType.tabular(theme.textTheme.labelSmall!.copyWith(color: dsh.textTertiary)),
+                      ),
+                  ],
                 ),
-                if (admin) ...[const SizedBox(width: 6), BotTag(l10n.botsAdmin)],
-                // 时间与统计靠行尾：宽屏下气泡变宽，它们不能留在名字后面。
-                // 挤的时候先缩名字和统计，时间固定在最右。
-                const Spacer(),
-                // 这一轮的统计摆在成员行上：耗时 · 步数 · tokens，点开是统计面板。
-                // 数字来自这一段的最后一行（见 _withRunFigures），续行不再各带一份。
+                // 这一轮的统计自己一行：耗时 · 步数 · tokens，点开是统计面板。名字长
+                // 短、有没有 admin 标签、有没有时间，都挤不到它。数字来自这一段的
+                // 最后一行（见 _withRunFigures），续行不再各带一份。
                 if (figures case final run?) ...[
-                  const SizedBox(width: 8),
-                  Flexible(
-                    child: BotGroupFootnote(
-                      duration: run.duration,
-                      steps: run.steps,
-                      tokens: run.tokens,
-                      onTap: onStats,
-                    ),
-                  ),
-                ],
-                if (item.time != null) ...[
-                  const SizedBox(width: 8),
-                  Text(
-                    shortTime(item.time),
-                    style: AppType.tabular(theme.textTheme.labelSmall!.copyWith(color: dsh.textTertiary)),
+                  const SizedBox(height: 1),
+                  BotGroupFootnote(
+                    duration: run.duration,
+                    steps: run.steps,
+                    tokens: run.tokens,
+                    onTap: onStats,
                   ),
                 ],
               ],

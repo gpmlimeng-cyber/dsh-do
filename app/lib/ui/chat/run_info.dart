@@ -9,6 +9,7 @@ import '../../l10n/l10n.dart';
 import '../../state/chat_state.dart';
 import '../../state/usage_state.dart';
 import '../common/tool_glyph.dart';
+import 'usage_sheet.dart' show formatTokens;
 import 'activity_copy.dart';
 import 'tool_view.dart';
 import 'turn_summary.dart';
@@ -33,6 +34,18 @@ String formatSpan(Duration d) {
   final minutes = seconds ~/ 60;
   return appL10n.activitySpanHoursMinutes(minutes ~/ 60, (minutes % 60).toString().padLeft(2, '0'));
 }
+
+/// 运行中的用时也写「29 秒」这种整数秒：脚注、输入框上方的活动行、长按那几秒
+/// 的提示都用这一份，不再出现 `0:29` 的时钟写法。
+String formatLiveSpan(Duration d) => formatSpan(Duration(seconds: d.isNegative ? 0 : d.inSeconds));
+
+/// 一轮的数字，一句话：`29 秒 · 4 步 · 138K tokens`。消息脚注与输入框上方的
+/// 活动行共用这一份顺序与写法，两边不许再各拼一套。
+String runFigures({Duration? duration, int steps = 0, int tokens = 0}) => [
+  if (duration != null) formatSpan(duration),
+  if (steps > 0) appL10n.chatTurnSteps(steps),
+  if (tokens > 0) '${formatTokens(tokens)} tokens',
+].join(' · ');
 
 /// 走动的计时:`0:07`、`12:45`、`1:02:05`。
 String formatClock(Duration d) {
