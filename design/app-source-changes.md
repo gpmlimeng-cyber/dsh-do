@@ -96,3 +96,4 @@ Upstream: `ccch1mneyyy/dsh-Go`, against `v1.0.10` (fork branch `ci/room-progress
 | `b6cc580e` | `app/lib/ui/bots/group_goal.dart` | v1.0.10 | A goal pill's corners and ring sizes are Flutter UI; no seam owns them. |
 | `d95322cf` | `app/lib/ui/bots/group_goal.dart` (+ `docs/memo.md`) | v1.0.10 | A member line's colours are Flutter UI over the Host's own team; no seam owns them. |
 | `c3a32cda` | `app/lib/ui/bots/group_goal.dart` | v1.0.10 | A goal's stage stepper and its links are Flutter drawing over the Host's own stages; no seam owns them. |
+| `$(git rev-parse --short HEAD)` | `app/lib/ui/bots/group_goal.dart` | v1.0.10 | Where a goal's checks are folded is Flutter layout over the Host's own goal; no seam owns it. |

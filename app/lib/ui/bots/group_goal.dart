@@ -509,33 +509,11 @@ class _GoalPanelState extends ConsumerState<GoalPanel> {
             for (final task in stage.tasks) _GoalTaskRow(task: task),
           ],
         ],
-        if (_checks && hasChecks) ...[
-          const SizedBox(height: 6),
-          if (goal.objective.isNotEmpty) _Block(label: l10n.chatGoal, value: goal.objective),
-          if (goal.acceptance.isNotEmpty) _Block(label: l10n.chatGoalAcceptanceDone, value: goal.acceptance),
-          for (final rule in goal.constraints) _Block(label: l10n.chatGoalRule, value: rule),
-        ],
         const SizedBox(height: 6),
-        // The web's foot: 「目标与验收」 on the left, the actions as one cluster
-        // on the right, in the same order it uses.
+        // 动作区：右侧一簇，顺序照网页；「目标与验收」的折叠钮不在这行，
+        // 它在面板最底。
         Row(
           children: [
-            if (hasChecks)
-              TextButton(
-                onPressed: () => setState(() => _checks = !_checks),
-                style: controlStyle,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(l10n.chatGoalAcceptance),
-                    AnimatedRotation(
-                      turns: _checks ? 0.5 : 0,
-                      duration: AppMotion.of(context, AppMotion.standard),
-                      child: Icon(AppIcons.collapse, size: 16, color: dsh.textTertiary),
-                    ),
-                  ],
-                ),
-              ),
             const Spacer(),
             if (widget.showActions && goal.status == 'paused' && working)
               TextButton(
@@ -561,6 +539,33 @@ class _GoalPanelState extends ConsumerState<GoalPanel> {
               TextButton(onPressed: _busy ? null : () => _control('clear'), style: controlStyle, child: Text(l10n.commonCancel)),
           ],
         ),
+        // 面板最底一行：默认折叠；展开的内容在这一行下面，不占正文的位置。
+        if (hasChecks) ...[
+          const SizedBox(height: 2),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              onPressed: () => setState(() => _checks = !_checks),
+              style: controlStyle,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(l10n.chatGoalAcceptance),
+                  AnimatedRotation(
+                    turns: _checks ? 0.5 : 0,
+                    duration: AppMotion.of(context, AppMotion.standard),
+                    child: Icon(AppIcons.collapse, size: 16, color: dsh.textTertiary),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_checks) ...[
+            if (goal.objective.isNotEmpty) _Block(label: l10n.chatGoal, value: goal.objective),
+            if (goal.acceptance.isNotEmpty) _Block(label: l10n.chatGoalAcceptanceDone, value: goal.acceptance),
+            for (final rule in goal.constraints) _Block(label: l10n.chatGoalRule, value: rule),
+          ],
+        ],
       ],
     );
   }
