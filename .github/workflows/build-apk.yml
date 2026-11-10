@@ -188,7 +188,10 @@ jobs:
   # should not hide a working APK. Make this `needs:` once the goldens land.
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    # The suite seeds the font metrics cache and renders goldens; on a 2-core
+    # runner that alone can pass half an hour, and a job timeout would cancel
+    # the run before the client tests ever started.
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
 
@@ -219,9 +222,12 @@ jobs:
 
       - name: Test
         # The goldens are stale until a `goldens` run refreshes them: a red test
-        # must not hide the compile verdict this job exists for.
+        # must not hide the compile verdict this job exists for. For the same
+        # reason the step is capped: a slow suite must not eat the job and take
+        # the client tests down with it.
         continue-on-error: true
-        run: flutter test
+        timeout-minutes: 30
+        run: flutter test --reporter compact
         working-directory: app
 
       # The client package carries the DS Bot wire shapes (send, hello);
