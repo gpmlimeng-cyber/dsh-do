@@ -1031,6 +1031,15 @@ class _GoalExpandLayerState extends ConsumerState<_GoalExpandLayer> {
   /// 「目标与验收」展开着没有：内容在滚动区末尾，栏在固定区。
   bool _checks = false;
 
+  @override
+  void initState() {
+    super.initState();
+    // 打开面板先拉一次：后台或别处改过状态时，顶部那颗按钮不该拿旧值。
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.invalidate(groupGoalProvider(widget.roomId));
+    });
+  }
+
   /// 已暂停、但还有人在跑：只停工作，目标保持暂停（网页端这颗走
   /// stop-room-work，不是 goal-control）。
   Future<void> _stopWork() async {
@@ -1241,6 +1250,45 @@ class _GoalHeaderActionsState extends ConsumerState<_GoalHeaderActions> {
   bool _busy = false;
   bool _armed = false;
 
+  /// 刚成功的那一步的本地状态：先让胶囊和这颗按钮立刻对上，随后拉回来的
+  /// Host 那份再校正它（[didUpdateWidget] 里撤掉）。
+  String? _showing;
+
+  /// 这颗按钮读的状态：本地刚改的那一次优先，其余看 Host 的那份。胶囊读的
+  /// 是同一个 provider（`groupGoalProvider`），所以两边永远说同一件事。
+  String get _status => _showing ?? widget.goal.status;
+
+  @override
+  void didUpdateWidget(_GoalHeaderActions oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_showing != null && widget.goal.status == _showing) _showing = null;
+  }
+
+  /// 成功的是哪一步就显示成哪一步：不用等下一次拉取，也不用重开面板。
+  void _optimistic(String action) {
+    _showing = switch (action) {
+      'pause' => 'paused',
+      'resume' => 'active',
+      'stop' => 'stopped',
+      'clear' => null,
+      _ => _showing,
+    };
+  }
+
+  /// 拉一次 goal-view 并以它为准：只标脏不够，这里把读取等回来，成功与否
+  /// 都能让界面在这一次操作里就对齐。
+  Future<void> _reload() async {
+    try {
+      await ref.refresh(groupGoalProvider(widget.roomId).future);
+    } catch (_) {
+      // 拉失败就留着本地那次的状态；下一次失效还会再拉。
+      return;
+    }
+    // Host 那份已经拉回来了，就以它为准：即使和刚才那一步对不上，也不能让
+    // 本地那次的状态一直盖着真值。
+    if (mounted && _showing != null) setState(() => _showing = null);
+  }
+
   Future<void> _control(String action) async {
     if (_busy) return;
     final api = ref.read(dsBotProvider.notifier).api;
@@ -1248,7 +1296,9 @@ class _GoalHeaderActionsState extends ConsumerState<_GoalHeaderActions> {
     setState(() => _busy = true);
     try {
       await api.goalControl(widget.roomId, widget.goal.id, action);
-      ref.invalidate(groupGoalProvider(widget.roomId));
+      // 请求成功 = Host 已经改完：先把界面切成新状态，再把真值拉回来校正。
+      if (mounted) setState(() => _optimistic(action));
+      await _reload();
       if (action == 'clear' && mounted) Navigator.of(context).maybePop();
     } catch (error) {
       if (mounted) ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text('$error')));
@@ -1276,7 +1326,7 @@ class _GoalHeaderActionsState extends ConsumerState<_GoalHeaderActions> {
 
   @override
   Widget build(BuildContext context) {
-    final status = widget.goal.status;
+    final status = _status;
     final l10n = context.l10n;
     final dsh = DshColors.of(context);
     if (status == 'complete' || status == 'stopped') {
