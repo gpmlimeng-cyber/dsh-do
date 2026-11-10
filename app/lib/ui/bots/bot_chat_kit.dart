@@ -266,7 +266,10 @@ class BotChatHeader extends StatelessWidget {
                     onTap: onLeading ?? () => Navigator.of(context).maybePop(),
                   ),
                   const SizedBox(width: 8),
-                  if (trailingExpand) Flexible(child: titlePill) else Expanded(child: titlePill),
+                  // 展开态：标题只剩一颗圆头像，占自己的内容宽，不再参与
+                  // 弹性分配——否则它和胶囊各拿一半自由宽，那半截没用完就留在
+                  // 行尾，最右那颗键贴不到右边。其余时候标题吃掉剩余宽度。
+                  if (trailingExpand) titlePill else Expanded(child: titlePill),
                   if (trailing case final trailing?) ...[
                     const SizedBox(width: 4),
                     // 撑满态（窄屏的完整胶囊）占满剩下的宽度；其余时候它只是

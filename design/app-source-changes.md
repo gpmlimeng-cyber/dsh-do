@@ -114,3 +114,4 @@ Upstream: `ccch1mneyyy/dsh-Go`, against `v1.0.10` (fork branch `ci/room-progress
 | `$(git rev-parse --short HEAD)` | `app/lib/ui/bots/room_chat_page.dart` | v1.0.10 | A pill's shape follows the frame's layout; no seam owns it. |
 | `$(git rev-parse --short HEAD)` | `app/lib/ui/bots/room_chat_page.dart` | v1.0.10 | A pill's folded state is per-room page state; no seam owns it. |
 | `$(git rev-parse --short HEAD)` | `app/lib/ui/bots/bot_composer_deck.dart`, `app/lib/ui/bots/bot_chat_kit.dart` | v1.0.10 | Which row shows above the composer and where a line's time sits are Flutter layout; no seam owns them. |
+| `$(git rev-parse --short HEAD)` | `app/lib/ui/bots/bot_chat_kit.dart` | v1.0.10 | How the header row splits its width is Flutter layout; no seam owns it. |
