@@ -105,3 +105,5 @@ Upstream: `ccch1mneyyy/dsh-Go`, against `v1.0.10` (fork branch `ci/room-progress
 | `d6f8fff4` | `app/lib/ui/bots/room_chat_page.dart`, `app/lib/ui/bots/group_goal.dart` | v1.0.10 | Compile fixes in page wiring; no seam changes. |
 | `$(git rev-parse --short HEAD)` | `app/lib/ui/bots/group_goal.dart` | v1.0.10 | Where a card's controls sit is Flutter layout; no seam owns it. |
 | `$(git rev-parse --short HEAD)` | `app/lib/ui/bots/group_goal.dart` | v1.0.10 | Which actions a card's head shows is Flutter state over the Host's own goal; no seam owns it. |
+| `$(git rev-parse --short HEAD)` | `app/lib/ui/bots/group_goal.dart` | v1.0.10 | Which link a card's bottom keeps is Flutter layout; no seam owns it. |
+| `$(git rev-parse --short HEAD)` | `app/lib/ui/bots/group_goal.dart` | v1.0.10 | Which discs a card's head shows is Flutter state over the Host's own goal; no seam owns it. |

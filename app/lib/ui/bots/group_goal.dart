@@ -954,7 +954,6 @@ class _GoalExpandLayerState extends ConsumerState<_GoalExpandLayer> {
                                 ),
                               ),
                             ),
-                            _GoalClearLink(roomId: roomId, goal: goal),
                           ],
                         ),
                 ),
@@ -1064,6 +1063,14 @@ class _GoalHeaderActionsState extends ConsumerState<_GoalHeaderActions> {
         onTap: _busy ? null : () => _control('clear'),
       );
     }
+    if (status == 'drafting') {
+      return _disc(
+        tooltip: l10n.commonCancel,
+        icon: AppIcons.close,
+        color: dsh.textTertiary,
+        onTap: _busy ? null : () => _control('clear'),
+      );
+    }
     if (status != 'active' && status != 'paused') return const SizedBox.shrink();
     final paused = status == 'paused';
     return Row(
@@ -1093,57 +1100,6 @@ class _GoalHeaderActionsState extends ConsumerState<_GoalHeaderActions> {
     required VoidCallback? onTap,
     Color? background,
   }) => _goalDisc(context, tooltip: tooltip, icon: icon, color: color, onTap: onTap, background: background);
-}
-
-/// 卡片底部：清除/取消留成文字链，不做大按钮（浮窗的「收成小球」就是这种位置）。
-class _GoalClearLink extends ConsumerStatefulWidget {
-  const _GoalClearLink({required this.roomId, required this.goal});
-
-  final String roomId;
-  final DsBotGroupGoal goal;
-
-  @override
-  ConsumerState<_GoalClearLink> createState() => _GoalClearLinkState();
-}
-
-class _GoalClearLinkState extends ConsumerState<_GoalClearLink> {
-  bool _busy = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final status = widget.goal.status;
-    if (status != 'drafting' && status != 'complete' && status != 'stopped') {
-      return const SizedBox(height: 8);
-    }
-    final l10n = context.l10n;
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-        child: TextButton(
-          onPressed: _busy
-              ? null
-              : () async {
-                  final api = ref.read(dsBotProvider.notifier).api;
-                  if (api == null) return;
-                  setState(() => _busy = true);
-                  try {
-                    await api.goalControl(widget.roomId, widget.goal.id, 'clear');
-                    ref.invalidate(groupGoalProvider(widget.roomId));
-                    if (mounted) Navigator.of(context).maybePop();
-                  } catch (error) {
-                    if (mounted) {
-                      ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text('$error')));
-                    }
-                  } finally {
-                    if (mounted) setState(() => _busy = false);
-                  }
-                },
-          child: Text(status == 'drafting' ? l10n.commonCancel : l10n.chatClearGoal),
-        ),
-      ),
-    );
-  }
 }
 
 /// 兼容旧调用：群目标面板以前是底部抽屉，现在改为顶栏展开，这个函数只
