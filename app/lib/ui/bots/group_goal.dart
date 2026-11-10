@@ -275,6 +275,9 @@ double pillHeightOf(BuildContext context) => ChatHeader.pillHeightOf(context);
 
 /// 合体胶囊的右段：第一行旗帜 + 目标标题，第二行动态，右端进度环；自己带
 /// 右圆角的水波，点它开面板、长按收成小球。外壳由顶栏那颗胶囊给。
+///
+/// 窄屏（< 360）只留「旗帜 + 标题 + 环」：两行在高度上一直装得下，退成一行
+/// 换的是宽度，不是高度。
 class GoalInlineSegment extends StatelessWidget {
   const GoalInlineSegment({
     super.key,
@@ -293,7 +296,11 @@ class GoalInlineSegment extends StatelessWidget {
     final dsh = DshColors.of(context);
     final height = pillHeightOf(context);
     final radius = BorderRadius.horizontal(right: Radius.circular(height / 2));
-    final ring = GoalRing(goal: goal, size: 24, announce: false);
+    // 22 的环（不是 24）：省下的 2px 全给标题。
+    const ringSize = 22.0;
+    // 窄屏退成一行：宽度不够时丢掉「现在在干什么」那一行，其余不动。
+    final narrow = MediaQuery.sizeOf(context).width < 360;
+    final ring = GoalRing(goal: goal, size: ringSize, announce: false);
     final paused = goal.status == 'paused';
     // 分隔线在这段里：连它一起可点（点线也是开面板），不是死区。
     Widget segment({required Widget child}) => InkWell(
@@ -336,7 +343,8 @@ class GoalInlineSegment extends StatelessWidget {
     );
     return segment(
       child: Padding(
-        padding: const EdgeInsets.only(left: 4, right: 8),
+        // 右段内边 2 / 6：给标题多挤出一个字。
+        padding: const EdgeInsets.only(left: 2, right: 6),
         child: LayoutBuilder(
           builder: (context, constraints) {
             final small = theme.textTheme.labelSmall!.copyWith(
@@ -347,7 +355,7 @@ class GoalInlineSegment extends StatelessWidget {
             final text = splitForPill(
               head: line.head,
               tail: line.tail,
-              maxWidth: constraints.maxWidth - 6 - 24 - flagSize - flagGap,
+              maxWidth: constraints.maxWidth - 6 - ringSize - flagSize - flagGap,
               style: small,
               scaler: MediaQuery.textScalerOf(context),
             );
@@ -376,7 +384,7 @@ class GoalInlineSegment extends StatelessWidget {
                           ),
                         ],
                       ),
-                      if (text != goal.title) ...[
+                      if (!narrow && text != goal.title) ...[
                         const SizedBox(height: 1),
                         Padding(
                           padding: const EdgeInsets.only(left: flagSize + flagGap),
@@ -536,9 +544,9 @@ class GroupGoalPill extends StatelessWidget {
   /// 进度环的尺寸：单独站着的那颗小球与完整胶囊共用这一个值。
   static const double _ringSize = 32;
 
-  /// 并进胶囊的球更小：环跟合体段同一颗 24——收起 / 展开时环不变，
+  /// 并进胶囊的球更小：环跟合体段同一颗 22——收起 / 展开时环不变，
   /// 只有外壳在变（36 的圆井照标题胶囊尾端的时钟键）。
-  static const double _ballRingSize = 24;
+  static const double _ballRingSize = 22;
 
   /// 那颗球的直径：照标题胶囊尾端的时钟键（[HeaderScheduleCap.size]）。
   static const double _ballSize = HeaderScheduleCap.size;
