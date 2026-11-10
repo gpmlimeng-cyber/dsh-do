@@ -394,7 +394,7 @@ class BotChatHeader extends StatelessWidget {
                   // （[endTrailing]）。
                   // 无目标时才走下面那两种旧排法。
                   if (mergeTrailing && trailing != null)
-                    Expanded(child: _mergedTitlePill(context, titleRow: titleRow, goal: trailing!))
+                    Expanded(child: mergedTitlePill(context, titleRow: titleRow, goal: trailing!))
                   else if (endTrailing && trailing != null)
                     Flexible(child: inlineTitlePill(ball: trailing!))
                   else ...[
