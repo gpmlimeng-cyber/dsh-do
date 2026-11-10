@@ -190,35 +190,37 @@ class GoalBarProbe extends ConsumerWidget {
       if (next && previous != true) ref.invalidate(groupGoalProvider(roomId));
     });
     final async = ref.watch(groupGoalProvider(roomId));
-    return switch (async) {
-      AsyncData(value: final goal?) when goal.title.isNotEmpty =>
-        // 合体态：右段（两行文字或窄屏一颗环）并进群名胶囊，分隔线在里面。
-        bare && expanded
-            ? GoalInlineSegment(
-                goal: goal,
-                narrow: narrow,
-                onTap: () => showGoalExpand(context, roomId),
-                onLongPress: onCollapse,
-              )
-            : GroupGoalPill(
-                goal: goal,
-                expanded: expanded,
-                // 收成小球且并进群名胶囊时，只画那颗同心球（外壳由顶栏给）。
-                bare: bare && !expanded,
-                // 点完整胶囊开面板；长按才收成小球。收起与「关面板」是两件事。
-                onTap: expanded ? () => showGoalExpand(context, roomId) : (onExpand ?? () {}),
-                onLongPress: expanded ? onCollapse : null,
-              ),
-      AsyncLoading() => SizedBox.square(
-        // 并进胶囊时照那颗球的大小占位，目标读到后不跳。
-        dimension: bare ? GroupGoalPill._ballSize : 30,
-        child: const Center(
-          child: SizedBox.square(dimension: 14, child: CircularProgressIndicator(strokeWidth: 1.6)),
-        ),
+    // 重新拉取时（回合结束、新消息都会失效它）手里那份不算丢：先照上一份画，
+    // 拉回来再换成新的。否则每来一条消息胶囊就缩成一个小转圈，再弹回去。
+    final goal = async.value;
+    if (goal != null && goal.title.isNotEmpty) {
+      // 合体态：右段（两行文字或窄屏一颗环）并进群名胶囊，分隔线在里面。
+      return bare && expanded
+          ? GoalInlineSegment(
+              goal: goal,
+              narrow: narrow,
+              onTap: () => showGoalExpand(context, roomId),
+              onLongPress: onCollapse,
+            )
+          : GroupGoalPill(
+              goal: goal,
+              expanded: expanded,
+              // 收成小球且并进群名胶囊时，只画那颗同心球（外壳由顶栏给）。
+              bare: bare && !expanded,
+              // 点完整胶囊开面板；长按才收成小球。收起与「关面板」是两件事。
+              onTap: expanded ? () => showGoalExpand(context, roomId) : (onExpand ?? () {}),
+              onLongPress: expanded ? onCollapse : null,
+            );
+    }
+    // 一次都还没读到：占位照那颗球的大小，目标读到后不跳。
+    // 没有目标：不占位（原来那颗灰点与它的调试 SnackBar 已删掉）。
+    if (!async.isLoading) return const SizedBox.shrink();
+    return SizedBox.square(
+      dimension: bare ? GroupGoalPill._ballSize : 30,
+      child: const Center(
+        child: SizedBox.square(dimension: 14, child: CircularProgressIndicator(strokeWidth: 1.6)),
       ),
-      // 没有目标：不占位（原来那颗灰点与它的调试 SnackBar 已删掉）。
-      _ => const SizedBox.shrink(),
-    };
+    );
   }
 }
 

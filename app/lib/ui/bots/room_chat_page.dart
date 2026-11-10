@@ -970,6 +970,18 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBinding
     // 目标在不在，决定群名要不要让位给胶囊：没有目标时群名必须是完整那颗。
     final goalNow = ref.watch(groupGoalProvider(room.id)).value;
     final hasGoal = goalNow != null && goalNow.title.isNotEmpty;
+    // 目标不会自己推过来：Host 只给 `goal-view`，而目标多半是在管理员的回合
+    // 里建出来的（用户说一句、Bot 去对齐并写成目标）。所以本群工作状态一变
+    // （回合起 / 回合止）、对话里多一条消息，就回头取一次——否则刚建好的目标
+    // 要退出重进才出现（provider 是 autoDispose，重进才重建）。
+    ref.listen(
+      dsBotProvider.select((s) => s.live.rooms[room.id]?.length ?? 0),
+      (_, _) => ref.invalidate(groupGoalProvider(room.id)),
+    );
+    ref.listen(
+      roomChatProvider(widget.roomId).select((s) => s.items.length),
+      (_, _) => ref.invalidate(groupGoalProvider(room.id)),
+    );
     ref.listen(groupGoalProvider(room.id), (previous, next) {
       final gone = next.value == null || next.value!.title.isEmpty;
       if (!gone) return;
