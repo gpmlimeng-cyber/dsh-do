@@ -429,7 +429,7 @@ class _AnchoredMenu extends StatelessWidget {
   final VoidCallback? onLongPress;
 
   /// 卡片宽度：行按这个宽铺满（行自己带 16 的左右留白），高 52。
-  static const double _width = 208;
+  static const double _width = 176;
 
   @override
   Widget build(BuildContext context) {

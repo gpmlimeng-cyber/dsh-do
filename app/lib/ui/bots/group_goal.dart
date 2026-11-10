@@ -636,13 +636,17 @@ class GoalChecksBar extends StatelessWidget {
   final bool open;
   final VoidCallback onToggle;
 
+  /// 有没有可展开的东西：目标 / 验收方法 / 规则，一样都没有就不出这一行，
+  /// 也不出它下面的内容。
+  static bool has(DsBotGroupGoal goal) =>
+      goal.objective.isNotEmpty || goal.acceptance.isNotEmpty || goal.constraints.isNotEmpty;
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final dsh = DshColors.of(context);
-    final has = goal.objective.isNotEmpty || goal.acceptance.isNotEmpty || goal.constraints.isNotEmpty;
-    if (!has) return const SizedBox.shrink();
+    if (!has(goal)) return const SizedBox.shrink();
     return Align(
       alignment: Alignment.centerLeft,
       child: TextButton(
@@ -1059,6 +1063,10 @@ class _GoalExpandLayerState extends ConsumerState<_GoalExpandLayer> {
     final dsh = DshColors.of(context);
     final top = MediaQuery.paddingOf(context).top;
     final maxHeight = MediaQuery.sizeOf(context).height * 0.62;
+    // 胶囊顶边：顶栏在状态栏下起算、高 barHeightOf，胶囊在栏里垂直居中、高
+    // pillHeightOf。卡片从这条线起，整颗胶囊才盖得住（原来固定 +6，胶囊比它
+    // 高，顶上漏一截）。
+    final pillTop = top + math.max(0.0, (BotChatHeader.barHeightOf(context) - pillHeightOf(context)) / 2);
     final working = ref.watch(
       dsBotProvider.select((s) => (s.live.rooms[widget.roomId] ?? const <DsBotWork>[]).isNotEmpty),
     );
@@ -1076,8 +1084,9 @@ class _GoalExpandLayerState extends ConsumerState<_GoalExpandLayer> {
           Align(
             alignment: Alignment.topCenter,
             child: Padding(
-              // 尺寸照手机控制的浮窗卡：左右 12、状态栏下 6、圆角 24、头部 48。
-              padding: EdgeInsets.fromLTRB(12, top + 6, 12, 0),
+              // 左右 12、圆角 24、头部 48 照手机控制的浮窗卡；顶边与胶囊顶边
+              // 齐平，再往上 1 像素，两张圆角交界处也不漏。
+              padding: EdgeInsets.fromLTRB(12, pillTop - 1, 12, 0),
               child: ConstrainedBox(
                 constraints: BoxConstraints(maxHeight: maxHeight),
                 child: GlassSurface(
@@ -1130,19 +1139,10 @@ class _GoalExpandLayerState extends ConsumerState<_GoalExpandLayer> {
                             Flexible(
                               child: SingleChildScrollView(
                                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                                  children: [
-                                    GoalPanel(
-                                      goal: goal,
-                                      roomId: roomId,
-                                      onClose: () => Navigator.of(context).maybePop(),
-                                    ),
-                                    if (_checks) ...[
-                                      const SizedBox(height: 6),
-                                      GoalChecksBody(goal: goal),
-                                    ],
-                                  ],
+                                child: GoalPanel(
+                                  goal: goal,
+                                  roomId: roomId,
+                                  onClose: () => Navigator.of(context).maybePop(),
                                 ),
                               ),
                             ),
@@ -1166,6 +1166,18 @@ class _GoalExpandLayerState extends ConsumerState<_GoalExpandLayer> {
                               open: _checks,
                               onToggle: () => setState(() => _checks = !_checks),
                             ),
+                            // 展开的三块在折叠行下侧、自己的滚动区里，不占正文
+                            // 那块地方；卡片有最大高度，内容再长也在这条里滚。
+                            if (_checks && GoalChecksBar.has(goal)) ...[
+                              const Divider(height: 1),
+                              ConstrainedBox(
+                                constraints: BoxConstraints(maxHeight: maxHeight * 0.45),
+                                child: SingleChildScrollView(
+                                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+                                  child: GoalChecksBody(goal: goal),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                 ),
