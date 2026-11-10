@@ -1572,19 +1572,20 @@ class BotTextBubble extends StatelessWidget {
 /// 消息名字行里的统计那一段：`7 步 · 109K tokens ›`，整段可点开统计面板。
 /// 放不下时整段换成 `…`（[elided]），不把数字截成半个。
 class _RunFiguresSegment extends StatelessWidget {
-  const _RunFiguresSegment({required this.label, this.elided = false, this.onTap});
+  const _RunFiguresSegment({required this.label, required this.style, this.elided = false, this.onTap});
 
   final String label;
+
+  /// 和同一行里时间那串用的是同一个 `TextStyle` 实例（由名字行传进来）：
+  /// 字号、颜色、行高完全一致，以后调一处两处一起变。
+  final TextStyle? style;
+
   final bool elided;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final dsh = DshColors.of(context);
-    final style = AppType.tabular(
-      theme.textTheme.labelSmall!.copyWith(fontSize: 12, color: dsh.textTertiary, height: 1.3),
-    );
     return Semantics(
       button: onTap != null,
       label: elided ? null : label,
@@ -1728,6 +1729,7 @@ class GroupMessage extends ConsumerWidget {
                       const SizedBox(width: 6),
                       _RunFiguresSegment(
                         label: fullStats ? stats : '…',
+                        style: smallStyle,
                         elided: !fullStats,
                         onTap: fullStats ? onStats : null,
                       ),
