@@ -926,14 +926,6 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
           color: DshColors.of(context).warning,
         );
       }
-      if (chat.running) {
-        return (
-          icon: AppIcons.stop,
-          tooltip: l10n.commonStop,
-          onTap: () => _stopGuard.action(roomId: room.id)(),
-          color: Theme.of(context).colorScheme.error,
-        );
-      }
       return null;
     }
 

@@ -269,10 +269,10 @@ class BotChatHeader extends StatelessWidget {
                   if (trailingExpand) Flexible(child: titlePill) else Expanded(child: titlePill),
                   if (trailing case final trailing?) ...[
                     const SizedBox(width: 4),
-                    // 目标胶囊要和标题分这点宽度：不给它弹性，长标题会把
-                    // 群名那种「只剩一颗圆头像」的收起态挤成一条竖杠。
-                    // 撑满态（窄屏的完整胶囊）则整条占满剩下的宽度。
-                    if (trailingExpand) Expanded(child: trailing) else Flexible(child: trailing),
+                    // 撑满态（窄屏的完整胶囊）占满剩下的宽度；其余时候它只是
+                    // 一颗定宽的小球/胶囊，不参与弹性，否则它那一半没吃完的
+                    // 宽度会留在 Row 尾部，最右那颗键就贴不到右边。
+                    if (trailingExpand) Expanded(child: trailing) else trailing,
                   ],
                   if (onMessages case final onMessages?) ...[
                     const SizedBox(width: 8),
