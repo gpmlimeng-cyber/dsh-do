@@ -556,9 +556,10 @@ class GroupGoalPill extends StatelessWidget {
           )
         : null;
     if (bare) {
-      // 挂在一颗胶囊的尾端：只要那口安静的圆井 + 环，玻璃底由胶囊给。
-      // 井的颜色照标题胶囊尾端的时钟键（浅色 6%、深色 10%）。
-      final dark = theme.brightness == Brightness.dark;
+      // 挂在一颗胶囊的尾端：位置与几何照标题胶囊尾端的时钟键，里面的球是
+      // 我们自己的——环 + 暂停角标，底子用目标自己的状态色淡淡一层，不是
+      // 时钟那口中性灰井。
+      final tone = goalStateColor(context, goal);
       return Semantics(
         button: true,
         label: goal.title,
@@ -572,7 +573,7 @@ class GroupGoalPill extends StatelessWidget {
               width: _ballSize,
               height: _ballSize,
               decoration: ShapeDecoration(
-                color: theme.colorScheme.onSurface.withValues(alpha: dark ? 0.10 : 0.06),
+                color: tone.withValues(alpha: 0.14),
                 shape: const CircleBorder(),
               ),
               child: Stack(
