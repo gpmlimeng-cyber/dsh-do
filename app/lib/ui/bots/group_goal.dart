@@ -843,7 +843,7 @@ Future<void> showGoalExpand(BuildContext context, String roomId, {VoidCallback? 
   FocusManager.instance.primaryFocus?.unfocus();
 }
 
-class _GoalExpandLayer extends ConsumerWidget {
+class _GoalExpandLayer extends ConsumerStatefulWidget {
   const _GoalExpandLayer({required this.roomId, this.onCollapse});
 
   final String roomId;
@@ -852,7 +852,23 @@ class _GoalExpandLayer extends ConsumerWidget {
   final VoidCallback? onCollapse;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_GoalExpandLayer> createState() => _GoalExpandLayerState();
+}
+
+class _GoalExpandLayerState extends ConsumerState<_GoalExpandLayer> {
+  /// 停止的第一段：标题区让位给「确认终止？」，三个键不动、不推挤。
+  final _confirming = ValueNotifier<bool>(false);
+
+  @override
+  void dispose() {
+    _confirming.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final roomId = widget.roomId;
+    final onCollapse = widget.onCollapse;
     final goal = ref.watch(groupGoalProvider(roomId)).value;
     final l10n = context.l10n;
     final theme = Theme.of(context);
@@ -893,20 +909,24 @@ class _GoalExpandLayer extends ConsumerWidget {
                                   Icon(AppIcons.goal, size: 18, color: dsh.textTertiary),
                                   const SizedBox(width: 8),
                                   Expanded(
-                                    child: Text(
-                                      goal.title,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
+                                    child: ValueListenableBuilder<bool>(
+                                      valueListenable: _confirming,
+                                      builder: (context, confirming, _) => Text(
+                                        confirming ? l10n.chatGoalConfirmStop : goal.title,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: theme.textTheme.labelLarge?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                          color: confirming ? theme.colorScheme.error : null,
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                  // 头部只留这一颗（和抽屉、⋯ 同一套圆键）：
-                                  // 收回小球并关面板；进度页的薄抽屉没有小球
-                                  // 可收，就只关面板。
-                                  // 暂停/停止回到顶部：手机底部不容易被看到。
-                                  // 顺序是 暂停/停止 → 收起圆盘，圆盘最右。
-                                  _GoalHeaderActions(roomId: roomId, goal: goal),
                                   const SizedBox(width: 8),
+                                  // 顶部是唯一动作区：暂停/停止（完成或停止后是
+                                  // 清除）→ 收起圆盘，圆盘最右；三个 48 触控紧排，
+                                  // 圆盘与动作之间不再加间距（靠 48 与 36 的差）。
+                                  _GoalHeaderActions(roomId: roomId, goal: goal, confirming: _confirming),
                                   _goalDisc(
                                     context,
                                     tooltip: onCollapse == null
@@ -982,10 +1002,13 @@ Widget _goalDisc(
 
 /// 卡片头部的两颗：暂停/恢复、停止。停止两段式，3 秒内再点才执行。
 class _GoalHeaderActions extends ConsumerStatefulWidget {
-  const _GoalHeaderActions({required this.roomId, required this.goal});
+  const _GoalHeaderActions({required this.roomId, required this.goal, this.confirming});
 
   final String roomId;
   final DsBotGroupGoal goal;
+
+  /// 停止的第一段：让标题区显示「确认终止？」三秒。
+  final ValueNotifier<bool>? confirming;
 
   @override
   ConsumerState<_GoalHeaderActions> createState() => _GoalHeaderActionsState();
@@ -1003,6 +1026,7 @@ class _GoalHeaderActionsState extends ConsumerState<_GoalHeaderActions> {
     try {
       await api.goalControl(widget.roomId, widget.goal.id, action);
       ref.invalidate(groupGoalProvider(widget.roomId));
+      if (action == 'clear' && mounted) Navigator.of(context).maybePop();
     } catch (error) {
       if (mounted) ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text('$error')));
     } finally {
@@ -1010,15 +1034,20 @@ class _GoalHeaderActionsState extends ConsumerState<_GoalHeaderActions> {
     }
   }
 
+  void _setArmed(bool armed) {
+    setState(() => _armed = armed);
+    widget.confirming?.value = armed;
+  }
+
   void _stop() {
     if (!_armed) {
-      setState(() => _armed = true);
+      _setArmed(true);
       Future<void>.delayed(const Duration(seconds: 3), () {
-        if (mounted) setState(() => _armed = false);
+        if (mounted && _armed) _setArmed(false);
       });
       return;
     }
-    setState(() => _armed = false);
+    _setArmed(false);
     _control('stop');
   }
 
@@ -1027,6 +1056,14 @@ class _GoalHeaderActionsState extends ConsumerState<_GoalHeaderActions> {
     final status = widget.goal.status;
     final l10n = context.l10n;
     final dsh = DshColors.of(context);
+    if (status == 'complete' || status == 'stopped') {
+      return _disc(
+        tooltip: l10n.chatClearGoal,
+        icon: AppIcons.close,
+        color: dsh.textTertiary,
+        onTap: _busy ? null : () => _control('clear'),
+      );
+    }
     if (status != 'active' && status != 'paused') return const SizedBox.shrink();
     final paused = status == 'paused';
     return Row(
