@@ -976,8 +976,12 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
         onDetails: targetBot == null
             ? () => Navigator.of(context).push(RoomDetailsPage.route(room.id))
             : () => _switchTarget(RoomChatTarget.all),
-        // 群目标的顶栏：小球态群名完整；点开后是完整胶囊。窄屏（非三栏）
-        // 时标题让给胶囊——它撑满一行，群名缩成圆头像；宽屏时两者都完整。
+        // 群目标的顶栏：默认完整胶囊，点了才收成小球。窄屏（非三栏）时标题
+        // 让给胶囊——它撑满一行，群名缩成圆头像；宽屏时两者都完整。
+        //
+        // 两个判定都从这一帧的 layout 取（BotAdaptiveFrame 每次 build 用
+        // MediaQuery.sizeOf 重新 resolve），旋转、分屏、折叠屏展开时直接跟着
+        // 换形态，不靠初始化时算一次。
         titleCompact: _goalExpanded && !layout.isExpanded,
         trailing: GoalBarProbe(
           roomId: room.id,
@@ -985,7 +989,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
           onExpand: () => _setGoalExpanded(true),
           onCollapse: () => _setGoalExpanded(false),
         ),
-        trailingExpand: _goalExpanded && !layout.isExpanded,
+        trailingExpand: _goalExpanded && !layout.isExpanded, // 同上：每帧重算，不缓存
         // Right key = this conversation's details: the group's aggregate in the
         // group chat, the member's own Session in this group otherwise — never a
         // private one, and never the group's numbers under a member's name.

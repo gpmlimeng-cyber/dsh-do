@@ -111,3 +111,4 @@ Upstream: `ccch1mneyyy/dsh-Go`, against `v1.0.10` (fork branch `ci/room-progress
 | `$(git rev-parse --short HEAD)` | `app/lib/ui/bots/group_goal.dart`, `app/lib/l10n/` | v1.0.10 | A goal pill's second line is Flutter text over the Host's own goal state; no seam owns it. |
 | `$(git rev-parse --short HEAD)` | `app/lib/ui/bots/bot_chat_kit.dart`, `app/lib/ui/bots/room_chat_page.dart` | v1.0.10 | Which key ends the header row and how its widths split are Flutter layout; no seam owns it. |
 | `$(git rev-parse --short HEAD)` | `app/lib/ui/bots/room_chat_page.dart` | v1.0.10 | A pill's default shape is Flutter page state; no seam owns it. |
+| `$(git rev-parse --short HEAD)` | `app/lib/ui/bots/room_chat_page.dart` | v1.0.10 | A pill's shape follows the frame's layout; no seam owns it. |
