@@ -362,22 +362,6 @@ class _GoalPanelState extends ConsumerState<GoalPanel> {
     return _goal.stages[at];
   }
 
-  Future<void> _control(String action, {bool stopWork = false}) async {
-    if (_busy) return;
-    final api = ref.read(dsBotProvider.notifier).api;
-    if (api == null) return;
-    setState(() => _busy = true);
-    try {
-      await api.goalControl(widget.roomId, _goal.id, action, stopWork: stopWork);
-      ref.invalidate(groupGoalProvider(widget.roomId));
-      if (action == 'clear') widget.onClose();
-    } catch (error) {
-      if (mounted) ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text('$error')));
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
   /// 已暂停、但还有人在跑：只停工作，目标保持暂停。
   /// 网页端这颗「连当前工作一起停」走的也是 `stop-room-work`，不是 `goal-control`：
   /// 后者在 paused 下会把整个目标停掉。
@@ -544,17 +528,13 @@ class _GoalPanelState extends ConsumerState<GoalPanel> {
                 ),
               ),
             const Spacer(),
-            if (widget.showActions) _GoalHeaderActions(roomId: widget.roomId, goal: goal),
+            // 只留一个条件项：暂停且还有人在跑时的「连当前工作一起停」。
             if (widget.showActions && goal.status == 'paused' && working)
               TextButton(
                 onPressed: _busy ? null : () => _stopWorkOnly,
                 style: controlStyle,
                 child: Text(l10n.chatStopWorkToo),
               ),
-            if (widget.showActions && (goal.status == 'complete' || goal.status == 'stopped'))
-              TextButton(onPressed: _busy ? null : () => _control('clear'), style: controlStyle, child: Text(l10n.chatClearGoal)),
-            if (widget.showActions && goal.status == 'drafting')
-              TextButton(onPressed: _busy ? null : () => _control('clear'), style: controlStyle, child: Text(l10n.commonCancel)),
           ],
         ),
         // 展开的验收内容在这一行下面，卡片往下长；折叠时不占高度。
@@ -923,6 +903,9 @@ class _GoalExpandLayer extends ConsumerWidget {
                                   // 头部只留这一颗（和抽屉、⋯ 同一套圆键）：
                                   // 收回小球并关面板；进度页的薄抽屉没有小球
                                   // 可收，就只关面板。
+                                  // 暂停/停止回到顶部：手机底部不容易被看到。
+                                  // 顺序是 暂停/停止 → 收起圆盘，圆盘最右。
+                                  _GoalHeaderActions(roomId: roomId, goal: goal),
                                   const SizedBox(width: 8),
                                   _goalDisc(
                                     context,
