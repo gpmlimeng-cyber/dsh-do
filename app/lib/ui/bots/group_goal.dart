@@ -1192,26 +1192,27 @@ class _GoalExpandLayerState extends ConsumerState<_GoalExpandLayer> {
                             // 浮卡把胶囊整颗盖住了，胶囊那第二行就在面板里接着
                             // 显示：同一份数据、同一套省略规则。
                             _GoalPanelSecondLine(goal: goal),
+                            // 展开的三块跟正文同一条滚动：折叠行仍固定在底部。
                             Flexible(
                               child: SingleChildScrollView(
                                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                                child: GoalPanel(
-                                  goal: goal,
-                                  roomId: roomId,
-                                  onClose: () => Navigator.of(context).maybePop(),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    GoalPanel(
+                                      goal: goal,
+                                      roomId: roomId,
+                                      onClose: () => Navigator.of(context).maybePop(),
+                                    ),
+                                    if (_checks && GoalChecksBar.has(goal)) ...[
+                                      const SizedBox(height: 10),
+                                      GoalChecksBody(goal: goal),
+                                    ],
+                                  ],
                                 ),
                               ),
                             ),
-                            // 展开的三块在折叠行上方（网页端 ckbody 在 foot 之前）：
-                            // 卡片据此长高，内容再长也只在自己这条里滚。
-                            if (_checks && GoalChecksBar.has(goal))
-                              ConstrainedBox(
-                                constraints: BoxConstraints(maxHeight: screenHeight * 0.45),
-                                child: SingleChildScrollView(
-                                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-                                  child: GoalChecksBody(goal: goal),
-                                ),
-                              ),
                             // 固定栏：滚正文时这一行不走。右侧那颗照网页端只放
                             // 「同时停止当前工作」：暂停且群里有人在跑才有。
                             const Divider(height: 1),
