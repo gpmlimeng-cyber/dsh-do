@@ -293,15 +293,7 @@ class BotChatHeader extends StatelessWidget {
                     ),
                   ),
                 ),
-                // 分隔线归右段（点它也是开面板）。
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
-                  child: Container(
-                    width: 1,
-                    height: 18,
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.12),
-                  ),
-                ),
+                // 分隔线画在右段里面，所以那 13px 也是「点它开面板」，不是死区。
                 goal,
               ],
             ),
@@ -349,7 +341,7 @@ class BotChatHeader extends StatelessWidget {
                   else ...[
                     if (trailingExpand) titlePill else Expanded(child: titlePill),
                     if (trailing case final trailing?) ...[
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 8),
                       // 撑满态（窄屏的完整胶囊）占满剩下的宽度；其余时候它只是
                       // 一颗定宽的小球/胶囊，不参与弹性，否则它那一半没吃完的
                       // 宽度会留在 Row 尾部，最右那颗键就贴不到右边。

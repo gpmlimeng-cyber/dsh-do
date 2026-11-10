@@ -292,20 +292,38 @@ class GoalInlineSegment extends StatelessWidget {
     final radius = BorderRadius.horizontal(right: Radius.circular(height / 2));
     final ring = GoalRing(goal: goal, size: 24, announce: false);
     final paused = goal.status == 'paused';
+    // 分隔线在这段里：连它一起可点（点线也是开面板），不是死区。
+    Widget segment({required Widget child}) => InkWell(
+      onTap: onTap,
+      onLongPress: onLongPress,
+      customBorder: RoundedRectangleBorder(borderRadius: radius),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: Container(
+              width: 1,
+              height: 18,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.12),
+            ),
+          ),
+          child,
+        ],
+      ),
+    );
+
     if (narrow) {
-      return SizedBox(
-        width: 48,
-        child: InkWell(
-          onTap: onTap,
-          onLongPress: onLongPress,
-          customBorder: RoundedRectangleBorder(borderRadius: radius),
+      return segment(
+        child: SizedBox(
+          width: 48,
           child: Stack(
             alignment: Alignment.center,
             clipBehavior: Clip.none,
             children: [
               ring,
               if (paused)
-                Positioned(left: 5, top: 3, child: Icon(AppIcons.paused, size: 11, color: dsh.warning)),
+                Positioned(left: 2, top: 2, child: Icon(AppIcons.paused, size: 11, color: dsh.warning)),
             ],
           ),
         ),
@@ -314,12 +332,9 @@ class GoalInlineSegment extends StatelessWidget {
     final line = goalDynamicLine(context.l10n, goal);
     return ConstrainedBox(
       constraints: const BoxConstraints(minWidth: 132, maxWidth: 220),
-      child: InkWell(
-        onTap: onTap,
-        onLongPress: onLongPress,
-        customBorder: RoundedRectangleBorder(borderRadius: radius),
+      child: segment(
         child: Padding(
-          padding: const EdgeInsets.only(left: 2, right: 8),
+          padding: const EdgeInsets.only(left: 4, right: 8),
           child: LayoutBuilder(
             builder: (context, constraints) {
               final small = theme.textTheme.labelSmall!.copyWith(

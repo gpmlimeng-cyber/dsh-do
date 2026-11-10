@@ -1021,10 +1021,9 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBinding
         // 群目标的顶栏：默认完整胶囊，点了才收成小球。窄屏（非三栏）时标题
         // 让给胶囊——它撑满一行，群名缩成圆头像；宽屏时两者都完整。
         //
-        // 两个判定都从这一帧的 layout 取（BotAdaptiveFrame 每次 build 用
-        // MediaQuery.sizeOf 重新 resolve），旋转、分屏、折叠屏展开时直接跟着
-        // 换形态，不靠初始化时算一次。
-        titleCompact: hasGoal && _goalExpanded && !layout.isExpanded,
+        // 群名始终完整：合体态头像是「组内最左那颗、可点」，小球态群名也完整。
+        // （旧的「窄屏把群名缩成头像」按用户口径去掉了。）
+        titleCompact: false,
         // 有目标且没收成小球：目标并进群名那颗胶囊（一颗外壳、两段可点）。
         mergeTrailing: hasGoal && _goalExpanded,
         trailing: GoalBarProbe(
