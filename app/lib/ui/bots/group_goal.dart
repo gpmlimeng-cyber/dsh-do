@@ -510,28 +510,33 @@ class _GoalPanelState extends ConsumerState<GoalPanel> {
           ],
         ],
         const SizedBox(height: 6),
-        // 动作区：右侧一簇，顺序照网页；「目标与验收」的折叠钮不在这行，
-        // 它在面板最底。
+        // 照网页端的 foot：左边「目标与验收」折叠钮，右边动作；动作沿用手机
+        // 控制那套圆盘（暂停/恢复、停止红色两段式），清除/取消留成文字链。
         Row(
           children: [
+            if (hasChecks)
+              TextButton(
+                onPressed: () => setState(() => _checks = !_checks),
+                style: controlStyle,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(l10n.chatGoalAcceptance),
+                    AnimatedRotation(
+                      turns: _checks ? 0.5 : 0,
+                      duration: AppMotion.of(context, AppMotion.standard),
+                      child: Icon(AppIcons.collapse, size: 16, color: dsh.textTertiary),
+                    ),
+                  ],
+                ),
+              ),
             const Spacer(),
+            if (widget.showActions) _GoalHeaderActions(roomId: widget.roomId, goal: goal),
             if (widget.showActions && goal.status == 'paused' && working)
               TextButton(
-                onPressed: _busy ? null : _stopWorkOnly,
+                onPressed: _busy ? null : () => _stopWorkOnly,
                 style: controlStyle,
                 child: Text(l10n.chatStopWorkToo),
-              ),
-            if (widget.showActions && goal.status == 'active')
-              TextButton(onPressed: _busy ? null : () => _control('pause'), style: controlStyle, child: Text(l10n.chatPauseGoal)),
-            if (widget.showActions && goal.status == 'paused')
-              TextButton(onPressed: _busy ? null : () => _control('resume'), style: controlStyle, child: Text(l10n.chatResumeGoal)),
-            if (widget.showActions && (goal.status == 'active' || goal.status == 'paused'))
-              TextButton(
-                onPressed: _busy ? null : _stop,
-                style: _armed
-                    ? controlStyle.copyWith(foregroundColor: WidgetStatePropertyAll(theme.colorScheme.error))
-                    : controlStyle,
-                child: Text(_armed ? '${l10n.commonStop}?' : l10n.commonStop),
               ),
             if (widget.showActions && (goal.status == 'complete' || goal.status == 'stopped'))
               TextButton(onPressed: _busy ? null : () => _control('clear'), style: controlStyle, child: Text(l10n.chatClearGoal)),
@@ -539,32 +544,11 @@ class _GoalPanelState extends ConsumerState<GoalPanel> {
               TextButton(onPressed: _busy ? null : () => _control('clear'), style: controlStyle, child: Text(l10n.commonCancel)),
           ],
         ),
-        // 面板最底一行：默认折叠；展开的内容在这一行下面，不占正文的位置。
-        if (hasChecks) ...[
-          const SizedBox(height: 2),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton(
-              onPressed: () => setState(() => _checks = !_checks),
-              style: controlStyle,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(l10n.chatGoalAcceptance),
-                  AnimatedRotation(
-                    turns: _checks ? 0.5 : 0,
-                    duration: AppMotion.of(context, AppMotion.standard),
-                    child: Icon(AppIcons.collapse, size: 16, color: dsh.textTertiary),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (_checks) ...[
-            if (goal.objective.isNotEmpty) _Block(label: l10n.chatGoal, value: goal.objective),
-            if (goal.acceptance.isNotEmpty) _Block(label: l10n.chatGoalAcceptanceDone, value: goal.acceptance),
-            for (final rule in goal.constraints) _Block(label: l10n.chatGoalRule, value: rule),
-          ],
+        // 展开的验收内容在这一行下面，卡片往下长；折叠时不占高度。
+        if (_checks && hasChecks) ...[
+          if (goal.objective.isNotEmpty) _Block(label: l10n.chatGoal, value: goal.objective),
+          if (goal.acceptance.isNotEmpty) _Block(label: l10n.chatGoalAcceptanceDone, value: goal.acceptance),
+          for (final rule in goal.constraints) _Block(label: l10n.chatGoalRule, value: rule),
         ],
       ],
     );
@@ -898,8 +882,6 @@ class _GoalExpandLayer extends ConsumerWidget {
                                       style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
                                     ),
                                   ),
-                                  // 动作在头部，跟浮窗一致，不在底部堆一排按钮。
-                                  _GoalHeaderActions(roomId: roomId, goal: goal),
                                   IconButton(
                                     tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
                                     onPressed: () => Navigator.of(context).maybePop(),
@@ -916,7 +898,6 @@ class _GoalExpandLayer extends ConsumerWidget {
                                   goal: goal,
                                   roomId: roomId,
                                   onClose: () => Navigator.of(context).maybePop(),
-                                  showActions: false,
                                 ),
                               ),
                             ),
