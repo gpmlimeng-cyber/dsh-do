@@ -66,6 +66,8 @@ class BotChatHeader extends StatelessWidget {
     this.chip,
     this.onInfo,
     this.onMenu,
+    this.menuController,
+    this.menuChildren,
     this.action,
     this.onMessages,
     this.messagesIcon,
@@ -76,7 +78,10 @@ class BotChatHeader extends StatelessWidget {
     this.trailing,
     this.trailingExpand = false,
     this.titleCompact = false,
-  });
+  }) : assert(
+         (menuChildren == null) == (menuController == null),
+         'menuChildren 与 menuController 要成对给',
+       );
 
   final Widget face;
   final String title;
@@ -106,6 +111,14 @@ class BotChatHeader extends StatelessWidget {
   /// going straight to details; a long press still runs [onInfo]. Null keeps
   /// the details key.
   final VoidCallback? onMenu;
+
+  /// 锚定下拉菜单的控制器：给了 [menuChildren] 时，⋯ 就是菜单的锚点，菜单
+  /// 从它下方展开，不再弹底部抽屉。页面持有它，是为了返回键与点外面都能收起。
+  final MenuController? menuController;
+
+  /// ⋯ 下拉菜单的内容。行由页面给（图标 + 文字），这里只管锚点、卡片与
+  /// 开合；每行自己负责点完关掉菜单。
+  final List<Widget> Function(BuildContext menuContext, MenuController controller)? menuChildren;
 
   /// The page's own situation key, drawn after ⋯ (the row's last): stop while
   /// something runs, a warning when offline or read-only. The most important
@@ -292,16 +305,23 @@ class BotChatHeader extends StatelessWidget {
                     chip,
                   ],
                   const SizedBox(width: 8),
-                  if (onMenu case final onMenu?) ...[
-                    _RoundKey(
-                      key: const ValueKey('bot-menu-key'),
-                      icon: AppIcons.more,
-                      tooltip: l10n.commonMore,
-                      onTap: onMenu,
-                      // One more way in, not a second menu: the details key is
-                      // still one long press away.
-                      onLongPress: onInfo,
-                    ),
+                  if (onMenu != null || menuChildren != null) ...[
+                    if (menuChildren case final menuChildren?)
+                      _AnchoredMenu(
+                        controller: menuController!,
+                        children: menuChildren,
+                        onLongPress: onInfo,
+                      )
+                    else
+                      _RoundKey(
+                        key: const ValueKey('bot-menu-key'),
+                        icon: AppIcons.more,
+                        tooltip: l10n.commonMore,
+                        onTap: onMenu,
+                        // One more way in, not a second menu: the details key is
+                        // still one long press away.
+                        onLongPress: onInfo,
+                      ),
                     if (action != null) const SizedBox(width: 8),
                   ],
                   if (action case final action?)
@@ -312,7 +332,7 @@ class BotChatHeader extends StatelessWidget {
                       onTap: action.onTap,
                       iconColor: action.color,
                     )
-                  else if (onMenu == null)
+                  else if (onMenu == null && menuChildren == null)
                     _RoundKey(
                       key: const ValueKey('bot-details'),
                       icon: AppIcons.info,
@@ -393,6 +413,62 @@ class _RoundKey extends StatelessWidget {
       ),
     ),
   );
+}
+
+/// ⋯ 的下拉菜单：键本身就是锚点，卡片从它下方展开、右边缘与键的右边缘对齐
+/// （网页那种从按钮长出来的菜单，不是底部抽屉）。点外面或返回就收起。
+class _AnchoredMenu extends StatelessWidget {
+  const _AnchoredMenu({required this.controller, required this.children, this.onLongPress});
+
+  final MenuController controller;
+
+  /// 菜单里的一行行，由页面给：图标 + 文字，行高与卡片留白跟其他菜单一套。
+  final List<Widget> Function(BuildContext menuContext, MenuController controller) children;
+
+  /// 长按仍是另一条路（页面拿它开详情）。
+  final VoidCallback? onLongPress;
+
+  /// 卡片宽度：行按这个宽铺满（行自己带 16 的左右留白），高 52。
+  static const double _width = 208;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    return MenuAnchor(
+      controller: controller,
+      // 行是带 Expanded 的列表行：宽度必须先定死，不能让菜单按内容宽去量
+      // （那样行会拿到无界宽度）。
+      crossAxisUnconstrained: false,
+      // 右边缘贴住键的右边缘、挂在它下面；8 的缝，不贴着键。
+      style: MenuStyle(
+        alignment: AlignmentDirectional.bottomEnd,
+        backgroundColor: WidgetStatePropertyAll(theme.colorScheme.surface),
+        surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+        padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(vertical: 6)),
+        minimumSize: const WidgetStatePropertyAll(Size(_width, 0)),
+        shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))),
+      ),
+      alignmentOffset: const Offset(0, 8),
+      menuChildren: [
+        for (final row in children(context, controller)) SizedBox(width: _width, child: row),
+      ],
+      // 开合时 MenuAnchor 自己重建这颗键：PopScope 挂在它上面，返回键先收菜单。
+      builder: (context, menu, child) => PopScope(
+        canPop: !menu.isOpen,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop && menu.isOpen) menu.close();
+        },
+        child: _RoundKey(
+          key: const ValueKey('bot-menu-key'),
+          icon: AppIcons.more,
+          tooltip: l10n.commonMore,
+          onTap: () => menu.isOpen ? menu.close() : menu.open(),
+          onLongPress: onLongPress,
+        ),
+      ),
+    );
+  }
 }
 
 // ── Frame ────────────────────────────────────────────────────────────────────

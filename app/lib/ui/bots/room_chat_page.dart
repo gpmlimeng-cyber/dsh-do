@@ -24,7 +24,6 @@ import '../chat/chat_text_scale.dart';
 import '../chat/trajectory_sheet.dart' show showTrajectorySheet;
 import '../chat/usage_sheet.dart' show showUsageSheet;
 import '../chat/composer.dart';
-import '../chat/widgets/message_menu.dart' show MenuItem, MenuSheet;
 import '../chat/render/message_mentions.dart';
 import '../../state/voice_model_state.dart';
 import '../../state/voice_state.dart';
@@ -35,7 +34,6 @@ import '../chat/widgets/attachments.dart';
 import '../chat/widgets/quote_chip.dart' show ComposerTrayStack, QuoteChip;
 import '../chat/widgets/chat_card.dart';
 import '../common/status_dot.dart' show StatusTone;
-import '../common/app_sheet.dart';
 import '../common/brief_notice.dart';
 import '../features/feature_kit.dart';
 import '../shell/adaptive/adaptive_scaffold.dart';
@@ -63,6 +61,7 @@ import 'bot_memory_page.dart';
 import 'bot_links.dart' show openLinkedFile;
 import 'bot_chat_page.dart';
 import 'bot_format.dart';
+import '../settings/settings_widgets.dart';
 import 'bot_mention.dart';
 import 'room_approval_action.dart';
 import 'room_activity_strip.dart' show roomStatusOf;
@@ -114,6 +113,9 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
     _goalExpandedByRoom[widget.roomId] = value;
     setState(() => _goalExpanded = value);
   }
+
+  /// ⋯ 下拉菜单的开合：菜单锚在这颗键上，页面拿它管「返回先收菜单」。
+  final MenuController _roomMenu = MenuController();
 
   late final DraftStore _draftStore = ref.read(draftStoreProvider.notifier);
 
@@ -995,9 +997,18 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
         // group chat, the member's own Session in this group otherwise — never a
         // private one, and never the group's numbers under a member's name.
         onInfo: openInfo,
-        // ⋯: the page's menu in one sheet. Details leads it — the key no longer
-        // carries that job alone — then the message range, then the members.
-        onMenu: () => showRoomMenu(context, ref, room: room, team: team, onDetails: openInfo),
+        // ⋯: the page's menu, anchored under the key (not a bottom sheet).
+        // Details leads it — the key no longer carries that job alone — then the
+        // message range, then the members.
+        menuController: _roomMenu,
+        menuChildren: (_, controller) => roomMenuItems(
+          context,
+          ref,
+          room: room,
+          team: team,
+          onDetails: openInfo,
+          controller: controller,
+        ),
         action: situationKey(),
         infoGreyed: infoGreyed,
         infoTooltip: layout.isExpanded && layout.panelAvailable
@@ -1552,49 +1563,52 @@ class _MessageFilterChip extends StatelessWidget {
   }
 }
 
-/// 群聊顶栏 ⋯ 的菜单：对话详情、消息范围、成员。样式照消息菜单（MenuSheet +
-/// SheetGroup 的行），行高 52。清空会话、搜索此群这一版不做。
-Future<void> showRoomMenu(
+/// 群聊顶栏 ⋯ 的下拉菜单里的行：对话详情、消息范围、成员。菜单本身锚在键上
+/// （`_AnchoredMenu`），从按钮下方展开、右边缘与按钮对齐；这里只给行，行高 52、
+/// 图标 + 文字，跟其他菜单同一套行。清空会话、搜索此群这一版不做。
+List<Widget> roomMenuItems(
   BuildContext context,
   WidgetRef ref, {
   required DsBotRoom room,
   required DsBotTeam team,
   required VoidCallback onDetails,
+  required MenuController controller,
 }) {
   final l10n = context.l10n;
-  return showAppSheet<void>(
-    context,
-    isScrollControlled: true,
-    builder: (sheet) => MenuSheet(
-      preview: const SizedBox.shrink(),
-      groups: [
-        [
-          MenuItem(
-            icon: AppIcons.info,
-            label: l10n.commonDetails,
-            onTap: () {
-              Navigator.of(sheet).maybePop();
-              onDetails();
-            },
-          ),
-          MenuItem(
-            icon: AppIcons.multiSelect,
-            label: l10n.botsMessageScope,
-            onTap: () {
-              Navigator.of(sheet).maybePop();
-              showMessageScopeSheet(context, ref, room: room, team: team);
-            },
-          ),
-          MenuItem(
-            icon: AppIcons.groupChat,
-            label: l10n.botsMembers,
-            onTap: () {
-              Navigator.of(sheet).maybePop();
-              Navigator.of(context).push(RoomDetailsPage.route(room.id));
-            },
-          ),
-        ],
-      ],
+  void close() {
+    if (controller.isOpen) controller.close();
+  }
+
+  return [
+    SettingsTile(
+      icon: AppIcons.info,
+      tinted: false,
+      chevron: false,
+      title: l10n.commonDetails,
+      onTap: () {
+        close();
+        onDetails();
+      },
     ),
-  );
+    SettingsTile(
+      icon: AppIcons.multiSelect,
+      tinted: false,
+      chevron: false,
+      title: l10n.botsMessageScope,
+      onTap: () {
+        close();
+        showMessageScopeSheet(context, ref, room: room, team: team);
+      },
+    ),
+    SettingsTile(
+      icon: AppIcons.groupChat,
+      tinted: false,
+      chevron: false,
+      title: l10n.botsMembers,
+      onTap: () {
+        close();
+        Navigator.of(context).push(RoomDetailsPage.route(room.id));
+      },
+    ),
+  ];
 }
