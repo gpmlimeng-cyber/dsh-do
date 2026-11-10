@@ -154,9 +154,23 @@ class _RingPainter extends CustomPainter {
 ///
 /// 没有目标（后端没给、被清除、或回落成空标题）时什么都不画。
 class GoalBarProbe extends ConsumerWidget {
-  const GoalBarProbe({super.key, required this.roomId, this.expanded = false, this.onExpand, this.onCollapse});
+  const GoalBarProbe({
+    super.key,
+    required this.roomId,
+    this.expanded = false,
+    this.onExpand,
+    this.onCollapse,
+    this.bare = false,
+    this.narrow = false,
+  });
 
   final String roomId;
+
+  /// 并进群名那颗胶囊里：只画内容，不带玻璃底（外壳由顶栏给）。
+  final bool bare;
+
+  /// 合体态且窄屏：右段只留进度环与暂停角标。
+  final bool narrow;
 
   /// False: the ball. True: the full pill (the person tapped the ball).
   final bool expanded;
@@ -176,13 +190,20 @@ class GoalBarProbe extends ConsumerWidget {
     });
     final async = ref.watch(groupGoalProvider(roomId));
     return switch (async) {
-      AsyncData(value: final goal?) when goal.title.isNotEmpty => GroupGoalPill(
-        goal: goal,
-        expanded: expanded,
-        // 点完整胶囊开面板；长按才收成小球。收起与「关面板」是两件事。
-        onTap: expanded ? () => showGoalExpand(context, roomId) : (onExpand ?? () {}),
-        onLongPress: expanded ? onCollapse : null,
-      ),
+      AsyncData(value: final goal?) when goal.title.isNotEmpty => bare
+          ? GoalInlineSegment(
+              goal: goal,
+              narrow: narrow,
+              onTap: () => showGoalExpand(context, roomId),
+              onLongPress: onCollapse,
+            )
+          : GroupGoalPill(
+              goal: goal,
+              expanded: expanded,
+              // 点完整胶囊开面板；长按才收成小球。收起与「关面板」是两件事。
+              onTap: expanded ? () => showGoalExpand(context, roomId) : (onExpand ?? () {}),
+              onLongPress: expanded ? onCollapse : null,
+            ),
       AsyncLoading() => const SizedBox.square(
         dimension: 30,
         child: Center(child: SizedBox.square(dimension: 14, child: CircularProgressIndicator(strokeWidth: 1.6))),
@@ -246,6 +267,108 @@ String splitForPill({
 ///（[ChatHeader.pillHeightOf]），不再自己算一套。两行文字、32 的环都放得下，
 /// 不许为了塞文字把它撑回去；字放大时也跟着同一个公式长。
 double pillHeightOf(BuildContext context) => ChatHeader.pillHeightOf(context);
+
+/// 合体胶囊的右段：目标那两行（宽屏）或只一颗环（窄屏），自己带右圆角的
+/// 水波，点它开面板、长按收成小球。外壳由顶栏那颗胶囊给。
+class GoalInlineSegment extends StatelessWidget {
+  const GoalInlineSegment({
+    super.key,
+    required this.goal,
+    required this.narrow,
+    required this.onTap,
+    this.onLongPress,
+  });
+
+  final DsBotGroupGoal goal;
+  final bool narrow;
+  final VoidCallback onTap;
+  final VoidCallback? onLongPress;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final dsh = DshColors.of(context);
+    final height = pillHeightOf(context);
+    final radius = BorderRadius.horizontal(right: Radius.circular(height / 2));
+    final ring = GoalRing(goal: goal, size: 24, announce: false);
+    final paused = goal.status == 'paused';
+    if (narrow) {
+      return SizedBox(
+        width: 48,
+        child: InkWell(
+          onTap: onTap,
+          onLongPress: onLongPress,
+          customBorder: RoundedRectangleBorder(borderRadius: radius),
+          child: Stack(
+            alignment: Alignment.center,
+            clipBehavior: Clip.none,
+            children: [
+              ring,
+              if (paused)
+                Positioned(left: 5, top: 3, child: Icon(AppIcons.paused, size: 11, color: dsh.warning)),
+            ],
+          ),
+        ),
+      );
+    }
+    final line = goalDynamicLine(context.l10n, goal);
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: 132, maxWidth: 220),
+      child: InkWell(
+        onTap: onTap,
+        onLongPress: onLongPress,
+        customBorder: RoundedRectangleBorder(borderRadius: radius),
+        child: Padding(
+          padding: const EdgeInsets.only(left: 2, right: 8),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final small = theme.textTheme.labelSmall!.copyWith(
+                fontSize: 10.5,
+                height: 1.3,
+                color: dsh.textTertiary,
+              );
+              final text = splitForPill(
+                head: line.head,
+                tail: line.tail,
+                maxWidth: constraints.maxWidth - 6 - 24,
+                style: small,
+                scaler: MediaQuery.textScalerOf(context),
+              );
+              return Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          goal.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            fontSize: 12.5,
+                            height: 1.25,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (text != goal.title) ...[
+                          const SizedBox(height: 1),
+                          Text(text, maxLines: 1, overflow: TextOverflow.clip, style: small),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  ring,
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 /// 胶囊第二行前面那颗：网页 `.bt-goal-dot` 的 8px 圆点，完成后换成
 /// `.bt-goal-check` 的 14px 勾。颜色照 CSS：进行中绿、起草强调色、暂停与等你

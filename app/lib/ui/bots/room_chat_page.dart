@@ -1025,9 +1025,13 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBinding
         // MediaQuery.sizeOf 重新 resolve），旋转、分屏、折叠屏展开时直接跟着
         // 换形态，不靠初始化时算一次。
         titleCompact: hasGoal && _goalExpanded && !layout.isExpanded,
+        // 有目标且没收成小球：目标并进群名那颗胶囊（一颗外壳、两段可点）。
+        mergeTrailing: hasGoal && _goalExpanded,
         trailing: GoalBarProbe(
           roomId: room.id,
           expanded: _goalExpanded,
+          bare: hasGoal && _goalExpanded,
+          narrow: !layout.isExpanded,
           onExpand: () => _setGoalExpanded(true),
           onCollapse: () => _setGoalExpanded(false),
         ),

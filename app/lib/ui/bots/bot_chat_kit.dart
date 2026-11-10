@@ -78,6 +78,7 @@ class BotChatHeader extends StatelessWidget {
     this.trailing,
     this.trailingExpand = false,
     this.titleCompact = false,
+    this.mergeTrailing = false,
   }) : assert(
          (menuChildren == null) == (menuController == null),
          'menuChildren 与 menuController 要成对给',
@@ -159,6 +160,10 @@ class BotChatHeader extends StatelessWidget {
   /// it can carry the group's name instead.
   final bool titleCompact;
 
+  /// 目标段并进群名这颗胶囊：一颗外壳、两段分段点击，中间一条竖分隔。
+  /// [trailing] 这时必须是「裸」的那一段（自己不带玻璃底）。
+  final bool mergeTrailing;
+
   static const barHeight = 56.0;
   static const key44 = 44.0;
 
@@ -182,76 +187,129 @@ class BotChatHeader extends StatelessWidget {
     final dsh = DshColors.of(context);
     final top = MediaQuery.paddingOf(context).top;
     final faceInset = (key44 - faceSize) / 2;
-    final titlePill = Align(
-                      alignment: Alignment.centerLeft,
-                      // 收缩到内容宽度：撑满态里剩下的宽度要留给目标胶囊。
-                      widthFactor: 1,
-                      child: Semantics(
-                        button: true,
-                        hint: titleHint ?? l10n.botsViewDetails,
-                        child: GlassSurface(
-                          key: const ValueKey('bot-title'),
-                          tier: GlassTier.chrome,
-                          stadium: true,
-                          grouped: true,
-                          onTap: onDetails,
-                          child: ConstrainedBox(
-                            // 群名这颗用标题胶囊那套高度公式：目标胶囊读同一个
-                            // 函数，两颗才严格一样高（大字号下也一样）。
-                            constraints: BoxConstraints(minHeight: ChatHeader.pillHeightOf(context)),
-                            child: Padding(
-                              padding: EdgeInsets.only(left: faceInset, right: titleCompact ? faceInset : 16),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  SizedBox.square(key: const ValueKey('bot-face'), dimension: faceSize, child: face),
-                                  if (!titleCompact) ...[
-                                  const SizedBox(width: 8),
-                                  Flexible(
-                                    child: SmoothSize(
-                                      duration: AppMotion.of(context, AppMotion.standard),
-                                      curve: AppMotion.std,
-                                      alignment: Alignment.centerLeft,
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            title,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: theme.textTheme.titleSmall?.copyWith(fontSize: 15, height: 1.3),
-                                          ),
-                                          Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              StatusDot(tone: tone, size: 6),
-                                              const SizedBox(width: 5),
-                                              Flexible(
-                                                child: Text(
-                                                  status,
-                                                  maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
-                                                  style: theme.textTheme.labelSmall?.copyWith(
-                                                    color: tone == StatusTone.warn ? dsh.warning : dsh.textTertiary,
-                                                    height: 1.25,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                  ],
-                                ],
-                              ),
-                            ),
+    // 群名那颗的内容：独立胶囊与「合体胶囊」的左段共用同一份。
+    Widget titleRow({required bool compact, required bool stretch}) => Row(
+      mainAxisSize: stretch ? MainAxisSize.max : MainAxisSize.min,
+      children: [
+        SizedBox.square(key: const ValueKey('bot-face'), dimension: faceSize, child: face),
+        if (!compact) ...[
+          const SizedBox(width: 8),
+          Flexible(
+            child: SmoothSize(
+              duration: AppMotion.of(context, AppMotion.standard),
+              curve: AppMotion.std,
+              alignment: Alignment.centerLeft,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleSmall?.copyWith(fontSize: 15, height: 1.3),
+                  ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      StatusDot(tone: tone, size: 6),
+                      const SizedBox(width: 5),
+                      Flexible(
+                        child: Text(
+                          status,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: tone == StatusTone.warn ? dsh.warning : dsh.textTertiary,
+                            height: 1.25,
                           ),
                         ),
                       ),
-                    );
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+
+    final titlePill = Align(
+      alignment: Alignment.centerLeft,
+      // 收缩到内容宽度：撑满态里剩下的宽度要留给目标胶囊。
+      widthFactor: 1,
+      child: Semantics(
+        button: true,
+        hint: titleHint ?? l10n.botsViewDetails,
+        child: GlassSurface(
+          key: const ValueKey('bot-title'),
+          tier: GlassTier.chrome,
+          stadium: true,
+          grouped: true,
+          onTap: onDetails,
+          child: ConstrainedBox(
+            // 群名这颗用标题胶囊那套高度公式：目标胶囊读同一个
+            // 函数，两颗才严格一样高（大字号下也一样）。
+            constraints: BoxConstraints(minHeight: ChatHeader.pillHeightOf(context)),
+            child: Padding(
+              padding: EdgeInsets.only(left: faceInset, right: titleCompact ? faceInset : 16),
+              child: titleRow(compact: titleCompact, stretch: false),
+            ),
+          ),
+        ),
+      ),
+    );
+    // 合体胶囊：一颗 stadium 玻璃底，左段群名（左圆角）、右段目标（右圆角），
+    // 中间 1px 竖线归右段。按压水波按段裁剪，这是「一颗但两段」的唯一提示。
+    Widget mergedTitlePill(
+      BuildContext context, {
+      required Widget Function({required bool compact, required bool stretch}) titleRow,
+      required Widget goal,
+    }) {
+      final height = ChatHeader.pillHeightOf(context);
+      final leftRadius = BorderRadius.horizontal(left: Radius.circular(height / 2));
+      return GlassSurface(
+        tier: GlassTier.chrome,
+        stadium: true,
+        grouped: true,
+        child: Material(
+          type: MaterialType.transparency,
+          child: SizedBox(
+            height: height,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Semantics(
+                    button: true,
+                    hint: titleHint ?? l10n.botsViewDetails,
+                    child: InkWell(
+                      onTap: onDetails,
+                      customBorder: RoundedRectangleBorder(borderRadius: leftRadius),
+                      child: Padding(
+                        padding: EdgeInsets.only(left: 6, right: titleCompact ? 6 : 8),
+                        child: titleRow(compact: titleCompact, stretch: true),
+                      ),
+                    ),
+                  ),
+                ),
+                // 分隔线归右段（点它也是开面板）。
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  child: Container(
+                    width: 1,
+                    height: 18,
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.12),
+                  ),
+                ),
+                goal,
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -284,13 +342,19 @@ class BotChatHeader extends StatelessWidget {
                   // 展开态：标题只剩一颗圆头像，占自己的内容宽，不再参与
                   // 弹性分配——否则它和胶囊各拿一半自由宽，那半截没用完就留在
                   // 行尾，最右那颗键贴不到右边。其余时候标题吃掉剩余宽度。
-                  if (trailingExpand) titlePill else Expanded(child: titlePill),
-                  if (trailing case final trailing?) ...[
-                    const SizedBox(width: 4),
-                    // 撑满态（窄屏的完整胶囊）占满剩下的宽度；其余时候它只是
-                    // 一颗定宽的小球/胶囊，不参与弹性，否则它那一半没吃完的
-                    // 宽度会留在 Row 尾部，最右那颗键就贴不到右边。
-                    if (trailingExpand) Expanded(child: trailing) else trailing,
+                  // 合体态：群名与目标在一颗胶囊里，两段各自可点，中间一条
+                  // 竖分隔（无目标或收成小球时走下面那两种旧排法）。
+                  if (mergeTrailing && trailing != null)
+                    Expanded(child: _mergedTitlePill(context, titleRow: titleRow, goal: trailing!))
+                  else ...[
+                    if (trailingExpand) titlePill else Expanded(child: titlePill),
+                    if (trailing case final trailing?) ...[
+                      const SizedBox(width: 4),
+                      // 撑满态（窄屏的完整胶囊）占满剩下的宽度；其余时候它只是
+                      // 一颗定宽的小球/胶囊，不参与弹性，否则它那一半没吃完的
+                      // 宽度会留在 Row 尾部，最右那颗键就贴不到右边。
+                      if (trailingExpand) Expanded(child: trailing) else trailing,
+                    ],
                   ],
                   if (onMessages case final onMessages?) ...[
                     const SizedBox(width: 8),
