@@ -71,6 +71,9 @@ import 'room_details_page.dart';
 import 'room_session_sheet.dart' show showMessageScopeSheet;
 import 'room_full_text_sheet.dart';
 
+/// 目标胶囊的形态：默认完整；本轮内记住用户收起的选择，重启回到完整。
+bool _goalExpandedInThisRun = true;
+
 class RoomChatPage extends ConsumerStatefulWidget {
   const RoomChatPage({super.key, required this.roomId, this.initialTarget = RoomChatTarget.all});
 
@@ -102,9 +105,14 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
   /// no route is pushed, so one back still lands on the group's details.
   late RoomChatTarget _target = widget.initialTarget;
 
-  /// 顶栏的目标：小球（默认）或完整胶囊。一次点击切换，不跨启动记住，
-  /// 也不再由设置决定。
-  bool _goalExpanded = false;
+  /// 顶栏的目标：默认完整胶囊；点了「收起成小球」才收成小球。选择只在本轮
+  /// 内记住（重启回到完整），不跨启动、也不由设置决定。
+  bool _goalExpanded = _goalExpandedInThisRun;
+
+  void _setGoalExpanded(bool value) {
+    _goalExpandedInThisRun = value;
+    setState(() => _goalExpanded = value);
+  }
 
   late final DraftStore _draftStore = ref.read(draftStoreProvider.notifier);
 
@@ -974,8 +982,8 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
         trailing: GoalBarProbe(
           roomId: room.id,
           expanded: _goalExpanded,
-          onExpand: () => setState(() => _goalExpanded = true),
-          onCollapse: () => setState(() => _goalExpanded = false),
+          onExpand: () => _setGoalExpanded(true),
+          onCollapse: () => _setGoalExpanded(false),
         ),
         trailingExpand: _goalExpanded && !layout.isExpanded,
         // Right key = this conversation's details: the group's aggregate in the
