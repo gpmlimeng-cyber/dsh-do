@@ -19348,6 +19348,27 @@ class L10nZh extends L10n {
 
   String get chatGoalStopped => '已停止';
 
+  @override
+  String chatGoalStageAt(String position) {
+    return '第 $position 段';
+  }
+
+  @override
+  String chatGoalDoneStages(int count) {
+    return '共 $count 段';
+  }
+
+  @override
+  String chatGoalPausedRunning(String name) {
+    return '$name 还在跑';
+  }
+
+  @override
+  String get chatGoalIdleWord => '等你决定';
+
+  @override
+  String get chatGoalActiveWord => '进行中';
+
   String get chatGoalNone => '还没有目标';
 
   String get chatGoalPanel => '目标与验收';

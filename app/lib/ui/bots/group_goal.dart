@@ -214,6 +214,66 @@ class GoalBarProbe extends ConsumerWidget {
   }
 }
 
+/// 胶囊第二行要显示的两段：前缀（状态词 / 成员名 / 第 i/N 段）与后缀（阶段名 /
+/// 任务名）。后缀为空时只显示前缀，分隔符一起消失。
+({String head, String tail}) goalDynamicLine(L10n l10n, DsBotGroupGoal goal) {
+  final position = goal.position;
+  final stage = goal.stage;
+  String? runningName;
+  String? runningTask;
+  for (final task in stage?.tasks ?? const <DsBotGoalTask>[]) {
+    if (task.status == 'working') {
+      runningName = task.bot;
+      runningTask = task.task;
+      break;
+    }
+  }
+  final atStage = position.isEmpty ? '' : l10n.chatGoalStageAt(position);
+  return switch (goal.status) {
+    'drafting' => (head: l10n.chatGoalDrafting, tail: ''),
+    'complete' => (head: l10n.commonCompleted, tail: l10n.chatGoalDoneStages(goal.stageCount)),
+    'stopped' => (head: l10n.chatGoalStopped, tail: atStage),
+    'paused' when runningName != null => (head: l10n.chatGoalPaused, tail: l10n.chatGoalPausedRunning(runningName)),
+    'paused' => (head: l10n.chatGoalPaused, tail: atStage),
+    _ when goal.idle => (head: l10n.chatGoalIdleWord, tail: atStage),
+    _ when runningName != null && runningTask != null => (head: runningName, tail: runningTask),
+    _ => (head: atStage.isEmpty ? l10n.chatGoalActiveWord : atStage, tail: atStage.isEmpty ? '' : (stage?.title ?? '')),
+  };
+}
+
+/// 下行按「·」分段省略：前缀整段保留，后缀放不下就整段换成「…」；后缀为空时
+/// 连「 · 」一起去掉。返回的是拼好的成品，调用处不再自己拼，也不再用字符级
+/// `TextOverflow.ellipsis`。
+String splitForPill({
+  required String head,
+  required String tail,
+  required double maxWidth,
+  required TextStyle style,
+  required TextScaler scaler,
+}) {
+  final cleanTail = tail.trim();
+  if (cleanTail.isEmpty) return head;
+  final full = '$head · $cleanTail';
+  bool fits(String text) {
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: style),
+      textDirection: TextDirection.ltr,
+      textScaler: scaler,
+      maxLines: 1,
+    )..layout();
+    return painter.width <= maxWidth;
+  }
+
+  if (fits(full)) return full;
+  return '$head · …';
+}
+
+/// 两行胶囊的高度：正常 44，大字号按内容长高（顶栏的 barHeightOf 也随字号长）。
+double pillHeightOf(BuildContext context) {
+  final scaler = MediaQuery.textScalerOf(context);
+  return math.max(44, scaler.scale(14) * 1.25 + 2 + scaler.scale(11) * 1.25 + 10);
+}
+
 /// 顶栏那颗：小球（环）或完整胶囊（图标 + 标题 + 环）。
 ///
 /// 与顶栏其他键同一套：44 高的玻璃底（[BotChatHeader.key44]、chrome、
@@ -272,12 +332,14 @@ class GroupGoalPill extends StatelessWidget {
         ),
       );
     }
+    final l10n = context.l10n;
+    final line = goalDynamicLine(l10n, goal);
     return Semantics(
       button: true,
       label: goal.title,
       excludeSemantics: true,
       child: SizedBox(
-        height: BotChatHeader.key44,
+        height: pillHeightOf(context),
         child: GlassSurface(
           tier: GlassTier.chrome,
           stadium: true,
@@ -301,14 +363,50 @@ class GroupGoalPill extends StatelessWidget {
                     ),
                   const SizedBox(width: 6),
                   Flexible(
-                    child: Text(
-                      goal.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.labelLarge?.copyWith(fontSize: 15, height: 1.3, fontWeight: FontWeight.w600),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        // 窄屏下行字号降到 10.5：11 字的状态文案正好放得下。
+                        final narrow = constraints.maxWidth < 160;
+                        final small = theme.textTheme.labelSmall!.copyWith(
+                          fontSize: narrow ? 10.5 : 11,
+                          height: 1.3,
+                          fontWeight: FontWeight.w400,
+                          color: dsh.textTertiary,
+                        );
+                        final dynamicLine = splitForPill(
+                          head: line.head,
+                          tail: line.tail,
+                          maxWidth: constraints.maxWidth,
+                          style: small,
+                          scaler: MediaQuery.textScalerOf(context),
+                        );
+                        // 两行同字就不写第二遍。
+                        final showSecond = dynamicLine != goal.title;
+                        return Column(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              goal.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.labelLarge?.copyWith(
+                                fontSize: 14,
+                                height: 1.25,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            if (showSecond) ...[
+                              const SizedBox(height: 2),
+                              Text(dynamicLine, maxLines: 1, overflow: TextOverflow.clip, style: small),
+                            ],
+                          ],
+                        );
+                      },
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
                   ring,
                   if (expandArrow) ...[
                     const SizedBox(width: 2),
