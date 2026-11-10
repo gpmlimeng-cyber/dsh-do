@@ -152,8 +152,7 @@ class _RingPainter extends CustomPainter {
 /// - 小球（默认）：群名完整，右端一颗圆形按钮（环）。点它展开成胶囊。
 /// - 完整胶囊：点开面板；窄屏时撑满一行（群名缩成圆头像由页面决定）。
 ///
-/// 没有目标时仍画那颗灰点（点一下说明它问了什么、得到什么），方便一眼
-/// 分清「后端没有目标」还是「画不出来」。
+/// 没有目标（后端没给、被清除、或回落成空标题）时什么都不画。
 class GoalBarProbe extends ConsumerWidget {
   const GoalBarProbe({super.key, required this.roomId, this.expanded = false, this.onExpand, this.onCollapse});
 
@@ -176,7 +175,6 @@ class GoalBarProbe extends ConsumerWidget {
       if (next && previous != true) ref.invalidate(groupGoalProvider(roomId));
     });
     final async = ref.watch(groupGoalProvider(roomId));
-    final api = ref.read(dsBotProvider.notifier).api;
     return switch (async) {
       AsyncData(value: final goal?) when goal.title.isNotEmpty => GroupGoalPill(
         goal: goal,
@@ -189,30 +187,8 @@ class GoalBarProbe extends ConsumerWidget {
         dimension: 30,
         child: Center(child: SizedBox.square(dimension: 14, child: CircularProgressIndicator(strokeWidth: 1.6))),
       ),
-      _ => InkResponse(
-        radius: 18,
-        onTap: () => ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-          SnackBar(
-            content: Text(
-              'api=${api == null ? 'null' : 'ok'}'
-              ' · ${async.hasError ? 'err=${async.error}' : async.value == null ? 'goal=null' : 'title=${async.value!.title}'}'
-              ' · room=$roomId',
-            ),
-            duration: const Duration(seconds: 8),
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: Container(
-            width: 12,
-            height: 12,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: DshColors.of(context).textTertiary.withValues(alpha: 0.45),
-            ),
-          ),
-        ),
-      ),
+      // 没有目标：不占位（原来那颗灰点与它的调试 SnackBar 已删掉）。
+      _ => const SizedBox.shrink(),
     };
   }
 }

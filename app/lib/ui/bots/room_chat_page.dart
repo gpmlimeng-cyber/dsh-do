@@ -940,6 +940,18 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
       return null;
     }
 
+    // 目标在不在，决定群名要不要让位给胶囊：没有目标时群名必须是完整那颗。
+    final goalNow = ref.watch(groupGoalProvider(room.id)).value;
+    final hasGoal = goalNow != null && goalNow.title.isNotEmpty;
+    ref.listen(groupGoalProvider(room.id), (previous, next) {
+      final gone = next.value == null || next.value!.title.isEmpty;
+      if (!gone) return;
+      // 目标没了：按群记的「收起成小球」一并作废、回到默认完整。顶栏形态这一
+      // 帧已经按 hasGoal 判了，所以群名立刻恢复，不用 setState 也不等交互。
+      _goalExpandedByRoom.remove(room.id);
+      _goalExpanded = true;
+    });
+
     return BotAdaptiveFrame(
       drawer: _drawerConfig,
       // The column beside the chat: this conversation's details. A member who
@@ -985,14 +997,15 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
         // 两个判定都从这一帧的 layout 取（BotAdaptiveFrame 每次 build 用
         // MediaQuery.sizeOf 重新 resolve），旋转、分屏、折叠屏展开时直接跟着
         // 换形态，不靠初始化时算一次。
-        titleCompact: _goalExpanded && !layout.isExpanded,
+        titleCompact: hasGoal && _goalExpanded && !layout.isExpanded,
         trailing: GoalBarProbe(
           roomId: room.id,
           expanded: _goalExpanded,
           onExpand: () => _setGoalExpanded(true),
           onCollapse: () => _setGoalExpanded(false),
         ),
-        trailingExpand: _goalExpanded && !layout.isExpanded, // 同上：每帧重算，不缓存
+        // 没有目标时也不撑满：否则标题那颗仍按「展开态」布局，群名回不到正常。
+        trailingExpand: hasGoal && _goalExpanded && !layout.isExpanded,
         // Right key = this conversation's details: the group's aggregate in the
         // group chat, the member's own Session in this group otherwise — never a
         // private one, and never the group's numbers under a member's name.
