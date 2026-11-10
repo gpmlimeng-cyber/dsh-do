@@ -348,7 +348,6 @@ class GoalPanel extends ConsumerStatefulWidget {
 class _GoalPanelState extends ConsumerState<GoalPanel> {
   bool _busy = false;
   bool _checks = false;
-  bool _armed = false;
   int? _selected;
 
   DsBotGroupGoal get _goal => widget.goal;
@@ -395,19 +394,6 @@ class _GoalPanelState extends ConsumerState<GoalPanel> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
-  }
-
-  void _stop() {
-    if (!_armed) {
-      // 网页端把确认写在按钮里（3 秒内再点），不弹提示条：弹条会盖住底部动作。
-      setState(() => _armed = true);
-      Future<void>.delayed(const Duration(seconds: 3), () {
-        if (mounted) setState(() => _armed = false);
-      });
-      return;
-    }
-    setState(() => _armed = false);
-    _control('stop');
   }
 
   @override

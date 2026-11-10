@@ -765,43 +765,14 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
       flash: _flash == null ? null : (label: _flash!, tone: _flashTone ?? StatusTone.busy),
     );
 
-    // 运行时与异常时让位：最右必须是停止或警示，最重要的事不躲进菜单。
-    ({IconData icon, String tooltip, VoidCallback? onTap, Color? color})? situationKey() {
-      void say(String text) => ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text(text)));
-      if (!connected) {
-        return (
-          icon: AppIcons.warning,
-          tooltip: l10n.commonNotConnected,
-          onTap: () => say(l10n.commonNotConnected),
-          color: DshColors.of(context).warning,
-        );
-      }
-      if (readOnly) {
-        return (
-          icon: AppIcons.warning,
-          tooltip: l10n.botsReadOnlyNote,
-          onTap: () => say(l10n.botsReadOnlyNote),
-          color: DshColors.of(context).warning,
-        );
-      }
-      if (chat.running) {
-        return (
-          icon: AppIcons.stop,
-          tooltip: l10n.commonStop,
-          onTap: () => _stopGuard.action(roomId: room.id)(),
-          color: Theme.of(context).colorScheme.error,
-        );
-      }
-      return null;
-    }
     // The last key opens a menu when the page has one; its long press and the
     // menu's 对话详情 item both land here, on whatever this page shows.
     final infoGreyed = targetBot != null && memberSession == null;
     void openInfo() {
+      final layout = AdaptiveChrome.layoutOf(context);
       if (targetBot == null) {
         // The group's aggregate page has no panel form: beside the chat it is
         // the group Session's own details, which the key folds away.
-        final layout = AdaptiveChrome.layoutOf(context);
         if (layout != null && layout.isExpanded && layout.panelAvailable) {
           ref.read(layoutPrefsProvider.notifier).setPanelOpen(!ref.read(layoutPrefsProvider).panelOpen);
         } else {
@@ -809,7 +780,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
         }
       } else if (memberSession == null) {
         ScaffoldMessenger.maybeOf(context)?.showBriefNotice(l10n.botsRoomMemberSessionMissing);
-      } else {
+      } else if (layout case final layout?) {
         openBotDetail(
           context,
           ref,
@@ -936,6 +907,35 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
     final topInset = BotChatHeader.heightOf(context);
     final readOnly = status.readOnly != null;
     final connected = ref.watch(activeConnectionProvider).value != null;
+    // 运行时与异常时让位：最右必须是停止或警示，最重要的事不躲进菜单。
+    ({IconData icon, String tooltip, VoidCallback? onTap, Color? color})? situationKey() {
+      void say(String text) => ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text(text)));
+      if (!connected) {
+        return (
+          icon: AppIcons.warning,
+          tooltip: l10n.commonNotConnected,
+          onTap: () => say(l10n.commonNotConnected),
+          color: DshColors.of(context).warning,
+        );
+      }
+      if (readOnly) {
+        return (
+          icon: AppIcons.warning,
+          tooltip: l10n.botsReadOnlyNote,
+          onTap: () => say(l10n.botsReadOnlyNote),
+          color: DshColors.of(context).warning,
+        );
+      }
+      if (chat.running) {
+        return (
+          icon: AppIcons.stop,
+          tooltip: l10n.commonStop,
+          onTap: () => _stopGuard.action(roomId: room.id)(),
+          color: Theme.of(context).colorScheme.error,
+        );
+      }
+      return null;
+    }
 
     return BotAdaptiveFrame(
       drawer: _drawerConfig,
