@@ -7,7 +7,7 @@
 - **顶栏最右那颗改成 `⋯` 菜单**（现在它直接进「对话详情」`RoomAggregateDetailsPage`）。
   - 菜单顺序：`对话详情` → `消息范围` → `成员` → `搜索此群` → 分隔 → `清空会话`（红，最后）。
   - **群设置不进菜单**：群名胶囊已经进群设置（`RoomDetailsPage`），两处都叫「详情」会分不清。
-  - **运行时与异常时让位**：有东西在跑，最右必须是「停止」；断线/权限异常必须是警示键。最重要的事不许躲进菜单。
+  - **运行时与异常时让位**：运行中的「停止」**不进顶栏**，动作只在目标面板里；`⋯` 恒为顶栏最右一颗。断线/只读这类状态警示键仍可占动作位（它是状态不是动作），但不得把 `⋯` 挤离最右。
   - 长按这颗键仍直接进对话详情，保留一键路径。
 
 - **三条菜单规矩**（防止菜单变垃圾桶）：
@@ -41,4 +41,4 @@
 
 ## 2026-11-10 · 群目标卡里的成员行
 
-- 标准成员行：`BotAvatar(size: 24)` + 名字 `colorScheme.onSurface` + 行尾状态图标（done=success / reported=primary / working=warning / pending=textTertiary）；任务描述 `onSurfaceVariant`，第二行、缩进对齐名字。名字不按任务状态染色，别再合成一段 `Text.rich`。
+- 标准成员行：`BotAvatar(size: 20)` + **一段 `Text.rich`**（名字 `botNameInk`、`labelLarge` w500；同一行接任务描述 `bodySmall` / `onSurfaceVariant`）。状态挪到**头像角标**：12 圆、9 勾、1.5 描边，只有 reported/done 才画；working 由 `BotAvatar(working:)` 呼吸表达；pending 整行压到 55%。**行尾三色图标已删除**。名字不按任务状态染色。
