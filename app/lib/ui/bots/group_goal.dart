@@ -1,8 +1,8 @@
 // 群目标：群聊页顶栏那颗胶囊，点开在它下面展开整份计划。
 //
 // 这是 ds-bot 网页端那颗「目标胶囊」（src/client/goal.js）的移植：收起态是
-// 一颗圆形进度环（环内写「3/4」，颜色随状态），完整模式则把群名收成圆形头像、
-// 旁边排一颗带标题的胶囊；展开态胶囊铺满顶栏、其余按钮隐藏，下面长出面板。
+// 群名胶囊尾端那颗同心圆球（环内写「3/4」，颜色随状态），完整模式与群名合成
+// 一颗胶囊的两段；展开态胶囊铺满顶栏、其余按钮隐藏，下面长出面板。
 //
 // 数据来自 ds-bot 的 goal-view；面板里的行用 App 现成的列表行与按钮。
 
@@ -17,6 +17,7 @@ import '../../state/bots_state.dart';
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
 import '../chat/chat_header.dart' show ChatHeader;
+import '../chat/header_schedule.dart' show HeaderScheduleCap;
 import '../chat/dock/dock_pill.dart';
 import 'bot_avatar.dart';
 import 'bot_chat_kit.dart';
@@ -190,23 +191,30 @@ class GoalBarProbe extends ConsumerWidget {
     });
     final async = ref.watch(groupGoalProvider(roomId));
     return switch (async) {
-      AsyncData(value: final goal?) when goal.title.isNotEmpty => bare
-          ? GoalInlineSegment(
-              goal: goal,
-              narrow: narrow,
-              onTap: () => showGoalExpand(context, roomId),
-              onLongPress: onCollapse,
-            )
-          : GroupGoalPill(
-              goal: goal,
-              expanded: expanded,
-              // 点完整胶囊开面板；长按才收成小球。收起与「关面板」是两件事。
-              onTap: expanded ? () => showGoalExpand(context, roomId) : (onExpand ?? () {}),
-              onLongPress: expanded ? onCollapse : null,
-            ),
-      AsyncLoading() => const SizedBox.square(
-        dimension: 30,
-        child: Center(child: SizedBox.square(dimension: 14, child: CircularProgressIndicator(strokeWidth: 1.6))),
+      AsyncData(value: final goal?) when goal.title.isNotEmpty =>
+        // 合体态：右段（两行文字或窄屏一颗环）并进群名胶囊，分隔线在里面。
+        bare && expanded
+            ? GoalInlineSegment(
+                goal: goal,
+                narrow: narrow,
+                onTap: () => showGoalExpand(context, roomId),
+                onLongPress: onCollapse,
+              )
+            : GroupGoalPill(
+                goal: goal,
+                expanded: expanded,
+                // 收成小球且并进群名胶囊时，只画那颗同心球（外壳由顶栏给）。
+                bare: bare && !expanded,
+                // 点完整胶囊开面板；长按才收成小球。收起与「关面板」是两件事。
+                onTap: expanded ? () => showGoalExpand(context, roomId) : (onExpand ?? () {}),
+                onLongPress: expanded ? onCollapse : null,
+              ),
+      AsyncLoading() => SizedBox.square(
+        // 并进胶囊时照那颗球的大小占位，目标读到后不跳。
+        dimension: bare ? GroupGoalPill._ballSize : 30,
+        child: const Center(
+          child: SizedBox.square(dimension: 14, child: CircularProgressIndicator(strokeWidth: 1.6)),
+        ),
       ),
       // 没有目标：不占位（原来那颗灰点与它的调试 SnackBar 已删掉）。
       _ => const SizedBox.shrink(),
@@ -502,6 +510,7 @@ class GroupGoalPill extends StatelessWidget {
     this.onLongPress,
     this.expanded = false,
     this.expandArrow = false,
+    this.bare = false,
   });
 
   final DsBotGroupGoal goal;
@@ -516,16 +525,66 @@ class GroupGoalPill extends StatelessWidget {
   /// 展开面板的头部那颗多一个收起箭头。
   final bool expandArrow;
 
-  /// 进度环的尺寸：完整胶囊与小球共用这一个值。
+  /// 收成小球时并进群名那颗胶囊的尾端：只画球本身（同心圆井 + 环），
+  /// 不带玻璃底，球自己吃点击。几何由顶栏给（36、间距 8、内缩）。
+  final bool bare;
+
+  /// 进度环的尺寸：单独站着的那颗小球与完整胶囊共用这一个值。
   static const double _ringSize = 32;
+
+  /// 并进胶囊的球更小：环跟合体段同一颗 24——收起 / 展开时环不变，
+  /// 只有外壳在变（36 的圆井照标题胶囊尾端的时钟键）。
+  static const double _ballRingSize = 24;
+
+  /// 那颗球的直径：照标题胶囊尾端的时钟键（[HeaderScheduleCap.size]）。
+  static const double _ballSize = HeaderScheduleCap.size;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final dsh = DshColors.of(context);
     final paused = goal.status == 'paused';
-    // 完整胶囊和小球用同一颗环：换形态时环不应该变小。
-    final ring = GoalRing(goal: goal, size: _ringSize, announce: false);
+    // 完整胶囊和小球用同一颗环：换形态时环不应该变小。并进胶囊的球更小一层，
+    // 跟合体段那颗 24 走，收起 / 展开时环本身不变。
+    final ring = GoalRing(goal: goal, size: bare ? _ballRingSize : _ringSize, announce: false);
+    // 暂停了就写在前面：小球放不下文字，角标就是那颗暂停。
+    Widget? pauseBadge(double size) => paused
+        ? Positioned(
+            left: 2,
+            top: 2,
+            child: Icon(AppIcons.paused, size: size, color: dsh.warning),
+          )
+        : null;
+    if (bare) {
+      // 挂在一颗胶囊的尾端：只要那口安静的圆井 + 环，玻璃底由胶囊给。
+      // 井的颜色照标题胶囊尾端的时钟键（浅色 6%、深色 10%）。
+      final dark = theme.brightness == Brightness.dark;
+      return Semantics(
+        button: true,
+        label: goal.title,
+        excludeSemantics: true,
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            onTap: onTap,
+            customBorder: const CircleBorder(),
+            child: Container(
+              width: _ballSize,
+              height: _ballSize,
+              decoration: ShapeDecoration(
+                color: theme.colorScheme.onSurface.withValues(alpha: dark ? 0.10 : 0.06),
+                shape: const CircleBorder(),
+              ),
+              child: Stack(
+                alignment: Alignment.center,
+                clipBehavior: Clip.none,
+                children: [ring, ?pauseBadge(10)],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
     if (!expanded) {
       return Semantics(
         button: true,
@@ -542,16 +601,7 @@ class GroupGoalPill extends StatelessWidget {
             child: Stack(
               alignment: Alignment.center,
               clipBehavior: Clip.none,
-              children: [
-                ring,
-                // 暂停了就写在前面：小球放不下文字，角标就是那颗暂停。
-                if (paused)
-                  Positioned(
-                    left: 2,
-                    top: 2,
-                    child: Icon(AppIcons.paused, size: 13, color: dsh.warning),
-                  ),
-              ],
+              children: [ring, ?pauseBadge(13)],
             ),
           ),
         ),

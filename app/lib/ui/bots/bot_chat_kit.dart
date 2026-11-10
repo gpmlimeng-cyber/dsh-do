@@ -22,6 +22,7 @@ import '../chat/render/markdown_body.dart';
 import '../chat/render/message_mentions.dart';
 import '../chat/run_info.dart' show runFigures;
 import '../chat/chat_header.dart' show ChatHeader;
+import '../chat/header_schedule.dart' show HeaderScheduleCap;
 import '../chat/widgets/chat_card.dart';
 import '../chat/dsh_ui/dsh_ui.dart';
 import '../chat/secret_mask.dart';
@@ -79,6 +80,7 @@ class BotChatHeader extends StatelessWidget {
     this.trailingExpand = false,
     this.titleCompact = false,
     this.mergeTrailing = false,
+    this.endTrailing = false,
   }) : assert(
          (menuChildren == null) == (menuController == null),
          'menuChildren 与 menuController 要成对给',
@@ -163,6 +165,12 @@ class BotChatHeader extends StatelessWidget {
   /// 目标段并进群名这颗胶囊：一颗外壳、两段分段点击，中间一条竖分隔。
   /// [trailing] 这时必须是「裸」的那一段（自己不带玻璃底）。
   final bool mergeTrailing;
+
+  /// 目标收成小球时，球挂在这颗胶囊的尾端，不是旁边另立一颗：左段群名
+  /// （头像可点）、右端一颗与胶囊同心的圆球。几何照标题胶囊尾端的时钟键
+  /// （[HeaderScheduleCap]）：直径 36、与文字间距 8、上下右按
+  /// `(pillHeight-36)/2` 内缩。 [trailing] 这时必须是「裸」的那颗球。
+  final bool endTrailing;
 
   static const barHeight = 56.0;
   static const key44 = 44.0;
@@ -302,6 +310,54 @@ class BotChatHeader extends StatelessWidget {
       );
     }
 
+    // 收成小球：仍是一颗胶囊——左段群名（头像可点）、右端一颗同心圆球。
+    // 球自己在它的 36 里吃点击（点开面板），胶囊其余部分归群名。
+    Widget inlineTitlePill({required Widget ball}) {
+      final height = ChatHeader.pillHeightOf(context);
+      final inset = HeaderScheduleCap.insetFor(height);
+      final leftRadius = BorderRadius.horizontal(left: Radius.circular(height / 2));
+      return Align(
+        alignment: Alignment.centerLeft,
+        widthFactor: 1,
+        child: Semantics(
+          button: true,
+          hint: titleHint ?? l10n.botsViewDetails,
+          child: GlassSurface(
+            key: const ValueKey('bot-title'),
+            tier: GlassTier.chrome,
+            stadium: true,
+            grouped: true,
+            child: Material(
+              type: MaterialType.transparency,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: height),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: InkWell(
+                        onTap: onDetails,
+                        customBorder: RoundedRectangleBorder(borderRadius: leftRadius),
+                        child: Padding(
+                          padding: EdgeInsets.only(left: faceInset),
+                          child: titleRow(compact: titleCompact, stretch: false),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: HeaderScheduleCap.gap),
+                    Padding(
+                      padding: EdgeInsets.only(top: inset, bottom: inset, right: inset),
+                      child: ball,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -335,9 +391,12 @@ class BotChatHeader extends StatelessWidget {
                   // 弹性分配——否则它和胶囊各拿一半自由宽，那半截没用完就留在
                   // 行尾，最右那颗键贴不到右边。其余时候标题吃掉剩余宽度。
                   // 合体态：群名与目标在一颗胶囊里，两段各自可点，中间一条
-                  // 竖分隔（无目标或收成小球时走下面那两种旧排法）。
+                  // 竖分隔；收成小球时球在同一颗胶囊的尾端（[endTrailing]）。
+                  // 无目标时才走下面那两种旧排法。
                   if (mergeTrailing && trailing != null)
                     Expanded(child: _mergedTitlePill(context, titleRow: titleRow, goal: trailing!))
+                  else if (endTrailing && trailing != null)
+                    Flexible(child: inlineTitlePill(ball: trailing!))
                   else ...[
                     if (trailingExpand) titlePill else Expanded(child: titlePill),
                     if (trailing case final trailing?) ...[

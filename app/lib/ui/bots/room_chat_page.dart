@@ -1026,10 +1026,13 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBinding
         titleCompact: false,
         // 有目标且没收成小球：目标并进群名那颗胶囊（一颗外壳、两段可点）。
         mergeTrailing: hasGoal && _goalExpanded,
+        // 收成小球时也不另立一颗：球挂在同一颗胶囊的尾端（同心 36 的圆球）。
+        endTrailing: hasGoal && !_goalExpanded,
         trailing: GoalBarProbe(
           roomId: room.id,
           expanded: _goalExpanded,
-          bare: hasGoal && _goalExpanded,
+          // 两种态都在胶囊里，所以只要有目标就是「裸」的（外壳由顶栏给）。
+          bare: hasGoal,
           narrow: !layout.isExpanded,
           onExpand: () => _setGoalExpanded(true),
           onCollapse: () => _setGoalExpanded(false),
