@@ -588,7 +588,8 @@ class _GoalPanelState extends ConsumerState<GoalPanel> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (goal.status != 'drafting' && goal.stages.length > 1)
+        // 网页端只按状态判（`goal.js:183`）：起草态不画，其余哪怕只有一段也画。
+        if (goal.status != 'drafting')
           _StageStrip(
             stages: goal.stages,
             at: at,
