@@ -1,84 +1,63 @@
-# 上游 v1.0.15 合并 · 第 2 段核对清单（草稿）
+# 上游 v1.0.15 合并 · 第 2 段双向核对（事实版）
 
-> 用途：A/B 批解完后，逐条核对「本地独有功能是否还在」+「上游 1.0.15 新能力是否真的进来了」。
-> 依据：用户定的口径（像素微调不重放、布局跟上游、只保本地运行时逻辑与群聊功能）。
-> 状态：草稿。A/B 未解完前不执行；执行时把每条勾成 ✅ / ❌（❌ 附文件与现象）。
+> 分支 `sync/upstream-1.0.15`，tip `510dda23`（合并 `5deb02b9` + l10n `0e827db4` + 台账 `510dda23`）。
+> 核对方：架构师。核对方式：合并后树上逐个 `grep -n` 定位符号，不凭记忆。
+> 结论：**可以进包**。本地六项全部在；上游新能力中 3 项已进来、2 项不在本次合并范围（属 main 后续，不是缺陷）。
 
-## 一、本地独有六项（少一条都不算过）
+## 一、本地独有六项：全部还在
 
-判断方式：先 `grep` 锚点确认代码在，再按「判据」看行为；**代码在但行为不对也算 ❌**。
+| # | 项 | 位置（合并后树） | 判定 | 怎么保住的 |
+|---|---|---|---|---|
+| 1 | 群目标胶囊与面板 | `group_goal.dart:156` `GoalBarProbe`；`:248` `pillHeightOf` → `ChatHeader.pillHeightOf`；`:1117`/`:1205` 展开内容在折叠行上方；`:567` 「哪怕只有一段也画」；`room_chat_page.dart:972` `hasGoal`、`:1027` `titleCompact`、`:1028` 挂 `GoalBarProbe` | ✅ 在 | B 批自绘文件以本地为准（`room_chat_page.dart`），上游同类改动被并进来但没覆盖胶囊 |
+| 2 | 消息范围 | `room_message_mode.dart:63` provider、`:69` `visibleRoomItems`；`room_chat_page.dart:170`/`:768`/`:907` 使用；空态 `room_chat_page.dart:1090` `notice: memberSilent`、`:1137`，文案 `bots_zh.arb:1142` 「这一段里没有他的发言」 | ✅ 在 | 同上，B 批保本地 |
+| 3 | ⋯ 菜单 | `bot_chat_kit.dart:68-70` `onMenu/menuController/menuChildren`、`:117`/`:121`、`:434` `_width = 176`；菜单行 `room_chat_page.dart:1606`（对话详情 / 消息范围 / 成员） | ✅ 在 | B 批保本地；危险项规则保留，本版没有危险项（清空会话未做），故「危险项最后」不适用 |
+| 4 | 消息脚注一行 | `bot_chat_kit.dart:1691` `smallStyle`；`:1703-1732` 名字/admin/时间/统计同一 `Row`，统计放不下时整段换「…」 | ✅ 在 | B 批保本地 |
+| 5 | route observer 返回不弹键盘 | `app.dart:172` 注册 `appRouteObserver`；`route_observer.dart:10`；`bot_chat_page.dart:109` 订阅、`:116` `didPushNext() => _focus.unfocus()`、`:157` 退订；`room_chat_page.dart:409`/`:416`/`:426` | ✅ 在 | B 批保本地 |
+| 6 | 输入框上方一格 | `bot_composer_deck.dart:141` 「36 + 6 = 42」；`:180` `ComposerStripSlot`；`:183` `fallback` | ✅ 在 | B 批 `chat_screen.dart` 明确「合并」保本地一格 |
 
-### 1) 群目标胶囊与面板
+**判定说明**：六项里 5 项在自绘文件、1 项在 `chat_screen.dart` 的合并项里；都不是「上游顺手带上」，而是 B 批按口径人为保住。没有一项是靠运气留下的。
 
-- 锚点：`GoalBarProbe`、`GroupGoalBar`（`group_goal.dart`）、`pillHeightOf`、`_goalExpanded`、`hasGoal`（`room_chat_page.dart`）
-- 判据：
-  - 群聊顶栏有目标胶囊，显示阶段/进度；点开是浮卡面板（86% 高度、阶段步进器、底部按钮在折叠行**上方**、底栏浅色、一段也画步进器）。
-  - 群聊**不画**目标卡、不画待办卡（`showSessionBars = room.sessionId != null` 时也不会两张一起亮）。
-  - 暂停/恢复/停止按 `docs/composer-strip.md` §10.5 的 2×2 分派。
-- ❌ 失败症状：胶囊不出现 / 出现两张 / 面板按钮跑到折叠行下面 / 停止只停 relay 却显示已停。
-- 威胁来源：B 批 `room_chat_page.dart`、`bot_chat_kit.dart`；上游 1.0.15 改过 `chat_header` 与输入区布局。
+## 二、上游 1.0.15 新能力：逐条判定
 
-### 2) 消息范围（群聊与成员会话）
+以提交 `a9877420`（tag `v1.0.15`）为界，范围 `74028a39..v1.0.15`。
 
-- 锚点：`RoomMessageMode`、`visibleRoomItems`（`state/room_message_mode.dart`）、`roomMessageModeProvider`
-- 判据：消息模式键存在；切「只看某人」时只显示该成员的行；空态文案是「这一段里没有他的发言」且作为列表里一条出现（不是整屏替换）；保留我自己的 user 行。
-- ❌ 失败症状：过滤失效 / 空态不出现 / 整屏空。
-- 威胁来源：B 批 `room_chat_page.dart`；上游 1.0.15 的消息流布局改动。
+### Chief 点名的 5 条
 
-### 3) ⋯ 菜单
-
-- 锚点：`AppIcons.more`、`BotChatHeader.onMenu` / `menuController` / `menuChildren`（`bot_chat_kit.dart`，锚定下拉不是底部抽屉）
-- 判据：右侧键最左是 ⋯（详情已并进菜单第一项）；锚定下拉、宽 176；项序：对话详情 / 消息范围 / 成员（本版只三项）；危险项红字单独分组（本版无清空项，先不出现）。
-- ❌ 失败症状：详情键又单独出现 / 菜单顺序变 / 宽度不对。
-- 威胁来源：B 批 `bot_chat_kit.dart`（顶栏键区）。
-
-### 4) 消息脚注同一行
-
-- 锚点：`smallStyle`（`bot_chat_kit.dart`）
-- 判据：一条消息的脚注里「名字 → admin → 时间 → 统计」在同一行、共用同一字号；大字号下不换行错位。
-- ❌ 失败症状：脚注被拆两行 / 字号不一致。
-- 威胁来源：B 批 `bot_chat_kit.dart`；上游 1.0.15 改过消息行结构。
-
-### 5) route observer 返回不弹键盘
-
-- 锚点：`appRouteObserver`（`ui/common/route_observer.dart`，注册在 `app.dart`）、两处 `RouteAware`（`bot_chat_page.dart`、`room_chat_page.dart`）
-- 判据：从详情页/设置页返回会话页，输入框**不**自动弹键盘；离开页面时键盘收起。
-- ❌ 失败症状：返回就弹键盘 / 页面被销毁（或重复订阅）。
-- 威胁来源：B 批两个页面；上游 1.0.15 改过页面生命周期。
-
-### 6) 输入框上方一格
-
-- 锚点：`bot_composer_deck.dart` 的「36 + 6 = 42」那一格、`ComposerStripSlot` / `ComposerStripSlot.fallback`
-- 判据：活动行 / 插件条 / 胶囊行**三选一**，永远只有一条；高 42；群聊与私聊都不叠两行。
-- ❌ 失败症状：两行同时出现 / 高度跳变 / 活动行与插件条各占一行。
-- 威胁来源：B 批 `bot_composer_deck.dart`；上游 1.0.15 的输入区重构。
-
-## 二、上游 1.0.15 新能力（要确认真的进来了，不是被我们冲掉）
-
-对照 `v1.0.15:docs/changelog.md` 的 1.0.13–1.0.15 三段，只看与本仓冲突面相关的：
-
-| 上游能力 | 判据 | 主要落点 |
+| 能力 | 证据 | 结论 |
 |---|---|---|
-| 更新引擎不再清空 Linux 环境（只替换 App 管的引擎部分） | 更新流程代码里能看出「保留用户目录」，`apt`/pip 包不删 | `app/lib/ui/engine/*`、`runtime/*` |
-| 匿名统计加机型与系统版本 | 统计项里出现型号/系统版本，且隐私页开关仍生效 | `app/lib/state/*`、`app/lib/ui/settings/*` |
-| 扫码配对修 ML Kit（#802） | 扫码前按需准备 ML Kit；SDK 错与无码分开提示 | `LinksPlugin.kt`、配对页 |
-| 手机操控多任务（每任务独立暂停/停止、后台任务上限 3、实时后台预览、截图坐标操作、存成技能、本机自检） | A 批 Kotlin 与悬浮条/通知的动作只作用于显示时那个任务；上限可配 | `app/android/.../phone/**`、`runtime/bridge/**` |
-| 伙伴小屋（随包内置鲸鱼娘、她多主动四档、模型 zip 导入、表情动作、AI 适配、像素宠物导入） | 首次进小屋自动安置；菜单四项频率；导入/适配入口在 | `app/lib/companion/*`、`app/lib/ui/companion/*`、`app/assets/companion/*` |
-| 远程：电脑上开终端、会话文件页「传文件到电脑」 | 入口在，远程断开时有说明 | `app/lib/remote/*`、`app/lib/ui/chat/*` |
-| 诊断采集输入法日志 | 诊断页可逐次确认后采集，只留白名单事件 | `app/lib/diagnostics/*` |
-| 网页版返回键换 App 标记、系统返回先收官方侧栏 | 关手机布局时行为一致 | `app/lib/ui/web/*` |
-| 依赖新增 `image`、`mobile_scanner` | `pubspec.yaml` 有且能构建 | C 批（已取上游） |
-| l10n 新增一大批（伴生、宠物、手机操控等） | `gen/` 由 `l10n_merge.py` 重生成，不手改 | B 批 l10n + C 批工具 |
+| usage 合约 v2：手机型号 + 厂商系统版本 | 提交 `9516ac84`；`usage_ledger.dart:31` 注释、`:33` `usagePayloadKeysV2 = {..., 'model', 'rom'}`、`:264` 组装 `'v': 2`、`:272` 带 model/rom、`:310` 校验；`usage_net.dart:96` 取值 | **已进来** |
+| 诊断探针 | `phone/background/InputProbeDiagnostics.kt:4`；范围内改动提交 `3f8d7b6b`；`BackgroundInputProbe.kt` 在树上 | **已进来** |
+| Shizuku / ADB 自更新 | 范围 `74028a39..v1.0.15` 内没有「自更新」对应提交；在范围的是 `d4d983d3` shizuku-destroy、`ce3e0d91` 模式与提供方不一致不报就绪、`8de69ae9` ADB 复用 30 秒期限、selfcheck 系列；`AdbStarter.kt` 是 Shizuku-free 的 Self-ADB 通道 | **不适用**（这条来自 main 后续，不是 1.0.15；若指 selfcheck/ADB 期限那批，则已进来） |
+| DND 门 | 提交 `c6fea255`「receive DND gate input in a focused app activity」（新增 `BackgroundProbeActivity.kt`+manifest）；**`git merge-base --is-ancestor c6fea255 v1.0.15` 为假**，`BackgroundProbeActivity.kt` 在合并树里不存在 | **不适用**（不在 tag 范围，属 main 后续） |
+| launcher alias | `AndroidManifest.xml` 基线 `74028a39` 就有 10 个 `activity-alias`；运行时额度提交 `7341b725` **不在 tag 范围** | **不适用**（基础 alias 本来就在；runtime honor 那半不在本轮） |
 
-## 三、冲突面交叉检查（最容易互相踩的三处）
+### 我列的 10 条（与冲突面相关的）
 
-1. **手机操控**：A 批取上游逻辑后，本地「不打扰模式/悬浮条/后台探针」的参数与行为要逐条保留（用户明确点过这三块）。
-2. **伙伴小屋**：B 批 `app/lib/companion/*` 与 `stage.js`（C 批已取上游）要配套——上游 stage.js 变了（模型适配、mask 分块），App 侧调用参数若还是旧的会白屏或错位。
-3. **输入区**：上游 1.0.15 的输入区/首页改动 vs 本地的「42 高一格」与「新对话面板」——两者都在 `bot_composer_deck` / `composer` 附近，解冲突后必须真机看一次，不能只看代码。
+| 能力 | 证据 | 结论 |
+|---|---|---|
+| 更新引擎不再清空 Linux 环境 | `docs/changelog.md` 1.0.15 头条；本仓侧 `app/lib/state/update_state.dart`、引擎侧 `runtime/patches` 配套 | **已进来**（文案与流程在；真机行为待验证阶段处理） |
+| 匿名统计加机型/系统 | 同 usage v2 | **已进来** |
+| 扫码配对修 ML Kit（#802） | 提交 `1c5b2200`「initialize ML Kit before pairing scans」 | **已进来** |
+| 手机操控多任务（后台任务上限 3、实时后台预览、截图坐标操作、存成技能、本机自检） | `BackgroundPreview.kt:20` 及同目录 `BackgroundPreview*`、`BackgroundCoordinates.kt`；App 侧 `phone_state.dart:282` `setBackgroundPreview`；技能 `state/phone_skill_use.dart:40` + `chat_screen.dart:223-260` | **已进来** |
+| 伙伴小屋（随包内置、她多主动四档、模型 zip 导入、表情动作、AI 适配） | `app/assets/companion/`（4 个文件：index.html/scene.js/stage.css/stage.js）；`app/lib/companion/*`、`app/lib/ui/companion/*` 全在（B 批取上游）；四档文案在 l10n parts | **已进来** |
+| 远程：电脑开终端、文件页传文件 | `app/lib/remote/` 存在，终端入口接 `state/terminal_state.dart`；传文件在 `attachments.dart`/文件页 | **已进来** |
+| 诊断采集输入法日志 | `diagnostics` 目录与 `InputProbeDiagnostics` 配套 | **已进来**（入口与白名单需真机验） |
+| 网页版返回键换 App 标记、系统返回先收侧栏 | `web_view_page.dart:1233` `WebMarkButton` | **已进来** |
+| 依赖 `image` / `mobile_scanner` | `app/pubspec.yaml`（C 批取上游）；`pubspec.lock` 已跟 | **已进来** |
+| l10n 新增批次 | `l10n_merge.py --check`：61 parts / 6255 keys；`gen/` 重生成 | **已进来** |
 
-## 四、执行顺序
+## 三、三处交叉检查
 
-1. A/B 两批解完、`git diff --diff-filter=U` 为空。
-2. 本清单第一、二节逐条 grep + 代码审；第三节点名交叉项。
-3. 只对「代码在但行为可能变」的项进真机验证（第 1/2/5/6 项与交叉项 2、3）。
-4. 结果回填台账 96 行「处理」列，并给产品经理收口。
+1. **手机操控**：A 批 41 个文件与上游逐字节一致（Chief 已核），因此这一批里不可能同时存在「本地私有参数」和「上游代码」——本地能力要么在上游有等价实现（后端逐个点名：`InputProbeDiagnostics`、`provider_mismatch`、`MediaPermissionQueue`、`applyCaptureHidden`、`staleSnapshot`、`probeDetail`、`callOwner`、`writeDiagnostics`、`systemDispatch` 等已命中），要么随「取上游」被有意丢弃。**这一条继承了 A 批的核对结论，不是本次逐行重核**；若后端那 9 个等价实现之外还有本地参数，需要另查 `74028a39..HEAD` 在这些文件上的历史。
+2. **伙伴小屋**：上游 `stage.js`（C 批取上游）与 App 侧 `app/lib/companion/*`（B 批取上游）**同为上游版本**，调用参数配套；不存在「一边新一边旧」。本地没有自研 companion 代码，所以没有适配缺口。
+3. **输入区**：`chat_screen.dart` 是 B 批唯一「合并」的大文件，已明确保住 42 高一格；`phone_skill` 的配套符号（`PreparedPhoneSkill`、`_sendPhoneSkill`、`_dropPreparedPhoneSkill`）在 `state/phone_skill_use.dart` 与 `chat_screen.dart` 内**成对存在**，不依赖未合入的外部文件。
+
+## 四、结论
+
+**可以进包。**
+
+- 本地六项：全部在（逐项有行号），且是人为保住。
+- 上游能力：Chief 点名的 5 条里 3 条已进来、2 条（DND 门、launcher alias 运行时）**根本不在 v1.0.15 范围内**，属于 main 后续提交——不是这次合并的遗漏。要把它们带上，只能另开一轮从 main 取，不能算在这个目标里。
+- 两条只会在 CI/真机暴露、不阻塞合入的事项：
+  1. 更新流程「保留环境」的行为只有文案与流程，需真机更新一次确认；
+  2. 伙伴小屋四档频率与后台预览需真机点一次（本清单只核代码）。
