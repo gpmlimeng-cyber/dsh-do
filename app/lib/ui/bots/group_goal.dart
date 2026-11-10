@@ -1176,6 +1176,7 @@ class _GoalExpandLayerState extends ConsumerState<_GoalExpandLayer> {
                                   // 清除）→ 收起圆盘，圆盘最右；三个 48 触控紧排，
                                   // 圆盘与动作之间不再加间距（靠 48 与 36 的差）。
                                   _GoalHeaderActions(roomId: roomId, goal: goal, confirming: _confirming),
+                                  const SizedBox(width: 4),
                                   // 只关面板，不改胶囊形态：收起成小球是长按胶囊。
                                   _goalDisc(
                                     context,
@@ -1374,6 +1375,7 @@ class _GoalHeaderActionsState extends ConsumerState<_GoalHeaderActions> {
   Widget build(BuildContext context) {
     final status = _status;
     final l10n = context.l10n;
+    final theme = Theme.of(context);
     final dsh = DshColors.of(context);
     if (status == 'complete' || status == 'stopped') {
       return _disc(
@@ -1393,20 +1395,28 @@ class _GoalHeaderActionsState extends ConsumerState<_GoalHeaderActions> {
     }
     if (status != 'active' && status != 'paused') return const SizedBox.shrink();
     final paused = status == 'paused';
+    // 照手机控制的悬浮卡那两颗圆（OverlayCapsule.kt / CapsuleMetrics）：
+    // 触控 48、可见 36、两键之间 4；暂停是 tonal 底 + ink 图标，暂停后换
+    // accentSoft 底 + accent 的播放图标；停止是 danger 底 + 白方块。
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         _disc(
           tooltip: paused ? l10n.chatResumeGoal : l10n.chatPauseGoal,
           icon: paused ? AppIcons.play : AppIcons.pause,
-          color: dsh.textTertiary,
+          iconSize: 18,
+          color: paused ? theme.colorScheme.primary : theme.colorScheme.onSurface,
+          background: paused ? theme.colorScheme.primary.withValues(alpha: 0.14) : null,
           onTap: _busy ? null : () => _control(paused ? 'resume' : 'pause'),
         ),
+        const SizedBox(width: 4),
+        // 二次确认走标题区那 3 秒，这颗键本身不变形。
         _disc(
           tooltip: _armed ? l10n.chatGoalConfirmStop : l10n.commonStop,
           icon: AppIcons.stop,
-          color: _armed ? Theme.of(context).colorScheme.onError : Theme.of(context).colorScheme.error,
-          background: _armed ? Theme.of(context).colorScheme.error : null,
+          iconSize: 16,
+          color: dsh.onDangerContainer,
+          background: dsh.dangerContainer,
           onTap: _busy ? null : _stop,
         ),
       ],
@@ -1419,7 +1429,16 @@ class _GoalHeaderActionsState extends ConsumerState<_GoalHeaderActions> {
     required Color color,
     required VoidCallback? onTap,
     Color? background,
-  }) => _goalDisc(context, tooltip: tooltip, icon: icon, color: color, onTap: onTap, background: background);
+    double iconSize = 20,
+  }) => _goalDisc(
+    context,
+    tooltip: tooltip,
+    icon: icon,
+    color: color,
+    onTap: onTap,
+    background: background,
+    iconSize: iconSize,
+  );
 }
 
 /// 兼容旧调用：群目标面板以前是底部抽屉，现在改为顶栏展开，这个函数只
