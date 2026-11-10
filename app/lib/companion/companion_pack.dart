@@ -24,8 +24,11 @@ const companionRuntimeDigest = '20e4e35ce1de09bd9017197363a96afdb4d9fc045d574fb6
 const CompanionPackSource? companionPackSource = null;
 
 /// A pack that comes inside the app, unpacked the first time the room opens.
-/// It isn't in the repository (its model's terms aren't settled for that):
-/// builds made with the zip in place carry it, the others simply have none.
+/// Upstream keeps the zip out of the repository (its model's terms aren't
+/// settled for that) and only ships it inside the release APK; this fork
+/// takes the same zip from upstream's v1.0.15 APK and tracks it, so every
+/// build carries the character. `app/.gitignore` still ignores
+/// `assets/companion/*.zip`: the file is force-added on purpose.
 const companionBundledPack = 'assets/companion/whale-girl.zip';
 
 /// Whether this build carries the pack, without reading it.
