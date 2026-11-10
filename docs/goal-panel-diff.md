@@ -11,7 +11,8 @@
 | --- | --- | --- | --- | --- |
 | A1 | 面板容器 | `goal.js:149` `GoalPanel`，pod 挂在顶栏下，宽屏常驻 | `group_goal.dart:922` `_GoalExpandLayer`，浮卡，点卡外收起 | 平台性差异 |
 | A2 | 收起成小球 / 关闭面板 | 无「收起」，pod 常驻 | 头部圆盘**只关面板**（`1001–1010`）；收成小球改为**长按完整胶囊**（`184–185`、`354`）；小球态点它展开（`311–338`） | 按要求偏离 |
-| A3 | 面板头部标题 | `goal.js:178` `aria-label = view.title` | `group_goal.dart:987–993` 标题；停止待确认时替换为「确认终止？」 | 一致 |
+| A3 | 面板头部标题 | `goal.js:178` `aria-label = view.title` | `group_goal.dart:1111–1119` 标题；停止待确认时替换为「确认终止？」 | 一致 |
+| A6 | 面板顶边与胶囊齐平 | 不涉及（pod 从顶栏下起） | `pillTop = padding.top + max(0, (barHeightOf − pillHeightOf)/2)`，卡片再上提 1px 兜住圆角交界：计算在 `group_goal.dart:1064–1069`，落位在 `1087–1089` | 平台性差异 |
 
 ## B. 阶段步进器
 
@@ -53,22 +54,23 @@
 
 | # | 区块 / 元素 | 网页端（行号） | 手机端（行号） | 状态 |
 | --- | --- | --- | --- | --- |
-| F1 | 折叠按钮 | `goal.js:216–219` `Goal and checks` + `aria-expanded` | `group_goal.dart:590–605`，箭头随展开旋转 | 一致 |
-| F2 | Objective | `goal.js:212` | `group_goal.dart:618` | 一致 |
-| F3 | Done when | `goal.js:213` | `group_goal.dart:619` | 一致 |
-| F4 | Rules | `goal.js:214–215` `<ul>` 列表 | `group_goal.dart:620` 每条一行 `_Block` | 平台性差异 |
+| F1 | 折叠按钮 | `goal.js:216–219` `Goal and checks` + `aria-expanded` | `group_goal.dart:632–677`（`GoalChecksBar`），落在卡片固定栏里 `1162–1168`；底部只留这一颗，无其他动作 | 一致 |
+| F2 | Objective | `goal.js:212` | `group_goal.dart:689` | 一致 |
+| F3 | Done when | `goal.js:213` | `group_goal.dart:690` | 一致 |
+| F4 | Rules | `goal.js:214–215` `<ul>` 列表 | `group_goal.dart:691` 每条一行 `_Block` | 平台性差异 |
+| F5 | 展开位置 | `goal.js:211–215` 的 `ckbody` 在 `bt-goal-body` 之后、`bt-goal-foot`（`216`）**之前**，即展开在 foot **上方** | `group_goal.dart:1169–1180` 展开在折叠行（`1162–1168`）**下方**，自己一块滚动区、最高 45% 卡片高 | 按要求偏离 |
 
 ## G. 动作区（网页在底部 foot，手机在面板顶部右侧）
 
 | # | 区块 / 元素 | 网页端（行号） | 手机端（行号） | 状态 |
 | --- | --- | --- | --- | --- |
-| G1 | Pause | `goal.js:222` `bt-goal-foot` 内 | `group_goal.dart:1147–1152` 面板顶部圆盘 | 按要求偏离 |
-| G2 | Resume | `goal.js:223` | `group_goal.dart:1147–1152` | 按要求偏离 |
-| G3 | Stop | `goal.js:224–227` | `group_goal.dart:1153–1159` | 按要求偏离 |
-| G4 | 停止两段式 | `goal.js:145` `STOP_ARM_MS=3000`；`goal.js:227` 文字变 `Stop the goal?` | `group_goal.dart:1110–1118` 3 秒；`987–992` 标题变「确认终止？」；`1156` 停止键染红 | 一致 |
-| G5 | Clear | `goal.js:228–229` 文字按钮 | `group_goal.dart:1126–1133` 圆盘，`tooltip` 清除目标 | 按要求偏离 |
-| G6 | Cancel（起草态） | `goal.js:230–231` | `group_goal.dart:1134–1141` 同一个 `clear` 动作 | 按要求偏离 |
-| G7 | 清除 / 取消不染红 | 网页无危险色 | `group_goal.dart:1130`、`1138` 用 `textTertiary` | 一致 |
+| G1 | Pause | `goal.js:222` `bt-goal-foot` 内 | `group_goal.dart:1303–1308` 面板顶部圆盘 | 按要求偏离 |
+| G2 | Resume | `goal.js:223` | `group_goal.dart:1303–1308` | 按要求偏离 |
+| G3 | Stop | `goal.js:224–227` | `group_goal.dart:1309–1316`，与暂停同一行、圆盘在其右 | 按要求偏离 |
+| G4 | 停止两段式 | `goal.js:145` `STOP_ARM_MS=3000`；`goal.js:227` 文字变 `Stop the goal?` | `group_goal.dart:1263–1270` 3 秒；`1111–1119` 标题变「确认终止？」；`1312` 停止键染红 | 一致 |
+| G5 | Clear | `goal.js:228–229` 文字按钮 | `group_goal.dart:1282–1289` 圆盘，`tooltip` 清除目标 | 按要求偏离 |
+| G6 | Cancel（起草态） | `goal.js:230–231` | `group_goal.dart:1290–1297` 同一个 `clear` 动作 | 按要求偏离 |
+| G7 | 清除 / 取消不染红 | 网页无危险色 | `group_goal.dart:1286`、`1294` 用 `textTertiary` | 一致 |
 | G8 | 连当前工作一起停 | `goal.js:221` foot 内次要文字 | `group_goal.dart:606–613` 底部唯一条件项 | 一致 |
 | G9 | 顶栏是否放停止键 | 不涉及 | 不放，顶栏只有 `⋯`（`room_chat_page.dart:999–1000`） | 按要求偏离 |
 
@@ -109,10 +111,12 @@
 ## 统计
 
 - 一致：A3、B1、B4、C1、C3、C4、C5、C6、C7、D1、D2、D3、E1、F1、F2、F3、G4、G7、G8 + 文案 8 条 = **27**
-- 按要求偏离：A2、E2、G1、G2、G3、G5、G6、G9、H1–H5 = **13**
-- 平台性差异：A1、B3、C2、F4、H6、I1–I4 = **9**
+- 按要求偏离：A2、E2、F5、G1、G2、G3、G5、G6、G9、H1–H5 = **14**
+- 平台性差异：A1、A6、B3、C2、F4、H6、I1–I4 = **10**
 - 已知未修：B2（单阶段目标不画步进器）= **1**
 - 未做：I5（⋯ 菜单缺群内搜索、清空会话）= **1**
+
+**F5 判「按要求偏离」而不是「一致」，理由**：网页端 `goal.js` 里展开体 `bt-goal-ckbody`（211–215）排在 `bt-goal-foot`（216）**之前**，也就是展开在那一行**上方**；手机按要求放在折叠行**下方**。方向确实不同，不能记成一致。用户明确要求向下展开，且手机底部固定栏贴卡片底边，向上展开会把正文挤没，所以这是「按要求偏离」，网页端那条源码位置留作以后对齐时的事实依据。
 
 I5 不混进「按要求偏离」：群内搜索与清空会话在网页端就有，手机上本轮没做；两者都要新 Host 端点（`room/message-search`、`room-clear`），按 `docs/memo.md` 记录均为未实现，属于后续版本。
 
