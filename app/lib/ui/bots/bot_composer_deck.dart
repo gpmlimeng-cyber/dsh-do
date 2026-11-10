@@ -138,8 +138,8 @@ class BotComposerDeck extends ConsumerWidget {
         // Safe mode / trial banner; draws nothing otherwise.
         const SafeModeBanner(padding: EdgeInsets.only(bottom: 8)),
         BackdropGroup(
-          // 这一格永远留一条的高度（36 + 6）：闲着是插件条、跑起来是活动行，
-          // 换的是内容不是高度。胶囊行也不再随 busy 消失，于是整个输入框上方
+          // 这一格永远留一条的高度（36 + 6 = 42）：闲着是插件条或胶囊行，跑起来
+          // 是活动行，**同一时间只有一条**，换的是内容不是高度。所以输入框上方
           // 的高度与 busy 无关，下面输入行与那排键一动不动。
           child: ConstrainedBox(
             constraints: const BoxConstraints(minHeight: DockMetrics.height + DockMetrics.gap),
@@ -175,7 +175,20 @@ class BotComposerDeck extends ConsumerWidget {
                     face: activityBot == null ? null : BotAvatar(bot: activityBot!, size: 22),
                     name: activityBot?.name,
                   ),
-                ComposerStripSlot(sessionId: sessionId, visible: !busy),
+                // 同一格换内容、不增行：跑起来这一格让给活动行（这一条收成 0），
+                // 闲着才出现——有插件条就显示插件条，没有就由 fallback 顶上胶囊行。
+                ComposerStripSlot(
+                  sessionId: sessionId,
+                  visible: !busy,
+                  fallback: busy
+                      ? null
+                      : NativeComposerBar(
+                          sessionId: sessionId,
+                          visible: true,
+                          strip: false,
+                          leading: shownCapsule,
+                        ),
+                ),
               ],
               // Running: the permission chip rides beside the activity strip,
               // which is the second row only while a turn runs.
@@ -183,11 +196,6 @@ class BotComposerDeck extends ConsumerWidget {
             ),
           ),
         ),
-        // The capsules (ui.json's and plugins') and the permission chip as their
-        // leading: one row, as the chat page has it. It stays up while a round
-        // runs too: hiding it would take a row out of the column and push the
-        // composer (and its keys) up and down at every start and end.
-        NativeComposerBar(sessionId: sessionId, visible: true, strip: false, leading: shownCapsule),
       ],
     );
   }

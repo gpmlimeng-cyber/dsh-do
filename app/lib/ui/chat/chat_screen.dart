@@ -79,6 +79,7 @@ import 'composer.dart';
 import 'composer_toast.dart';
 import 'chat_text_scale.dart';
 import 'dock/chat_dock.dart';
+import 'dock/dock_pill.dart' show DockMetrics;
 import 'dock/dock_stack.dart';
 import 'empty_state.dart';
 import 'empty_actions.dart';
@@ -1846,41 +1847,49 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
                                 _DockAside(
                                   aside: typing,
                                   child: BackdropGroup(
-                                    child: DockStack(
-                                      cards: [
-                                        if (sessionId != null) ...[
-                                          TodoDockSlot(sessionId: sessionId),
-                                          GoalDockSlot(sessionId: sessionId),
-                                          ActivityStripSlot(
-                                            sessionId: sessionId,
-                                            onTap: () => _openRunningTrajectory(sessionId),
-                                            // The todo bar shows it, unless it is folded behind the strip.
-                                            todoProgress: ref.watch(dockFoldedProvider),
-                                            dock: true,
-                                          ),
+                                    // 这一格永远留一条的高度（36 + 6 = 42）：活动行与
+                                    // 插件条/胶囊行换内容不换高度，下面输入行不动。
+                                    child: ConstrainedBox(
+                                      constraints: const BoxConstraints(
+                                        minHeight: DockMetrics.height + DockMetrics.gap,
+                                      ),
+                                      child: DockStack(
+                                        cards: [
+                                          if (sessionId != null) ...[
+                                            TodoDockSlot(sessionId: sessionId),
+                                            GoalDockSlot(sessionId: sessionId),
+                                            ActivityStripSlot(
+                                              sessionId: sessionId,
+                                              onTap: () => _openRunningTrajectory(sessionId),
+                                              // The todo bar shows it, unless it is folded behind the strip.
+                                              todoProgress: ref.watch(dockFoldedProvider),
+                                              dock: true,
+                                            ),
+                                          ],
+                                          // 同一格换内容、不增行：回复生成时这一格让给
+                                          // 活动行（收成 0），闲着是插件条，没有插件条
+                                          // 就由 fallback 顶上胶囊行。
+                                          if (!readOnly)
+                                            ComposerStripSlot(
+                                              sessionId: sessionId,
+                                              visible: !running,
+                                              fallback: typing || running
+                                                  ? null
+                                                  : NativeComposerBar(
+                                                      sessionId: sessionId,
+                                                      visible: true,
+                                                      leading: pillsInCapsules ? composerPills : null,
+                                                      strip: false,
+                                                    ),
+                                            ),
                                         ],
-                                        // It gives the activity strip its place while a reply generates.
-                                        if (!readOnly) ComposerStripSlot(sessionId: sessionId, visible: !running),
-                                      ],
-                                      accessory: pillsBesideStrip
-                                          ? _stripRisk(sessionId, autoApprove: chat?.autoApprove ?? false)
-                                          : null,
+                                        accessory: pillsBesideStrip
+                                            ? _stripRisk(sessionId, autoApprove: chat?.autoApprove ?? false)
+                                            : null,
+                                      ),
                                     ),
                                   ),
                                 ),
-                                // The capsules (ui.json's and plugins'), led
-                                // by the chat's pills; they step aside while a
-                                // reply generates; nothing at all without any.
-                                if (!readOnly)
-                                  _DockAside(
-                                    aside: typing,
-                                    child: NativeComposerBar(
-                                      sessionId: sessionId,
-                                      visible: !running,
-                                      leading: pillsInCapsules ? composerPills : null,
-                                      strip: false,
-                                    ),
-                                  ),
                                 if (readOnly)
                                   const ReadOnlyBar()
                                 else
