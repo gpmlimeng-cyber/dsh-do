@@ -2260,7 +2260,7 @@
   "chatClearGoal": "清除目标",
   "chatGoalHint": "要完成什么",
   "chatGoalDrafting": "起草中，等管理员开始",
-  "chatGoalCollapseToBall": "收起成小球",
+  "chatGoalCollapseToBallHint": "收起成小球，群名将完整显示",
   "@chatGoalDrafting": {},
   "botsMessageModeEmptyStretch": "这一段里没有他的发言",
   "@botsMessageModeEmptyStretch": {},

@@ -98,3 +98,4 @@ Upstream: `ccch1mneyyy/dsh-Go`, against `v1.0.10` (fork branch `ci/room-progress
 | `c3a32cda` | `app/lib/ui/bots/group_goal.dart` | v1.0.10 | A goal's stage stepper and its links are Flutter drawing over the Host's own stages; no seam owns them. |
 | `$(git rev-parse --short HEAD)` | `app/lib/ui/bots/group_goal.dart` | v1.0.10 | Where a goal's checks are folded is Flutter layout over the Host's own goal; no seam owns it. |
 | `c91912bf` | `app/lib/ui/bots/group_goal.dart` | v1.0.10 | Where a goal card's actions and checks sit is Flutter layout over the Host's own goal; no seam owns it. |
+| `$(git rev-parse --short HEAD)` | `app/lib/ui/bots/group_goal.dart`, `app/lib/l10n/` | v1.0.10 | A card's round key is Flutter UI over the Host's own goal; no seam owns it. |

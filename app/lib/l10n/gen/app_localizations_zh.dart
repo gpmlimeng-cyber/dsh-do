@@ -3523,8 +3523,9 @@ class L10nZh extends L10n {
   @override
   String get chatGoalDrafting => '起草中，等管理员开始';
 
+
   @override
-  String get chatGoalCollapseToBall => '收起成小球';
+  String get chatGoalCollapseToBallHint => '收起成小球，群名将完整显示';
 
   @override
   String get botsMessageModeEmptyStretch => '这一段里没有他的发言';

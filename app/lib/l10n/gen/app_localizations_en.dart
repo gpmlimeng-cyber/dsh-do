@@ -3710,8 +3710,9 @@ class L10nEn extends L10n {
   @override
   String get chatGoalDrafting => 'Drafting — waiting for the admin to start';
 
+
   @override
-  String get chatGoalCollapseToBall => 'Collapse to a ball';
+  String get chatGoalCollapseToBallHint => 'Collapse to a ball — the group name shows in full';
 
   @override
   String get botsMessageModeEmptyStretch => 'Nothing from them in this stretch';

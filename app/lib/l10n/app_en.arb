@@ -1097,7 +1097,7 @@
   "chatClearGoal": "Clear goal",
   "chatGoalHint": "What do you want to achieve?",
   "chatGoalDrafting": "Drafting — waiting for the admin to start",
-  "chatGoalCollapseToBall": "Collapse to a ball",
+  "chatGoalCollapseToBallHint": "Collapse to a ball — the group name shows in full",
   "botsMessageModeEmptyStretch": "Nothing from them in this stretch",
   "chatClearGoalTitle": "Clear goal?",
   "chatTodoCurrent": "Working on: {content}",

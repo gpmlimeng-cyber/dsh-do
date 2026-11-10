@@ -6516,8 +6516,9 @@ abstract class L10n {
   /// No description provided for @chatGoalDrafting.
   String get chatGoalDrafting;
 
-  /// No description provided for @chatGoalCollapseToBall.
-  String get chatGoalCollapseToBall;
+
+  /// No description provided for @chatGoalCollapseToBallHint.
+  String get chatGoalCollapseToBallHint;
 
   /// No description provided for @botsMessageModeEmptyStretch.
   String get botsMessageModeEmptyStretch;

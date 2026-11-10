@@ -882,10 +882,22 @@ class _GoalExpandLayer extends ConsumerWidget {
                                       style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
                                     ),
                                   ),
-                                  IconButton(
-                                    tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
-                                    onPressed: () => Navigator.of(context).maybePop(),
-                                    icon: Icon(AppIcons.collapse, size: 18, color: dsh.textTertiary),
+                                  // 头部只留这一颗（和抽屉、⋯ 同一套圆键）：
+                                  // 收回小球并关面板；进度页的薄抽屉没有小球
+                                  // 可收，就只关面板。
+                                  const SizedBox(width: 8),
+                                  _goalDisc(
+                                    context,
+                                    tooltip: onCollapse == null
+                                        ? MaterialLocalizations.of(context).closeButtonTooltip
+                                        : l10n.chatGoalCollapseToBallHint,
+                                    icon: AppIcons.collapse,
+                                    iconSize: 18,
+                                    color: dsh.textTertiary,
+                                    onTap: () {
+                                      onCollapse?.call();
+                                      Navigator.of(context).maybePop();
+                                    },
                                   ),
                                 ],
                               ),
@@ -901,20 +913,6 @@ class _GoalExpandLayer extends ConsumerWidget {
                                 ),
                               ),
                             ),
-                            if (onCollapse != null)
-                              Align(
-                                alignment: Alignment.centerLeft,
-                                child: Padding(
-                                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-                                  child: TextButton(
-                                    onPressed: () {
-                                      onCollapse!();
-                                      Navigator.of(context).maybePop();
-                                    },
-                                    child: Text(l10n.chatGoalCollapseToBall),
-                                  ),
-                                ),
-                              ),
                             _GoalClearLink(roomId: roomId, goal: goal),
                           ],
                         ),
@@ -926,6 +924,39 @@ class _GoalExpandLayer extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// 浮窗那颗圆键：48 触控、36 圆盘、tonal 底。抽屉、⋯、收起成小球与卡片里的
+/// 暂停/停止都是这一套。
+Widget _goalDisc(
+  BuildContext context, {
+  required String tooltip,
+  required IconData icon,
+  required Color color,
+  required VoidCallback? onTap,
+  Color? background,
+  double iconSize = 20,
+}) {
+  final theme = Theme.of(context);
+  final tonal = background ?? theme.colorScheme.surfaceContainerHighest;
+  return SizedBox.square(
+    dimension: 48,
+    child: Center(
+      child: Material(
+        color: tonal,
+        shape: const CircleBorder(),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onTap,
+          child: Tooltip(
+            message: tooltip,
+            child: SizedBox.square(dimension: 36, child: Icon(icon, size: iconSize, color: color)),
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 /// 卡片头部的两颗：暂停/恢复、停止。停止两段式，3 秒内再点才执行。
@@ -1003,29 +1034,7 @@ class _GoalHeaderActionsState extends ConsumerState<_GoalHeaderActions> {
     required Color color,
     required VoidCallback? onTap,
     Color? background,
-  }) {
-    final theme = Theme.of(context);
-    final tonal = background ?? theme.colorScheme.surfaceContainerHighest;
-    return SizedBox.square(
-      // 浮窗的规矩：触控 48、看的圆盘 36，指头够得着，视觉不重。
-      dimension: 48,
-      child: Center(
-        child: Material(
-          color: tonal,
-          shape: const CircleBorder(),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            customBorder: const CircleBorder(),
-            onTap: onTap,
-            child: Tooltip(
-              message: tooltip,
-              child: SizedBox.square(dimension: 36, child: Icon(icon, size: 20, color: color)),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  }) => _goalDisc(context, tooltip: tooltip, icon: icon, color: color, onTap: onTap, background: background);
 }
 
 /// 卡片底部：清除/取消留成文字链，不做大按钮（浮窗的「收成小球」就是这种位置）。
