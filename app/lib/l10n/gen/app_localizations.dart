@@ -8293,6 +8293,9 @@ abstract class L10n {
   /// **'未连接'**
   String get commonNotConnected;
 
+  /// No description provided for @botsReadOnlyNote.
+  String get botsReadOnlyNote;
+
   /// No description provided for @commonInstalled.
   ///
   /// In zh, this message translates to:

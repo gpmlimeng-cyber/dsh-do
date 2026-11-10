@@ -4788,6 +4788,9 @@ class L10nEn extends L10n {
   String get commonNotConnected => 'Not connected';
 
   @override
+  String get botsReadOnlyNote => 'This group is read-only now';
+
+  @override
   String get commonInstalled => 'Installed';
 
   @override

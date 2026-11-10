@@ -4512,6 +4512,9 @@ class L10nZh extends L10n {
   String get commonNotConnected => '未连接';
 
   @override
+  String get botsReadOnlyNote => '这个群现在是只读的';
+
+  @override
   String get commonInstalled => '已安装';
 
   @override

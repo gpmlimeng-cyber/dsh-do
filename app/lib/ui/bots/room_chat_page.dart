@@ -35,8 +35,10 @@ import '../chat/widgets/attachments.dart';
 import '../chat/widgets/quote_chip.dart' show ComposerTrayStack, QuoteChip;
 import '../chat/widgets/chat_card.dart';
 import '../common/status_dot.dart' show StatusTone;
+import '../common/app_sheet.dart';
 import '../common/brief_notice.dart';
 import '../features/feature_kit.dart';
+import '../shell/adaptive/adaptive_scaffold.dart';
 import '../shell/page_frame.dart';
 import '../session/session_detail_page.dart';
 import 'bot_stop_guard.dart';
@@ -763,6 +765,35 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
       flash: _flash == null ? null : (label: _flash!, tone: _flashTone ?? StatusTone.busy),
     );
 
+    // 运行时与异常时让位：最右必须是停止或警示，最重要的事不躲进菜单。
+    ({IconData icon, String tooltip, VoidCallback? onTap, Color? color})? situationKey() {
+      void say(String text) => ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text(text)));
+      if (!connected) {
+        return (
+          icon: AppIcons.warning,
+          tooltip: l10n.commonNotConnected,
+          onTap: () => say(l10n.commonNotConnected),
+          color: DshColors.of(context).warning,
+        );
+      }
+      if (readOnly) {
+        return (
+          icon: AppIcons.warning,
+          tooltip: l10n.botsReadOnlyNote,
+          onTap: () => say(l10n.botsReadOnlyNote),
+          color: DshColors.of(context).warning,
+        );
+      }
+      if (chat.running) {
+        return (
+          icon: AppIcons.stop,
+          tooltip: l10n.commonStop,
+          onTap: () => _stopGuard.action(roomId: room.id)(),
+          color: Theme.of(context).colorScheme.error,
+        );
+      }
+      return null;
+    }
     // The last key opens a menu when the page has one; its long press and the
     // menu's 对话详情 item both land here, on whatever this page shows.
     final infoGreyed = targetBot != null && memberSession == null;
@@ -770,7 +801,8 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
       if (targetBot == null) {
         // The group's aggregate page has no panel form: beside the chat it is
         // the group Session's own details, which the key folds away.
-        if (layout.isExpanded && layout.panelAvailable) {
+        final layout = AdaptiveChrome.layoutOf(context);
+        if (layout != null && layout.isExpanded && layout.panelAvailable) {
           ref.read(layoutPrefsProvider.notifier).setPanelOpen(!ref.read(layoutPrefsProvider).panelOpen);
         } else {
           Navigator.of(context).push(RoomAggregateDetailsPage.route(room.id));
@@ -903,6 +935,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
     );
     final topInset = BotChatHeader.heightOf(context);
     final readOnly = status.readOnly != null;
+    final connected = ref.watch(activeConnectionProvider).value != null;
 
     return BotAdaptiveFrame(
       drawer: _drawerConfig,
@@ -960,6 +993,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
         // ⋯: the page's menu in one sheet. Details leads it — the key no longer
         // carries that job alone — then the message range, then the members.
         onMenu: () => showRoomMenu(context, ref, room: room, team: team, onDetails: openInfo),
+        action: situationKey(),
         infoGreyed: infoGreyed,
         infoTooltip: layout.isExpanded && layout.panelAvailable
             // Beside the chat the key is a switch for the column.

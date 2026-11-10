@@ -100,3 +100,5 @@ Upstream: `ccch1mneyyy/dsh-Go`, against `v1.0.10` (fork branch `ci/room-progress
 | `c91912bf` | `app/lib/ui/bots/group_goal.dart` | v1.0.10 | Where a goal card's actions and checks sit is Flutter layout over the Host's own goal; no seam owns it. |
 | `$(git rev-parse --short HEAD)` | `app/lib/ui/bots/group_goal.dart`, `app/lib/l10n/` | v1.0.10 | A card's round key is Flutter UI over the Host's own goal; no seam owns it. |
 | `$(git rev-parse --short HEAD)` | `app/lib/ui/bots/group_goal.dart`, `app/lib/l10n/` | v1.0.10 | A goal panel's summary line and its words are Flutter UI over the Host's own goal; no seam owns them. |
+| `$(git rev-parse --short HEAD)` | `app/lib/ui/bots/bot_chat_kit.dart`, `app/lib/ui/bots/room_chat_page.dart`, `app/lib/l10n/` | v1.0.10 | Which key wins the header's last place is Flutter state over the Host's own run and connection; no seam owns it. |
+| `92adc8e6` | `app/lib/ui/bots/room_chat_page.dart`, `app/lib/ui/bots/group_goal.dart` | v1.0.10 | Compile fixes in page wiring; no seam changes. |

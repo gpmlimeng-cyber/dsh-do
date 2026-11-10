@@ -180,7 +180,7 @@ class GoalBarProbe extends ConsumerWidget {
       AsyncData(value: final goal?) when goal.title.isNotEmpty => GroupGoalPill(
         goal: goal,
         expanded: expanded,
-        onTap: expanded ? () => showGoalExpand(context, roomId, onCollapse: onCollapse) : onExpand,
+        onTap: expanded ? () => showGoalExpand(context, roomId, onCollapse: onCollapse) : (onExpand ?? () {}),
       ),
       AsyncLoading() => const SizedBox.square(
         dimension: 30,
@@ -578,6 +578,31 @@ class _GoalPanelState extends ConsumerState<GoalPanel> {
           for (final rule in goal.constraints) _Block(label: l10n.chatGoalRule, value: rule),
         ],
       ],
+    );
+  }
+}
+
+/// 一句话标签加一段值：验收展开里的三块都用它。
+class _Block extends StatelessWidget {
+  const _Block({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final dsh = DshColors.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: theme.textTheme.labelSmall?.copyWith(color: dsh.textTertiary)),
+          const SizedBox(height: 1),
+          Text(value, style: theme.textTheme.bodySmall),
+        ],
+      ),
     );
   }
 }

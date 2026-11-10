@@ -66,6 +66,7 @@ class BotChatHeader extends StatelessWidget {
     this.chip,
     this.onInfo,
     this.onMenu,
+    this.action,
     this.onMessages,
     this.messagesIcon,
     this.messagesTooltip,
@@ -105,6 +106,11 @@ class BotChatHeader extends StatelessWidget {
   /// going straight to details; a long press still runs [onInfo]. Null keeps
   /// the details key.
   final VoidCallback? onMenu;
+
+  /// The page's own situation key, drawn after ⋯ (the row's last): stop while
+  /// something runs, a warning when offline or read-only. The most important
+  /// thing never hides inside a menu.
+  final ({IconData icon, String tooltip, VoidCallback? onTap, Color? color})? action;
 
   /// 消息模式: only a group passes it, and the key sits left of the details one.
   final VoidCallback? onMessages;
@@ -283,7 +289,7 @@ class BotChatHeader extends StatelessWidget {
                     chip,
                   ],
                   const SizedBox(width: 8),
-                  if (onMenu case final onMenu?)
+                  if (onMenu case final onMenu?) ...[
                     _RoundKey(
                       key: const ValueKey('bot-menu-key'),
                       icon: AppIcons.more,
@@ -292,8 +298,18 @@ class BotChatHeader extends StatelessWidget {
                       // One more way in, not a second menu: the details key is
                       // still one long press away.
                       onLongPress: onInfo,
+                    ),
+                    if (action != null) const SizedBox(width: 8),
+                  ],
+                  if (action case final action?)
+                    _RoundKey(
+                      key: const ValueKey('bot-action-key'),
+                      icon: action.icon,
+                      tooltip: action.tooltip,
+                      onTap: action.onTap,
+                      iconColor: action.color,
                     )
-                  else
+                  else if (onMenu == null)
                     _RoundKey(
                       key: const ValueKey('bot-details'),
                       icon: AppIcons.info,

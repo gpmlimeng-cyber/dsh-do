@@ -1423,6 +1423,7 @@
   "commonWaitingApproval": "Needs approval",
   "commonWaitingAnswer": "Needs your answer",
   "commonNotConnected": "Not connected",
+  "botsReadOnlyNote": "This group is read-only now",
   "commonInstalled": "Installed",
   "commonName": "Name",
   "commonStatus": "Status",

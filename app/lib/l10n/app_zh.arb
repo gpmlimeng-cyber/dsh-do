@@ -3012,6 +3012,7 @@
   "commonWaitingApproval": "等你确认",
   "commonWaitingAnswer": "等你回答",
   "commonNotConnected": "未连接",
+  "botsReadOnlyNote": "这个群现在是只读的",
   "commonInstalled": "已安装",
   "commonName": "名称",
   "commonStatus": "状态",
