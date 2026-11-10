@@ -521,5 +521,8 @@
   "botsSendStillWaiting": "Still waiting for the server",
    "chatGoalDrafting": "Drafting — waiting for the admin to start",
    "botsMessageModeEmptyStretch": "Nothing from them in this stretch",
-   "botsRoomScopeAll": "All messages"
+   "botsRoomScopeAll": "All messages",
+  "botsGoalBackToCurrent": "Back to current stage",
+  "botsABot": "a Bot",
+  "botsReadOnlyNote": "This group is read-only now"
 }

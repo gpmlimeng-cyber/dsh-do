@@ -349,5 +349,12 @@
   "chatGoalAcceptance": "Checks",
   "chatGoalAcceptanceDone": "Done when",
   "chatGoalRule": "Rule",
-  "chatGoalRework": "Sent back {count}×"
+  "chatGoalRework": "Sent back {count}×",
+  "chatGoalCollapseToBallHint": "Collapse to a ball — the group name shows in full",
+  "chatGoalDoneWhen": "Done when: {text}",
+  "chatGoalConfirmStop": "Stop the goal?",
+  "chatGoalEvidence": "Evidence",
+  "chatGoalReworkBy": "Sent back by {admin}: {feedback}",
+  "chatGoalReworkByTimes": "Sent back {count} times by {admin}. Last time: {feedback}",
+  "chatStopWorkToo": "Stop current work too"
 }

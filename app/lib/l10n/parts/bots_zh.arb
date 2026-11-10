@@ -1140,5 +1140,8 @@
   "botsSendStillWaiting": "还在等服务器确认",
    "chatGoalDrafting": "起草中，等管理员开始",
    "botsMessageModeEmptyStretch": "这一段里没有他的发言",
-   "botsRoomScopeAll": "全部消息"
+   "botsRoomScopeAll": "全部消息",
+  "botsGoalBackToCurrent": "回到当前阶段",
+  "botsABot": "某个 Bot",
+  "botsReadOnlyNote": "这个群现在是只读的"
 }

@@ -777,5 +777,15 @@
         "type": "int"
       }
     }
-  }
+  },
+  "chatGoalCollapseToBallHint": "收起成小球，群名将完整显示",
+  "chatGoalDoneWhen": "完成标准：{text}",
+  "@chatGoalDoneWhen": {"placeholders":{"text":{"type":"String"}}},
+  "chatGoalConfirmStop": "确认终止？",
+  "chatGoalEvidence": "证据",
+  "chatGoalReworkBy": "{admin} 打回重做：{feedback}",
+  "@chatGoalReworkBy": {"placeholders":{"admin":{"type":"String"},"feedback":{"type":"String"}}},
+  "chatGoalReworkByTimes": "{admin} 已打回 {count} 次，最近一次：{feedback}",
+  "@chatGoalReworkByTimes": {"placeholders":{"count":{"type":"int"},"admin":{"type":"String"},"feedback":{"type":"String"}}},
+  "chatStopWorkToo": "同时停止当前工作"
 }
