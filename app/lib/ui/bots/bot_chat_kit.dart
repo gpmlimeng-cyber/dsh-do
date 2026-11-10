@@ -1615,13 +1615,9 @@ class GroupMessage extends ConsumerWidget {
                   ),
                 ),
                 if (admin) ...[const SizedBox(width: 6), BotTag(l10n.botsAdmin)],
-                if (item.time != null) ...[
-                  const SizedBox(width: 6),
-                  Text(
-                    shortTime(item.time),
-                    style: AppType.tabular(theme.textTheme.labelSmall!.copyWith(color: dsh.textTertiary)),
-                  ),
-                ],
+                // 时间与统计靠行尾：宽屏下气泡变宽，它们不能留在名字后面。
+                // 挤的时候先缩名字和统计，时间固定在最右。
+                const Spacer(),
                 // 这一轮的统计摆在成员行上：耗时 · 步数 · tokens，点开是统计面板。
                 // 数字来自这一段的最后一行（见 _withRunFigures），续行不再各带一份。
                 if (figures case final run?) ...[
@@ -1633,6 +1629,13 @@ class GroupMessage extends ConsumerWidget {
                       tokens: run.tokens,
                       onTap: onStats,
                     ),
+                  ),
+                ],
+                if (item.time != null) ...[
+                  const SizedBox(width: 8),
+                  Text(
+                    shortTime(item.time),
+                    style: AppType.tabular(theme.textTheme.labelSmall!.copyWith(color: dsh.textTertiary)),
                   ),
                 ],
               ],

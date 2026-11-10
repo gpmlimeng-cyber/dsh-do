@@ -169,7 +169,7 @@ class BotComposerDeck extends ConsumerWidget {
                   face: activityBot == null ? null : BotAvatar(bot: activityBot!, size: 22),
                   name: activityBot?.name,
                 ),
-              ComposerStripSlot(sessionId: sessionId, visible: !running),
+              ComposerStripSlot(sessionId: sessionId, visible: !busy),
             ],
             // Running: the permission chip rides beside the activity strip,
             // which is the second row only while a turn runs.
