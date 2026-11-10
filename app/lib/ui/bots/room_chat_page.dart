@@ -100,6 +100,10 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
   /// no route is pushed, so one back still lands on the group's details.
   late RoomChatTarget _target = widget.initialTarget;
 
+  /// 顶栏的目标：小球（默认）或完整胶囊。一次点击切换，不跨启动记住，
+  /// 也不再由设置决定。
+  bool _goalExpanded = false;
+
   late final DraftStore _draftStore = ref.read(draftStoreProvider.notifier);
 
   /// A draft per conversation: the group's, and each member's own.
@@ -939,11 +943,16 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
         onDetails: targetBot == null
             ? () => Navigator.of(context).push(RoomDetailsPage.route(room.id))
             : () => _switchTarget(RoomChatTarget.all),
-        // 群目标的胶囊：简单模式在群名右边一颗环，完整模式把标题收成圆头像、
-        // 由它把目标标题和环一起排出来。点它展开成整条顶栏 + 面板。
-        titleCompact: ref.watch(settingsProvider.select((s) => s.goalBarStyle)) == GoalBarStyle.full &&
-            (ref.watch(groupGoalProvider(room.id)).value?.title.isNotEmpty ?? false),
-        trailing: GoalBarProbe(roomId: room.id),
+        // 群目标的顶栏：小球态群名完整；点开后是完整胶囊。窄屏（非三栏）
+        // 时标题让给胶囊——它撑满一行，群名缩成圆头像；宽屏时两者都完整。
+        titleCompact: _goalExpanded && !layout.isExpanded,
+        trailing: GoalBarProbe(
+          roomId: room.id,
+          expanded: _goalExpanded,
+          onExpand: () => setState(() => _goalExpanded = true),
+          onCollapse: () => setState(() => _goalExpanded = false),
+        ),
+        trailingExpand: _goalExpanded && !layout.isExpanded,
         // Right key = this conversation's details: the group's aggregate in the
         // group chat, the member's own Session in this group otherwise — never a
         // private one, and never the group's numbers under a member's name.

@@ -3711,6 +3711,9 @@ class L10nEn extends L10n {
   String get chatGoalDrafting => 'Drafting — waiting for the admin to start';
 
   @override
+  String get chatGoalCollapseToBall => 'Collapse to a ball';
+
+  @override
   String get botsMessageModeEmptyStretch => 'Nothing from them in this stretch';
 
   @override
@@ -20452,12 +20455,6 @@ class L10nEn extends L10n {
   @override
   String get hubBubbleWidth => 'Bubble width';
 
-  @override
-  String get hubGoalBarStyle => 'Group goal bar';
 
-  @override
-  String get hubGoalBarSimple => 'Simple';
 
-  @override
-  String get hubGoalBarFull => 'Full';
 }

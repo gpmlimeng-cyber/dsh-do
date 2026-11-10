@@ -38,3 +38,7 @@
 - **清空会话**：不做真删。群消息真相在 `room.log` 预览与各 session 历史里，真删会毁掉成员上下文、目标/任务/审批的 seq 引用。要做就加 `room-clear {roomId, throughSeq}`：只清预览并在群数据里记 `clearedThroughSeq`，App 用这个截断点过滤旧消息。语义是「界面不再显示，底层保留」。
 - 两条都**不碰现有契约**（`goal-control`、`session/search` 都不动）。
 - 菜单里加「清空会话」时按 UI 危险项规则：单独分组、二次确认、文案写清后果、读屏念出后果。
+
+## 2026-11-10 · 群目标卡里的成员行
+
+- 标准成员行：`BotAvatar(size: 24)` + 名字 `colorScheme.onSurface` + 行尾状态图标（done=success / reported=primary / working=warning / pending=textTertiary）；任务描述 `onSurfaceVariant`，第二行、缩进对齐名字。名字不按任务状态染色，别再合成一段 `Text.rich`。

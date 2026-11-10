@@ -3524,6 +3524,9 @@ class L10nZh extends L10n {
   String get chatGoalDrafting => '起草中，等管理员开始';
 
   @override
+  String get chatGoalCollapseToBall => '收起成小球';
+
+  @override
   String get botsMessageModeEmptyStretch => '这一段里没有他的发言';
 
   @override
@@ -19399,12 +19402,6 @@ class L10nZh extends L10n {
   @override
   String get hubBubbleWidth => '气泡宽度';
 
-  @override
-  String get hubGoalBarStyle => '群目标显示';
 
-  @override
-  String get hubGoalBarSimple => '简单';
 
-  @override
-  String get hubGoalBarFull => '完整';
 }

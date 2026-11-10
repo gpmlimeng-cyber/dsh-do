@@ -10,8 +10,6 @@ import 'read_list_epoch.dart';
 
 /// 群目标在顶栏怎么摆：简单模式加一颗圆形进度环，完整模式把群名收成
 /// 圆形头像、旁边排一颗完整的胶囊。
-enum GoalBarStyle { simple, full }
-
 /// User settings: the DeepSeek API key (and custom-provider keys, see
 /// [ProviderKeyVault]) live in the Android Keystore-backed secure storage;
 /// plain preferences go to SharedPreferences.
@@ -31,7 +29,6 @@ class AppSettings {
     this.flatBubbles = false,
     this.bubbleWidth = 0.82,
     this.visualReplies = true,
-    this.goalBarStyle = GoalBarStyle.simple,
     this.customProviderIds = const {},
     this.loaded = false,
   });
@@ -84,7 +81,6 @@ class AppSettings {
 
   /// 群目标显示: the top bar's goal capsule, simple (a ring beside the name) or
   /// full (the name shrinks to an avatar, the goal takes the bar).
-  final GoalBarStyle goalBarStyle;
 
   /// Custom providers created on the local engine whose key is kept on the
   /// phone ([ProviderKeyVault]). Known at launch, before the engine runs, so
@@ -112,7 +108,6 @@ class AppSettings {
     bool? flatBubbles,
     double? bubbleWidth,
     bool? visualReplies,
-    GoalBarStyle? goalBarStyle,
     Set<String>? customProviderIds,
     bool? loaded,
   }) => AppSettings(
@@ -130,7 +125,6 @@ class AppSettings {
     flatBubbles: flatBubbles ?? this.flatBubbles,
     bubbleWidth: bubbleWidth ?? this.bubbleWidth,
     visualReplies: visualReplies ?? this.visualReplies,
-    goalBarStyle: goalBarStyle ?? this.goalBarStyle,
     customProviderIds: customProviderIds ?? this.customProviderIds,
     loaded: loaded ?? this.loaded,
   );
@@ -156,7 +150,6 @@ class SettingsController extends Notifier<AppSettings> {
   static const _foldTurnsKey = 'fold_completed_turns';
   static const _showThinkingKey = 'show_thinking';
   static const _flatBubblesKey = 'flat_bubbles';
-  static const _goalBarStyleKey = 'goal_bar_style';
   static const _bubbleWidthKey = 'bubble_width';
   static const _visualRepliesKey = 'visual_replies';
   static const _secure = FlutterSecureStorage();
@@ -208,10 +201,6 @@ class SettingsController extends Notifier<AppSettings> {
       flatBubbles: prefs.getBool(_flatBubblesKey) ?? false,
       bubbleWidth: prefs.getDouble(_bubbleWidthKey) ?? 0.82,
       visualReplies: prefs.getBool(_visualRepliesKey) ?? true,
-      goalBarStyle: GoalBarStyle.values.firstWhere(
-        (style) => style.name == prefs.getString(_goalBarStyleKey),
-        orElse: () => GoalBarStyle.simple,
-      ),
       customProviderIds: providerIds,
       loaded: true,
     );
@@ -274,11 +263,6 @@ class SettingsController extends Notifier<AppSettings> {
     await prefs.setBool(_showThinkingKey, value);
   }
 
-  Future<void> setGoalBarStyle(GoalBarStyle value) async {
-    state = state.copyWith(goalBarStyle: value);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_goalBarStyleKey, value.name);
-  }
 
   Future<void> setFlatBubbles(bool value) async {
     state = state.copyWith(flatBubbles: value);

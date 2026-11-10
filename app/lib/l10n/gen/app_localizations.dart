@@ -6516,6 +6516,9 @@ abstract class L10n {
   /// No description provided for @chatGoalDrafting.
   String get chatGoalDrafting;
 
+  /// No description provided for @chatGoalCollapseToBall.
+  String get chatGoalCollapseToBall;
+
   /// No description provided for @botsMessageModeEmptyStretch.
   String get botsMessageModeEmptyStretch;
 
@@ -35093,12 +35096,6 @@ class _L10nDelegate extends LocalizationsDelegate<L10n> {
   String get hubFlatBubbles;
   String get hubBubbleWidth;
 
-  /// 群目标在顶栏怎么摆
-  String get hubGoalBarStyle;
-
-  String get hubGoalBarSimple;
-
-  String get hubGoalBarFull;
 }
 
 L10n lookupL10n(Locale locale) {

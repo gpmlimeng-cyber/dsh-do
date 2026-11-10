@@ -73,6 +73,7 @@ class BotChatHeader extends StatelessWidget {
     this.infoTooltip,
     this.infoGreyed = false,
     this.trailing,
+    this.trailingExpand = false,
     this.titleCompact = false,
   });
 
@@ -131,6 +132,10 @@ class BotChatHeader extends StatelessWidget {
   /// A widget between the title capsule and the right keys: a group's goal pill.
   final Widget? trailing;
 
+  /// The trailing widget takes the row's spare width (a goal pill that fills
+  /// the header on a narrow screen); the title makes do with its own face.
+  final bool trailingExpand;
+
   /// The title capsule shrinks to its face alone (圆形) so the goal pill beside
   /// it can carry the group's name instead.
   final bool titleCompact;
@@ -158,38 +163,10 @@ class BotChatHeader extends StatelessWidget {
     final dsh = DshColors.of(context);
     final top = MediaQuery.paddingOf(context).top;
     final faceInset = (key44 - faceSize) / 2;
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        // The bar's own plate: the page's backdrop again, a little see-through,
-        // so the conversation scrolls under the buttons instead of being cut.
-        // It must be positioned: a bare infinite CustomPaint in the stack pushes
-        // the buttons off the bar.
-        Positioned(
-          left: 0,
-          right: 0,
-          top: 0,
-          // The native chat's own numbers, so the two plates are one size.
-          child: TopFade(height: top + barHeightOf(context) + 12),
-        ),
-        Padding(
-          padding: EdgeInsets.fromLTRB(12, top, 12, 0),
-          child: BackdropGroup(
-            child: SizedBox(
-              height: barHeightOf(context),
-              child: Row(
-                children: [
-                  if (showLeading)
-                  _RoundKey(
-                    key: const ValueKey('bot-back'),
-                    icon: onLeading == null ? AppIcons.back : AppIcons.menu,
-                    tooltip: onLeading == null ? l10n.commonBack : (leadingTooltip ?? l10n.chatChats),
-                    onTap: onLeading ?? () => Navigator.of(context).maybePop(),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Align(
+    final titlePill = Align(
                       alignment: Alignment.centerLeft,
+                      // 收缩到内容宽度：撑满态里剩下的宽度要留给目标胶囊。
+                      widthFactor: 1,
                       child: Semantics(
                         button: true,
                         hint: titleHint ?? l10n.botsViewDetails,
@@ -253,13 +230,43 @@ class BotChatHeader extends StatelessWidget {
                           ),
                         ),
                       ),
-                    ),
+                    );
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        // The bar's own plate: the page's backdrop again, a little see-through,
+        // so the conversation scrolls under the buttons instead of being cut.
+        // It must be positioned: a bare infinite CustomPaint in the stack pushes
+        // the buttons off the bar.
+        Positioned(
+          left: 0,
+          right: 0,
+          top: 0,
+          // The native chat's own numbers, so the two plates are one size.
+          child: TopFade(height: top + barHeightOf(context) + 12),
+        ),
+        Padding(
+          padding: EdgeInsets.fromLTRB(12, top, 12, 0),
+          child: BackdropGroup(
+            child: SizedBox(
+              height: barHeightOf(context),
+              child: Row(
+                children: [
+                  if (showLeading)
+                  _RoundKey(
+                    key: const ValueKey('bot-back'),
+                    icon: onLeading == null ? AppIcons.back : AppIcons.menu,
+                    tooltip: onLeading == null ? l10n.commonBack : (leadingTooltip ?? l10n.chatChats),
+                    onTap: onLeading ?? () => Navigator.of(context).maybePop(),
                   ),
+                  const SizedBox(width: 8),
+                  if (trailingExpand) Flexible(child: titlePill) else Expanded(child: titlePill),
                   if (trailing case final trailing?) ...[
                     const SizedBox(width: 4),
                     // 目标胶囊要和标题分这点宽度：不给它弹性，长标题会把
                     // 群名那种「只剩一颗圆头像」的收起态挤成一条竖杠。
-                    Flexible(child: trailing),
+                    // 撑满态（窄屏的完整胶囊）则整条占满剩下的宽度。
+                    if (trailingExpand) Expanded(child: trailing) else Flexible(child: trailing),
                   ],
                   if (onMessages case final onMessages?) ...[
                     const SizedBox(width: 8),
