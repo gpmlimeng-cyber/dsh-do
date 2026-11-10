@@ -656,8 +656,8 @@ List<BotRow> attachMemoryNotices(
   return out;
 }
 
-/// 这一轮的这一段（首行加它的续行）的数字:耗时、步数、tokens。
-typedef BotRunFigures = ({Duration duration, int steps, int tokens});
+/// 这一轮的这一段（首行加它的续行）的数字：步数、tokens（时间在名字后面）。
+typedef BotRunFigures = ({int steps, int tokens});
 
 final class BotItemRow extends BotRow {
   const BotItemRow(this.item, {this.continued = false, this.figures});
@@ -746,9 +746,12 @@ List<BotRow> _withRunFigures(List<BotRow> rows) {
     BotRunFigures? figures;
     for (var k = last; k >= i; k--) {
       final item = (out[k] as BotItemRow).item;
-      final took = item.duration;
-      if (took != null && took >= const Duration(seconds: 1)) {
-        figures = (duration: took, steps: item.steps ?? 0, tokens: item.tokens ?? 0);
+      // 第二行只有步数与 tokens 了，所以按它们判有没有：用时不到一秒但真花了
+      // 步数的一轮，也要有这一行。
+      final steps = item.steps ?? 0;
+      final tokens = item.tokens ?? 0;
+      if (steps > 0 || tokens > 0) {
+        figures = (steps: steps, tokens: tokens);
         break;
       }
     }
@@ -1566,18 +1569,12 @@ class BotTextBubble extends StatelessWidget {
   }
 }
 
-/// A group line's footnote: `39 秒 · 7 步 · 109K tokens ›`, the same sentence a
-/// Bot's own reply ends with. Tapping it opens the member Session's 用量 panel.
+/// A group line's figures: `7 步 · 109K tokens ›`, under the name line. 时间在
+/// 名字后面（网页端 `cells.js` 的 `SpeakerHead`），这里不再重复；点开是成员
+/// Session 的用量面板。
 class BotGroupFootnote extends StatelessWidget {
-  const BotGroupFootnote({
-    super.key,
-    required this.duration,
-    this.steps = 0,
-    this.tokens = 0,
-    this.onTap,
-  });
+  const BotGroupFootnote({super.key, this.steps = 0, this.tokens = 0, this.onTap});
 
-  final Duration duration;
   final int steps;
   final int tokens;
   final VoidCallback? onTap;
@@ -1586,8 +1583,9 @@ class BotGroupFootnote extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final dsh = DshColors.of(context);
-    // 时间 · 步数 · tokens：和输入框上方的活动行同一个函数。
-    final label = runFigures(duration: duration, steps: steps, tokens: tokens);
+    // 步数 · tokens：和输入框上方活动行同一个拼法（那边还要带时间，所以走
+    // [runFigures] 的同一份实现，这里只是不传时长）。
+    final label = runFigures(steps: steps, tokens: tokens);
     final style = AppType.tabular(
       theme.textTheme.labelSmall!.copyWith(fontSize: 12, color: dsh.textTertiary, height: 1.3),
     );
@@ -1682,7 +1680,9 @@ class GroupMessage extends ConsumerWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 名字只占自己需要的宽度，时间固定在行尾；统计不跟它们挤一行。
+                // 名字 → admin 标签 → 时间，紧挨着（网页端 `SpeakerHead` 就是
+                // name 后面直接跟时间，没有把它推到行尾）。名字长了先缩名字，
+                // 时间与统计都不许被挤掉。
                 Row(
                   children: [
                     Flexible(
@@ -1697,25 +1697,21 @@ class GroupMessage extends ConsumerWidget {
                       ),
                     ),
                     if (admin) ...[const SizedBox(width: 6), BotTag(l10n.botsAdmin)],
-                    const Spacer(),
-                    if (item.time != null)
+                    if (item.time != null) ...[
+                      const SizedBox(width: 6),
                       Text(
                         shortTime(item.time),
                         style: AppType.tabular(theme.textTheme.labelSmall!.copyWith(color: dsh.textTertiary)),
                       ),
+                    ],
                   ],
                 ),
-                // 这一轮的统计自己一行：耗时 · 步数 · tokens，点开是统计面板。名字长
-                // 短、有没有 admin 标签、有没有时间，都挤不到它。数字来自这一段的
-                // 最后一行（见 _withRunFigures），续行不再各带一份。
-                if (figures case final run?) ...[
+                // 这一轮的统计自己一行：步数 · tokens，点开是统计面板。名字长短、
+                // 有没有 admin 标签、有没有时间，都挤不到它。数字来自这一段的最后
+                // 一行（见 _withRunFigures），续行不再各带一份。
+                if (figures case final run? when run.steps > 0 || run.tokens > 0) ...[
                   const SizedBox(height: 1),
-                  BotGroupFootnote(
-                    duration: run.duration,
-                    steps: run.steps,
-                    tokens: run.tokens,
-                    onTap: onStats,
-                  ),
+                  BotGroupFootnote(steps: run.steps, tokens: run.tokens, onTap: onStats),
                 ],
               ],
             ),
