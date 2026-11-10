@@ -8,6 +8,7 @@ import 'package:dsh_client/dsh_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../common/route_observer.dart';
 import '../../l10n/l10n.dart';
 import '../../state/room_activity_state.dart' show roomMembersActivityProvider, roomUsageTotal;
 import '../../state/room_chat_target.dart';
@@ -90,7 +91,7 @@ class RoomChatPage extends ConsumerStatefulWidget {
   ConsumerState<RoomChatPage> createState() => _RoomChatPageState();
 }
 
-class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProviderStateMixin {
+class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBindingObserver, RouteAware, TickerProviderStateMixin {
   Object? _continueScope;
   int _continueRequest = 0;
   bool _continuing = false;
@@ -366,6 +367,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
       }
     });
     _viewing = ref.read(dsBotViewingProvider.notifier);
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _viewing.set(widget.roomId);
     });
@@ -396,8 +398,33 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with TickerProvider
     }
   }
 
+  ModalRoute<dynamic>? _route;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route != null && route != _route) {
+      _route = route;
+      appRouteObserver.subscribe(this, route);
+    }
+  }
+
+  /// 被别的页面（成员详情、群详情、图片、各种 sheet）盖住：把输入框的焦点
+  /// 收掉。pop 回来时 Flutter 会把焦点还给输入框，Android 便又弹键盘。
+  @override
+  void didPushNext() => _focus.unfocus();
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // 退到后台、锁屏、切走：同样收掉焦点，回来不自动弹。
+    if (state != AppLifecycleState.resumed) _focus.unfocus();
+  }
+
   @override
   void dispose() {
+    appRouteObserver.unsubscribe(this);
+    WidgetsBinding.instance.removeObserver(this);
     _progressTimer?.cancel();
     _flashTimer?.cancel();
     _voice.removeListener(_reportVoice);

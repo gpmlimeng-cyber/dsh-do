@@ -17,6 +17,7 @@ import '../../common/typing_indicator.dart';
 import '../../theme/theme.dart';
 import '../activity_copy.dart';
 import '../run_info.dart';
+import '../dock/dock_pill.dart' show DockMetrics;
 import 'live_clock.dart';
 import 'whale_tail.dart';
 
@@ -141,8 +142,10 @@ class _ActivityStripSlotState extends ConsumerState<ActivityStripSlot> with Sing
         return AnimatedBuilder(
           animation: _height,
           builder: (context, child) => Align(alignment: Alignment.topCenter, heightFactor: _height.value, child: child),
+          // 这一条和胶囊行/插件条占同一条高度带（42 = 36 + 6）：活动开始、结束
+          // 时换的是内容，不是高度，下面那排键才不会上下挪。
           child: Padding(
-            padding: const EdgeInsets.only(bottom: 6),
+            padding: const EdgeInsets.only(bottom: DockMetrics.gap),
             child: PetPerch(
               kind: PerchKind.strip,
               active: shown != null,

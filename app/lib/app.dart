@@ -13,6 +13,7 @@ import 'state/appearance_state.dart';
 import 'state/locale_state.dart';
 import 'state/star_prompt.dart' show starPromptGateProvider, starPromptProvider;
 import 'state/tile_style_state.dart';
+import 'ui/common/route_observer.dart';
 import 'ui/chat/dsh_ui/dsh_ui_model.dart' show DshUiAppAccent;
 import 'ui/common/side_insets.dart';
 import 'ui/launch/launch_overlay.dart';
@@ -167,6 +168,8 @@ class _DshAppState extends ConsumerState<DshApp> with WidgetsBindingObserver {
     return MaterialApp(
       title: AppInfo.name,
       debugShowCheckedModeBanner: false,
+      // 会话页订阅它：被别的页面盖住时收掉输入框的 focus，回来不弹键盘。
+      navigatorObservers: [appRouteObserver],
       theme: _light,
       darkTheme: _dark,
       themeMode: themeMode,

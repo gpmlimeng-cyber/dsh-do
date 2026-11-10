@@ -8,6 +8,7 @@ import 'package:dsh_client/dsh_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../common/route_observer.dart';
 import '../../l10n/l10n.dart';
 import '../../state/settings_state.dart';
 import '../../state/attachments.dart';
@@ -70,7 +71,7 @@ class BotChatPage extends ConsumerStatefulWidget {
   ConsumerState<BotChatPage> createState() => _BotChatPageState();
 }
 
-class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingObserver, TickerProviderStateMixin {
+class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingObserver, RouteAware, TickerProviderStateMixin {
   late final BotStopGuard _stopGuard;
   final _input = TextEditingController();
   final _focus = FocusNode();
@@ -93,7 +94,26 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final resumed = state == AppLifecycleState.resumed;
     if (resumed != _resumed && mounted) setState(() => _resumed = resumed);
+    // 退到后台、锁屏、切走：把输入框的焦点收掉，回来时不会自动弹键盘。
+    if (!resumed) _focus.unfocus();
   }
+
+  ModalRoute<dynamic>? _route;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route != null && route != _route) {
+      _route = route;
+      appRouteObserver.subscribe(this, route);
+    }
+  }
+
+  /// 被别的页面（详情、图片、各种 sheet）盖住：收掉焦点。pop 回来时 Flutter
+  /// 会把焦点还给输入框，Android 便又把键盘弹起来——这一句就是防它的。
+  @override
+  void didPushNext() => _focus.unfocus();
 
   /// 活动行点开的是这一轮（还在跑就是它，跑完了是最后一轮）；一轮都没有时
   /// 打开用量面板。
@@ -134,6 +154,7 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
 
   @override
   void dispose() {
+    appRouteObserver.unsubscribe(this);
     WidgetsBinding.instance.removeObserver(this);
     _voice.removeListener(_reportVoice);
     _voice.dispose();

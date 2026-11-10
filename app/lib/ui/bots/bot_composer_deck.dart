@@ -24,6 +24,7 @@ import '../../l10n/l10n.dart';
 import '../common/app_sheet.dart' show SheetGroup, showAppSheet;
 import '../common/sheet_title_bar.dart' show SheetTitleBar;
 import '../chat/dock/chat_dock.dart';
+import '../chat/dock/dock_pill.dart' show DockMetrics;
 import '../chat/dock/dock_stack.dart';
 import '../chat/balance_widgets.dart' show LowBalanceBanner;
 import '../chat/usage_sheet.dart' show ContextRing, showUsageSheet;
@@ -137,49 +138,56 @@ class BotComposerDeck extends ConsumerWidget {
         // Safe mode / trial banner; draws nothing otherwise.
         const SafeModeBanner(padding: EdgeInsets.only(bottom: 8)),
         BackdropGroup(
-          child: DockStack(
-            cards: [
-              if (showSessionBars) ...[
-                TodoDockSlot(sessionId: sessionId),
-                GoalDockSlot(sessionId: sessionId),
+          // 这一格永远留一条的高度（36 + 6）：闲着是插件条、跑起来是活动行，
+          // 换的是内容不是高度。胶囊行也不再随 busy 消失，于是整个输入框上方
+          // 的高度与 busy 无关，下面输入行与那排键一动不动。
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: DockMetrics.height + DockMetrics.gap),
+            child: DockStack(
+              cards: [
+                if (showSessionBars) ...[
+                  TodoDockSlot(sessionId: sessionId),
+                  GoalDockSlot(sessionId: sessionId),
+                ],
+                // A group speaks through the upstream strip alone: it shows the
+                // member who is running, read from that member's Session in this
+                // group, and how many are running is in the group's own header.
+                if (!showActivity) ...[] else if (roomActivity case final status?) ...[
+                  // One strip, and the upstream one: 「另外还有 N 位在跑」 as its
+                  // own card floated above the composer on a second layer, and the
+                  // group's own header already says how many are running.
+                  ActivityStripSlot(
+                    sessionId: status.sessionId ?? activitySessionId ?? sessionId,
+                    onTap: onRoomActivityTap,
+                    todoProgress: !showSessionBars,
+                    dock: true,
+                    // 打字行里要有「谁在写」：那张脸和那个名字。
+                    face: (status.bot ?? activityBot) == null
+                        ? null
+                        : BotAvatar(bot: (status.bot ?? activityBot)!, size: 22),
+                    name: (status.bot ?? activityBot)?.name,
+                  ),
+                ] else
+                  ActivityStripSlot(
+                    sessionId: activitySessionId ?? sessionId,
+                    dock: true,
+                    // 成员视图这条分支也要脸和名字，不然只剩一句短语。
+                    face: activityBot == null ? null : BotAvatar(bot: activityBot!, size: 22),
+                    name: activityBot?.name,
+                  ),
+                ComposerStripSlot(sessionId: sessionId, visible: !busy),
               ],
-              // A group speaks through the upstream strip alone: it shows the
-              // member who is running, read from that member's Session in this
-              // group, and how many are running is in the group's own header.
-              if (!showActivity) ...[] else if (roomActivity case final status?) ...[
-                // One strip, and the upstream one: 「另外还有 N 位在跑」 as its
-                // own card floated above the composer on a second layer, and the
-                // group's own header already says how many are running.
-                ActivityStripSlot(
-                  sessionId: status.sessionId ?? activitySessionId ?? sessionId,
-                  onTap: onRoomActivityTap,
-                  todoProgress: !showSessionBars,
-                  dock: true,
-                  // 打字行里要有「谁在写」：那张脸和那个名字。
-                  face: (status.bot ?? activityBot) == null
-                      ? null
-                      : BotAvatar(bot: (status.bot ?? activityBot)!, size: 22),
-                  name: (status.bot ?? activityBot)?.name,
-                ),
-              ] else
-                ActivityStripSlot(
-                  sessionId: activitySessionId ?? sessionId,
-                  dock: true,
-                  // 成员视图这条分支也要脸和名字，不然只剩一句短语。
-                  face: activityBot == null ? null : BotAvatar(bot: activityBot!, size: 22),
-                  name: activityBot?.name,
-                ),
-              ComposerStripSlot(sessionId: sessionId, visible: !busy),
-            ],
-            // Running: the permission chip rides beside the activity strip,
-            // which is the second row only while a turn runs.
-            accessory: running ? stripRisk() : null,
+              // Running: the permission chip rides beside the activity strip,
+              // which is the second row only while a turn runs.
+              accessory: running ? stripRisk() : null,
+            ),
           ),
         ),
-        // The capsules (ui.json's and plugins') and, while idle, the permission
-        // chip as their leading: one row, as the chat page has it.
-        // The status line already rides in the deck as a card; not twice.
-        NativeComposerBar(sessionId: sessionId, visible: !busy, strip: false, leading: shownCapsule),
+        // The capsules (ui.json's and plugins') and the permission chip as their
+        // leading: one row, as the chat page has it. It stays up while a round
+        // runs too: hiding it would take a row out of the column and push the
+        // composer (and its keys) up and down at every start and end.
+        NativeComposerBar(sessionId: sessionId, visible: true, strip: false, leading: shownCapsule),
       ],
     );
   }
