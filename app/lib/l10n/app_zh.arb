@@ -2257,7 +2257,7 @@
   "chatPauseGoalHint": "先不自动推进",
   "chatResumeGoal": "恢复",
   "chatResumeGoalHint": "继续自动推进",
-  "chatClearGoal": "清除目标",
+  "chatClearGoal": "清除",
   "chatGoalHint": "要完成什么",
   "chatGoalDrafting": "起草中，等管理员开始",
   "chatGoalCollapseToBallHint": "收起成小球，群名将完整显示",
@@ -2892,14 +2892,23 @@
   "chatGoalNone": "还没有目标",
   "chatGoalPanel": "目标与验收",
   "chatGoalStageCurrent": "当前阶段",
-  "chatGoalStageDone": "完成标准",
+  "chatGoalStageDone": "验收方法",
+  "chatGoalDoneWhen": "完成标准：{text}",
+  "@chatGoalDoneWhen": {
+    "placeholders": {
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "chatGoalConfirmStop": "确认终止？",
   "chatGoalTasks": "成员任务",
   "chatGoalTaskPending": "待办",
   "chatGoalTaskWorking": "在做",
   "chatGoalTaskReported": "已交",
   "chatGoalTaskDone": "已完成",
-  "chatGoalAcceptance": "验收",
-  "chatGoalAcceptanceDone": "达成条件",
+  "chatGoalAcceptance": "目标与验收",
+  "chatGoalAcceptanceDone": "验收方法",
   "chatGoalRule": "约束",
   "chatGoalRework": "已打回 {count} 次",
   "@chatGoalRework": {
@@ -2911,7 +2920,7 @@
   },
   "botsGoalBackToCurrent": "回到当前阶段",
   "chatGoalEvidence": "证据",
-  "chatGoalReworkBy": "被 {admin} 打回：{feedback}",
+  "chatGoalReworkBy": "{admin} 打回重做：{feedback}",
   "@chatGoalReworkBy": {
     "placeholders": {
       "admin": {
@@ -2922,7 +2931,7 @@
       }
     }
   },
-  "chatGoalReworkByTimes": "被 {admin} 打回 {count} 次。上次：{feedback}",
+  "chatGoalReworkByTimes": "{admin} 已打回 {count} 次，最近一次：{feedback}",
   "botsABot": "某个 Bot",
   "chatStopWorkToo": "连当前工作一起停",
   "@chatGoalReworkByTimes": {

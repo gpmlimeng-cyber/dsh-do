@@ -437,6 +437,35 @@ class _GoalPanelState extends ConsumerState<GoalPanel> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
+        // 正文最上面先给一眼：目标、验收方法各两行；完整的三项在底部的
+        // 「目标与验收」折叠里。
+        if (goal.objective.isNotEmpty || goal.acceptance.isNotEmpty) ...[
+          if (goal.objective.isNotEmpty)
+            Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(text: '${l10n.chatGoal}  ', style: small),
+                  TextSpan(text: goal.objective, style: theme.textTheme.bodyMedium),
+                ],
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          if (goal.acceptance.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(text: '${l10n.chatGoalStageDone}  ', style: small),
+                  TextSpan(text: goal.acceptance, style: theme.textTheme.bodyMedium),
+                ],
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+          const SizedBox(height: 10),
+        ],
         if (goal.status != 'drafting' && goal.stages.length > 1)
           _StageStrip(
             stages: goal.stages,
@@ -482,9 +511,7 @@ class _GoalPanelState extends ConsumerState<GoalPanel> {
           ),
           if (stage.acceptance.isNotEmpty) ...[
             const SizedBox(height: 6),
-            Text(l10n.chatGoalStageDone, style: small),
-            const SizedBox(height: 1),
-            Text(stage.acceptance, style: theme.textTheme.bodyMedium),
+            Text(l10n.chatGoalDoneWhen(stage.acceptance), style: theme.textTheme.bodyMedium),
           ],
           if (_viewing == at && stage.reworks > 0 && stage.feedback.isNotEmpty) ...[
             const SizedBox(height: 6),
@@ -1018,7 +1045,7 @@ class _GoalHeaderActionsState extends ConsumerState<_GoalHeaderActions> {
           onTap: _busy ? null : () => _control(paused ? 'resume' : 'pause'),
         ),
         _disc(
-          tooltip: _armed ? '${l10n.commonStop}?' : l10n.commonStop,
+          tooltip: _armed ? l10n.chatGoalConfirmStop : l10n.commonStop,
           icon: AppIcons.stop,
           color: _armed ? Theme.of(context).colorScheme.onError : Theme.of(context).colorScheme.error,
           background: _armed ? Theme.of(context).colorScheme.error : null,

@@ -3515,7 +3515,7 @@ class L10nZh extends L10n {
   String get chatResumeGoalHint => '继续自动推进';
 
   @override
-  String get chatClearGoal => '清除目标';
+  String get chatClearGoal => '清除';
 
   @override
   String get chatGoalHint => '要完成什么';
@@ -19348,7 +19348,15 @@ class L10nZh extends L10n {
 
   String get chatGoalStageCurrent => '当前阶段';
 
-  String get chatGoalStageDone => '完成标准';
+  String get chatGoalStageDone => '验收方法';
+
+  @override
+  String chatGoalDoneWhen(String text) {
+    return '完成标准：$text';
+  }
+
+  @override
+  String get chatGoalConfirmStop => '确认终止？';
 
   String get chatGoalTasks => '成员任务';
 
@@ -19360,9 +19368,9 @@ class L10nZh extends L10n {
 
   String get chatGoalTaskDone => '已完成';
 
-  String get chatGoalAcceptance => '验收';
+  String get chatGoalAcceptance => '目标与验收';
 
-  String get chatGoalAcceptanceDone => '达成条件';
+  String get chatGoalAcceptanceDone => '验收方法';
 
   String get chatGoalRule => '约束';
 

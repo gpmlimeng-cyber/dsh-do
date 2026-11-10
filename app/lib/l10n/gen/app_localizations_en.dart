@@ -3702,7 +3702,7 @@ class L10nEn extends L10n {
   String get chatResumeGoalHint => 'Resume automatic progress';
 
   @override
-  String get chatClearGoal => 'Clear goal';
+  String get chatClearGoal => 'Clear';
 
   @override
   String get chatGoalHint => 'What do you want to achieve?';
@@ -20403,6 +20403,14 @@ class L10nEn extends L10n {
 
   String get chatGoalStageDone => 'Done when';
 
+  @override
+  String chatGoalDoneWhen(String text) {
+    return 'Done when: $text';
+  }
+
+  @override
+  String get chatGoalConfirmStop => 'Stop the goal?';
+
   String get chatGoalTasks => 'Members\' tasks';
 
   String get chatGoalTaskPending => 'To do';
@@ -20413,7 +20421,7 @@ class L10nEn extends L10n {
 
   String get chatGoalTaskDone => 'Done';
 
-  String get chatGoalAcceptance => 'Checks';
+  String get chatGoalAcceptance => 'Goal and checks';
 
   String get chatGoalAcceptanceDone => 'Done when';
 

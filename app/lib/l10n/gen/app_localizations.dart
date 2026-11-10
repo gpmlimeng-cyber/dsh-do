@@ -35055,6 +35055,12 @@ class _L10nDelegate extends LocalizationsDelegate<L10n> {
 
   String get chatGoalStageDone;
 
+  /// No description provided for @chatGoalDoneWhen.
+  String chatGoalDoneWhen(String text);
+
+  /// No description provided for @chatGoalConfirmStop.
+  String get chatGoalConfirmStop;
+
   String get chatGoalTasks;
 
   String get chatGoalTaskPending;
