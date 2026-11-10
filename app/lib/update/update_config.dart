@@ -30,9 +30,9 @@ const updateRepo = String.fromEnvironment('DSH_UPDATE_REPO', defaultValue: 'gpml
 /// though this build's own updates come from [updateRepo].
 const upstreamRepo = 'ccch1mneyyy/dsh-go';
 
-/// The upstream version this line is based on, for 「2.0.3（基于上游 v1.0.8）」.
+/// The upstream version this line is based on, for 「2.2.0（基于上游 v1.0.15）」.
 /// One place only: when upstream moves, this and the version's minor change.
-const upstreamBaseline = 'v1.0.8';
+const upstreamBaseline = 'v1.0.15';
 
 /// `releases/latest` of the REST API: tag, notes, assets with sizes and
 /// SHA-256 digests. Unauthenticated: 60 requests per hour per IP.

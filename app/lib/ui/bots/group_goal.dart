@@ -698,7 +698,7 @@ class GoalChecksBar extends StatelessWidget {
                     child: Icon(AppIcons.collapse, size: 14, color: dsh.textTertiary),
                   ),
                   const SizedBox(width: 6),
-                  Text(l10n.chatGoalAcceptance),
+                  Text(l10n.chatGoalPanel),
                 ],
               ),
             ),
