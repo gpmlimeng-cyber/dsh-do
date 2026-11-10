@@ -115,3 +115,8 @@ Upstream: `ccch1mneyyy/dsh-Go`, against `v1.0.10` (fork branch `ci/room-progress
 | `$(git rev-parse --short HEAD)` | `app/lib/ui/bots/room_chat_page.dart` | v1.0.10 | A pill's folded state is per-room page state; no seam owns it. |
 | `$(git rev-parse --short HEAD)` | `app/lib/ui/bots/bot_composer_deck.dart`, `app/lib/ui/bots/bot_chat_kit.dart` | v1.0.10 | Which row shows above the composer and where a line's time sits are Flutter layout; no seam owns them. |
 | `$(git rev-parse --short HEAD)` | `app/lib/ui/bots/bot_chat_kit.dart` | v1.0.10 | How the header row splits its width is Flutter layout; no seam owns it. |
+| `$(git rev-parse --short HEAD)` | `app/lib/ui/bots/group_goal.dart` | v1.0.10 | Which gesture folds a pill is Flutter UI; no seam owns it. |
+| `$(git rev-parse --short HEAD)` | `app/lib/ui/bots/group_goal.dart` | v1.0.10 | What a card's body shows above its fold is Flutter layout; no seam owns it. |
+| `$(git rev-parse --short HEAD)` | `app/lib/ui/bots/group_goal.dart` | v1.0.10 | Where a card's checks bar sits is Flutter layout; no seam owns it. |
+| `$(git rev-parse --short HEAD)` | `app/lib/ui/bots/group_goal.dart` | v1.0.10 | A member row's state mark and its one-paragraph text are Flutter UI; no seam owns them. |
+| `$(git rev-parse --short HEAD)` | `app/lib/ui/bots/group_goal.dart` | v1.0.10 | How large a pill's ring is is Flutter layout; no seam owns it. |

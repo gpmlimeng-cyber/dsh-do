@@ -180,7 +180,9 @@ class GoalBarProbe extends ConsumerWidget {
       AsyncData(value: final goal?) when goal.title.isNotEmpty => GroupGoalPill(
         goal: goal,
         expanded: expanded,
-        onTap: expanded ? () => showGoalExpand(context, roomId, onCollapse: onCollapse) : (onExpand ?? () {}),
+        // 点完整胶囊开面板；长按才收成小球。收起与「关面板」是两件事。
+        onTap: expanded ? () => showGoalExpand(context, roomId) : (onExpand ?? () {}),
+        onLongPress: expanded ? onCollapse : null,
       ),
       AsyncLoading() => const SizedBox.square(
         dimension: 30,
@@ -214,31 +216,26 @@ class GoalBarProbe extends ConsumerWidget {
   }
 }
 
-/// 胶囊第二行要显示的两段：前缀（状态词 / 成员名 / 第 i/N 段）与后缀（阶段名 /
-/// 任务名）。后缀为空时只显示前缀，分隔符一起消失。
+/// 胶囊第二行：网页 `goalView` 的 `barLabel`，逐条照抄
+/// （`ds-bot/src/client/goal.js:42`）。只拆成两段是为了整段省略，拼起来就是
+/// 网页那一行。
+///
+/// 网页的 `current` 只在进行中 / 暂停时有：其余状态就算 `current` 还指在
+/// 某一段上，也不再说是「当前阶段」。
 ({String head, String tail}) goalDynamicLine(L10n l10n, DsBotGroupGoal goal) {
-  final position = goal.position;
-  final stage = goal.stage;
-  String? runningName;
-  String? runningTask;
-  for (final task in stage?.tasks ?? const <DsBotGoalTask>[]) {
-    if (task.status == 'working') {
-      runningName = task.bot;
-      runningTask = task.task;
-      break;
-    }
-  }
-  final atStage = position.isEmpty ? '' : l10n.chatGoalStageAt(position);
-  return switch (goal.status) {
-    'drafting' => (head: l10n.chatGoalDrafting, tail: ''),
-    'complete' => (head: l10n.commonCompleted, tail: l10n.chatGoalDoneStages(goal.stageCount)),
-    'stopped' => (head: l10n.chatGoalStopped, tail: atStage),
-    'paused' when runningName != null => (head: l10n.chatGoalPaused, tail: l10n.chatGoalPausedRunning(runningName)),
-    'paused' => (head: l10n.chatGoalPaused, tail: atStage),
-    _ when goal.idle => (head: l10n.chatGoalIdleWord, tail: atStage),
-    _ when runningName != null && runningTask != null => (head: runningName, tail: runningTask),
-    _ => (head: atStage.isEmpty ? l10n.chatGoalActiveWord : atStage, tail: atStage.isEmpty ? '' : (stage?.title ?? '')),
-  };
+  final current = goal.status == 'active' || goal.status == 'paused' ? goal.stage : null;
+  final title = current?.title ?? '';
+  if (goal.status == 'drafting') return (head: l10n.chatGoalAligning, tail: '');
+  if (goal.status == 'stopped') return (head: l10n.chatGoalStopped, tail: '');
+  if (goal.status == 'complete') return (head: l10n.chatGoalReached, tail: '');
+  if (goal.status == 'paused') return (head: l10n.chatGoalPaused, tail: title);
+  if (goal.idle) return (head: l10n.chatGoalIdleWord, tail: title);
+  if (current == null) return (head: l10n.chatGoalFinalCheck, tail: '');
+  // 这一段的任务都交了，就是在验收；空任务列表在网页里也算「都交了」。
+  final checking = current.tasks.every((task) => task.status == 'reported' || task.status == 'done');
+  // 网页这条带阶段名：「验收中 · {title}」，这里整句放进 head、tail 留空。
+  if (checking) return (head: l10n.chatGoalChecking(title), tail: '');
+  return (head: title, tail: '');
 }
 
 /// 下行按「·」分段省略：前缀整段保留，后缀放不下就整段换成「…」；后缀为空时
@@ -268,10 +265,46 @@ String splitForPill({
   return '$head · …';
 }
 
-/// 两行胶囊的高度：正常 44，大字号按内容长高（顶栏的 barHeightOf 也随字号长）。
+/// 两行胶囊的高度：网页那条 bar 是 12/16，这里按内容长高（默认字号约 45.5），
+/// 大字号继续跟着长。
 double pillHeightOf(BuildContext context) {
   final scaler = MediaQuery.textScalerOf(context);
-  return math.max(44, scaler.scale(14) * 1.25 + 2 + scaler.scale(11) * 1.25 + 10);
+  return math.max(44, scaler.scale(14) * 1.25 + 2 + scaler.scale(12) * (16 / 12) + 10);
+}
+
+/// 胶囊第二行前面那颗：网页 `.bt-goal-dot` 的 8px 圆点，完成后换成
+/// `.bt-goal-check` 的 14px 勾。颜色照 CSS：进行中绿、起草强调色、暂停与等你
+/// 是星色、已停止 ink-3。
+class _GoalBarMark extends StatelessWidget {
+  const _GoalBarMark({required this.goal});
+
+  final DsBotGroupGoal goal;
+
+  static const double _dot = 8;
+  static const double _check = 14;
+
+  /// 这一格占多宽，调用处按它扣掉文字可用宽度。
+  double get width => goal.status == 'complete' ? _check : _dot;
+
+  @override
+  Widget build(BuildContext context) {
+    final dsh = DshColors.of(context);
+    if (goal.status == 'complete') {
+      return Icon(AppIcons.done, size: _check, color: dsh.success);
+    }
+    final color = switch (goal.status) {
+      'drafting' => Theme.of(context).colorScheme.primary,
+      'stopped' => dsh.textTertiary,
+      'paused' => dsh.warning,
+      _ when goal.idle => dsh.warning,
+      _ => dsh.success,
+    };
+    return Container(
+      width: _dot,
+      height: _dot,
+      decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+    );
+  }
 }
 
 /// 顶栏那颗：小球（环）或完整胶囊（图标 + 标题 + 环）。
@@ -283,6 +316,7 @@ class GroupGoalPill extends StatelessWidget {
     super.key,
     required this.goal,
     required this.onTap,
+    this.onLongPress,
     this.expanded = false,
     this.expandArrow = false,
   });
@@ -290,18 +324,25 @@ class GroupGoalPill extends StatelessWidget {
   final DsBotGroupGoal goal;
   final VoidCallback onTap;
 
+  /// 完整胶囊长按收成小球；小球长按无动作（点它就展开）。
+  final VoidCallback? onLongPress;
+
   /// False: the ball. True: the full pill.
   final bool expanded;
 
   /// 展开面板的头部那颗多一个收起箭头。
   final bool expandArrow;
 
+  /// 进度环的尺寸：完整胶囊与小球共用这一个值。
+  static const double _ringSize = 32;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final dsh = DshColors.of(context);
     final paused = goal.status == 'paused';
-    final ring = GoalRing(goal: goal, size: expanded ? 24 : 32, announce: false);
+    // 完整胶囊和小球用同一颗环：换形态时环不应该变小。
+    final ring = GoalRing(goal: goal, size: _ringSize, announce: false);
     if (!expanded) {
       return Semantics(
         button: true,
@@ -334,6 +375,65 @@ class GroupGoalPill extends StatelessWidget {
     }
     final l10n = context.l10n;
     final line = goalDynamicLine(l10n, goal);
+    // 文字列：上行目标，下行当前动态。宽度由外层给——撑满时吃满余量，定宽时
+    // 只占内容宽。
+    final text = LayoutBuilder(
+      builder: (context, constraints) {
+        // 网页 `.bt-goal-bar`：12 / 行高 16、ink-2，前面一颗 8px 状态点；
+        // 完成后那颗点换成 14 的勾。
+        final small = theme.textTheme.labelSmall!.copyWith(
+          fontSize: 12,
+          height: 16 / 12,
+          fontWeight: FontWeight.w400,
+          color: theme.colorScheme.onSurfaceVariant,
+        );
+        final mark = _GoalBarMark(goal: goal);
+        final dynamicLine = splitForPill(
+          head: line.head,
+          tail: line.tail,
+          maxWidth: math.max(0, constraints.maxWidth - mark.width - 6),
+          style: small,
+          scaler: MediaQuery.textScalerOf(context),
+        );
+        // 两行同字就不写第二遍。
+        final showSecond = dynamicLine != goal.title;
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              goal.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.labelLarge?.copyWith(
+                fontSize: 14,
+                height: 1.25,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            if (showSecond) ...[
+              const SizedBox(height: 2),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  mark,
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      dynamicLine,
+                      maxLines: 1,
+                      overflow: TextOverflow.clip,
+                      style: small,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        );
+      },
+    );
     return Semantics(
       button: true,
       label: goal.title,
@@ -345,74 +445,39 @@ class GroupGoalPill extends StatelessWidget {
           stadium: true,
           grouped: true,
           onTap: onTap,
+          onLongPress: onLongPress,
           child: Tooltip(
             message: goal.title,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 16, 0),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // 暂停时前面那颗换成暂停，和目标状态的读法一致。
-                  if (paused)
-                    Icon(AppIcons.paused, size: 18, color: dsh.warning)
-                  else
-                    Icon(
-                      goal.status == 'complete' ? AppIcons.success : AppIcons.goal,
-                      size: 18,
-                      color: goal.status == 'complete' ? dsh.success : dsh.textTertiary,
-                    ),
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        // 窄屏下行字号降到 10.5：11 字的状态文案正好放得下。
-                        final narrow = constraints.maxWidth < 160;
-                        final small = theme.textTheme.labelSmall!.copyWith(
-                          fontSize: narrow ? 10.5 : 11,
-                          height: 1.3,
-                          fontWeight: FontWeight.w400,
-                          color: dsh.textTertiary,
-                        );
-                        final dynamicLine = splitForPill(
-                          head: line.head,
-                          tail: line.tail,
-                          maxWidth: constraints.maxWidth,
-                          style: small,
-                          scaler: MediaQuery.textScalerOf(context),
-                        );
-                        // 两行同字就不写第二遍。
-                        final showSecond = dynamicLine != goal.title;
-                        return Column(
-                          mainAxisSize: MainAxisSize.min,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              goal.title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.labelLarge?.copyWith(
-                                fontSize: 14,
-                                height: 1.25,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            if (showSecond) ...[
-                              const SizedBox(height: 2),
-                              Text(dynamicLine, maxLines: 1, overflow: TextOverflow.clip, style: small),
-                            ],
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  ring,
-                  if (expandArrow) ...[
-                    const SizedBox(width: 2),
-                    Icon(AppIcons.collapse, size: 16, color: dsh.textTertiary),
-                  ],
-                ],
+              padding: const EdgeInsets.fromLTRB(10, 0, 12, 0),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  // 撑满一行时（窄屏）文字列吃满余量，环因此贴住右内边；定宽
+                  // 时（宽屏）不参与弹性分配，胶囊就按内容宽站住。
+                  final fill = constraints.hasBoundedWidth;
+                  return Row(
+                    mainAxisSize: fill ? MainAxisSize.max : MainAxisSize.min,
+                    children: [
+                      // 暂停时前面那颗换成暂停，和目标状态的读法一致。
+                      if (paused)
+                        Icon(AppIcons.paused, size: 18, color: dsh.warning)
+                      else
+                        Icon(
+                          goal.status == 'complete' ? AppIcons.success : AppIcons.goal,
+                          size: 18,
+                          color: goal.status == 'complete' ? dsh.success : dsh.textTertiary,
+                        ),
+                      const SizedBox(width: 6),
+                      if (fill) Expanded(child: text) else Flexible(child: text),
+                      const SizedBox(width: 8),
+                      ring,
+                      if (expandArrow) ...[
+                        const SizedBox(width: 2),
+                        Icon(AppIcons.collapse, size: 16, color: dsh.textTertiary),
+                      ],
+                    ],
+                  );
+                },
               ),
             ),
           ),
@@ -429,7 +494,6 @@ class GoalPanel extends ConsumerStatefulWidget {
     required this.goal,
     required this.roomId,
     required this.onClose,
-    this.showActions = true,
   });
 
   final DsBotGroupGoal goal;
@@ -437,15 +501,12 @@ class GoalPanel extends ConsumerStatefulWidget {
   final VoidCallback onClose;
 
   /// False when the actions live in the card's own header (the floating card)。
-  final bool showActions;
 
   @override
   ConsumerState<GoalPanel> createState() => _GoalPanelState();
 }
 
 class _GoalPanelState extends ConsumerState<GoalPanel> {
-  bool _busy = false;
-  bool _checks = false;
   int? _selected;
 
   DsBotGroupGoal get _goal => widget.goal;
@@ -458,24 +519,6 @@ class _GoalPanelState extends ConsumerState<GoalPanel> {
     final at = _viewing;
     if (at < 0 || at >= _goal.stages.length) return null;
     return _goal.stages[at];
-  }
-
-  /// 已暂停、但还有人在跑：只停工作，目标保持暂停。
-  /// 网页端这颗「连当前工作一起停」走的也是 `stop-room-work`，不是 `goal-control`：
-  /// 后者在 paused 下会把整个目标停掉。
-  Future<void> _stopWorkOnly() async {
-    if (_busy) return;
-    final api = ref.read(dsBotProvider.notifier).api;
-    if (api == null) return;
-    setState(() => _busy = true);
-    try {
-      await api.stopRoomWork(widget.roomId);
-      ref.invalidate(groupGoalProvider(widget.roomId));
-    } catch (error) {
-      if (mounted) ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text('$error')));
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
   }
 
   @override
@@ -493,47 +536,14 @@ class _GoalPanelState extends ConsumerState<GoalPanel> {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       textStyle: theme.textTheme.labelMedium,
     );
-    final hasChecks = goal.objective.isNotEmpty || goal.acceptance.isNotEmpty || goal.constraints.isNotEmpty;
     // 「连当前工作一起停」 only means something while the goal is paused and a
     // member is still running.
-    final working = ref.watch(
-      dsBotProvider.select((s) => (s.live.rooms[widget.roomId] ?? const <DsBotWork>[]).isNotEmpty),
-    );
     final room = ref.watch(dsBotProvider.select((s) => s.team?.room(widget.roomId)));
     final admin = room == null ? l10n.botsABot : (ref.read(dsBotProvider).team?.bot(room.admin ?? '')?.name ?? l10n.botsABot);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // 正文最上面先给一眼：目标、验收方法各两行；完整的三项在底部的
-        // 「目标与验收」折叠里。
-        if (goal.objective.isNotEmpty || goal.acceptance.isNotEmpty) ...[
-          if (goal.objective.isNotEmpty)
-            Text.rich(
-              TextSpan(
-                children: [
-                  TextSpan(text: '${l10n.chatGoal}  ', style: small),
-                  TextSpan(text: goal.objective, style: theme.textTheme.bodyMedium),
-                ],
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          if (goal.acceptance.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text.rich(
-              TextSpan(
-                children: [
-                  TextSpan(text: '${l10n.chatGoalStageDone}  ', style: small),
-                  TextSpan(text: goal.acceptance, style: theme.textTheme.bodyMedium),
-                ],
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-          const SizedBox(height: 10),
-        ],
         if (goal.status != 'drafting' && goal.stages.length > 1)
           _StageStrip(
             stages: goal.stages,
@@ -579,7 +589,11 @@ class _GoalPanelState extends ConsumerState<GoalPanel> {
           ),
           if (stage.acceptance.isNotEmpty) ...[
             const SizedBox(height: 6),
-            Text(l10n.chatGoalDoneWhen(stage.acceptance), style: theme.textTheme.bodyMedium),
+            // 和「证据」「打回重做」同一档：次级字号与颜色（网页 `.bt-goal-line`）。
+            Text(
+              l10n.chatGoalDoneWhen(stage.acceptance),
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
           ],
           if (_viewing == at && stage.reworks > 0 && stage.feedback.isNotEmpty) ...[
             const SizedBox(height: 6),
@@ -601,46 +615,73 @@ class _GoalPanelState extends ConsumerState<GoalPanel> {
             const SizedBox(height: 8),
             Text(l10n.chatGoalTasks, style: small),
             const SizedBox(height: 2),
-            for (final task in stage.tasks) _GoalTaskRow(task: task),
+            for (final task in stage.tasks) _GoalTaskRow(task: task, roomId: widget.roomId),
           ],
         ],
-        const SizedBox(height: 6),
-        // 照网页端的 foot：左边「目标与验收」折叠钮，右边动作；动作沿用手机
-        // 控制那套圆盘（暂停/恢复、停止红色两段式），清除/取消留成文字链。
-        Row(
+        // 「连当前工作一起停」与折叠栏一样在卡片的固定区，不随正文滚动。
+      ],
+    );
+  }
+}
+
+/// 卡片底部的固定折叠栏：「目标与验收」，图标在小字前面，整行可点。它不在正文
+/// 的滚动区里，滚正文时这一行不走；展开的三块在滚动区末尾、就在这条栏上方。
+class GoalChecksBar extends StatelessWidget {
+  const GoalChecksBar({super.key, required this.goal, required this.open, required this.onToggle});
+
+  final DsBotGroupGoal goal;
+  final bool open;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final dsh = DshColors.of(context);
+    final has = goal.objective.isNotEmpty || goal.acceptance.isNotEmpty || goal.constraints.isNotEmpty;
+    if (!has) return const SizedBox.shrink();
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: TextButton(
+        onPressed: onToggle,
+        style: TextButton.styleFrom(
+          padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
+          visualDensity: VisualDensity.compact,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          textStyle: theme.textTheme.labelMedium?.copyWith(fontSize: 14),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            if (hasChecks)
-              TextButton(
-                onPressed: () => setState(() => _checks = !_checks),
-                style: controlStyle,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(l10n.chatGoalAcceptance),
-                    AnimatedRotation(
-                      turns: _checks ? 0.5 : 0,
-                      duration: AppMotion.of(context, AppMotion.standard),
-                      child: Icon(AppIcons.collapse, size: 16, color: dsh.textTertiary),
-                    ),
-                  ],
-                ),
-              ),
-            const Spacer(),
-            // 只留一个条件项：暂停且还有人在跑时的「连当前工作一起停」。
-            if (widget.showActions && goal.status == 'paused' && working)
-              TextButton(
-                onPressed: _busy ? null : () => _stopWorkOnly,
-                style: controlStyle,
-                child: Text(l10n.chatStopWorkToo),
-              ),
+            AnimatedRotation(
+              turns: open ? 0.5 : 0,
+              duration: AppMotion.of(context, AppMotion.standard),
+              child: Icon(AppIcons.collapse, size: 14, color: dsh.textTertiary),
+            ),
+            const SizedBox(width: 6),
+            Text(l10n.chatGoalAcceptance),
           ],
         ),
-        // 展开的验收内容在这一行下面，卡片往下长；折叠时不占高度。
-        if (_checks && hasChecks) ...[
-          if (goal.objective.isNotEmpty) _Block(label: l10n.chatGoal, value: goal.objective),
-          if (goal.acceptance.isNotEmpty) _Block(label: l10n.chatGoalAcceptanceDone, value: goal.acceptance),
-          for (final rule in goal.constraints) _Block(label: l10n.chatGoalRule, value: rule),
-        ],
+      ),
+    );
+  }
+}
+
+/// 展开的三块：目标 / 验收方法 / 规则。放在滚动区末尾，跟着正文走。
+class GoalChecksBody extends StatelessWidget {
+  const GoalChecksBody({super.key, required this.goal});
+
+  final DsBotGroupGoal goal;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (goal.objective.isNotEmpty) _Block(label: l10n.chatGoal, value: goal.objective),
+        if (goal.acceptance.isNotEmpty) _Block(label: l10n.chatGoalAcceptanceDone, value: goal.acceptance),
+        for (final rule in goal.constraints) _Block(label: l10n.chatGoalRule, value: rule),
       ],
     );
   }
@@ -746,80 +787,104 @@ class _StageStrip extends StatelessWidget {
   }
 }
 
-/// 这一段里的一个成员任务：头像、名字（成员自己的颜色）、这件事。
+/// 这一段里的一个成员任务：头像（状态长在头像上）、名字与这件事接在一段文字
+/// 里，按行宽自然折行。网页的 `TaskRow` 就是这么画的（`goal.js:135`）。
 class _GoalTaskRow extends ConsumerWidget {
-  const _GoalTaskRow({required this.task});
+  const _GoalTaskRow({required this.task, required this.roomId});
 
   final DsBotGoalTask task;
+  final String roomId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final dsh = DshColors.of(context);
     // 名字取团队里的当前名字：Host 给的 task.bot 是发任务时的快照，改名后
     // 那一份就旧了。
     final team = ref.watch(dsBotProvider.select((s) => s.team));
     final bot = team?.bot(task.botId);
     final name = bot?.name ?? (task.bot.isEmpty ? task.botId : task.bot);
-    final tone = switch (task.status) {
-      'done' => dsh.success,
-      'reported' => theme.colorScheme.primary,
-      'working' => dsh.warning,
-      _ => dsh.textTertiary,
-    };
-    final glyph = task.status == 'done' || task.status == 'reported'
-        ? AppIcons.success
-        : task.status == 'working'
-        ? AppIcons.inProgress
-        : AppIcons.pending;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox.square(
-            dimension: 24,
-            child: bot == null
-                ? CircleAvatar(
-                    radius: 12,
-                    child: Text(name.isEmpty ? '?' : name.substring(0, 1), style: theme.textTheme.labelSmall),
-                  )
-                : BotAvatar(bot: bot, size: 24),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+    // 这个群里已经在跑也算「在做」：网页把 roomWork 和任务状态一起判。
+    final live = ref.watch(
+      dsBotProvider.select(
+        (s) => (s.live.rooms[roomId] ?? const <DsBotWork>[]).any((work) => work.botId == task.botId),
+      ),
+    );
+    final returned = task.status == 'reported' || task.status == 'done';
+    return Opacity(
+      // 待办整行压到 55%：还没轮到它，读得出但不抢眼。
+      opacity: task.status == 'pending' ? 0.55 : 1,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox.square(
+              dimension: 20,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Positioned.fill(
+                    child: bot == null
+                        ? CircleAvatar(
+                            radius: 10,
+                            child: Text(
+                              name.isEmpty ? '?' : name.substring(0, 1),
+                              style: theme.textTheme.labelSmall,
+                            ),
+                          )
+                        : BotAvatar(bot: bot, size: 20, working: live || task.status == 'working'),
+                  ),
+                  if (returned) const Positioned(right: -2, bottom: -2, child: _TaskDoneMark()),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text.rich(
+                TextSpan(
                   children: [
-                    Expanded(
-                      child: Text(
-                        name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: theme.colorScheme.onSurface,
-                        ),
+                    TextSpan(
+                      text: name,
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w500,
+                        // 群聊消息、@提及用的是同一套名字颜色。
+                        color: bot == null ? theme.colorScheme.onSurface : botNameInk(context, bot.ink),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Icon(glyph, size: 15, color: tone),
+                    const TextSpan(text: ' '),
+                    TextSpan(
+                      text: task.task,
+                      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                    ),
                   ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  task.task,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                ),
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
+    );
+  }
+}
+
+/// 已报 / 已完成那颗角标：12 的绿圆、9 的勾，外圈 1.5 的卡片底色（网页
+/// `.bt-goal-tdone`）。
+class _TaskDoneMark extends StatelessWidget {
+  const _TaskDoneMark();
+
+  @override
+  Widget build(BuildContext context) {
+    final ring = DshSurfaces.of(context).backdropTop;
+    return Container(
+      width: 12,
+      height: 12,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: DshColors.of(context).success,
+        boxShadow: [BoxShadow(color: ring, spreadRadius: 1.5)],
+      ),
+      child: Icon(AppIcons.done, size: 9, color: ring),
     );
   }
 }
@@ -920,7 +985,7 @@ class _GoalComposeSheetState extends ConsumerState<_GoalComposeSheet> {
 
 /// 从顶栏胶囊展开：顶栏铺满成目标本身，下面长出面板，其余内容被遮住。
 /// 收起（箭头 / 点遮罩 / 返回键）就散了，原顶栏原样回来。
-Future<void> showGoalExpand(BuildContext context, String roomId, {VoidCallback? onCollapse}) async {
+Future<void> showGoalExpand(BuildContext context, String roomId) async {
   await showGeneralDialog<void>(
     context: context,
     barrierDismissible: true,
@@ -928,7 +993,7 @@ Future<void> showGoalExpand(BuildContext context, String roomId, {VoidCallback? 
     // 浮窗式卡片：靠边距和投影把内容让开，不铺遮罩。
     barrierColor: Colors.transparent,
     transitionDuration: const Duration(milliseconds: 220),
-    pageBuilder: (dialogContext, _, _) => _GoalExpandLayer(roomId: roomId, onCollapse: onCollapse),
+    pageBuilder: (dialogContext, _, _) => _GoalExpandLayer(roomId: roomId),
     transitionBuilder: (context, animation, _, child) => SlideTransition(
       position: Tween<Offset>(begin: const Offset(0, -0.04), end: Offset.zero).animate(
         CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
@@ -942,12 +1007,9 @@ Future<void> showGoalExpand(BuildContext context, String roomId, {VoidCallback? 
 }
 
 class _GoalExpandLayer extends ConsumerStatefulWidget {
-  const _GoalExpandLayer({required this.roomId, this.onCollapse});
+  const _GoalExpandLayer({required this.roomId});
 
   final String roomId;
-
-  /// 面板里的「收起成小球」：关面板，并把顶栏收回小球。
-  final VoidCallback? onCollapse;
 
   @override
   ConsumerState<_GoalExpandLayer> createState() => _GoalExpandLayerState();
@@ -956,6 +1018,28 @@ class _GoalExpandLayer extends ConsumerStatefulWidget {
 class _GoalExpandLayerState extends ConsumerState<_GoalExpandLayer> {
   /// 停止的第一段：标题区让位给「确认终止？」，三个键不动、不推挤。
   final _confirming = ValueNotifier<bool>(false);
+
+  bool _stopWorkBusy = false;
+
+  /// 「目标与验收」展开着没有：内容在滚动区末尾，栏在固定区。
+  bool _checks = false;
+
+  /// 已暂停、但还有人在跑：只停工作，目标保持暂停（网页端这颗走
+  /// stop-room-work，不是 goal-control）。
+  Future<void> _stopWork() async {
+    if (_stopWorkBusy) return;
+    final api = ref.read(dsBotProvider.notifier).api;
+    if (api == null) return;
+    setState(() => _stopWorkBusy = true);
+    try {
+      await api.stopRoomWork(widget.roomId);
+      ref.invalidate(groupGoalProvider(widget.roomId));
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text('$error')));
+    } finally {
+      if (mounted) setState(() => _stopWorkBusy = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -966,13 +1050,15 @@ class _GoalExpandLayerState extends ConsumerState<_GoalExpandLayer> {
   @override
   Widget build(BuildContext context) {
     final roomId = widget.roomId;
-    final onCollapse = widget.onCollapse;
     final goal = ref.watch(groupGoalProvider(roomId)).value;
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final dsh = DshColors.of(context);
     final top = MediaQuery.paddingOf(context).top;
     final maxHeight = MediaQuery.sizeOf(context).height * 0.62;
+    final working = ref.watch(
+      dsBotProvider.select((s) => (s.live.rooms[widget.roomId] ?? const <DsBotWork>[]).isNotEmpty),
+    );
     return Material(
       type: MaterialType.transparency,
       child: Stack(
@@ -1025,18 +1111,14 @@ class _GoalExpandLayerState extends ConsumerState<_GoalExpandLayer> {
                                   // 清除）→ 收起圆盘，圆盘最右；三个 48 触控紧排，
                                   // 圆盘与动作之间不再加间距（靠 48 与 36 的差）。
                                   _GoalHeaderActions(roomId: roomId, goal: goal, confirming: _confirming),
+                                  // 只关面板，不改胶囊形态：收起成小球是长按胶囊。
                                   _goalDisc(
                                     context,
-                                    tooltip: onCollapse == null
-                                        ? MaterialLocalizations.of(context).closeButtonTooltip
-                                        : l10n.chatGoalCollapseToBallHint,
+                                    tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
                                     icon: AppIcons.collapse,
                                     iconSize: 18,
                                     color: dsh.textTertiary,
-                                    onTap: () {
-                                      onCollapse?.call();
-                                      Navigator.of(context).maybePop();
-                                    },
+                                    onTap: () => Navigator.of(context).maybePop(),
                                   ),
                                 ],
                               ),
@@ -1045,12 +1127,41 @@ class _GoalExpandLayerState extends ConsumerState<_GoalExpandLayer> {
                             Flexible(
                               child: SingleChildScrollView(
                                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                                child: GoalPanel(
-                                  goal: goal,
-                                  roomId: roomId,
-                                  onClose: () => Navigator.of(context).maybePop(),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    GoalPanel(
+                                      goal: goal,
+                                      roomId: roomId,
+                                      onClose: () => Navigator.of(context).maybePop(),
+                                    ),
+                                    if (_checks) ...[
+                                      const SizedBox(height: 6),
+                                      GoalChecksBody(goal: goal),
+                                    ],
+                                  ],
                                 ),
                               ),
+                            ),
+                            // 「连当前工作一起停」在固定区里、分割线之上：最底下
+                            // 只剩「目标与验收」那一行。
+                            if (goal.status == 'paused' && working)
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(right: 8),
+                                  child: TextButton(
+                                    onPressed: _stopWorkBusy ? null : _stopWork,
+                                    child: Text(l10n.chatStopWorkToo),
+                                  ),
+                                ),
+                              ),
+                            // 固定栏：滚正文时这一行不走。
+                            const Divider(height: 1),
+                            GoalChecksBar(
+                              goal: goal,
+                              open: _checks,
+                              onToggle: () => setState(() => _checks = !_checks),
                             ),
                           ],
                         ),
@@ -1210,11 +1321,33 @@ Future<void> showGroupGoalSheet(BuildContext context, String roomId) => showModa
     builder: (context, ref, _) {
       final goal = ref.watch(groupGoalProvider(roomId)).value;
       if (goal == null) return const SizedBox(height: 80);
+      var checks = false;
       return SafeArea(
         top: false,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-          child: GoalPanel(goal: goal, roomId: roomId, onClose: () => Navigator.of(context).maybePop()),
+        child: StatefulBuilder(
+          builder: (context, setSheet) => Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      GoalPanel(goal: goal, roomId: roomId, onClose: () => Navigator.of(context).maybePop()),
+                      if (checks) ...[const SizedBox(height: 6), GoalChecksBody(goal: goal)],
+                    ],
+                  ),
+                ),
+              ),
+              const Divider(height: 1),
+              GoalChecksBar(
+                goal: goal,
+                open: checks,
+                onToggle: () => setSheet(() => checks = !checks),
+              ),
+            ],
+          ),
         ),
       );
     },

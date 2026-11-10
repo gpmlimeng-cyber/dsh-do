@@ -2890,32 +2890,18 @@
   "chatGoalRunning": "进行中",
   "chatGoalPaused": "已暂停",
   "chatGoalStopped": "已停止",
-  "chatGoalStageAt": "第 {position} 段",
-  "@chatGoalStageAt": {
+  "chatGoalAligning": "正在和你对齐目标",
+  "chatGoalReached": "已达成",
+  "chatGoalFinalCheck": "总验收",
+  "chatGoalChecking": "验收中 · {title}",
+  "@chatGoalChecking": {
     "placeholders": {
-      "position": {
+      "title": {
         "type": "String"
       }
     }
   },
-  "chatGoalDoneStages": "共 {count} 段",
-  "@chatGoalDoneStages": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "chatGoalPausedRunning": "{name} 还在跑",
-  "@chatGoalPausedRunning": {
-    "placeholders": {
-      "name": {
-        "type": "String"
-      }
-    }
-  },
-  "chatGoalIdleWord": "等你决定",
-  "chatGoalActiveWord": "进行中",
+  "chatGoalIdleWord": "等你处理",
   "chatGoalNone": "还没有目标",
   "chatGoalPanel": "目标与验收",
   "chatGoalStageCurrent": "当前阶段",

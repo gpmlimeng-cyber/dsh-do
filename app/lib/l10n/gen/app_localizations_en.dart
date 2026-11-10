@@ -20402,25 +20402,21 @@ class L10nEn extends L10n {
   String get chatGoalStopped => 'Stopped';
 
   @override
-  String chatGoalStageAt(String position) {
-    return 'Stage $position';
+  String get chatGoalAligning => 'Aligning the goal with you';
+
+  @override
+  String get chatGoalReached => 'Goal reached';
+
+  @override
+  String get chatGoalFinalCheck => 'Final check';
+
+  @override
+  String chatGoalChecking(String title) {
+    return 'Checking · $title';
   }
 
   @override
-  String chatGoalDoneStages(int count) {
-    return '$count stages';
-  }
-
-  @override
-  String chatGoalPausedRunning(String name) {
-    return '$name is still running';
-  }
-
-  @override
-  String get chatGoalIdleWord => 'Waiting on you';
-
-  @override
-  String get chatGoalActiveWord => 'In progress';
+  String get chatGoalIdleWord => 'Waiting for you';
 
   String get chatGoalNone => 'No goal yet';
 

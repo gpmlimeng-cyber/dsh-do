@@ -1338,11 +1338,18 @@
   "chatGoalRunning": "Running",
   "chatGoalPaused": "Paused",
   "chatGoalStopped": "Stopped",
-  "chatGoalStageAt": "Stage {position}",
-  "chatGoalDoneStages": "{count} stages",
-  "chatGoalPausedRunning": "{name} is still running",
-  "chatGoalIdleWord": "Waiting on you",
-  "chatGoalActiveWord": "In progress",
+  "chatGoalAligning": "Aligning the goal with you",
+  "chatGoalReached": "Goal reached",
+  "chatGoalFinalCheck": "Final check",
+  "chatGoalChecking": "Checking · {title}",
+  "@chatGoalChecking": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "chatGoalIdleWord": "Waiting for you",
   "chatGoalNone": "No goal yet",
   "chatGoalPanel": "Goal and checks",
   "chatGoalStageCurrent": "Current stage",
