@@ -13,6 +13,7 @@ import android.os.SystemClock
 import io.github.ccch1mneyyy.dsh_app.phone.PhoneControl
 import org.json.JSONArray
 import org.json.JSONObject
+import io.github.ccch1mneyyy.dsh_app.phone.skills.PhoneSkillRoute
 import java.io.File
 import java.util.concurrent.Executors
 
@@ -35,6 +36,7 @@ class RuntimeController private constructor(private val app: Context) : DshProce
     private val main = Handler(Looper.getMainLooper())
     private val worker = Executors.newSingleThreadExecutor { r -> Thread(r, "dsh-runtime") }
     private val sinks = LinkedHashSet<EventSink>()
+    private val statusPublishLock = Any()
     private val logDir = File(app.filesDir, "runtime/logs")
     private val runtimeLogs = RuntimeLogs(
         File(logDir, "dsh.log"), SystemClock::elapsedRealtime,
@@ -81,6 +83,9 @@ class RuntimeController private constructor(private val app: Context) : DshProce
     @Volatile private var runGen = 0
     @Volatile private var stopGen = -1
     @Volatile private var resetting = false
+    // A phone draft save may stage only within the ready runtime captured by its button press.
+    // Independent of bundled-skill attachment grants; it never borrows their write permission.
+    @Volatile private var phoneSkillStoppedGeneration = -1
     // Retire skill writes at the stop request, before the Service receives ACTION_STOP.
     // This gate does not change process lifecycle or A5's ownership/launch decisions.
     private val managedSkillGate = ManagedSkillRuntimeGate()
@@ -201,17 +206,24 @@ class RuntimeController private constructor(private val app: Context) : DshProce
     }
 
     /** [dropKept]: give up what a reset kept but cannot be put back (see [KeepFailed]). */
-    fun install(dropKept: Boolean = false, onDone: (Throwable?) -> Unit) {
+    @Synchronized fun install(dropKept: Boolean = false, onDone: (Throwable?) -> Unit) {
         if (phase == Phase.INSTALLING) return onDone(null)
-        if (installer.isCurrent() && phase != Phase.ERROR) {
+        if (installer.isCurrent() && phase != Phase.ERROR && !resetting) {
             if (phase == Phase.NOT_INSTALLED) setPhase(Phase.INSTALLED)
             return onDone(null)
+        }
+        if (process != null || resetting || phase in setOf(Phase.STARTING, Phase.RUNNING, Phase.STOPPING)) {
+            return onDone(RuntimeUpgradeBlocked("running"))
         }
         setPhase(Phase.INSTALLING)
         worker.execute {
             try {
                 log("[dsh-app] unpacking runtime ${manifest.runtimeVersion} (${manifest.abi})", "system")
                 val started = System.currentTimeMillis()
+                if (installer.rootfs.exists() &&
+                    !DshProcess(app, manifest, installer.rootfs, this).killStrays()) {
+                    throw RuntimeUpgradeBlocked("running")
+                }
                 if (dropKept) log("[dsh-app] installing without what could not be kept", "system")
                 installer.install(dropKept) { done, total ->
                     emit(mapOf("type" to "progress", "step" to "extract", "done" to done, "total" to total))
@@ -261,10 +273,10 @@ class RuntimeController private constructor(private val app: Context) : DshProce
      * engine came up or when the person asks from 设置 → 诊断. Null when the runtime is
      * not installed or the write failed.
      */
-    fun publishDiagnostics(markdown: String): Map<String, Any?>? = try {
+    fun publishDiagnostics(markdown: String, manual: Boolean = false): Map<String, Any?>? = try {
         if (!installer.isCurrent()) null
         else {
-            val file = GuestSetup.writeDiagnostics(installer.rootfs, markdown, safe = currentModeSafe())
+            val file = GuestSetup.writeDiagnostics(installer.rootfs, markdown, safe = currentModeSafe(), manual = manual)
             mapOf("path" to file.absolutePath, "bytes" to file.length())
         }
     } catch (_: Exception) {
@@ -272,6 +284,7 @@ class RuntimeController private constructor(private val app: Context) : DshProce
     }
 
     fun stop() {
+        synchronized(this) { phoneSkillStoppedGeneration = maxOf(phoneSkillStoppedGeneration, runGen) }
         managedSkillGate.stop(runGen)
         val intent = Intent(app, DshService::class.java).setAction(DshService.ACTION_STOP)
         app.startService(intent)
@@ -293,6 +306,120 @@ class RuntimeController private constructor(private val app: Context) : DshProce
 
     internal fun cancelManagedSkill(owner: ManagedSkillOwner, requestId: String? = null) {
         managedSkills.cancel(owner, requestId)
+    }
+
+    /** Original Runtime/root captured at the trusted local button request, never after queueing.
+     * This is a read origin, not an invocation or permission to execute a phone action. */
+    internal class PhoneSkillOrigin internal constructor(
+        internal val runtime: RuntimeController,
+        internal val generation: Int,
+        internal val root: File,
+    )
+
+    @Synchronized internal fun capturePhoneSkillOrigin(): PhoneSkillOrigin? =
+        if (phase == Phase.RUNNING && !runSafe && !resetting && stopGen < runGen &&
+            phoneSkillStoppedGeneration < runGen) PhoneSkillOrigin(this, runGen, installer.rootfs) else null
+
+    // Read-only generation fence for physical action gates; never acquires the Runtime monitor.
+    // The final generation read rejects mixed fields across an unexpected-exit/restart.
+    internal fun phoneSkillOriginCurrent(origin: PhoneSkillOrigin): Boolean =
+        origin.runtime === this && phase == Phase.RUNNING && !runSafe && !resetting &&
+            runGen == origin.generation && stopGen < origin.generation &&
+            phoneSkillStoppedGeneration < origin.generation && runGen == origin.generation
+
+    /** Uses the existing rootfs worker. The only descriptor input is the native reviewed table;
+     * private UI/JSON never supplies it. An empty table has no executable App registration.
+     * Caller keeps this same origin for pending/claim checks, outside registry/Tasks locks. */
+    internal fun readPhoneSkillBundle(origin: PhoneSkillOrigin, name: String, revision: String?,
+        descriptors: Map<String, PhoneSkillRoute.Descriptor>,
+        onDone: (PhoneSkillBundleReader.Read) -> Unit) {
+        val reviewed = java.util.Collections.unmodifiableMap(LinkedHashMap(descriptors))
+        worker.execute {
+            val result = if (!phoneSkillOriginCurrent(origin)) {
+                PhoneSkillBundleReader.Read.Rejected(PhoneSkillBundleReader.Reason.UNAVAILABLE)
+            } else PhoneSkillBundleReader.read(origin.root, name, revision, reviewed)
+            main.post {
+                onDone(if (phoneSkillOriginCurrent(origin)) result
+                    else PhoneSkillBundleReader.Read.Rejected(PhoneSkillBundleReader.Reason.UNAVAILABLE))
+            }
+        }
+    }
+
+    /** User-selected phone draft only. Lock order: Controller -> write; no IO under either. */
+    internal fun savePhoneSkill(write: PhoneSkillWrite, onDone: (PhoneSkillInstallResult) -> Unit) {
+        val origin = capturePhoneSkillOrigin()?.let(write::bindSaveOrigin)
+        if (origin == null) {
+            val result = PhoneSkillInstallResult.Refused.STALE
+            write.finish(result)
+            main.post { onDone(result) }
+            return
+        }
+        try { worker.execute {
+            fun current(): Boolean = phoneSkillOriginCurrent(origin)
+            var result: PhoneSkillInstallResult? = null
+            try {
+                val bundle = write.bundle
+                result = if (bundle == null) PhoneSkillInstaller.install(origin.root, write.document,
+                    canStage = { synchronized(this) { current() && write.canStage() } },
+                    beginCommit = { synchronized(this) { current() && write.beginCommit() } },
+                ) else when (val saved = PhoneSkillBundleInstaller.install(origin.root, bundle,
+                    canStage = { synchronized(this) { current() && write.canStage() } },
+                    beginCommit = { synchronized(this) { current() && write.beginCommit() } },
+                )) {
+                    is PhoneSkillBundleInstaller.Result.Saved -> PhoneSkillInstallResult.BundleSaved(saved.identity)
+                    is PhoneSkillBundleInstaller.Result.Unverified -> PhoneSkillInstallResult.BundleUnverified(
+                        saved.identity, saved.publication, saved.code)
+                    PhoneSkillBundleInstaller.Result.Refused.STALE -> PhoneSkillInstallResult.Refused.STALE
+                    PhoneSkillBundleInstaller.Result.Refused.NO_HOME -> PhoneSkillInstallResult.Refused.NO_HOME
+                    PhoneSkillBundleInstaller.Result.Refused.CONFLICT -> PhoneSkillInstallResult.Refused.CONFLICT
+                    PhoneSkillBundleInstaller.Result.Refused.IO, PhoneSkillBundleInstaller.Result.Refused.INVALID -> PhoneSkillInstallResult.Refused.IO
+                }
+            } finally {
+                // Physical completion precedes any UI callback. A permit already consumed is
+                // not proof of zero publication when the operation fails without a result.
+                val finished = result ?: write.bundle?.takeIf { write.phase() == PhoneSkillWrite.Phase.COMMITTING }?.let {
+                    PhoneSkillInstallResult.BundleUnverified(it.identity, PhoneSkillBundleInstaller.Publication.UNKNOWN,
+                        PhoneSkillBundleInstaller.Verification.VERIFICATION_UNAVAILABLE)
+                } ?: PhoneSkillInstallResult.Refused.IO
+                write.finish(finished)
+                main.post { onDone(finished) }
+            }
+        } } catch (_: java.util.concurrent.RejectedExecutionException) {
+            // Submission failed: this job cannot enter the reader/installer.
+            val result = PhoneSkillInstallResult.Refused.IO
+            write.finish(result)
+            main.post { onDone(result) }
+        }
+    }
+
+    /** Original worker/root only. Completion runs in the physical job's finally, NOT on main.
+     * The caller clears its Receipt pin there before separately delivering UI callbacks. */
+    internal fun checkPhoneSkillSave(binding: PhoneSkillWrite.SaveBinding,
+        publication: PhoneSkillBundleInstaller.Publication, onDone: (PhoneSkillInstallResult) -> Unit) {
+        fun unverified(code: PhoneSkillBundleInstaller.Verification) =
+            PhoneSkillInstallResult.BundleUnverified(binding.identity, publication, code)
+        try { worker.execute {
+            var result: PhoneSkillInstallResult = unverified(PhoneSkillBundleInstaller.Verification.VERIFICATION_UNAVAILABLE)
+            try {
+                val origin = binding.origin
+                result = if (origin == null || !phoneSkillOriginCurrent(origin)) {
+                    unverified(PhoneSkillBundleInstaller.Verification.ORIGIN_UNAVAILABLE)
+                } else {
+                    val identity = binding.identity
+                    val read = PhoneSkillBundleReader.read(origin.root, identity.name, identity.revision, binding.descriptors)
+                    when {
+                        !phoneSkillOriginCurrent(origin) -> unverified(PhoneSkillBundleInstaller.Verification.ORIGIN_UNAVAILABLE)
+                        read is PhoneSkillBundleReader.Read.Accepted && PhoneSkillBundleInstaller.matches(identity, read) ->
+                            PhoneSkillInstallResult.BundleSaved(identity)
+                        read is PhoneSkillBundleReader.Read.Rejected && read.reason == PhoneSkillBundleReader.Reason.IO ->
+                            unverified(PhoneSkillBundleInstaller.Verification.VERIFICATION_UNAVAILABLE)
+                        else -> unverified(PhoneSkillBundleInstaller.Verification.BUNDLE_INVALID)
+                    }
+                }
+            } finally { onDone(result) }
+        } } catch (_: java.util.concurrent.RejectedExecutionException) {
+            onDone(unverified(PhoneSkillBundleInstaller.Verification.ORIGIN_UNAVAILABLE))
+        }
     }
 
     internal fun attachManagedSkillOwner(): ManagedSkillOwner {
@@ -336,13 +463,16 @@ class RuntimeController private constructor(private val app: Context) : DshProce
                 PhoneStorage.syncShortcut(installer.rootfs, storage)
                 // Phone control: bridge up and guest files written before DSH starts; off in safe mode.
                 val phone = PhoneControl.get(app).prepareLaunch(installer.rootfs, safe) { log(it, "system") }
-                if (!safe && !SessionSearchGuest.writeFiles(installer.rootfs)) {
+                val searchOverlay = !safe && SessionSearchGuest.writeFiles(installer.rootfs)
+                if (!safe && !searchOverlay) {
                     log("[dsh-app] message search overlay not written; searching matches titles only", "system")
                 }
-                if (!safe && !AppAuthGuest.writeFiles(app, installer.rootfs)) {
+                val authOverlay = !safe && AppAuthGuest.writeFiles(app, installer.rootfs)
+                if (!safe && !authOverlay) {
                     log("[dsh-app] subscription sign-in overlay not written; ChatGPT / Claude sign-in is unavailable", "system")
                 }
-                if (!safe && !SpeechGuest.writeFiles(installer.rootfs)) {
+                val speechOverlay = !safe && SpeechGuest.writeFiles(installer.rootfs)
+                if (!safe && !speechOverlay) {
                     log("[dsh-app] voice input overlay not written; the voice model keeps DSH's defaults", "system")
                 }
                 if (pendingPhoneStorage && !storage) log("[dsh-app] phone storage requested but permission not granted", "system")
@@ -363,18 +493,38 @@ class RuntimeController private constructor(private val app: Context) : DshProce
                         null
                     }
                 }
-                // Stopped (or started again) while this was queued: launching now would leave an orphan.
-                if (stopGen >= gen || gen != runGen) {
+                // startProcess advances runGen under this same monitor. Publish only while
+                // this queued launch still owns that generation; once published, its non-null
+                // process prevents another start from advancing the generation underneath it.
+                val p = synchronized(this@RuntimeController) {
+                    if (stopGen >= gen || gen != runGen) null
+                    else DshProcess(
+                        app, manifest, installer.rootfs,
+                        object : DshProcess.Listener by this@RuntimeController {
+                            override fun onLog(line: String, stream: String) {
+                                if (stream != "system") {
+                                    synchronized(runTail) {
+                                        if (gen == runGen) {
+                                            runTail.addLast(line)
+                                            while (runTail.size > CrashClassifier.TAIL_LINES) runTail.removeFirst()
+                                        }
+                                    }
+                                }
+                                this@RuntimeController.onLog(line, stream)
+                            }
+                        },
+                    ).also {
+                        launched = it
+                        lastLaunch = it.launchDiagnostics
+                        process = it
+                    }
+                } ?: run {
                     PhoneControl.get(app).onEngineStopped()
                     return@execute
                 }
-                val p = DshProcess(app, manifest, installer.rootfs, this)
-                launched = p
-                lastLaunch = p.launchDiagnostics
-                process = p
                 timeline.spawned()
                 val direct = directEngine()
-                p.start(env, if (storage) PhoneStorage.binds() else emptyList(), safe, phone, direct.requested, direct.failed) { actualDirect ->
+                p.start(env, if (storage) PhoneStorage.binds() else emptyList(), safe, phone, direct.requested, direct.failed, searchOverlay, authOverlay, speechOverlay) { actualDirect ->
                     // SafeMode.prepare writes its own briefing; leave the original home untouched.
                     if (!safe) GuestSetup.writeAgentsMd(installer.rootfs, storage, phone, pendingVisualReplies, actualDirect)
                 }
@@ -477,8 +627,8 @@ class RuntimeController private constructor(private val app: Context) : DshProce
                 }
                 // A finished waiter may have reported incomplete cleanup. Captured identities
                 // outlive its launcher; do not retire their rootfs while any still remain.
-                val cleanup = DshProcess(app, manifest, installer.rootfs, this).reapStrays(allowObservationGap = true)
-                check(!cleanup.ownedRemaining) { "runtime stop incomplete; retry reset after cleanup" }
+                val cleanup = DshProcess(app, manifest, installer.rootfs, this).reapStrays()
+                check(cleanup.complete) { "runtime stop incomplete; retry reset after cleanup" }
                 lastLaunch = null
                 try {
                     check(runtimeLogs.pauseDisk()) { "log reset pause timed out" }
@@ -769,12 +919,6 @@ class RuntimeController private constructor(private val app: Context) : DshProce
     // DshProcess.Listener
 
     override fun onLog(line: String, stream: String) {
-        if (stream != "system") {
-            synchronized(runTail) {
-                runTail.addLast(line)
-                while (runTail.size > CrashClassifier.TAIL_LINES) runTail.removeFirst()
-            }
-        }
         log(line, stream)
     }
 
@@ -850,7 +994,14 @@ class RuntimeController private constructor(private val app: Context) : DshProce
             token = null
             healthyAt = null
             log("[dsh-app] DSH exited with code $code", "system")
-            if (publishStartupFailure(source.startupError, ownerReleased = true)) {
+            val tail = synchronized(runTail) { runTail.toList() }
+            var f = CrashClassifier.classify(code, readyAt, SystemClock.elapsedRealtime(), System.currentTimeMillis(), tail, runSafe, source.direct)
+            val startupError = source.startupError
+            // A token deadline must not hide crash evidence already in the tail (#75); a silent
+            // loader or a STOP that followed still ends as a plain startup failure.
+            val classifyStartup = startupError != null && !expected && stopGen < runGen &&
+                CrashClassifier.classifyAfterTokenTimeout(source.startupTokenTimedOut, f)
+            if (!classifyStartup && publishStartupFailure(startupError, ownerReleased = true)) {
                 // An accepted failure survives a later STOP. Reset still owns its final state.
                 // Neither a deadline nor a local launch error is evidence against a plugin.
                 if (!resetting) DshService.postStoppedAlert(app)
@@ -862,8 +1013,6 @@ class RuntimeController private constructor(private val app: Context) : DshProce
                 DshService.stopSelfIfRunning(app, runGen)
                 return
             }
-            val tail = synchronized(runTail) { runTail.toList() }
-            var f = CrashClassifier.classify(code, readyAt, SystemClock.elapsedRealtime(), System.currentTimeMillis(), tail, runSafe, source.direct)
             if (SafePolicy.directLaunchFailed(f, source.direct)) {
                 // Direct can't launch on this device: PRoot from now on with this runtime, no failure card,
                 // no strike. A new runtime, or the user turning Direct on again, gives it another try.
@@ -896,7 +1045,7 @@ class RuntimeController private constructor(private val app: Context) : DshProce
             prefs.edit().putInt(K_STRIKES, strikes).apply()
             if (outcome.state != safeState) setSafeState(outcome.state, outcome.reason ?: safeReason)
             log("[dsh-app] classified as ${f.kind.wire}${if (f.safeMode) " (safe mode)" else ""}; consecutive failures: $strikes", "system")
-            error = "DSH exited unexpectedly (code $code)"
+            error = startupError?.let { "start failed: $it" } ?: "DSH exited unexpectedly (code $code)"
             if (outcome.restartSafe) {
                 log("[dsh-app] restarting in safe mode", "system")
                 outcome.notice?.let { notice(it) }
@@ -939,7 +1088,9 @@ class RuntimeController private constructor(private val app: Context) : DshProce
         DshService.updateNotification(app)
     }
 
-    private fun emitStatus() = emit(mapOf("type" to "status", "status" to status()))
+    private fun emitStatus() = synchronized(statusPublishLock) {
+        emit(mapOf("type" to "status", "status" to status()))
+    }
 
     private fun emit(event: Map<String, Any?>) {
         val targets = synchronized(sinks) { sinks.toList() }

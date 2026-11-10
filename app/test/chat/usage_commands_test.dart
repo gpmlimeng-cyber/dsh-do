@@ -180,9 +180,9 @@ void main() {
       expect(after.contextFraction, 0.4);
       expect(fallback.contextFraction, 0.84);
       expect(unknown.contextFraction, isNull);
-      // An explicit estimate of 0 is a real 0: the next request is empty.
       expect(zero.contextFraction, 0);
       expect(const SessionUsage(projectedTokens: 1200, contextWindow: 1000).contextFraction, 1);
+      expect(const SessionUsage(projectedTokens: 1, contextWindow: 0).contextFraction, isNull);
     });
 
     test('cache hit rate and cost need real numbers', () {

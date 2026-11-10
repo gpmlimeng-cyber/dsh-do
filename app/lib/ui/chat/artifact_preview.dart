@@ -13,7 +13,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../l10n/l10n.dart';
 import '../../media/gallery.dart' show imageProviderBytes;
@@ -37,11 +36,6 @@ import 'widgets/change_card.dart' show copyPath;
 import 'widgets/image_actions.dart' show GallerySaveButton;
 import 'widgets/image_gallery.dart' show ImagePager, ViewerImage, ZoomableImage;
 import '../common/brief_notice.dart';
-import '../features/feature_kit.dart' show QuietSpinner;
-import '../files/html_proxy_server.dart';
-import '../plugins/native/native_taps.dart' show openConfirmedLink;
-import '../web/web_view_guard.dart';
-import '../web/web_view_page.dart' show RendererGone;
 
 /// Lines per text page, and the most a preview holds.
 const previewPageLines = 500;
@@ -85,9 +79,6 @@ enum PreviewMode {
   /// CSV / TSV.
   table,
   markdown,
-
-  /// An HTML page, served over loopback and rendered in a WebView.
-  web,
   text,
 
   /// Opened in another app instead.
@@ -103,7 +94,6 @@ PreviewMode previewModeOf(String path, {bool officeToPdf = false}) {
   if (isOfficePath(path)) {
     return officeToPdf ? PreviewMode.office : PreviewMode.unsupported;
   }
-  if (ext == 'html' || ext == 'htm') return PreviewMode.web;
   return switch (artifactKindOf(path)) {
     ArtifactKind.image => ext == 'svg' ? PreviewMode.text : PreviewMode.image,
     ArtifactKind.pdf => PreviewMode.pdf,
@@ -143,10 +133,11 @@ bool isTextLikePath(String path) {
 bool artifactPreviewable(Artifact artifact, {bool officeToPdf = false}) {
   final mode = previewModeOf(artifact.path, officeToPdf: officeToPdf);
   if (mode == PreviewMode.unsupported) return false;
-  // An HTML page renders in the preview now (loopback WebView). A drawing made
-  // for the user still reads better in an app that renders it than as source.
-  if (mode == PreviewMode.web) return true;
-  if (artifact.kind == ArtifactKind.image && mode == PreviewMode.text) return false;
+  // A web page or a drawing made for the user reads better in an app that
+  // renders it than as its source.
+  if (artifact.kind == ArtifactKind.web || artifact.kind == ArtifactKind.image && mode == PreviewMode.text) {
+    return false;
+  }
   if (mode == PreviewMode.text && artifact.kind == ArtifactKind.other) {
     return isTextLikePath(artifact.path);
   }
@@ -289,6 +280,7 @@ class _ArtifactPreviewPageState extends ConsumerState<ArtifactPreviewPage> {
   Timer? _debounce;
   bool _ready = false;
   int _watchEpoch = 0;
+  int _selectionEpoch = 0;
   late int _index = widget.initial;
 
   List<Artifact> get _images => widget.gallery ?? [widget.artifact];
@@ -307,9 +299,13 @@ class _ArtifactPreviewPageState extends ConsumerState<ArtifactPreviewPage> {
   }
 
   void _stopFollowing() {
-    _watchEpoch++;
     _debounce?.cancel();
     _debounce = null;
+    _stopWatch();
+  }
+
+  void _stopWatch() {
+    _watchEpoch++;
     unawaited(_watch?.cancel());
     _watch = null;
     _ready = false;
@@ -317,6 +313,7 @@ class _ArtifactPreviewPageState extends ConsumerState<ArtifactPreviewPage> {
 
   void _select(int index) {
     if (index == _index) return;
+    _selectionEpoch++;
     _stopFollowing();
     setState(() {
       _index = index;
@@ -372,16 +369,16 @@ class _ArtifactPreviewPageState extends ConsumerState<ArtifactPreviewPage> {
     if (_busy) return;
     if (action == ArtifactAction.preview) return;
     setState(() => _busy = true);
-    final epoch = _watchEpoch;
+    final epoch = _selectionEpoch;
     try {
       await runArtifactAction(context, ref, sessionId: widget.sessionId, artifact: _artifact, action: action);
     } finally {
-      if (mounted && epoch == _watchEpoch) setState(() => _busy = false);
+      if (mounted && epoch == _selectionEpoch) setState(() => _busy = false);
     }
   }
 
   Future<void> _menu() async {
-    final epoch = _watchEpoch;
+    final epoch = _selectionEpoch;
     final files = ref.read(artifactFilesProvider);
     final action = await showArtifactMenu(
       context,
@@ -389,7 +386,7 @@ class _ArtifactPreviewPageState extends ConsumerState<ArtifactPreviewPage> {
       canFetch: files.canFetch,
       officeToPdf: files.canConvertOffice,
     );
-    if (action != null && mounted && epoch == _watchEpoch) await _act(action);
+    if (action != null && mounted && epoch == _selectionEpoch) await _act(action);
   }
 
   List<Widget> get _actions => [
@@ -417,6 +414,11 @@ class _ArtifactPreviewPageState extends ConsumerState<ArtifactPreviewPage> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(workspaceSourceProvider(widget.sessionId), (_, _) {
+      // Keep a pending refresh for the selected file.
+      _stopWatch();
+      _follow();
+    });
     final l10n = context.l10n;
     // Only Office files depend on the connection (can the Host convert?).
     final office = isOfficePath(_artifact.path);
@@ -478,33 +480,6 @@ class _ArtifactPreviewPageState extends ConsumerState<ArtifactPreviewPage> {
         where: _where(),
         actions: _actions,
         onOpen: _openElsewhere,
-      );
-    }
-    if (mode == PreviewMode.web) {
-      return _FramePage(
-        title: _artifact.name,
-        badge: _PreviewBadge(l10n.viewPreviewBadge),
-        meta: _where(),
-        actions: [
-          GlassIconButton(
-            icon: ArtifactAction.open.icon,
-            tooltip: l10n.commonOpenWith,
-            onPressed: _openElsewhere,
-          ),
-          GlassIconButton(
-            icon: AppIcons.copy,
-            tooltip: l10n.chatCopyPath,
-            onPressed: () => copyPath(context, _artifact.path),
-          ),
-        ],
-        child: _gone
-            ? PreviewNotice(icon: AppIcons.delete, title: l10n.viewArtifactMissing)
-            : _HtmlPreview(
-                sessionId: widget.sessionId,
-                artifact: _artifact,
-                revision: _revision,
-                onOpen: _openElsewhere,
-              ),
       );
     }
     final Widget body;
@@ -680,15 +655,11 @@ class _FramePage extends StatelessWidget {
     required this.title,
     this.meta,
     this.metaIsPath = true,
-    this.badge,
     required this.actions,
     required this.child,
   });
 
   final String title;
-
-  /// Sits before [meta] in the same line: 「预览」 marks an HTML preview.
-  final Widget? badge;
   final String? meta;
 
   /// [meta] starts with where the file is (mono, like any path); else it is
@@ -735,26 +706,18 @@ class _FramePage extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                               style: theme.textTheme.titleMedium?.copyWith(height: 1.25),
                             ),
-                            if (badge != null || meta != null)
-                              Row(
-                                children: [
-                                  if (badge case final badge?) ...[badge, const SizedBox(width: 8)],
-                                  if (meta != null)
-                                    Expanded(
-                                      child: Text(
-                                        meta!,
-                                        key: const ValueKey('preview-frame-meta'),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: metaIsPath
-                                            ? AppType.monoLabel(color: DshColors.of(context).textTertiary)
-                                            : theme.textTheme.bodySmall?.copyWith(
-                                                color: theme.colorScheme.onSurfaceVariant,
-                                                height: 1.35,
-                                              ),
+                            if (meta != null)
+                              Text(
+                                meta!,
+                                key: const ValueKey('preview-frame-meta'),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: metaIsPath
+                                    ? AppType.monoLabel(color: DshColors.of(context).textTertiary)
+                                    : theme.textTheme.bodySmall?.copyWith(
+                                        color: theme.colorScheme.onSurfaceVariant,
+                                        height: 1.35,
                                       ),
-                                    ),
-                                ],
                               ),
                           ],
                         ),
@@ -1851,280 +1814,6 @@ class _PdfPageState extends State<_PdfPage> {
             semanticLabel: l10n.viewArtifactPage(widget.index + 1),
           );
         },
-      ),
-    );
-  }
-}
-
-// ── HTML preview ────────────────────────────────────────────────────────────
-
-/// 「预览」: what the frame says about an HTML page, before its path.
-class _PreviewBadge extends StatelessWidget {
-  const _PreviewBadge(this.label);
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final primary = Theme.of(context).colorScheme.primary;
-    return Container(
-      height: 18,
-      alignment: Alignment.center,
-      padding: const EdgeInsets.symmetric(horizontal: 6),
-      decoration: BoxDecoration(color: primary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(6)),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: primary,
-          fontSize: 11,
-          height: 1,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-}
-
-/// The HTML itself: a WebView over a loopback server that reads the file and the
-/// files beside it from the Host. No bridge, no `file://`; navigation stays on
-/// the preview unless a link is confirmed.
-class _HtmlPreview extends ConsumerStatefulWidget {
-  const _HtmlPreview({required this.sessionId, required this.artifact, required this.revision, required this.onOpen});
-
-  final String sessionId;
-  final Artifact artifact;
-  final int revision;
-  final VoidCallback? onOpen;
-
-  @override
-  ConsumerState<_HtmlPreview> createState() => _HtmlPreviewState();
-}
-
-class _HtmlPreviewState extends ConsumerState<_HtmlPreview> {
-  HtmlPreviewServer? _server;
-  WebViewController? _controller;
-  late final WebViewGuard _guard = WebViewGuard(onGone: _onRendererGone);
-  Timer? _slow;
-  Timer? _resourcePoll;
-  int _generation = 0;
-  bool _ready = false;
-  bool _gone = false;
-  bool _missing = false;
-  String? _problem;
-
-  @override
-  void initState() {
-    super.initState();
-    _open();
-  }
-
-  @override
-  void didUpdateWidget(covariant _HtmlPreview oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.revision != widget.revision || oldWidget.artifact.path != widget.artifact.path) {
-      _restart();
-    }
-  }
-
-  @override
-  void dispose() {
-    _slow?.cancel();
-    _resourcePoll?.cancel();
-    _guard.dispose();
-    unawaited(_server?.close());
-    super.dispose();
-  }
-
-  void _restart() {
-    unawaited(_server?.close());
-    _slow?.cancel();
-    _resourcePoll?.cancel();
-    setState(() {
-      _server = null;
-      _controller = null;
-      _ready = false;
-      _gone = false;
-      _missing = false;
-      _problem = null;
-      _generation++;
-    });
-    _open();
-  }
-
-  Future<void> _open() async {
-    final files = ref.read(artifactFilesProvider);
-    final client = files.connection?.client;
-    if (client == null || !client.canReadFileBytes) {
-      // An old Host cannot hand out file bytes: no preview, only another app.
-      if (mounted) setState(() => _problem = context.l10n.viewArtifactNoPreview);
-      return;
-    }
-    try {
-      final server = await HtmlPreviewServer.start(
-        client: client,
-        sessionId: widget.sessionId,
-        path: widget.artifact.path,
-      );
-      if (!mounted) {
-        await server.close();
-        return;
-      }
-      if (server.failed) {
-        await server.close();
-        if (mounted) setState(() => _problem = context.l10n.viewHtmlCantOpen);
-        return;
-      }
-      setState(() => _server = server);
-      final theme = Theme.of(context);
-      final controller = WebViewController();
-      _controller = controller;
-      final textZoom = MediaQuery.textScalerOf(context).scale(100).round().clamp(50, 300);
-      try {
-        await controller.setJavaScriptMode(JavaScriptMode.unrestricted);
-        await controller.setBackgroundColor(theme.colorScheme.surface);
-        await controller.setNavigationDelegate(
-          NavigationDelegate(onNavigationRequest: _navigate, onPageFinished: (_) => _finished()),
-        );
-      } catch (_) {
-        // A platform that refuses its own settings still gets a page.
-      }
-      if (!mounted || controller != _controller) return;
-      // After the navigation delegate: a dead renderer is reported, not fatal.
-      await _guard.attach(controller, dark: theme.brightness == Brightness.dark, textZoom: textZoom);
-      if (!mounted || controller != _controller) return;
-      try {
-        await controller.loadRequest(server.pageUrl);
-      } catch (_) {
-        if (mounted) setState(() => _problem = context.l10n.viewHtmlCantOpen);
-        return;
-      }
-      _slow?.cancel();
-      _slow = Timer(const Duration(seconds: 20), () {
-        if (!mounted || _ready || _gone) return;
-        setState(() => _problem = context.l10n.viewHtmlCantOpen);
-      });
-      // A resource can fail long after the first paint (a lazy image): the
-      // strip still appears, once, without touching the page.
-      _resourcePoll?.cancel();
-      _resourcePoll = Timer.periodic(const Duration(seconds: 1), (_) {
-        if (!mounted || _gone) return;
-        if (_server?.missing == true && !_missing) setState(() => _missing = true);
-      });
-    } catch (_) {
-      if (mounted) setState(() => _problem = context.l10n.viewHtmlCantOpen);
-    }
-  }
-
-  NavigationDecision _navigate(NavigationRequest request) {
-    final uri = Uri.tryParse(request.url);
-    if (uri == null) return NavigationDecision.prevent;
-    if (uri.scheme == 'about') return NavigationDecision.navigate;
-    final server = _server;
-    if (server != null && uri.scheme == 'http' && uri.host == '127.0.0.1' && uri.port == server.pageUrl.port) {
-      return NavigationDecision.navigate;
-    }
-    unawaited(_external(uri));
-    return NavigationDecision.prevent;
-  }
-
-  /// A link inside the page: confirmed first, never followed silently, and
-  /// never inside this WebView.
-  Future<void> _external(Uri uri) async {
-    if (!mounted) return;
-    if (uri.scheme == 'https') {
-      await openConfirmedLink(context, uri);
-      return;
-    }
-    ScaffoldMessenger.maybeOf(context)?.showBriefNotice(context.l10n.viewHtmlLinkBlocked);
-  }
-
-  void _finished() {
-    if (!mounted) return;
-    _slow?.cancel();
-    setState(() {
-      _ready = true;
-      _missing = _server?.missing ?? false;
-    });
-  }
-
-  void _onRendererGone(bool crashed) {
-    if (!mounted || _gone) return;
-    setState(() => _gone = true);
-    WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(_guard.destroy()));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final theme = Theme.of(context);
-    if (_gone) {
-      return RendererGone(label: l10n.viewHtmlCantOpen, onReopen: _restart);
-    }
-    if (_problem case final problem?) {
-      return PreviewNotice(
-        icon: AppIcons.error,
-        title: problem,
-        message: l10n.viewHtmlCantOpenBody,
-        actionLabel: l10n.commonOpenWith,
-        onAction: widget.onOpen,
-      );
-    }
-    final controller = _controller;
-    return Column(
-      children: [
-        if (_missing) _MissingResources(label: l10n.viewHtmlPartialResources, onRetry: _restart),
-        Expanded(
-          child: Stack(
-            children: [
-              if (controller != null)
-                Positioned.fill(
-                  child: WebViewWidget(key: ValueKey(_generation), controller: controller),
-                ),
-              if (!_ready)
-                Positioned.fill(
-                  child: ColoredBox(
-                    color: theme.colorScheme.surface,
-                    child: const Center(child: QuietSpinner()),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// 「部分资源未能加载」: a strip above the page, not over it.
-class _MissingResources extends StatelessWidget {
-  const _MissingResources({required this.label, required this.onRetry});
-
-  final String label;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final theme = Theme.of(context);
-    final dsh = DshColors.of(context);
-    return Container(
-      height: 36,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      color: theme.colorScheme.surfaceContainerHighest,
-      child: Row(
-        children: [
-          Icon(AppIcons.warning, size: 16, color: dsh.textTertiary),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodySmall?.copyWith(color: dsh.textTertiary),
-            ),
-          ),
-          TextButton(onPressed: onRetry, child: Text(l10n.commonRetry)),
-        ],
       ),
     );
   }
