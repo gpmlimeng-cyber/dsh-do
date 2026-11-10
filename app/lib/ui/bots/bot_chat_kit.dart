@@ -162,7 +162,7 @@ class BotChatHeader extends StatelessWidget {
   /// it can carry the group's name instead.
   final bool titleCompact;
 
-  /// 目标段并进群名这颗胶囊：一颗外壳、两段分段点击，中间一条竖分隔。
+  /// 目标段并进群名这颗胶囊：一颗外壳、两段分段点击（两段之间不画分隔线）。
   /// [trailing] 这时必须是「裸」的那一段（自己不带玻璃底）。
   final bool mergeTrailing;
 
@@ -270,8 +270,8 @@ class BotChatHeader extends StatelessWidget {
     );
     // 大胶囊（目标进行中）：一颗 stadium 玻璃底，左段只有群头像（圆心与胶囊
     // 的圆头对齐、整段可点 = 群详情），右段是完整目标段、吃掉剩余宽度（右端
-    // 的进度环因此贴住胶囊尾端）。中间 1px 竖线归右段；水波按段裁剪，这是
-    // 「一颗但两段」的唯一提示。
+    // 的进度环因此贴住胶囊尾端）。两段紧贴、不画分隔线，靠各自的点击区与
+    // 按段裁剪的水波区分（这是「一颗但两段」的唯一提示）。
     Widget mergedTitlePill(
       BuildContext context, {
       required Widget Function({required bool compact, required bool stretch}) titleRow,
@@ -301,7 +301,6 @@ class BotChatHeader extends StatelessWidget {
                     ),
                   ),
                 ),
-                // 分隔线画在右段里面，所以那 13px 也是「点它开面板」，不是死区。
                 Expanded(child: goal),
               ],
             ),
@@ -391,7 +390,8 @@ class BotChatHeader extends StatelessWidget {
                   // 弹性分配——否则它和胶囊各拿一半自由宽，那半截没用完就留在
                   // 行尾，最右那颗键贴不到右边。其余时候标题吃掉剩余宽度。
                   // 合体态：群名与目标在一颗胶囊里，两段各自可点，中间一条
-                  // 竖分隔；收成小球时球在同一颗胶囊的尾端（[endTrailing]）。
+                  // （两段紧贴、无分隔）；收成小球时球在同一颗胶囊的尾端
+                  // （[endTrailing]）。
                   // 无目标时才走下面那两种旧排法。
                   if (mergeTrailing && trailing != null)
                     Expanded(child: _mergedTitlePill(context, titleRow: titleRow, goal: trailing!))

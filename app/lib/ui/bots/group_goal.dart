@@ -190,7 +190,7 @@ class GoalBarProbe extends ConsumerWidget {
     // 拉回来再换成新的。否则每来一条消息胶囊就缩成一个小转圈，再弹回去。
     final goal = async.value;
     if (goal != null && goal.title.isNotEmpty) {
-      // 合体态：右段（两行文字或窄屏一颗环）并进群名胶囊，分隔线在里面。
+      // 合体态：右段（旗帜 + 两行文字 + 环）并进那颗大胶囊。
       return bare && expanded
           ? GoalInlineSegment(
               goal: goal,
@@ -276,8 +276,8 @@ double pillHeightOf(BuildContext context) => ChatHeader.pillHeightOf(context);
 /// 合体胶囊的右段：第一行旗帜 + 目标标题，第二行动态，右端进度环；自己带
 /// 右圆角的水波，点它开面板、长按收成小球。外壳由顶栏那颗胶囊给。
 ///
-/// 窄屏（< 360）只留「旗帜 + 标题 + 环」：两行在高度上一直装得下，退成一行
-/// 换的是宽度，不是高度。
+/// 任何宽度都保留两行（两行在高度上一直装得下，隐掉动态行不腾宽只丢信息），
+/// 两段之间也不画分隔线：左段头像、右段目标紧贴，靠各自的点击区与水波分开。
 class GoalInlineSegment extends StatelessWidget {
   const GoalInlineSegment({
     super.key,
@@ -298,29 +298,15 @@ class GoalInlineSegment extends StatelessWidget {
     final radius = BorderRadius.horizontal(right: Radius.circular(height / 2));
     // 22 的环（不是 24）：省下的 2px 全给标题。
     const ringSize = 22.0;
-    // 窄屏退成一行：宽度不够时丢掉「现在在干什么」那一行，其余不动。
-    final narrow = MediaQuery.sizeOf(context).width < 360;
     final ring = GoalRing(goal: goal, size: ringSize, announce: false);
     final paused = goal.status == 'paused';
-    // 分隔线在这段里：连它一起可点（点线也是开面板），不是死区。
+    // 没有分隔线：这一段自己就是一个点击区（右圆角裁水波），左段头像那颗
+    // 仍是另一个点击区，两段各管各的。
     Widget segment({required Widget child}) => InkWell(
       onTap: onTap,
       onLongPress: onLongPress,
       customBorder: RoundedRectangleBorder(borderRadius: radius),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6),
-            child: Container(
-              width: 1,
-              height: 18,
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.12),
-            ),
-          ),
-          child,
-        ],
-      ),
+      child: child,
     );
 
     final line = goalDynamicLine(context.l10n, goal);
@@ -384,7 +370,7 @@ class GoalInlineSegment extends StatelessWidget {
                           ),
                         ],
                       ),
-                      if (!narrow && text != goal.title) ...[
+                      if (text != goal.title) ...[
                         const SizedBox(height: 1),
                         Padding(
                           padding: const EdgeInsets.only(left: flagSize + flagGap),
