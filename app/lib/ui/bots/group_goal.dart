@@ -383,8 +383,6 @@ class GoalInlineSegment extends StatelessWidget {
     const dotSize = 6.0;
     const dotGap = 5.0;
     const lineGap = 2.0;
-    // 行 2 的缩进：旗帜 + 间距，圆点正好在标题左边缘下面。
-    const secondIndent = flagSize + flagGap;
     final passed = goal.stages.where((stage) => stage.passed).length;
     final total = goal.stages.isEmpty ? goal.stageCount : goal.stages.length;
     final flag = Icon(
@@ -423,7 +421,7 @@ class GoalInlineSegment extends StatelessWidget {
             final text = secondLine ?? splitForPill(
               head: line.head,
               tail: line.tail,
-              maxWidth: math.max(0.0, textWidth - secondIndent - dotSize - dotGap),
+              maxWidth: math.max(0.0, textWidth - dotSize - dotGap),
               style: second,
               scaler: MediaQuery.textScalerOf(context),
             );
@@ -456,29 +454,28 @@ class GoalInlineSegment extends StatelessWidget {
                         ),
                         if (text.isNotEmpty && text != goal.title) ...[
                           const SizedBox(height: lineGap),
-                          Padding(
-                            padding: const EdgeInsets.only(left: secondIndent),
-                            child: Row(
-                              children: [
-                                // 圆点不进读屏：第二行文字本身已经说清状态。
-                                ExcludeSemantics(
-                                  child: _GoalPulseDot(
-                                    color: goalStateColor(context, goal),
-                                    alive: goal.status == 'active',
-                                    size: dotSize,
-                                  ),
+                          // 行 2 不缩进：圆点和旗帜的左边齐平（块内左 6），
+                          // 两行才是同一根左基线，也省下 18 给第二行的文字。
+                          Row(
+                            children: [
+                              // 圆点不进读屏：第二行文字本身已经说清状态。
+                              ExcludeSemantics(
+                                child: _GoalPulseDot(
+                                  color: goalStateColor(context, goal),
+                                  alive: goal.status == 'active',
+                                  size: dotSize,
                                 ),
-                                const SizedBox(width: dotGap),
-                                Expanded(
-                                  child: Text(
-                                    text,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.clip,
-                                    style: second,
-                                  ),
+                              ),
+                              const SizedBox(width: dotGap),
+                              Expanded(
+                                child: Text(
+                                  text,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.clip,
+                                  style: second,
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ],
                       ],
