@@ -11,7 +11,7 @@ import '../../l10n/l10n.dart';
 import '../../state/adaptive_layout_state.dart';
 import '../../state/bots_state.dart';
 import '../common/list_page_row.dart';
-import '../shell/adaptive/adaptive_layout.dart';
+import '../shell/adaptive/adaptive_scaffold.dart' show AdaptiveChrome;
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
 import 'room_details_page.dart';
