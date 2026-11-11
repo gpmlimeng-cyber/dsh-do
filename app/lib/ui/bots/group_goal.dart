@@ -132,8 +132,23 @@ class GoalRing extends StatelessWidget {
 /// 顶栏那颗「圆」本身：一颗环 + 暂停角标，没有第二层底。收起态的小球和展开
 /// 态右段共用这一颗，所以收起 / 展开时是同一个圆，尺寸、内缩、描边都一样
 /// （直径见 [GroupGoalPill._ballSize]，照标题胶囊尾端的时钟键）。
+///
+/// 目标达成后这颗换外观：36 圆盘 + 垃圾桶，写明「清除目标」。桶不染红——清除是
+/// 正常收尾，不是危险操作；点它仍只开面板，真正清除在面板里。
 Widget goalRingBall(BuildContext context, {required DsBotGroupGoal goal, required double size}) {
+  final theme = Theme.of(context);
   final dsh = DshColors.of(context);
+  if (goal.status == 'complete') {
+    return Container(
+      width: size,
+      height: size,
+      decoration: ShapeDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        shape: const CircleBorder(),
+      ),
+      child: Icon(AppIcons.delete, size: 18, color: theme.colorScheme.onSurfaceVariant),
+    );
+  }
   return SizedBox.square(
     dimension: size,
     child: Stack(
@@ -245,9 +260,11 @@ class GoalBarProbe extends ConsumerWidget {
               expanded: expanded,
               // 收成小球且并进群名胶囊时，只画那颗同心球（外壳由顶栏给）。
               bare: bare && !expanded,
-              // 点完整胶囊开面板；长按才收成小球。收起与「关面板」是两件事。
-              onTap: expanded ? () => showGoalExpand(context, roomId) : (onExpand ?? () {}),
-              onLongPress: expanded ? onCollapse : null,
+              // 点它只开面板——展开态与收起态点下去是同一件事：清除也只发生
+              // 在面板里（这颗球刚才还是「开面板」，换个不可逆动作最危险）。
+              onTap: () => showGoalExpand(context, roomId),
+              // 长按：展开态收成小球、收起态展回胶囊；手动改过的以手动为准。
+              onLongPress: expanded ? onCollapse : onExpand,
             );
     }
     // 一次都还没读到：占位照那颗球的大小，目标读到后不跳。
@@ -358,11 +375,18 @@ class GoalInlineSegment extends StatelessWidget {
       ),
     );
 
-    final line = goalDynamicLine(context.l10n, goal);
-    // 第一行：旗帜 + 目标标题（旗帜跟标题同一行，不再在整段里垂直居中）；
-    // 第二行（动态）缩进到标题左边，不从旗帜底下起。
-    const flagSize = 16.0;
+    final l10n = context.l10n;
+    // 竖排两行、左对齐：行 1 = 旗帜 + 标题，行 2 = 圆点 + 动态。行 2 的起点
+    // 对齐标题的左边缘（不是对齐旗帜，也不居中）。
+    const flagSize = 14.0;
     const flagGap = 4.0;
+    const dotSize = 6.0;
+    const dotGap = 5.0;
+    const lineGap = 2.0;
+    // 行 2 的缩进：旗帜 + 间距，圆点正好在标题左边缘下面。
+    const secondIndent = flagSize + flagGap;
+    final passed = goal.stages.where((stage) => stage.passed).length;
+    final total = goal.stages.isEmpty ? goal.stageCount : goal.stages.length;
     final flag = Icon(
       paused
           ? AppIcons.paused
@@ -376,58 +400,89 @@ class GoalInlineSegment extends StatelessWidget {
           ? dsh.success
           : dsh.textTertiary,
     );
+    final line = goalDynamicLine(l10n, goal);
+    // 达成后进度不丢：环换成了清除按钮，所以把「4/4」挪到第二行来写。
+    final secondLine = goal.status == 'complete' && total > 0
+        ? '${l10n.chatGoalReached} · $passed/$total'
+        : null;
     return segment(
       child: Padding(
-        // 左内边 0（宽度紧）；右内边 = 环的内缩（(胶囊高 − 环直径) / 2 = 4），
-        // 环才和胶囊右端那颗半圆同心，读作一个圆。
+        // 右内边 = 环的内缩（(胶囊高 − 环直径) / 2 = 4），环才和胶囊右端那颗
+        // 半圆同心，读作一个圆。
         padding: EdgeInsets.only(right: HeaderScheduleCap.insetFor(height)),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final small = theme.textTheme.labelSmall!.copyWith(
+            final second = theme.textTheme.labelSmall!.copyWith(
               fontSize: 10.5,
               height: 1.3,
               color: dsh.textTertiary,
             );
-            final text = splitForPill(
+            // 文字块：左 6 / 右 12（UI 的内边），右边再留 6 给环。
+            final textWidth =
+                constraints.maxWidth - 6 - 12 - 6 - ringSize;
+            final text = secondLine ?? splitForPill(
               head: line.head,
               tail: line.tail,
-              maxWidth: constraints.maxWidth - 6 - ringSize - flagSize - flagGap,
-              style: small,
+              maxWidth: math.max(0.0, textWidth - secondIndent - dotSize - dotGap),
+              style: second,
               scaler: MediaQuery.textScalerOf(context),
             );
             return Row(
               children: [
                 Expanded(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          flag,
-                          const SizedBox(width: flagGap),
-                          Expanded(
-                            child: Text(
-                              goal.title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.labelMedium?.copyWith(
-                                fontSize: 12.5,
-                                height: 1.25,
-                                fontWeight: FontWeight.w600,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 6, right: 12),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            flag,
+                            const SizedBox(width: flagGap),
+                            Expanded(
+                              child: Text(
+                                goal.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.labelMedium?.copyWith(
+                                  fontSize: 12.5,
+                                  height: 1.2,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
+                            ),
+                          ],
+                        ),
+                        if (text.isNotEmpty && text != goal.title) ...[
+                          const SizedBox(height: lineGap),
+                          Padding(
+                            padding: const EdgeInsets.only(left: secondIndent),
+                            child: Row(
+                              children: [
+                                // 圆点不进读屏：第二行文字本身已经说清状态。
+                                ExcludeSemantics(
+                                  child: _GoalPulseDot(
+                                    color: goalStateColor(context, goal),
+                                    alive: goal.status == 'active',
+                                    size: dotSize,
+                                  ),
+                                ),
+                                const SizedBox(width: dotGap),
+                                Expanded(
+                                  child: Text(
+                                    text,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.clip,
+                                    style: second,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
-                      ),
-                      if (text != goal.title) ...[
-                        const SizedBox(height: 1),
-                        Padding(
-                          padding: const EdgeInsets.only(left: flagSize + flagGap),
-                          child: Text(text, maxLines: 1, overflow: TextOverflow.clip, style: small),
-                        ),
                       ],
-                    ],
+                    ),
                   ),
                 ),
                 const SizedBox(width: 6),
@@ -437,6 +492,78 @@ class GoalInlineSegment extends StatelessWidget {
           },
         ),
       ),
+    );
+  }
+}
+
+/// 第二行最左那颗圆点：进行中呼吸（透明度 0.3→1、缩放 0.85→1.05，1.6 秒
+/// 来回、ease-in-out），其余状态静止。系统要求减少动画、或「灵动动效」关着时
+/// 一律静止在 1.0——这时候还在呼吸，等于骗用户说它还在跑。
+class _GoalPulseDot extends StatefulWidget {
+  const _GoalPulseDot({required this.color, required this.alive, required this.size});
+
+  final Color color;
+  final bool alive;
+  final double size;
+
+  @override
+  State<_GoalPulseDot> createState() => _GoalPulseDotState();
+}
+
+class _GoalPulseDotState extends State<_GoalPulseDot> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1600),
+  );
+  late final Animation<double> _t = CurvedAnimation(
+    parent: _controller,
+    curve: Curves.easeInOut,
+  );
+
+  // 不在 initState 里碰 context 的继承依赖，交给 didChangeDependencies。
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _sync();
+  }
+
+  @override
+  void didUpdateWidget(_GoalPulseDot oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _sync();
+  }
+
+  /// 呼吸只在「进行中 + 允许动效」时跑。
+  void _sync() {
+    final run = widget.alive && AppMotion.fluid(context);
+    if (run && !_controller.isAnimating) {
+      _controller.repeat(reverse: true);
+    } else if (!run && _controller.isAnimating) {
+      _controller.stop();
+      _controller.value = 0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final dot = DecoratedBox(
+      decoration: BoxDecoration(color: widget.color, shape: BoxShape.circle),
+      child: SizedBox.square(dimension: widget.size),
+    );
+    if (!widget.alive || !AppMotion.fluid(context)) return dot;
+    return AnimatedBuilder(
+      animation: _t,
+      builder: (context, child) => Opacity(
+        opacity: 0.3 + 0.7 * _t.value,
+        child: Transform.scale(scale: 0.85 + 0.2 * _t.value, child: child),
+      ),
+      child: dot,
     );
   }
 }
@@ -610,7 +737,8 @@ class GroupGoalPill extends StatelessWidget {
         // 否则读屏里它会跟左段那颗「查看详情」并成同一个按钮（点不到）。
         container: true,
         button: true,
-        label: goal.title,
+        // 达成后这颗是「清除目标」的入口，读屏也照这个念。
+        label: goal.status == 'complete' ? context.l10n.chatClearGoal : goal.title,
         onTap: onTap,
         excludeSemantics: true,
         child: Material(
