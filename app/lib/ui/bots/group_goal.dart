@@ -150,11 +150,14 @@ Widget goalRingBall(
     return Container(
       width: size,
       height: size,
-      decoration: ShapeDecoration(
+      decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerHighest,
-        shape: const CircleBorder(),
+        shape: BoxShape.circle,
+        // 圆盘和胶囊玻璃颜色太近，圆边看不出来；给一圈极淡的描边，形状才读成
+        // 圆（图标本身是方方正正的垃圾桶，会被整颗看成圆角方块）。
+        border: Border.all(color: theme.colorScheme.onSurface.withValues(alpha: 0.10)),
       ),
-      child: Icon(AppIcons.delete, size: 18, color: theme.colorScheme.onSurfaceVariant),
+      child: Icon(AppIcons.delete, size: 16, color: theme.colorScheme.onSurfaceVariant),
     );
   }
   return SizedBox.square(
@@ -1787,7 +1790,8 @@ class _GoalHeaderActionsState extends ConsumerState<_GoalHeaderActions> {
       children: [
         _disc(
           tooltip: paused ? l10n.chatResumeGoal : l10n.chatPauseGoal,
-          icon: paused ? AppIcons.play : AppIcons.pause,
+          // 实心变体：线框在 36 的圆盘里太虚，悬浮卡上那两颗是实心字。
+          icon: paused ? AppIcons.mediaPlay : AppIcons.mediaPause,
           iconSize: 18,
           color: paused ? theme.colorScheme.primary : theme.colorScheme.onSurface,
           background: paused ? theme.colorScheme.primary.withValues(alpha: 0.14) : null,
@@ -1797,7 +1801,7 @@ class _GoalHeaderActionsState extends ConsumerState<_GoalHeaderActions> {
         // 二次确认走标题区那 3 秒，这颗键本身不变形。
         _disc(
           tooltip: _armed ? l10n.chatGoalConfirmStop : l10n.commonStop,
-          icon: AppIcons.stop,
+          icon: AppIcons.stopGenerating,
           iconSize: 16,
           color: dsh.onDangerContainer,
           background: dsh.dangerContainer,

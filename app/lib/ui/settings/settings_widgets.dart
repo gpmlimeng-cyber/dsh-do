@@ -175,7 +175,8 @@ class SettingsTile extends StatelessWidget {
         : endsInGlyph
         ? SettingsMetrics.trailingPad
         : SettingsMetrics.inset;
-    final iconSlot = compact ? 24.0 : SettingsMetrics.icon;
+    // 紧凑行不再留槽：盒子和字形一样大，6 才是真的 6（24 的槽会白加 3 边距）。
+    final iconSlot = compact ? 18.0 : SettingsMetrics.icon;
     final iconGlyph = compact ? 18.0 : SettingsMetrics.lineGlyph;
     final iconGap = compact ? 6.0 : SettingsMetrics.iconGap;
     final minHeight = compact ? 44.0 : subtitle == null ? SettingsMetrics.rowHeight : SettingsMetrics.rowHeightTwoLine;

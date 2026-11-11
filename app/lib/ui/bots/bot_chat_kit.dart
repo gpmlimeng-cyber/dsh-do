@@ -546,7 +546,7 @@ class _RoundKey extends StatelessWidget {
 
 /// ⋯ 的下拉菜单：键本身就是锚点，卡片从它下方展开、右边缘与键的右边缘对齐
 /// （网页那种从按钮长出来的菜单，不是底部抽屉）。点外面或返回就收起。
-class _AnchoredMenu extends StatelessWidget {
+class _AnchoredMenu extends StatefulWidget {
   const _AnchoredMenu({required this.controller, required this.children, this.onLongPress});
 
   final MenuController controller;
@@ -557,13 +557,44 @@ class _AnchoredMenu extends StatelessWidget {
   /// 长按仍是另一条路（页面拿它开详情）。
   final VoidCallback? onLongPress;
 
-  /// 卡片宽度：行按这个宽铺满（行自己带 16 的左右留白），高 52。
+  /// 卡片宽度：行按这个宽铺满。
   static const double _width = 176;
+
+  @override
+  State<_AnchoredMenu> createState() => _AnchoredMenuState();
+}
+
+class _AnchoredMenuState extends State<_AnchoredMenu> {
+  /// 锚点就是这颗 ⋯：面板的右边缘按它的右缘算，不按屏内边。
+  final _anchor = GlobalKey();
+
+  void _toggle() {
+    final controller = widget.controller;
+    if (controller.isOpen) {
+      controller.close();
+      return;
+    }
+    final box = _anchor.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) {
+      controller.open();
+      return;
+    }
+    // 面板：右上角钉在这颗键的右缘、往下 8。键自己的坐标最准——屏幕内边、
+    // 行的左右留白都不用参与计算。
+    final origin = box.localToGlobal(Offset.zero);
+    controller.open(
+      position: Offset(
+        origin.dx + box.size.width - _AnchoredMenu._width,
+        origin.dy + box.size.height + 8,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
+    final controller = widget.controller;
     return MenuAnchor(
       controller: controller,
       // 行是带 Expanded 的列表行：宽度必须先定死，不能让菜单按内容宽去量
@@ -575,13 +606,14 @@ class _AnchoredMenu extends StatelessWidget {
         backgroundColor: WidgetStatePropertyAll(theme.colorScheme.surface),
         surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
         padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(vertical: 6)),
-        minimumSize: const WidgetStatePropertyAll(Size(_width, 0)),
+        minimumSize: const WidgetStatePropertyAll(Size(_AnchoredMenu._width, 0)),
         // 圆角 14：比列表卡（20）收紧一档，跟紧凑行一起才不显松。
         shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
       ),
       alignmentOffset: const Offset(0, 8),
       menuChildren: [
-        for (final row in children(context, controller)) SizedBox(width: _width, child: row),
+        for (final row in widget.children(context, controller))
+          SizedBox(width: _AnchoredMenu._width, child: row),
       ],
       // 开合时 MenuAnchor 自己重建这颗键：PopScope 挂在它上面，返回键先收菜单。
       builder: (context, menu, child) => PopScope(
@@ -589,12 +621,16 @@ class _AnchoredMenu extends StatelessWidget {
         onPopInvokedWithResult: (didPop, _) {
           if (!didPop && menu.isOpen) menu.close();
         },
-        child: _RoundKey(
-          key: const ValueKey('bot-menu-key'),
-          icon: AppIcons.more,
-          tooltip: l10n.commonMore,
-          onTap: () => menu.isOpen ? menu.close() : menu.open(),
-          onLongPress: onLongPress,
+        // 用 GlobalKey 量这颗键自己的位置：面板右缘按它的右缘算。
+        child: KeyedSubtree(
+          key: _anchor,
+          child: _RoundKey(
+            key: const ValueKey('bot-menu-key'),
+            icon: AppIcons.more,
+            tooltip: l10n.commonMore,
+            onTap: _toggle,
+            onLongPress: widget.onLongPress,
+          ),
         ),
       ),
     );
