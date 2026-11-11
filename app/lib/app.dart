@@ -193,12 +193,18 @@ class _DshAppState extends ConsumerState<DshApp> with WidgetsBindingObserver {
           child: AppMotionScope(
             fluid: fluid,
             child: ThemeRevealHost(
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  MirroredSideInsets(child: child!),
-                  const LaunchLayer(),
-                ],
+              // 整棵树最底下垫一层不透明的页面底色：任何一帧只要上层没画
+              // 东西（重建、关闭动画、首帧），看见的是页面底色而不是纯黑。
+              // 壁纸和渐变都画在它上面，所以看不出区别。
+              child: ColoredBox(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    MirroredSideInsets(child: child!),
+                    const LaunchLayer(),
+                  ],
+                ),
               ),
             ),
           ),

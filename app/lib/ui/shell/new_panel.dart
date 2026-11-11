@@ -146,9 +146,17 @@ class _NewPanelState extends ConsumerState<_NewPanel> {
               leading: Icon(AppIcons.newChat, size: 20, color: dsh.textTertiary),
               title: l10n.commonNewChat,
               onTap: () {
-                ref.read(currentSessionProvider.notifier).select(null);
-                widget.onChosen?.call();
+                // 先关面板与抽屉，下一帧再切会话：同一帧里既切会话又关面板，
+                // 会让 ChatScreen 的重建和关闭动画打架——从左侧栏进来第一次
+                // 会留一帧空页（看着是黑屏）。notifier 在这里先取好，回调跑
+                // 时这个面板已经销毁，不能再碰 ref。
+                final sessions = ref.read(currentSessionProvider.notifier);
+                final chosen = widget.onChosen;
                 Navigator.of(context).pop();
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  chosen?.call();
+                  sessions.select(null);
+                });
               },
             ),
           ],
