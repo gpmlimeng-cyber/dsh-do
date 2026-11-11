@@ -338,6 +338,10 @@ abstract final class AppIcons {
   static const workflow = DshGlyphs.flowArrow;
   static const todo = DshGlyphs.listChecks;
   static const goal = DshGlyphs.flag;
+
+  /// 目标胶囊第一行那颗靶心（网页端目标胶囊用的是这个形状）；与 [goal] 并存：
+  /// 面板、插件、工具卡里的「目标」仍是旗帜，只换顶栏那一处。
+  static const goalTarget = DshGlyphs.target;
   static const plan = DshGlyphs.mapTrifold;
   static const planMode = DshGlyphs.mapTrifold;
   static const jobs = DshGlyphs.clipboardText;

@@ -401,7 +401,7 @@ class GoalInlineSegment extends StatelessWidget {
           ? AppIcons.paused
           : goal.status == 'complete'
           ? AppIcons.success
-          : AppIcons.goal,
+          : AppIcons.goalTarget,
       size: flagSize,
       color: paused
           ? dsh.warning
@@ -845,7 +845,7 @@ class GroupGoalPill extends StatelessWidget {
                         Icon(AppIcons.paused, size: 18, color: dsh.warning)
                       else
                         Icon(
-                          goal.status == 'complete' ? AppIcons.success : AppIcons.goal,
+                          goal.status == 'complete' ? AppIcons.success : AppIcons.goalTarget,
                           size: 18,
                           color: goal.status == 'complete' ? dsh.success : dsh.textTertiary,
                         ),
