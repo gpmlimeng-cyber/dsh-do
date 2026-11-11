@@ -90,14 +90,28 @@ class GoalRing extends StatelessWidget {
     final ring = SizedBox.square(
       dimension: size,
       child: CustomPaint(
-        painter: _RingPainter(fraction: fraction, tone: tone, track: tone.withValues(alpha: 0.18)),
+        painter: _RingPainter(
+          fraction: fraction,
+          tone: tone,
+          track: tone.withValues(alpha: 0.18),
+          stroke: size >= 36 ? 2.5 : 2,
+        ),
         child: Center(
           child: Text(
             label,
             style: AppType.tabular(
               theme.textTheme.labelSmall!.copyWith(
-                // 字号跟着环走：24 小、30 中、32 与 36 大。
-                fontSize: size >= 32 ? 10.5 : size <= 24 ? 8.5 : 9.5,
+                // 字号跟着环走（直径 ×0.3 取整）：24 → 8.5、30 与 32 → 10.5、
+                // 36 → 11、40 → 12。
+                fontSize: size >= 40
+                    ? 12
+                    : size >= 36
+                    ? 11
+                    : size >= 32
+                    ? 10.5
+                    : size <= 24
+                    ? 8.5
+                    : 9.5,
                 height: 1,
                 fontWeight: FontWeight.w700,
                 color: tone,
@@ -115,12 +129,41 @@ class GoalRing extends StatelessWidget {
   }
 }
 
+/// 顶栏那颗「圆」本身：一颗环 + 暂停角标，没有第二层底。收起态的小球和展开
+/// 态右段共用这一颗，所以收起 / 展开时是同一个圆，尺寸、内缩、描边都一样
+/// （直径见 [GroupGoalPill._ballSize]，照标题胶囊尾端的时钟键）。
+Widget goalRingBall(BuildContext context, {required DsBotGroupGoal goal, required double size}) {
+  final dsh = DshColors.of(context);
+  return SizedBox.square(
+    dimension: size,
+    child: Stack(
+      alignment: Alignment.center,
+      clipBehavior: Clip.none,
+      children: [
+        GoalRing(goal: goal, size: size, announce: false),
+        // 暂停角标 10，贴环左上外缘、不进环内：36 里 11 号的「2/4」已经占到
+        // 环宽的三分之二。
+        if (goal.status == 'paused')
+          Positioned(left: -2, top: -2, child: Icon(AppIcons.paused, size: 10, color: dsh.warning)),
+      ],
+    ),
+  );
+}
+
 class _RingPainter extends CustomPainter {
-  const _RingPainter({required this.fraction, required this.tone, required this.track});
+  const _RingPainter({
+    required this.fraction,
+    required this.tone,
+    required this.track,
+    required this.stroke,
+  });
 
   final double fraction;
   final Color tone;
   final Color track;
+
+  /// 环宽：36 起 2.5（36 下 2 太细），面板里 24 / 30 / 32 那几颗仍是 2。
+  final double stroke;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -128,7 +171,7 @@ class _RingPainter extends CustomPainter {
     final radius = (size.shortestSide - 2.5) / 2;
     final paint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2
+      ..strokeWidth = stroke
       ..strokeCap = StrokeCap.round;
     paint.color = track;
     canvas.drawCircle(center, radius, paint);
@@ -296,9 +339,9 @@ class GoalInlineSegment extends StatelessWidget {
     final dsh = DshColors.of(context);
     final height = pillHeightOf(context);
     final radius = BorderRadius.horizontal(right: Radius.circular(height / 2));
-    // 22 的环（不是 24）：省下的 2px 全给标题。
-    const ringSize = 22.0;
-    final ring = GoalRing(goal: goal, size: ringSize, announce: false);
+    // 环 = 收起态那颗球（36，与胶囊右端半圆同心同径）；内缩 4 见下面的
+    // 右内边，和球在胶囊里的位置一致。
+    final ringSize = GroupGoalPill._ballSize;
     final paused = goal.status == 'paused';
     // 没有分隔线：这一段自己就是一个点击区（右圆角裁水波），左段头像那颗
     // 仍是另一个点击区，两段各管各的。
@@ -319,7 +362,7 @@ class GoalInlineSegment extends StatelessWidget {
     // 第一行：旗帜 + 目标标题（旗帜跟标题同一行，不再在整段里垂直居中）；
     // 第二行（动态）缩进到标题左边，不从旗帜底下起。
     const flagSize = 16.0;
-    const flagGap = 6.0;
+    const flagGap = 4.0;
     final flag = Icon(
       paused
           ? AppIcons.paused
@@ -335,8 +378,9 @@ class GoalInlineSegment extends StatelessWidget {
     );
     return segment(
       child: Padding(
-        // 右段内边 2 / 6：给标题多挤出一个字。
-        padding: const EdgeInsets.only(left: 2, right: 6),
+        // 左内边 0（宽度紧）；右内边 = 环的内缩（(胶囊高 − 环直径) / 2 = 4），
+        // 环才和胶囊右端那颗半圆同心，读作一个圆。
+        padding: EdgeInsets.only(right: HeaderScheduleCap.insetFor(height)),
         child: LayoutBuilder(
           builder: (context, constraints) {
             final small = theme.textTheme.labelSmall!.copyWith(
@@ -387,7 +431,7 @@ class GoalInlineSegment extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 6),
-                ring,
+                goalRingBall(context, goal: goal, size: ringSize),
               ],
             );
           },
@@ -536,11 +580,9 @@ class GroupGoalPill extends StatelessWidget {
   /// 进度环的尺寸：单独站着的那颗小球与完整胶囊共用这一个值。
   static const double _ringSize = 32;
 
-  /// 并进胶囊的球更小：环跟合体段同一颗 22——收起 / 展开时环不变，
-  /// 只有外壳在变（36 的圆井照标题胶囊尾端的时钟键）。
-  static const double _ballRingSize = 22;
-
-  /// 那颗球的直径：照标题胶囊尾端的时钟键（[HeaderScheduleCap.size]）。
+  /// 那颗球的直径 = 环的直径：收起态和展开态右段是同一颗 36 的环，收 / 展时
+  /// 大小不变、不跳。尺寸照标题胶囊尾端的时钟键（[HeaderScheduleCap.size]）。
+  /// 两处都读这一个常量，别再各写一套。
   static const double _ballSize = HeaderScheduleCap.size;
 
   @override
@@ -550,7 +592,7 @@ class GroupGoalPill extends StatelessWidget {
     final paused = goal.status == 'paused';
     // 完整胶囊和小球用同一颗环：换形态时环不应该变小。并进胶囊的球更小一层，
     // 跟合体段那颗 24 走，收起 / 展开时环本身不变。
-    final ring = GoalRing(goal: goal, size: bare ? _ballRingSize : _ringSize, announce: false);
+    final ring = GoalRing(goal: goal, size: _ringSize, announce: false);
     // 暂停了就写在前面：小球放不下文字，角标就是那颗暂停。
     Widget? pauseBadge(double size) => paused
         ? Positioned(
@@ -563,7 +605,6 @@ class GroupGoalPill extends StatelessWidget {
       // 挂在一颗胶囊的尾端：位置与几何照标题胶囊尾端的时钟键，里面的球是
       // 我们自己的——环 + 暂停角标，底子用目标自己的状态色淡淡一层，不是
       // 时钟那口中性灰井。
-      final tone = goalStateColor(context, goal);
       return Semantics(
         // container + onTap：折在群名胶囊里的这颗球要自己成一个可点的节点，
         // 否则读屏里它会跟左段那颗「查看详情」并成同一个按钮（点不到）。
@@ -577,19 +618,7 @@ class GroupGoalPill extends StatelessWidget {
           child: InkWell(
             onTap: onTap,
             customBorder: const CircleBorder(),
-            child: Container(
-              width: _ballSize,
-              height: _ballSize,
-              decoration: ShapeDecoration(
-                color: tone.withValues(alpha: 0.14),
-                shape: const CircleBorder(),
-              ),
-              child: Stack(
-                alignment: Alignment.center,
-                clipBehavior: Clip.none,
-                children: [ring, ?pauseBadge(10)],
-              ),
-            ),
+            child: goalRingBall(context, goal: goal, size: _ballSize),
           ),
         ),
       );
