@@ -302,11 +302,17 @@ class GoalInlineSegment extends StatelessWidget {
     final paused = goal.status == 'paused';
     // 没有分隔线：这一段自己就是一个点击区（右圆角裁水波），左段头像那颗
     // 仍是另一个点击区，两段各管各的。
-    Widget segment({required Widget child}) => InkWell(
+    Widget segment({required Widget child}) => Semantics(
+      // 独立节点：读屏能单独点到「目标」这一段，与左段那颗群详情分开。
+      container: true,
+      button: true,
       onTap: onTap,
-      onLongPress: onLongPress,
-      customBorder: RoundedRectangleBorder(borderRadius: radius),
-      child: child,
+      child: InkWell(
+        onTap: onTap,
+        onLongPress: onLongPress,
+        customBorder: RoundedRectangleBorder(borderRadius: radius),
+        child: child,
+      ),
     );
 
     final line = goalDynamicLine(context.l10n, goal);
@@ -559,8 +565,12 @@ class GroupGoalPill extends StatelessWidget {
       // 时钟那口中性灰井。
       final tone = goalStateColor(context, goal);
       return Semantics(
+        // container + onTap：折在群名胶囊里的这颗球要自己成一个可点的节点，
+        // 否则读屏里它会跟左段那颗「查看详情」并成同一个按钮（点不到）。
+        container: true,
         button: true,
         label: goal.title,
+        onTap: onTap,
         excludeSemantics: true,
         child: Material(
           type: MaterialType.transparency,

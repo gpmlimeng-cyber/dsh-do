@@ -289,8 +289,12 @@ class BotChatHeader extends StatelessWidget {
             height: height,
             child: Row(
               children: [
+                // container: 两段各成一个语义节点（读屏能分别点到），否则外层
+                // 那颗胶囊会把它们并成一个按钮。
                 Semantics(
+                  container: true,
                   button: true,
+                  onTap: onDetails,
                   hint: titleHint ?? l10n.botsViewDetails,
                   child: InkWell(
                     onTap: onDetails,
@@ -318,22 +322,27 @@ class BotChatHeader extends StatelessWidget {
       return Align(
         alignment: Alignment.centerLeft,
         widthFactor: 1,
-        child: Semantics(
-          button: true,
-          hint: titleHint ?? l10n.botsViewDetails,
-          child: GlassSurface(
-            key: const ValueKey('bot-title'),
-            tier: GlassTier.chrome,
-            stadium: true,
-            grouped: true,
-            child: Material(
-              type: MaterialType.transparency,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: height),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Flexible(
+        child: GlassSurface(
+          key: const ValueKey('bot-title'),
+          tier: GlassTier.chrome,
+          stadium: true,
+          grouped: true,
+          child: Material(
+            type: MaterialType.transparency,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: height),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // 折在这颗胶囊里的两段各是一个语义节点：群名那颗、球那颗。
+                  // 外层不再套一颗 Semantics——上次就是它把球并进了「查看详情」
+                  // 那颗按钮，读屏点不到球。
+                  Flexible(
+                    child: Semantics(
+                      container: true,
+                      button: true,
+                      onTap: onDetails,
+                      hint: titleHint ?? l10n.botsViewDetails,
                       child: InkWell(
                         onTap: onDetails,
                         customBorder: RoundedRectangleBorder(borderRadius: leftRadius),
@@ -343,13 +352,13 @@ class BotChatHeader extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(width: HeaderScheduleCap.gap),
-                    Padding(
-                      padding: EdgeInsets.only(top: inset, bottom: inset, right: inset),
-                      child: ball,
-                    ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: HeaderScheduleCap.gap),
+                  Padding(
+                    padding: EdgeInsets.only(top: inset, bottom: inset, right: inset),
+                    child: ball,
+                  ),
+                ],
               ),
             ),
           ),
