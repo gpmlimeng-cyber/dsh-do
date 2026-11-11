@@ -15,6 +15,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/l10n.dart';
 import '../../state/bots_state.dart';
 import '../theme/app_icons.dart';
+import '../theme/web_goal_icon.dart';
 import '../theme/theme.dart';
 import '../chat/chat_header.dart' show ChatHeader;
 import '../chat/header_schedule.dart' show HeaderScheduleCap;
@@ -396,19 +397,13 @@ class GoalInlineSegment extends StatelessWidget {
     const lineGap = 2.0;
     final passed = goal.stages.where((stage) => stage.passed).length;
     final total = goal.stages.isEmpty ? goal.stageCount : goal.stages.length;
-    final flag = Icon(
-      paused
-          ? AppIcons.paused
-          : goal.status == 'complete'
-          ? AppIcons.success
-          : AppIcons.goalTarget,
-      size: flagSize,
-      color: paused
-          ? dsh.warning
-          : goal.status == 'complete'
-          ? dsh.success
-          : dsh.textTertiary,
-    );
+    // 第一行那颗：暂停＝暂停杠、达成＝勾、其余＝网页端同款靶心（同一段 SVG
+    // 描边，见 [WebGoalIcon]），不是旗帜。
+    final flag = paused
+        ? Icon(AppIcons.paused, size: flagSize, color: dsh.warning)
+        : goal.status == 'complete'
+        ? Icon(AppIcons.success, size: flagSize, color: dsh.success)
+        : WebGoalIcon(size: flagSize, color: dsh.textTertiary);
     final line = goalDynamicLine(l10n, goal);
     // 达成后进度不丢：环换成了清除按钮，所以把「4/4」挪到第二行来写。
     final secondLine = goal.status == 'complete' && total > 0
@@ -845,7 +840,7 @@ class GroupGoalPill extends StatelessWidget {
                         Icon(AppIcons.paused, size: 18, color: dsh.warning)
                       else
                         Icon(
-                          goal.status == 'complete' ? AppIcons.success : AppIcons.goalTarget,
+                          goal.status == 'complete' ? AppIcons.success : AppIcons.goal,
                           size: 18,
                           color: goal.status == 'complete' ? dsh.success : dsh.textTertiary,
                         ),

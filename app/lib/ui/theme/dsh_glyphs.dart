@@ -214,7 +214,6 @@ abstract final class DshGlyphs {
   static const stopFill = IconData(0xe015, fontFamily: family);
   static const suitcase = IconData(0xe0de, fontFamily: family);
   static const table = IconData(0xe099, fontFamily: family);
-  static const target = IconData(0xe0e8, fontFamily: family);
   static const terminalWindow = IconData(0xe04d, fontFamily: family);
   static const textAa = IconData(0xe0b8, fontFamily: family);
   static const textAlignLeft = IconData(0xe06d, fontFamily: family, matchTextDirection: true);
@@ -445,7 +444,6 @@ abstract final class DshGlyphs {
     'stopFill': stopFill,
     'suitcase': suitcase,
     'table': table,
-    'target': target,
     'terminalWindow': terminalWindow,
     'textAa': textAa,
     'textAlignLeft': textAlignLeft,
