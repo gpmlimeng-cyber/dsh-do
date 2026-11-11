@@ -1055,8 +1055,6 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBinding
           onExpand: () => _setGoalExpanded(goalNow, expanded: true),
           onCollapse: () => _setGoalExpanded(goalNow, expanded: false),
         ),
-        // 没有目标时也不撑满：否则标题那颗仍按「展开态」布局，群名回不到正常。
-        trailingExpand: hasGoal && goalExpanded && !layout.isExpanded,
         // Right key = this conversation's details: the group's aggregate in the
         // group chat, the member's own Session in this group otherwise — never a
         // private one, and never the group's numbers under a member's name.

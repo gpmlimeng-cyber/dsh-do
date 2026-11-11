@@ -77,7 +77,6 @@ class BotChatHeader extends StatelessWidget {
     this.infoTooltip,
     this.infoGreyed = false,
     this.trailing,
-    this.trailingExpand = false,
     this.titleCompact = false,
     this.mergeTrailing = false,
     this.endTrailing = false,
@@ -153,10 +152,6 @@ class BotChatHeader extends StatelessWidget {
 
   /// A widget between the title capsule and the right keys: a group's goal pill.
   final Widget? trailing;
-
-  /// The trailing widget takes the row's spare width (a goal pill that fills
-  /// the header on a narrow screen); the title makes do with its own face.
-  final bool trailingExpand;
 
   /// The title capsule shrinks to its face alone (圆形) so the goal pill beside
   /// it can carry the group's name instead.
@@ -411,13 +406,13 @@ class BotChatHeader extends StatelessWidget {
                     // 内容宽画、左对齐），⋯ 就始终钉在最右。
                     Expanded(child: inlineTitlePill(ball: trailing!))
                   else ...[
-                    if (trailingExpand) titlePill else Expanded(child: titlePill),
+                    // 弹性只有一处：左组吃满、右组（⋯ 与动作键）永不参与弹性。
+                    // 旧排法里那条「让胶囊吃满余量」的 `trailingExpand` 已经收掉，
+                    // 不留两套弹性写法。
+                    Expanded(child: titlePill),
                     if (trailing case final trailing?) ...[
                       const SizedBox(width: 8),
-                      // 撑满态（窄屏的完整胶囊）占满剩下的宽度；其余时候它只是
-                      // 一颗定宽的小球/胶囊，不参与弹性，否则它那一半没吃完的
-                      // 宽度会留在 Row 尾部，最右那颗键就贴不到右边。
-                      if (trailingExpand) Expanded(child: trailing) else trailing,
+                      trailing,
                     ],
                   ],
                   if (onMessages case final onMessages?) ...[
