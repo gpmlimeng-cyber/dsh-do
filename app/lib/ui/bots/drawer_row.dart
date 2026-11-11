@@ -13,54 +13,6 @@ import 'bots_page.dart';
 
 /// 「DS Bot · 3 个 Bot」 on the drawer's 44dp row grid, a breathing dot while a
 /// Bot works, the unread count otherwise; nothing on a host without DS Bot.
-/// 认不到 DS Bot 的那一行：说清是「没有」还是「需要更新」，点它进 Bots 页。
-class _HintRow extends StatelessWidget {
-  const _HintRow({required this.label, required this.action, required this.onOpen});
-
-  final String label;
-  final String action;
-  final VoidCallback onOpen;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final dsh = DshColors.of(context);
-    return Material(
-      type: MaterialType.transparency,
-      child: InkWell(
-        key: const ValueKey('dsbot-drawer-hint'),
-        onTap: onOpen,
-        customBorder: Squircle.border(AppShape.md),
-        child: Ink(
-          height: DsBotDrawerRow.height,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          child: Row(
-            children: [
-              StatusDot(tone: StatusTone.warn, size: 6),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.labelLarge?.copyWith(color: dsh.warning),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                action,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.labelSmall?.copyWith(color: dsh.textTertiary),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class DsBotDrawerRow extends ConsumerWidget {
   const DsBotDrawerRow({super.key, this.onOpen});
 
@@ -75,22 +27,7 @@ class DsBotDrawerRow extends ConsumerWidget {
     final l10n = context.l10n;
     final status = ref.watch(dsBotProvider);
     final team = status.team;
-    if (!status.ready || team == null) {
-      // 认不出 DS Bot 时不要静默：这台主机上 Bot 列表与群会话都读不到，用户只会
-      // 看到「全是普通会话」，以为数据丢了。给一行明说的提示，点进去是 Bots 页
-      // 的安装卡（那台主机缺插件、或版本太老握手不过）。
-      final hint = switch (status.availability) {
-        DsBotAvailability.missing => l10n.stateBotMissing,
-        DsBotAvailability.outdated => l10n.botsUpdateRequired,
-        _ => null,
-      };
-      if (hint == null) return const SizedBox.shrink();
-      return _HintRow(
-        label: hint,
-        action: l10n.botsInstall,
-        onOpen: onOpen ?? () => Navigator.of(context).push(BotsPage.route()),
-      );
-    }
+    if (!status.ready || team == null) return const SizedBox.shrink();
     final unread = ref.watch(dsBotInboxProvider.select((inbox) => inbox.total));
     final working = status.live.bots.isNotEmpty;
     final theme = Theme.of(context);
