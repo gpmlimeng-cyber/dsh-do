@@ -1109,7 +1109,8 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBinding
           ref,
           room: room,
           team: team,
-          onRoomDetails: () => _openRoomDetails(context),
+          onDetails: openInfo,
+          onMembers: () => _openRoomDetails(context),
           controller: controller,
         ),
         action: situationKey(),
@@ -1667,14 +1668,18 @@ class _MessageFilterChip extends StatelessWidget {
 }
 
 /// 群聊顶栏 ⋯ 的下拉菜单里的行：对话详情、消息范围、成员。菜单本身锚在键上
-/// （`_AnchoredMenu`），从按钮下方展开、右边缘与按钮对齐；这里只给行，行高 52、
-/// 图标 + 文字，跟其他菜单同一套行。清空会话、搜索此群这一版不做。
+/// （`_AnchoredMenu`），从按钮下方展开、右边缘与按钮对齐；这里只给行，紧凑行
+/// （44 高）、图标 + 文字。清空会话、搜索此群这一版不做。
+///
+/// 两个入口是两份内容：「详情」是对话详情（轨迹 / 改动 / 文件 / 进度，宽屏落
+/// 右栏、窄屏整页），「成员」才是群详情（成员 / 审批 / 群设置）。
 List<Widget> roomMenuItems(
   BuildContext context,
   WidgetRef ref, {
   required DsBotRoom room,
   required DsBotTeam team,
-  required VoidCallback onRoomDetails,
+  required VoidCallback onDetails,
+  required VoidCallback onMembers,
   required MenuController controller,
 }) {
   final l10n = context.l10n;
@@ -1691,7 +1696,7 @@ List<Widget> roomMenuItems(
       title: l10n.commonDetails,
       onTap: () {
         close();
-        onRoomDetails();
+        onDetails();
       },
     ),
     SettingsTile(
@@ -1713,7 +1718,7 @@ List<Widget> roomMenuItems(
       title: l10n.botsMembers,
       onTap: () {
         close();
-        onRoomDetails();
+        onMembers();
       },
     ),
   ];
