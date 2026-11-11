@@ -13,6 +13,8 @@ import '../common/app_sheet.dart';
 import '../common/list_page_row.dart';
 import '../common/page_hero.dart';
 import '../common/sheet_title_bar.dart';
+import '../session/session_detail_page.dart' show SessionDetailPage;
+import '../session/session_tab.dart' show SessionTab;
 import '../shell/page_frame.dart';
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
@@ -27,10 +29,29 @@ import 'duplicate_bot_row.dart';
 import 'memory_card.dart';
 import 'working_folder_sheet.dart';
 
+/// 这个会话归哪个 Bot：它自己的对话（含换过的旧段），或者它在某个群里的那份。
+/// 找不到就是没有 Bot 实体（群的会话、原生会话），不显示「信息」页签。
+DsBot? botForSession(DsBotTeam? team, String sessionId) {
+  if (team == null) return null;
+  for (final bot in team.bots) {
+    if (bot.sessionId == sessionId || bot.parts.contains(sessionId)) return bot;
+  }
+  for (final room in team.rooms) {
+    for (final entry in room.sessions.entries) {
+      if (entry.value == sessionId) return team.bot(entry.key);
+    }
+  }
+  return null;
+}
+
 class BotDetailsPage extends ConsumerWidget {
-  const BotDetailsPage({super.key, required this.botId});
+  const BotDetailsPage({super.key, required this.botId}) : embedded = false;
+
+  /// 放进对话详情的「信息」页签里：只画内容，不要整页的大标题、返回键与外观。
+  const BotDetailsPage.embedded({super.key, required this.botId}) : embedded = true;
 
   final String botId;
+  final bool embedded;
 
   static Route<void> route(String botId) => MaterialPageRoute<void>(builder: (_) => BotDetailsPage(botId: botId));
 
@@ -79,11 +100,19 @@ class BotDetailsPage extends ConsumerWidget {
     final mobileUnavailable =
         status.availability == DsBotAvailability.missing || status.availability == DsBotAvailability.outdated;
     if (team == null || bot == null || mobileUnavailable) {
-      return AppPage.list(
-        title: 'Bot',
-        children: [
-          DsBotUnavailableMessage(status: status, goneIcon: AppIcons.bot, goneTitle: l10n.botsBotGone),
-        ],
+      final gone = DsBotUnavailableMessage(status: status, goneIcon: AppIcons.bot, goneTitle: l10n.botsBotGone);
+      // 页签里也一样：说清为什么，不白屏、不崩。
+      if (embedded) return ListView(padding: const EdgeInsets.only(top: 16), children: [gone]);
+      return AppPage.list(title: 'Bot', children: [gone]);
+    }
+    // 薄壳：Bot 详情已经并进对话详情的「信息」页签，这个入口有对话就转过去，
+    // 不留第二套实现（页签里那份是 `embedded`，不转，免得自己转自己）。
+    // 第一次还没聊过的 Bot（没有 parts）没有会话详情可开，就地用同一份内容。
+    if (!embedded && (bot.parts.isNotEmpty || bot.sessionId != bot.id)) {
+      return SessionDetailPage(
+        sessionId: bot.sessionId,
+        initialTab: SessionTab.details,
+        scopeLabel: bot.name,
       );
     }
     final usageResult = ref.watch(dsBotUsageProvider(bot.id));
@@ -96,25 +125,21 @@ class BotDetailsPage extends ConsumerWidget {
     final model = modelLabel(bot.modelRef, team.models);
     final doing = workPhrase(work, activity: status.live.activity[bot.id]);
     const gap = SizedBox(height: 24);
-    return AppPage(
-      title: bot.name,
-      hero: PageHero(
-        leading: BotAvatar(bot: bot, size: 56, working: work != null),
-        title: bot.name,
-        subtitle: Text(
-          [if (main) l10n.botsMainBot, if (bot.role.isNotEmpty) bot.role, ?doing].join(' · ').ifEmpty('Bot'),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
+    // 一份内容两处用：还没聊过的 Bot 的整页详情，和对话详情的「信息」页签。
+    final sections = <Widget>[
+      if (embedded)
+        // 页签里没有大标题：顶部一行字交代记忆与所属群（周期用量留在「上下文」，
+        // 不在这里再写一份）。
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          child: Text(
+            '${memory == null ? '—' : memory.entries.length} ${l10n.botsMemoryUnit}'
+            ' · ${team.rooms.where((room) => room.members.contains(bot.id)).length} ${l10n.botsRoomUnit}',
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: DshColors.of(context).textTertiary),
+          ),
         ),
-        stats: [
-          (usage == null || usage.scanning ? '—' : compactCount(usage.day.total), l10n.botsTokensToday),
-          (memory == null ? '—' : '${memory.entries.length}', l10n.botsMemoryUnit),
-          ('${team.rooms.where((room) => room.members.contains(bot.id)).length}', l10n.botsRoomUnit),
-        ],
-      ),
-      slivers: [
-        SliverList.list(
-          children: [
             ListPageCard(
               title: l10n.botsProfile,
               children: [
@@ -212,7 +237,9 @@ class BotDetailsPage extends ConsumerWidget {
             BotMemoryCard(botId: bot.id),
             gap,
             BotSchedulesCard(sessionId: bot.sessionId, botName: bot.name),
-            if (usage != null) ...[
+            // 周期用量不进「信息」页签：上下文页签已经有窗口占用与每轮用量，
+            // 一份数据说两遍只会对不上。
+            if (!embedded && usage != null) ...[
               gap,
               ListPageCard(
                 title: l10n.botsUsage,
@@ -296,9 +323,27 @@ class BotDetailsPage extends ConsumerWidget {
                 ),
               ),
             ],
-          ],
+    ];
+    if (embedded) {
+      return ListView(padding: const EdgeInsets.only(bottom: 24), children: sections);
+    }
+    return AppPage(
+      title: bot.name,
+      hero: PageHero(
+        leading: BotAvatar(bot: bot, size: 56, working: work != null),
+        title: bot.name,
+        subtitle: Text(
+          [if (main) l10n.botsMainBot, if (bot.role.isNotEmpty) bot.role, ?doing].join(' · ').ifEmpty('Bot'),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
-      ],
+        stats: [
+          (usage == null || usage.scanning ? '—' : compactCount(usage.day.total), l10n.botsTokensToday),
+          (memory == null ? '—' : '${memory.entries.length}', l10n.botsMemoryUnit),
+          ('${team.rooms.where((room) => room.members.contains(bot.id)).length}', l10n.botsRoomUnit),
+        ],
+      ),
+      slivers: [SliverList.list(children: sections)],
     );
   }
 }

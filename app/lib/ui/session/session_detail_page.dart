@@ -10,11 +10,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
 import '../../state/adaptive_layout_state.dart';
+import '../../state/bots_state.dart' show dsBotProvider;
 import '../../state/agents_state.dart';
 import '../../state/chat_state.dart';
 import '../../state/session_detail_state.dart';
 import '../../state/usage_state.dart';
 import '../agents/agent_widgets.dart';
+import '../bots/bot_details_page.dart' show BotDetailsPage, botForSession;
 import '../chat/chat_header.dart';
 import '../chat/diff_page.dart';
 import '../chat/run_info.dart';
@@ -137,6 +139,9 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> with Tick
   static const _tabsHeight = AppPage.tabsHeight;
 
   /// The tabs but 插件, decided when the page opens.
+  /// 这个会话归哪个 Bot（自己的对话，或它在群里的那份）。有 Bot 才有「信息」
+  /// 页签：它装的是 Bot 的资料，不是这一轮对话的统计。
+  String? _botId;
   late final List<SessionTab> _baseTabs;
   late List<SessionTab> _tabs;
   late TabController _controller;
@@ -154,12 +159,21 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> with Tick
     super.initState();
     final items = ref.read(chatProvider(widget.sessionId)).items;
     final delegated = dispatchedSubagents(items) || ref.read(subagentLineageProvider(widget.sessionId)).isNotEmpty;
+    final bot = botForSession(ref.read(dsBotProvider).team, widget.sessionId);
+    _botId = bot?.id;
     final SessionTab initial =
         widget.initialTab ??
-        (_mode == SessionDetailMode.page ? SessionTab.trajectory : ref.read(sessionDetailTabProvider));
+        (_mode == SessionDetailMode.page
+            // Bot 会话先落在「信息」：那一页是这个 Bot 的资料，会话的统计在后面的
+            // 页签里。别的会话照旧从轨迹起。
+            ? (bot != null ? SessionTab.details : SessionTab.trajectory)
+            : ref.read(sessionDetailTabProvider));
     _baseTabs = [
+      if (bot != null) SessionTab.details,
       for (final tab in SessionTab.values)
-        if (tab != SessionTab.plugins && (tab != SessionTab.subagents || delegated || initial == SessionTab.subagents))
+        if (tab != SessionTab.plugins &&
+            tab != SessionTab.details &&
+            (tab != SessionTab.subagents || delegated || initial == SessionTab.subagents))
           tab,
     ];
     final plugins = !ref.read(sessionPluginPlanProvider(widget.sessionId)).isEmpty;
@@ -402,7 +416,11 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> with Tick
           child: TabBarView(
             controller: _controller,
             children: [
-              for (final tab in _tabs) ConversationPane.ofTab(tab).build(id),
+              for (final tab in _tabs)
+                if (tab == SessionTab.details && _botId != null)
+                  BotDetailsPage.embedded(key: ValueKey('bot-info-$_botId'), botId: _botId!)
+                else
+                  ConversationPane.ofTab(tab).build(id),
             ],
           ),
         ),
@@ -571,18 +589,74 @@ class SessionHero extends ConsumerWidget {
 
 /// Capsule tabs with the [SegmentedPill] look (track, thumb, labels), but the
 /// thumb follows the [TabController]'s swipe progress, moving with the pages.
-class GlassSegments extends StatelessWidget {
+/// 页签条：段宽固定（约 64–72），页签多了就横向滚动——均分到第八个时每段只有
+/// 三十几，两个汉字会被挤扁。首段（Bot 会话的「信息」）就在最前，滚动不会把它
+/// 挪走，选中的那段自动滚进视野。
+class GlassSegments extends StatefulWidget {
   const GlassSegments({super.key, required this.controller, required this.labels});
 
   final TabController controller;
   final List<String> labels;
+
+  /// 一段的宽：放得下两个字，又不至于把 320 的栏撑成三段。
+  static const segment = 72.0;
+
+  /// 再窄也不要缩到 64 以下（那时宁可滚动）。
+  static const minSegment = 64.0;
+
+  @override
+  State<GlassSegments> createState() => _GlassSegmentsState();
+}
+
+class _GlassSegmentsState extends State<GlassSegments> {
+  final _scroll = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_reveal);
+  }
+
+  @override
+  void didUpdateWidget(GlassSegments oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 插件页签来来去去会换一个 TabController，监听要跟着搬过去。
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_reveal);
+      widget.controller.addListener(_reveal);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_reveal);
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  /// 选中的那段滚进视野（贴着两边就停）。
+  void _reveal() {
+    if (!_scroll.hasClients) return;
+    final seg = _segment;
+    final start = widget.controller.index * seg;
+    final end = start + seg;
+    final at = _scroll.offset;
+    final viewport = _scroll.position.viewportDimension;
+    if (start < at) {
+      _scroll.animateTo(start, duration: AppMotion.quick, curve: AppMotion.std);
+    } else if (end > at + viewport) {
+      _scroll.animateTo(end - viewport, duration: AppMotion.quick, curve: AppMotion.std);
+    }
+  }
+
+  double _segment = GlassSegments.segment;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final dark = theme.brightness == Brightness.dark;
-    final animation = controller.animation!;
+    final animation = widget.controller.animation!;
     const inset = SegmentedPill.inset;
     final track = dark ? Colors.white.withValues(alpha: 0.07) : colors.onSurface.withValues(alpha: 0.06);
     final thumb = dark ? Colors.white.withValues(alpha: 0.2) : Colors.white;
@@ -593,69 +667,86 @@ class GlassSegments extends StatelessWidget {
         height: 36,
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final segment = (constraints.maxWidth - 2 * inset) / labels.length;
-            return AnimatedBuilder(
-              animation: animation,
-              builder: (context, _) {
-                final at = animation.value;
-                return Stack(
-                  children: [
-                    Positioned(
-                      left: inset + at * segment,
-                      top: inset,
-                      bottom: inset,
-                      width: segment,
-                      child: DecoratedBox(
-                        decoration: ShapeDecoration(
-                          color: thumb,
-                          shape: const StadiumBorder(),
-                          shadows: dark
-                              ? null
-                              : [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.08),
-                                    blurRadius: 6,
-                                    offset: const Offset(0, 1),
-                                  ),
-                                ],
+            final avail = constraints.maxWidth - 2 * inset;
+            final n = widget.labels.length;
+            // 先按均分试，能放进 72 就用均分（几段的时候铺满更好看）；均分
+            // 小于 64 就不平分了，按 72 定宽、横向滚动。
+            final even = n == 0 ? GlassSegments.segment : avail / n;
+            _segment = even >= GlassSegments.minSegment ? even.clamp(GlassSegments.minSegment, GlassSegments.segment) : GlassSegments.segment;
+            final total = _segment * n;
+            return SingleChildScrollView(
+              controller: _scroll,
+              scrollDirection: Axis.horizontal,
+              // 滚不动的时候不要让内容居中：首段永远从左边起。
+              child: SizedBox(
+                width: total + 2 * inset,
+                child: AnimatedBuilder(
+                  animation: animation,
+                  builder: (context, _) {
+                    final at = animation.value;
+                    return Stack(
+                      children: [
+                        Positioned(
+                          left: inset + at * _segment,
+                          top: inset,
+                          bottom: inset,
+                          width: _segment,
+                          child: DecoratedBox(
+                            decoration: ShapeDecoration(
+                              color: thumb,
+                              shape: const StadiumBorder(),
+                              shadows: dark
+                                  ? null
+                                  : [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.08),
+                                        blurRadius: 6,
+                                        offset: const Offset(0, 1),
+                                      ),
+                                    ],
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: inset),
-                      child: Row(
-                        children: [
-                          for (final (i, label) in labels.indexed)
-                            Expanded(
-                              child: Semantics(
-                                button: true,
-                                selected: (at - i).abs() < 0.5,
-                                inMutuallyExclusiveGroup: true,
-                                label: label,
-                                excludeSemantics: true,
-                                child: GestureDetector(
-                                  behavior: HitTestBehavior.opaque,
-                                  onTap: () {
-                                    if (controller.index != i) {
-                                      HapticFeedback.selectionClick();
-                                    }
-                                    controller.animateTo(i);
-                                  },
-                                  child: Center(
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                                      child: FittedBox(
-                                        fit: BoxFit.scaleDown,
-                                        child: Text(
-                                          label,
-                                          maxLines: 1,
-                                          softWrap: false,
-                                          style: style.copyWith(
-                                            fontWeight: (at - i).abs() < 0.5 ? FontWeight.w600 : FontWeight.w500,
-                                            color: Color.lerp(
-                                              colors.onSurface,
-                                              colors.onSurfaceVariant,
-                                              (at - i).abs().clamp(0.0, 1.0),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: inset),
+                          child: Row(
+                            children: [
+                              for (final (i, label) in widget.labels.indexed)
+                                SizedBox(
+                                  width: _segment,
+                                  child: Semantics(
+                                    button: true,
+                                    selected: (at - i).abs() < 0.5,
+                                    inMutuallyExclusiveGroup: true,
+                                    label: label,
+                                    excludeSemantics: true,
+                                    child: GestureDetector(
+                                      behavior: HitTestBehavior.opaque,
+                                      onTap: () {
+                                        if (widget.controller.index != i) {
+                                          HapticFeedback.selectionClick();
+                                        }
+                                        widget.controller.animateTo(i);
+                                      },
+                                      child: Center(
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                                          child: FittedBox(
+                                            fit: BoxFit.scaleDown,
+                                            child: Text(
+                                              label,
+                                              maxLines: 1,
+                                              softWrap: false,
+                                              style: style.copyWith(
+                                                fontWeight: (at - i).abs() < 0.5
+                                                    ? FontWeight.w600
+                                                    : FontWeight.w500,
+                                                color: Color.lerp(
+                                                  colors.onSurface,
+                                                  colors.onSurfaceVariant,
+                                                  (at - i).abs().clamp(0.0, 1.0),
+                                                ),
+                                              ),
                                             ),
                                           ),
                                         ),
@@ -663,14 +754,14 @@ class GlassSegments extends StatelessWidget {
                                     ),
                                   ),
                                 ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
-                );
-              },
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
             );
           },
         ),
