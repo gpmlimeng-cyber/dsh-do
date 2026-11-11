@@ -39,6 +39,15 @@ import 'room_relay_limit_sheet.dart';
 /// 群详情画在哪：整页（窄屏），或者宽屏的第三栏。
 enum RoomDetailMode { page, panel }
 
+/// 这个会话是不是某个群自己的会话（群的那本账，含换过的旧段）。
+DsBotRoom? roomForSession(DsBotTeam? team, String sessionId) {
+  if (team == null) return null;
+  for (final room in team.rooms) {
+    if (room.sessionId == sessionId || room.parts.contains(sessionId)) return room;
+  }
+  return null;
+}
+
 class RoomDetailsPage extends ConsumerWidget {
   const RoomDetailsPage({super.key, required this.roomId}) : mode = RoomDetailMode.page;
 

@@ -131,16 +131,17 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBinding
     }
   }
 
-  /// 宽屏第三栏画的是哪一份：会话详情（默认），还是群详情（从 ⋯ 的「详情 /
-  /// 成员」或顶栏群名进来时）。窄屏一律整页 push，跟单聊一致。
-  bool _panelRoom = false;
+  /// 宽屏第三栏画的是哪一份：会话详情（默认），还是群详情（从 ⋯ 的「成员」、
+  /// 顶栏群名、或「信息」页签底部那颗入口进来时）。状态在 provider 里，页签
+  /// 才能拨它。窄屏一律整页 push，跟单聊一致。
+  bool get _panelRoom => ref.read(roomDetailsInPanelProvider);
 
   /// 群详情：宽屏落在第三栏，窄屏整页 push（跟单聊 `SessionDetailPage.open`
   /// 同一套判断）。
   void _openRoomDetails(BuildContext context) {
     final layout = AdaptiveChrome.layoutOf(context);
     if (layout != null && layout.isExpanded && layout.panelAvailable) {
-      setState(() => _panelRoom = true);
+      ref.read(roomDetailsInPanelProvider.notifier).state = true;
       ref.read(layoutPrefsProvider.notifier).setPanelOpen(true);
       return;
     }
@@ -376,7 +377,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBinding
       _target = next;
       _draftKey = _draftKeyFor(next);
       // 换了会话，那一栏回到会话详情：群详情只在「还在群里那本账」上成立。
-      _panelRoom = false;
+      ref.read(roomDetailsInPanelProvider.notifier).state = false;
     });
     _showDraft(_draftKey);
     _mentions.dismiss();
@@ -850,7 +851,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBinding
       // 这颗键（和 ⋯ 的「详情」）在宽屏是那一栏：展开的是会话详情。栏里正
       // 开着群详情时，先换回会话详情并把栏留着，不顺手把栏关掉。
       if (layout != null && layout.isExpanded && layout.panelAvailable && _panelRoom) {
-        setState(() => _panelRoom = false);
+        ref.read(roomDetailsInPanelProvider.notifier).state = false;
         ref.read(layoutPrefsProvider.notifier).setPanelOpen(true);
         return;
       }
@@ -1018,6 +1019,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBinding
     final hasGoal = goalNow != null && goalNow.title.isNotEmpty;
     // 形态：进行中 = 大胶囊，暂停 = 小球；手动收 / 展过就以手动的为准。
     final goalExpanded = _goalExpandedFor(goalNow);
+    final panelRoom = ref.watch(roomDetailsInPanelProvider);
     // 目标不会自己推过来：Host 只给 `goal-view`，而目标多半是在管理员的回合
     // 里建出来的（用户说一句、Bot 去对齐并写成目标）。所以本群工作状态一变
     // （回合起 / 回合止）、对话里多一条消息，就回头取一次——否则刚建好的目标
@@ -1042,7 +1044,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBinding
       drawer: _drawerConfig,
       // The column beside the chat: this conversation's details. A member who
       // has no conversation in this group yet leaves it saying why.
-      panel: _panelRoom
+      panel: panelRoom
           ? RoomDetailsPage.panel(key: ValueKey('room-panel-${room.id}'), roomId: room.id)
           : targetBot == null
           ? SessionDetailPage.panel(key: ValueKey('room-detail-$roomSession'), sessionId: roomSession)
