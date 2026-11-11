@@ -565,29 +565,13 @@ class _AnchoredMenu extends StatefulWidget {
 }
 
 class _AnchoredMenuState extends State<_AnchoredMenu> {
-  /// 锚点就是这颗 ⋯：面板的右边缘按它的右缘算，不按屏内边。
-  final _anchor = GlobalKey();
-
   void _toggle() {
     final controller = widget.controller;
     if (controller.isOpen) {
       controller.close();
-      return;
-    }
-    final box = _anchor.currentContext?.findRenderObject() as RenderBox?;
-    if (box == null || !box.hasSize) {
+    } else {
       controller.open();
-      return;
     }
-    // 面板：右上角钉在这颗键的右缘、往下 8。键自己的坐标最准——屏幕内边、
-    // 行的左右留白都不用参与计算。
-    final origin = box.localToGlobal(Offset.zero);
-    controller.open(
-      position: Offset(
-        origin.dx + box.size.width - _AnchoredMenu._width,
-        origin.dy + box.size.height + 8,
-      ),
-    );
   }
 
   @override
@@ -600,7 +584,9 @@ class _AnchoredMenuState extends State<_AnchoredMenu> {
       // 行是带 Expanded 的列表行：宽度必须先定死，不能让菜单按内容宽去量
       // （那样行会拿到无界宽度）。
       crossAxisUnconstrained: false,
-      // 右边缘贴住键的右边缘、挂在它下面；8 的缝，不贴着键。
+      // 面板右上角钉在这颗键的右边缘（键右缘距屏 12，面板因此也留 12）、
+      // 垂直贴在键下方 8：用 bottomEnd + alignmentOffset 由 MenuAnchor 自己算，
+      // 别自己量坐标——手算的 position 在竖屏下会落偏。
       style: MenuStyle(
         alignment: AlignmentDirectional.bottomEnd,
         backgroundColor: WidgetStatePropertyAll(theme.colorScheme.surface),
@@ -621,16 +607,12 @@ class _AnchoredMenuState extends State<_AnchoredMenu> {
         onPopInvokedWithResult: (didPop, _) {
           if (!didPop && menu.isOpen) menu.close();
         },
-        // 用 GlobalKey 量这颗键自己的位置：面板右缘按它的右缘算。
-        child: KeyedSubtree(
-          key: _anchor,
-          child: _RoundKey(
-            key: const ValueKey('bot-menu-key'),
-            icon: AppIcons.more,
-            tooltip: l10n.commonMore,
-            onTap: _toggle,
-            onLongPress: widget.onLongPress,
-          ),
+        child: _RoundKey(
+          key: const ValueKey('bot-menu-key'),
+          icon: AppIcons.more,
+          tooltip: l10n.commonMore,
+          onTap: _toggle,
+          onLongPress: widget.onLongPress,
         ),
       ),
     );
