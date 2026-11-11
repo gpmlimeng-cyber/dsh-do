@@ -5,7 +5,9 @@
 > 上次同步点：`74028a39`
 > 改动量：645 个提交、1257 个文件
 > 冲突：96 个文件（A 41 / B 38 / C 17）
-> 状态：96 个冲突全部解决；合并已提交 `5deb02b9`，l10n 补键提交 `0e827db4`；本台账 96 行已填满
+> 状态：96 个冲突全部解决；合并提交 **`5deb02b9`**，l10n 补键提交 `0e827db4`；本台账 96 行逐行有处理与理由。
+> 合并结果：`v1.0.15`（提交 `a9877420`）已是 `feat/2.1.9` 的祖先；`feat/2.1.9` = **`4c2e6f2d`**（验证提交 `44e6163b` + 五笔 UI 修复），`sync/upstream-1.0.15` = **`43451992`**；远端 tip 与本地一致。
+> 验证：`v2.2.0-rc.28`（target `44e6163b`，sha256 `eb98ee0c…8598`）真机 A/B 回归，测试判「可发布」；A9/A10 记遗留（无障碍层读不到球，rc.28 上未验证，不是通过）。
 
 ## 口径（沿用上次，逐文件记账）
 
@@ -44,10 +46,15 @@ git log --oneline 74028a39..HEAD -- <路径>
 - **B（app/lib + app/test）**：四个自绘大文件（`bot_chat_kit`、`room_chat_page`、`bot_chat_page`、`room_details_page`）先判「上游有没有同类能力」——有就切上游并删本地那份；没有就保本地结构、吸收上游新增字段。测试文件跟随被测代码的取舍。
 - **C（配置/资源/测试/文档）**：能取上游就取上游；本地新增的条目（`runtime/patches/pins.json` 的本地 pin、companion 资产）保留并补进上游新增项。
 
-## 台账（96 个冲突文件）
+## 台账：96 个冲突（按目录分节）
+
+> 96 个冲突逐个记录，编号与总表一致（1–96）。三类合计：取上游 **86**、合并 **8**、保本地 **2**。
+> 每节末尾给该目录小计，便于按目录复查与 `git log 74028a39..a9877420 -- <目录>` 对照。
+
+### 1. app/android（Kotlin：手机控制 / DND / 后台探针 / runtime / 测试）
 
 | # | 路径 | 批 | 处理 | 理由 |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | 1 | `app/android/app/src/main/kotlin/io/github/ccch1mneyyy/dsh_app/companion/CompanionVoicePlugin.kt` | A | 取上游 | 上游 v1.0.15 是超集：本地补丁（InputProbeDiagnostics、provider_mismatch、MediaPermissionQueue、applyCaptureHidden、staleSnapshot、probeDetail、callOwner、writeDiagnostics 等）在上游都有等价实现；A 批不含群聊自绘逻辑 |
 | 2 | `app/android/app/src/main/kotlin/io/github/ccch1mneyyy/dsh_app/links/LinksPlugin.kt` | A | 取上游 | 上游 v1.0.15 是超集：本地补丁（InputProbeDiagnostics、provider_mismatch、MediaPermissionQueue、applyCaptureHidden、staleSnapshot、probeDetail、callOwner、writeDiagnostics 等）在上游都有等价实现；A 批不含群聊自绘逻辑 |
 | 3 | `app/android/app/src/main/kotlin/io/github/ccch1mneyyy/dsh_app/media/MediaPlugin.kt` | A | 取上游 | 上游 v1.0.15 是超集：本地补丁（InputProbeDiagnostics、provider_mismatch、MediaPermissionQueue、applyCaptureHidden、staleSnapshot、probeDetail、callOwner、writeDiagnostics 等）在上游都有等价实现；A 批不含群聊自绘逻辑 |
@@ -81,14 +88,35 @@ git log --oneline 74028a39..HEAD -- <路径>
 | 31 | `app/android/app/src/test/kotlin/io/github/ccch1mneyyy/dsh_app/phone/background/InputProbeDiagnosticsTest.kt` | A | 取上游 | 上游 v1.0.15 是超集：本地补丁（InputProbeDiagnostics、provider_mismatch、MediaPermissionQueue、applyCaptureHidden、staleSnapshot、probeDetail、callOwner、writeDiagnostics 等）在上游都有等价实现；A 批不含群聊自绘逻辑 |
 | 32 | `app/android/app/src/test/kotlin/io/github/ccch1mneyyy/dsh_app/runtime/SafeMoveAsideTest.kt` | A | 取上游 | 上游 v1.0.15 是超集：本地补丁（InputProbeDiagnostics、provider_mismatch、MediaPermissionQueue、applyCaptureHidden、staleSnapshot、probeDetail、callOwner、writeDiagnostics 等）在上游都有等价实现；A 批不含群聊自绘逻辑 |
 | 33 | `app/android/app/src/test/kotlin/io/github/ccch1mneyyy/dsh_app/runtime/SafePolicyTest.kt` | A | 取上游 | 上游 v1.0.15 是超集：本地补丁（InputProbeDiagnostics、provider_mismatch、MediaPermissionQueue、applyCaptureHidden、staleSnapshot、probeDetail、callOwner、writeDiagnostics 等）在上游都有等价实现；A 批不含群聊自绘逻辑 |
-| 34 | `packages/dsh_client/lib/companion.dart` | A | 取上游 | 上游 v1.0.15 是超集：本地补丁（InputProbeDiagnostics、provider_mismatch、MediaPermissionQueue、applyCaptureHidden、staleSnapshot、probeDetail、callOwner、writeDiagnostics 等）在上游都有等价实现；A 批不含群聊自绘逻辑 |
-| 35 | `packages/dsh_client/lib/dsh_client.dart` | A | 取上游 | 上游 v1.0.15 是超集：本地补丁（InputProbeDiagnostics、provider_mismatch、MediaPermissionQueue、applyCaptureHidden、staleSnapshot、probeDetail、callOwner、writeDiagnostics 等）在上游都有等价实现；A 批不含群聊自绘逻辑 |
-| 36 | `packages/dsh_client/lib/src/companion_api.dart` | A | 取上游 | 上游 v1.0.15 是超集：本地补丁（InputProbeDiagnostics、provider_mismatch、MediaPermissionQueue、applyCaptureHidden、staleSnapshot、probeDetail、callOwner、writeDiagnostics 等）在上游都有等价实现；A 批不含群聊自绘逻辑 |
+
+小计：33 个 —— 取上游 33
+
+### 2. runtime/bridge（桥接层）
+
+| # | 路径 | 批 | 处理 | 理由 |
+| --- | --- | --- | --- | --- |
 | 37 | `runtime/bridge/dsh-go-bridge/cordis.patch.yml` | A | 取上游 | 上游 v1.0.15 是超集：本地补丁（InputProbeDiagnostics、provider_mismatch、MediaPermissionQueue、applyCaptureHidden、staleSnapshot、probeDetail、callOwner、writeDiagnostics 等）在上游都有等价实现；A 批不含群聊自绘逻辑 |
 | 38 | `runtime/bridge/dsh-go-bridge/lib/companion/full-context.js` | A | 取上游 | 上游 v1.0.15 是超集：本地补丁（InputProbeDiagnostics、provider_mismatch、MediaPermissionQueue、applyCaptureHidden、staleSnapshot、probeDetail、callOwner、writeDiagnostics 等）在上游都有等价实现；A 批不含群聊自绘逻辑 |
 | 39 | `runtime/bridge/dsh-go-bridge/lib/companion/routes.js` | A | 取上游 | 上游 v1.0.15 是超集：本地补丁（InputProbeDiagnostics、provider_mismatch、MediaPermissionQueue、applyCaptureHidden、staleSnapshot、probeDetail、callOwner、writeDiagnostics 等）在上游都有等价实现；A 批不含群聊自绘逻辑 |
 | 40 | `runtime/bridge/dsh-go-bridge/lib/companion/store.js` | A | 取上游 | 上游 v1.0.15 是超集：本地补丁（InputProbeDiagnostics、provider_mismatch、MediaPermissionQueue、applyCaptureHidden、staleSnapshot、probeDetail、callOwner、writeDiagnostics 等）在上游都有等价实现；A 批不含群聊自绘逻辑 |
 | 41 | `runtime/bridge/dsh-go-bridge/lib/index.js` | A | 取上游 | 上游 v1.0.15 是超集：本地补丁（InputProbeDiagnostics、provider_mismatch、MediaPermissionQueue、applyCaptureHidden、staleSnapshot、probeDetail、callOwner、writeDiagnostics 等）在上游都有等价实现；A 批不含群聊自绘逻辑 |
+
+小计：5 个 —— 取上游 5
+
+### 3. packages/dsh_client（客户端 API）
+
+| # | 路径 | 批 | 处理 | 理由 |
+| --- | --- | --- | --- | --- |
+| 34 | `packages/dsh_client/lib/companion.dart` | A | 取上游 | 上游 v1.0.15 是超集：本地补丁（InputProbeDiagnostics、provider_mismatch、MediaPermissionQueue、applyCaptureHidden、staleSnapshot、probeDetail、callOwner、writeDiagnostics 等）在上游都有等价实现；A 批不含群聊自绘逻辑 |
+| 35 | `packages/dsh_client/lib/dsh_client.dart` | A | 取上游 | 上游 v1.0.15 是超集：本地补丁（InputProbeDiagnostics、provider_mismatch、MediaPermissionQueue、applyCaptureHidden、staleSnapshot、probeDetail、callOwner、writeDiagnostics 等）在上游都有等价实现；A 批不含群聊自绘逻辑 |
+| 36 | `packages/dsh_client/lib/src/companion_api.dart` | A | 取上游 | 上游 v1.0.15 是超集：本地补丁（InputProbeDiagnostics、provider_mismatch、MediaPermissionQueue、applyCaptureHidden、staleSnapshot、probeDetail、callOwner、writeDiagnostics 等）在上游都有等价实现；A 批不含群聊自绘逻辑 |
+
+小计：3 个 —— 取上游 3
+
+### 4. app/lib（应用层）
+
+| # | 路径 | 批 | 处理 | 理由 |
+| --- | --- | --- | --- | --- |
 | 42 | `app/lib/companion/companion_initiative.dart` | B | 取上游 | Companion 是上游特性，本地这条线只有同步提交，无自研 |
 | 43 | `app/lib/companion/companion_initiative_owner.dart` | B | 取上游 | Companion 是上游特性，本地这条线只有同步提交，无自研 |
 | 44 | `app/lib/companion/companion_light.dart` | B | 取上游 | Companion 是上游特性，本地这条线只有同步提交，无自研 |
@@ -116,6 +144,13 @@ git log --oneline 74028a39..HEAD -- <路径>
 | 66 | `app/lib/ui/companion/companion_stage.dart` | B | 取上游 | Companion UI 上游重写 |
 | 67 | `app/lib/ui/engine/engine_status.dart` | B | 取上游 | 上游新增 runtime_upgrade_blocked 分支，且已含我们原有两行 |
 | 68 | `app/lib/ui/web/web_view_page.dart` | B | 取上游 | WebMarkButton 与侧栏让位是上游新实现 |
+
+小计：27 个 —— 保本地 2、取上游 19、合并 6
+
+### 5. app/test（测试）
+
+| # | 路径 | 批 | 处理 | 理由 |
+| --- | --- | --- | --- | --- |
 | 69 | `app/test/chat/usage_commands_test.dart` | B | 合并 | 保本地「未测量不是 0%」用例；取上游 contextWindow:0 断言 |
 | 70 | `app/test/companion/companion_initiative_owner_test.dart` | B | 取上游 | 跟随新模型与 API 的测试用例 |
 | 71 | `app/test/companion/companion_initiative_test.dart` | B | 取上游 | 跟随新模型与 API 的测试用例 |
@@ -127,20 +162,50 @@ git log --oneline 74028a39..HEAD -- <路径>
 | 77 | `app/test/drawer/drawer_calendar_test.dart` | B | 取上游 | 条目模型改成 SessionRow，按上游取 .sessionId |
 | 78 | `app/test/features/preset_editor_test.dart` | B | 取上游 | 上游 API 变化，跟随 |
 | 79 | `app/test/web/web_view_page_test.dart` | B | 取上游 | 跟随 WebMarkButton |
-| 80| `app/.gitignore`| C| 取上游 | 规则相同，上游注释更新为 "release builds / 发布机拷入" 的新措辞 |
-| 81| `app/assets/companion/stage.js`| C| 取上游 | 本地相对基线是上次同步快照，无自绘改动；跟随上游 14 个提交（模型适配、mask 分块） |
-| 82| `app/assets/skills/dsh-go-guide/README.md`| C| 取上游 | 版本号 1.0.12→1.0.15，纯跟随 |
-| 83| `app/assets/skills/dsh-go-guide/en-06-pets.md`| C| 取上游 | 上游把「主动邀请」改成「她多主动」四档频率说明，本地无差异 |
-| 84| `app/assets/skills/dsh-go-guide/zh-06-pets.md`| C| 取上游 | 同上，中文版跟随上游 |
-| 85| `app/pubspec.yaml`| C| 取上游 | 版本 1.0.15+1（本地 1.0.12+1 是上次同步的版本号，发货版本由 CI 传入）；依赖补上游新增 image / mobile_scanner |
-| 86| `app/tool/l10n_merge.py`| C| 取上游 | 上游修复 ARB 写入为 LF（newline="\n"），Windows/CI 差异；本地无逻辑改动 |
+
+小计：11 个 —— 取上游 10、合并 1
+
+### 6. app 根目录（pubspec / .gitignore / l10n 工具 / assets）
+
+| # | 路径 | 批 | 处理 | 理由 |
+| --- | --- | --- | --- | --- |
+| 80 | `app/.gitignore` | C | 取上游 | 规则相同，上游注释更新为 "release builds / 发布机拷入" 的新措辞 |
+| 81 | `app/assets/companion/stage.js` | C | 取上游 | 本地相对基线是上次同步快照，无自绘改动；跟随上游 14 个提交（模型适配、mask 分块） |
+| 82 | `app/assets/skills/dsh-go-guide/README.md` | C | 取上游 | 版本号 1.0.12→1.0.15，纯跟随 |
+| 83 | `app/assets/skills/dsh-go-guide/en-06-pets.md` | C | 取上游 | 上游把「主动邀请」改成「她多主动」四档频率说明，本地无差异 |
+| 84 | `app/assets/skills/dsh-go-guide/zh-06-pets.md` | C | 取上游 | 同上，中文版跟随上游 |
+| 85 | `app/pubspec.yaml` | C | 取上游 | 版本 1.0.15+1（本地 1.0.12+1 是上次同步的版本号，发货版本由 CI 传入）；依赖补上游新增 image / mobile_scanner |
+| 86 | `app/tool/l10n_merge.py` | C | 取上游 | 上游修复 ARB 写入为 LF（newline="\n"），Windows/CI 差异；本地无逻辑改动 |
+
+小计：7 个 —— 取上游 7
+
+### 7. runtime（补丁 pin / runtime 测试）
+
+| # | 路径 | 批 | 处理 | 理由 |
+| --- | --- | --- | --- | --- |
+| 92 | `runtime/patches/pins.json` | C | 取上游 | 上游新增两个 0.2.2-rc.1 补丁 pin；冲突区块本地侧为空，无本地 pin 丢失 |
+| 93 | `runtime/tests/bridge-package.test.mjs` | C | 取上游 | 上游补 动态 import() 的依赖扫描，本地无改动 |
+| 94 | `runtime/tests/companion-route.test.mjs` | C | 取上游 | 上游新增 recall 路由与未适配 Host 的用例，计数 8→12；本地无改动 |
+| 95 | `runtime/tests/native-micro-generation.test.mjs` | C | 取上游 | 上游改用真实计时/墙钟替换 mock timers，本地无改动 |
+
+小计：4 个 —— 取上游 4
+
+### 8. tooling（伙伴元数据）
+
+| # | 路径 | 批 | 处理 | 理由 |
+| --- | --- | --- | --- | --- |
+| 96 | `tooling/companion/whale-girl.character.json` | C | 取上游 | 上游补齐作者/许可/来源元数据；本地为空占位 |
+
+小计：1 个 —— 取上游 1
+
+### 9. docs（文档）
+
+| # | 路径 | 批 | 处理 | 理由 |
+| --- | --- | --- | --- | --- |
 | 87 | `docs/changelog.md` | C | 合并 | 取上游 1.0.13/1.0.14/1.0.15 三段新增，保留我们 1.0.12 及更早条目（本地侧该块为空） |
 | 88 | `docs/design/companion.md` | C | 取上游 | 本地侧是上次同步快照；上游含已获授权、她多主动四档、C902/C905 接线说明 |
 | 89 | `docs/guide/README.md` | C | 取上游 | 版本号 1.0.12→1.0.15，纯跟随 |
 | 90 | `docs/guide/en/06-pets.md` | C | 取上游 | 邀请改成 How often she speaks up 四档，本地无差异 |
 | 91 | `docs/guide/zh/06-pets.md` | C | 取上游 | 与英文版同义：她多主动四档、默认偶尔；中英一致 |
-| 92| `runtime/patches/pins.json`| C| 取上游 | 上游新增两个 0.2.2-rc.1 补丁 pin；冲突区块本地侧为空，无本地 pin 丢失 |
-| 93| `runtime/tests/bridge-package.test.mjs`| C| 取上游 | 上游补 动态 import() 的依赖扫描，本地无改动 |
-| 94| `runtime/tests/companion-route.test.mjs`| C| 取上游 | 上游新增 recall 路由与未适配 Host 的用例，计数 8→12；本地无改动 |
-| 95| `runtime/tests/native-micro-generation.test.mjs`| C| 取上游 | 上游改用真实计时/墙钟替换 mock timers，本地无改动 |
-| 96| `tooling/companion/whale-girl.character.json`| C| 取上游 | 上游补齐作者/许可/来源元数据；本地为空占位 |
+
+小计：5 个 —— 取上游 4、合并 1
