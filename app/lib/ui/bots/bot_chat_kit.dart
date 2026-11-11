@@ -783,8 +783,9 @@ List<BotRow> attachMemoryNotices(
   return out;
 }
 
-/// 这一轮的这一段（首行加它的续行）的数字：步数、tokens（时间在名字后面）。
-typedef BotRunFigures = ({int steps, int tokens});
+/// 这一轮的这一段的数字：耗时、步数、tokens（钟点时间在名字后面，这里只放
+/// 「走了多久」）。[span] 是 Host 给的这一轮时长，缺了就不写。
+typedef BotRunFigures = ({int steps, int tokens, Duration? span});
 
 final class BotItemRow extends BotRow {
   const BotItemRow(this.item, {this.continued = false, this.figures});
@@ -877,8 +878,8 @@ List<BotRow> _withRunFigures(List<BotRow> rows) {
       // 步数的一轮，也要有这一行。
       final steps = item.steps ?? 0;
       final tokens = item.tokens ?? 0;
-      if (steps > 0 || tokens > 0) {
-        figures = (steps: steps, tokens: tokens);
+      if (steps > 0 || tokens > 0 || item.duration != null) {
+        figures = (steps: steps, tokens: tokens, span: item.duration);
         break;
       }
     }
@@ -1820,9 +1821,11 @@ class GroupMessage extends ConsumerWidget {
                 );
                 final clock = item.time == null ? null : shortTime(item.time);
                 final run = figures;
-                final stats = run == null || (run.steps == 0 && run.tokens == 0)
+                final stats = run == null || (run.steps == 0 && run.tokens == 0 && run.span == null)
                     ? null
-                    : runFigures(steps: run.steps, tokens: run.tokens);
+                    // 耗时紧跟在时间后面（「10:51 · 3 分 12 秒 · 5 步 · …」），
+                    // 格式交给 formatSpan：秒 / 分秒 / 时分。
+                    : runFigures(duration: run.span, steps: run.steps, tokens: run.tokens);
                 // 定宽的两段：时间、统计（统计是文字 + 尾箭头 + 左右各 2 的留白）。
                 final tagWidth = admin
                     ? 12 + _textWidth(context, l10n.botsAdmin, theme.textTheme.labelSmall, noScaling: true)
