@@ -117,6 +117,20 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBinding
     return true;
   }
 
+  /// 达成后右端那颗垃圾桶：直接清除目标（用户定的，不走面板），成功后立刻
+  /// 重拉一次，胶囊和两行随之消失、群名恢复完整。
+  Future<void> _clearGoal(DsBotGroupGoal? goal) async {
+    if (goal == null) return;
+    final api = ref.read(dsBotProvider.notifier).api;
+    if (api == null) return;
+    try {
+      await api.goalControl(widget.roomId, goal.id, 'clear');
+      ref.invalidate(groupGoalProvider(widget.roomId));
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text('$error')));
+    }
+  }
+
   void _setGoalExpanded(DsBotGroupGoal? goal, {required bool expanded}) {
     if (goal != null) _goalExpandedByRoom[widget.roomId] = (status: goal.status, expanded: expanded);
     setState(() {});
@@ -1054,6 +1068,8 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBinding
           bare: hasGoal,
           onExpand: () => _setGoalExpanded(goalNow, expanded: true),
           onCollapse: () => _setGoalExpanded(goalNow, expanded: false),
+          // 达成后那颗垃圾桶点了直接清除。
+          onClear: () => _clearGoal(goalNow),
         ),
         // Right key = this conversation's details: the group's aggregate in the
         // group chat, the member's own Session in this group otherwise — never a

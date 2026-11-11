@@ -48,6 +48,10 @@ class _WebGoalPainter extends CustomPainter {
     if (k <= 0) return;
     canvas.save();
     canvas.scale(k);
+    // 墨迹在 viewBox 里从 x≈1.75 起（外圈 center(9,11)、r6.5、stroke1.5），
+    // 盒子左边这一截是空的：平移过去，靶心可见的左边缘就落在盒子左边缘，
+    // 和胶囊第二行那颗圆点同一根线（两行左对齐）。
+    canvas.translate(-1.75, 0);
     final paint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5

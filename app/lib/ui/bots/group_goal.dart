@@ -232,6 +232,7 @@ class GoalBarProbe extends ConsumerWidget {
     this.onExpand,
     this.onCollapse,
     this.bare = false,
+    this.onClear,
   });
 
   final String roomId;
@@ -248,6 +249,9 @@ class GoalBarProbe extends ConsumerWidget {
   /// 面板的「收起成小球」：面板自己关，页面把小球收回来。
   final VoidCallback? onCollapse;
 
+  /// 目标达成后点右端那颗垃圾桶：直接清除（不再走面板）。
+  final VoidCallback? onClear;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // 连接一就绪就回头取一次：api 只存在于控制器上，不改变 status，所以
@@ -261,20 +265,23 @@ class GoalBarProbe extends ConsumerWidget {
     final goal = async.value;
     if (goal != null && goal.title.isNotEmpty) {
       // 合体态：右段（旗帜 + 两行文字 + 环）并进那颗大胶囊。
+      // 达成后右端那颗是「清除目标」：点它直接清，不再开面板（用户定的）；
+      // 其余状态点球仍是开面板。
+      final complete = goal.status == 'complete';
+      void onBall() => complete && onClear != null ? onClear!() : showGoalExpand(context, roomId);
       return bare && expanded
           ? GoalInlineSegment(
               goal: goal,
               onTap: () => showGoalExpand(context, roomId),
               onLongPress: onCollapse,
+              onClear: onClear,
             )
           : GroupGoalPill(
               goal: goal,
               expanded: expanded,
               // 收成小球且并进群名胶囊时，只画那颗同心球（外壳由顶栏给）。
               bare: bare && !expanded,
-              // 点它只开面板——展开态与收起态点下去是同一件事：清除也只发生
-              // 在面板里（这颗球刚才还是「开面板」，换个不可逆动作最危险）。
-              onTap: () => showGoalExpand(context, roomId),
+              onTap: onBall,
               // 长按：展开态收成小球、收起态展回胶囊；手动改过的以手动为准。
               onLongPress: expanded ? onCollapse : onExpand,
             );
@@ -356,11 +363,15 @@ class GoalInlineSegment extends StatelessWidget {
     required this.goal,
     required this.onTap,
     this.onLongPress,
+    this.onClear,
   });
 
   final DsBotGroupGoal goal;
   final VoidCallback onTap;
   final VoidCallback? onLongPress;
+
+  /// 达成后右端那颗垃圾桶：点它直接清除目标。
+  final VoidCallback? onClear;
 
   @override
   Widget build(BuildContext context) {
@@ -489,7 +500,23 @@ class GoalInlineSegment extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 6),
-                goalRingBall(context, goal: goal, size: ringSize),
+                // 达成后这颗球自己是「清除目标」的按钮：单独成节点、自己的
+                // 点击，点下去直接清，不落到整段的「开面板」上。
+                if (goal.status == 'complete' && onClear != null)
+                  Semantics(
+                    container: true,
+                    button: true,
+                    label: l10n.chatClearGoal,
+                    onTap: onClear,
+                    excludeSemantics: true,
+                    child: InkWell(
+                      onTap: onClear,
+                      customBorder: const CircleBorder(),
+                      child: goalRingBall(context, goal: goal, size: ringSize),
+                    ),
+                  )
+                else
+                  goalRingBall(context, goal: goal, size: ringSize),
               ],
             );
           },
