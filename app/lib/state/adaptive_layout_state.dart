@@ -103,7 +103,18 @@ class SessionDetailTabController extends Notifier<SessionTab> {
 /// 群聊宽屏那一栏画哪一份：false = 会话详情（默认），true = 群详情。
 /// 「信息」页签底部那颗「成员 · 设置」要能把栏切过去，所以放在 provider 里，
 /// 页面和页签两处都读同一份。
-final roomDetailsInPanelProvider = StateProvider<bool>((ref) => false);
+class RoomDetailsInPanelController extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void show(bool value) {
+    if (state != value) state = value;
+  }
+}
+
+final roomDetailsInPanelProvider = NotifierProvider<RoomDetailsInPanelController, bool>(
+  RoomDetailsInPanelController.new,
+);
 
 final sessionDetailTabProvider = NotifierProvider<SessionDetailTabController, SessionTab>(
   SessionDetailTabController.new,

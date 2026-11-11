@@ -26,7 +26,7 @@ class RoomInfoTab extends ConsumerWidget {
   void _openDetails(BuildContext context, WidgetRef ref) {
     final layout = AdaptiveChrome.layoutOf(context);
     if (layout != null && layout.isExpanded && layout.panelAvailable) {
-      ref.read(roomDetailsInPanelProvider.notifier).state = true;
+      ref.read(roomDetailsInPanelProvider.notifier).show(true);
       ref.read(layoutPrefsProvider.notifier).setPanelOpen(true);
       return;
     }

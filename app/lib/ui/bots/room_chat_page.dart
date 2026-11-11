@@ -141,7 +141,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBinding
   void _openRoomDetails(BuildContext context) {
     final layout = AdaptiveChrome.layoutOf(context);
     if (layout != null && layout.isExpanded && layout.panelAvailable) {
-      ref.read(roomDetailsInPanelProvider.notifier).state = true;
+      ref.read(roomDetailsInPanelProvider.notifier).show(true);
       ref.read(layoutPrefsProvider.notifier).setPanelOpen(true);
       return;
     }
@@ -377,7 +377,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBinding
       _target = next;
       _draftKey = _draftKeyFor(next);
       // 换了会话，那一栏回到会话详情：群详情只在「还在群里那本账」上成立。
-      ref.read(roomDetailsInPanelProvider.notifier).state = false;
+      ref.read(roomDetailsInPanelProvider.notifier).show(false);
     });
     _showDraft(_draftKey);
     _mentions.dismiss();
@@ -851,7 +851,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBinding
       // 这颗键（和 ⋯ 的「详情」）在宽屏是那一栏：展开的是会话详情。栏里正
       // 开着群详情时，先换回会话详情并把栏留着，不顺手把栏关掉。
       if (layout != null && layout.isExpanded && layout.panelAvailable && _panelRoom) {
-        ref.read(roomDetailsInPanelProvider.notifier).state = false;
+        ref.read(roomDetailsInPanelProvider.notifier).show(false);
         ref.read(layoutPrefsProvider.notifier).setPanelOpen(true);
         return;
       }
