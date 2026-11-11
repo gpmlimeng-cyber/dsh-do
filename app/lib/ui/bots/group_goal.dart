@@ -135,9 +135,16 @@ class GoalRing extends StatelessWidget {
 ///
 /// 目标达成后这颗换外观：36 圆盘 + 垃圾桶，写明「清除目标」。桶不染红——清除是
 /// 正常收尾，不是危险操作；点它仍只开面板，真正清除在面板里。
-Widget goalRingBall(BuildContext context, {required DsBotGroupGoal goal, required double size}) {
+///
+/// [badge]：暂停角标只在「收成小球、整颗胶囊只剩这一颗球」时才画。完整胶囊的
+/// 第一行已经有状态图标了，同一个状态不在两处重复说。
+Widget goalRingBall(
+  BuildContext context, {
+  required DsBotGroupGoal goal,
+  required double size,
+  bool badge = false,
+}) {
   final theme = Theme.of(context);
-  final dsh = DshColors.of(context);
   if (goal.status == 'complete') {
     return Container(
       width: size,
@@ -157,9 +164,13 @@ Widget goalRingBall(BuildContext context, {required DsBotGroupGoal goal, require
       children: [
         GoalRing(goal: goal, size: size, announce: false),
         // 暂停角标 10，贴环左上外缘、不进环内：36 里 11 号的「2/4」已经占到
-        // 环宽的三分之二。
-        if (goal.status == 'paused')
-          Positioned(left: -2, top: -2, child: Icon(AppIcons.paused, size: 10, color: dsh.warning)),
+        // 环宽的三分之二。只有收成小球时才画（完整胶囊的第一行已经有图标）。
+        if (badge && goal.status == 'paused')
+          Positioned(
+            left: -2,
+            top: -2,
+            child: Icon(AppIcons.paused, size: 10, color: DshColors.of(context).warning),
+          ),
       ],
     ),
   );
@@ -743,7 +754,7 @@ class GroupGoalPill extends StatelessWidget {
           child: InkWell(
             onTap: onTap,
             customBorder: const CircleBorder(),
-            child: goalRingBall(context, goal: goal, size: _ballSize),
+            child: goalRingBall(context, goal: goal, size: _ballSize, badge: true),
           ),
         ),
       );

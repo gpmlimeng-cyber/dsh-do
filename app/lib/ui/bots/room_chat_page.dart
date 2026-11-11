@@ -107,15 +107,14 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBinding
   /// no route is pushed, so one back still lands on the group's details.
   late RoomChatTarget _target = widget.initialTarget;
 
-  /// 顶栏目标的形态：进行中 = 完整大胶囊（左段只有群头像）；暂停与已达成 =
-  /// 自动收成小球（群名完整、球在尾端，达成后那颗球是「清除目标」的入口）。
-  /// 用户手动收 / 展过之后，以手动的为准，直到目标状态再变一次——那时又回到
-  /// 「状态说了算」。
+  /// 顶栏目标的形态：**任何状态都是完整大胶囊**（左段只有群头像，右段两行 +
+  /// 那颗球；达成后球换成「清除目标」）。只有用户长按才收成小球，点球只会开
+  /// 面板，不再按状态自动收 / 展。
   bool _goalExpandedFor(DsBotGroupGoal? goal) {
     if (goal == null) return true;
     final manual = _goalExpandedByRoom[widget.roomId];
     if (manual != null && manual.status == goal.status) return manual.expanded;
-    return goal.status != 'paused' && goal.status != 'complete';
+    return true;
   }
 
   void _setGoalExpanded(DsBotGroupGoal? goal, {required bool expanded}) {
