@@ -405,7 +405,11 @@ class BotChatHeader extends StatelessWidget {
                   if (mergeTrailing && trailing != null)
                     Expanded(child: mergedTitlePill(context, titleRow: titleRow, goal: trailing!))
                   else if (endTrailing && trailing != null)
-                    Flexible(child: inlineTitlePill(ball: trailing!))
+                    // 必须 Expanded 而不是 Flexible：Flexible 是松约束，胶囊会
+                    // 按内容宽收缩，行里剩下的宽度落在尾部，右边那颗 ⋯ 就被
+                    // 拽到胶囊旁边、不再贴右。Expanded 吃掉余量（胶囊本身仍按
+                    // 内容宽画、左对齐），⋯ 就始终钉在最右。
+                    Expanded(child: inlineTitlePill(ball: trailing!))
                   else ...[
                     if (trailingExpand) titlePill else Expanded(child: titlePill),
                     if (trailing case final trailing?) ...[
