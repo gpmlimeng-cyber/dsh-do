@@ -1109,8 +1109,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBinding
           ref,
           room: room,
           team: team,
-          onDetails: openInfo,
-          onMembers: () => _openRoomDetails(context),
+          onRoomDetails: () => _openRoomDetails(context),
           controller: controller,
         ),
         action: situationKey(),
@@ -1675,8 +1674,7 @@ List<Widget> roomMenuItems(
   WidgetRef ref, {
   required DsBotRoom room,
   required DsBotTeam team,
-  required VoidCallback onDetails,
-  required VoidCallback onMembers,
+  required VoidCallback onRoomDetails,
   required MenuController controller,
 }) {
   final l10n = context.l10n;
@@ -1693,7 +1691,7 @@ List<Widget> roomMenuItems(
       title: l10n.commonDetails,
       onTap: () {
         close();
-        onDetails();
+        onRoomDetails();
       },
     ),
     SettingsTile(
@@ -1715,7 +1713,7 @@ List<Widget> roomMenuItems(
       title: l10n.botsMembers,
       onTap: () {
         close();
-        onMembers();
+        onRoomDetails();
       },
     ),
   ];
