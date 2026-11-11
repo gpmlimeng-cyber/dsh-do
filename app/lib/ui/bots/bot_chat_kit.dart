@@ -576,7 +576,8 @@ class _AnchoredMenu extends StatelessWidget {
         surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
         padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(vertical: 6)),
         minimumSize: const WidgetStatePropertyAll(Size(_width, 0)),
-        shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))),
+        // 圆角 14：比列表卡（20）收紧一档，跟紧凑行一起才不显松。
+        shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
       ),
       alignmentOffset: const Offset(0, 8),
       menuChildren: [

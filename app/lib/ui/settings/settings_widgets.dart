@@ -83,19 +83,23 @@ class SettingsIcon extends StatelessWidget {
 /// A 20dp line icon in the secondary colour, centred in the 32dp icon slot:
 /// how rows on secondary pages show an icon.
 class SettingsLineIcon extends StatelessWidget {
-  const SettingsLineIcon(this.icon, {super.key, this.danger = false});
+  const SettingsLineIcon(this.icon, {super.key, this.danger = false, this.slot, this.glyph});
 
   final IconData icon;
   final bool danger;
+
+  /// 覆盖图标槽与字形大小：紧凑菜单用 18 的字形放进 24 的槽。
+  final double? slot;
+  final double? glyph;
 
   @override
   Widget build(BuildContext context) {
     final colors = DshColors.of(context);
     return SizedBox.square(
-      dimension: SettingsMetrics.icon,
+      dimension: slot ?? SettingsMetrics.icon,
       child: Icon(
         icon,
-        size: SettingsMetrics.lineGlyph,
+        size: glyph ?? SettingsMetrics.lineGlyph,
         color: danger ? colors.danger : Theme.of(context).colorScheme.onSurfaceVariant,
       ),
     );
@@ -121,6 +125,7 @@ class SettingsTile extends StatelessWidget {
     this.danger = false,
     this.chevron,
     this.tinted = true,
+    this.compact = false,
   }) : assert(title != null || spot != null);
 
   /// Null for a plain row that lines up with [InfoRow]s.
@@ -150,6 +155,10 @@ class SettingsTile extends StatelessWidget {
   /// tinted disc: the default for rows on secondary pages.
   final bool tinted;
 
+  /// 锚定菜单里那种紧凑行：左右内边 12 / 16、图标 18 放在 24 的槽里、图标与
+  /// 文字 6、最小行高 44（大字号时随文字长）。设置页一律走默认，不受影响。
+  final bool compact;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -159,6 +168,17 @@ class SettingsTile extends StatelessWidget {
     final endsInGlyph = showChevron || trailing != null;
     final icon = this.icon;
     final title = this.title ?? spot!.title(context.l10n);
+    // 紧凑值只给锚定菜单；设置页这几项都取默认。
+    final inset = compact ? 12.0 : SettingsMetrics.inset;
+    final trailingInset = compact
+        ? 16.0
+        : endsInGlyph
+        ? SettingsMetrics.trailingPad
+        : SettingsMetrics.inset;
+    final iconSlot = compact ? 24.0 : SettingsMetrics.icon;
+    final iconGlyph = compact ? 18.0 : SettingsMetrics.lineGlyph;
+    final iconGap = compact ? 6.0 : SettingsMetrics.iconGap;
+    final minHeight = compact ? 44.0 : subtitle == null ? SettingsMetrics.rowHeight : SettingsMetrics.rowHeightTwoLine;
     return anchorSpot(
       spot,
       InkWell(
@@ -166,21 +186,16 @@ class SettingsTile extends StatelessWidget {
         splashFactory: rowSplash(context),
         highlightColor: scheme.onSurface.withValues(alpha: 0.05),
         child: ConstrainedBox(
-          constraints: BoxConstraints(
-            minHeight: subtitle == null ? SettingsMetrics.rowHeight : SettingsMetrics.rowHeightTwoLine,
-          ),
+          constraints: BoxConstraints(minHeight: minHeight),
           child: Padding(
-            padding: EdgeInsets.fromLTRB(
-              SettingsMetrics.inset,
-              6,
-              endsInGlyph ? SettingsMetrics.trailingPad : SettingsMetrics.inset,
-              6,
-            ),
+            padding: EdgeInsets.fromLTRB(inset, 6, trailingInset, 6),
             child: Row(
               children: [
                 if (icon != null) ...[
-                  tinted ? SettingsIcon(icon, tint: tint, danger: danger) : SettingsLineIcon(icon, danger: danger),
-                  const SizedBox(width: SettingsMetrics.iconGap),
+                  tinted
+                      ? SettingsIcon(icon, tint: tint, danger: danger)
+                      : SettingsLineIcon(icon, danger: danger, slot: iconSlot, glyph: iconGlyph),
+                  SizedBox(width: iconGap),
                 ],
                 Expanded(
                   child: Column(

@@ -1646,6 +1646,7 @@ List<Widget> roomMenuItems(
       icon: AppIcons.info,
       tinted: false,
       chevron: false,
+      compact: true,
       title: l10n.commonDetails,
       onTap: () {
         close();
@@ -1656,6 +1657,7 @@ List<Widget> roomMenuItems(
       icon: AppIcons.multiSelect,
       tinted: false,
       chevron: false,
+      compact: true,
       title: l10n.botsMessageScope,
       onTap: () {
         close();
@@ -1666,6 +1668,7 @@ List<Widget> roomMenuItems(
       icon: AppIcons.groupChat,
       tinted: false,
       chevron: false,
+      compact: true,
       title: l10n.botsMembers,
       onTap: () {
         close();
