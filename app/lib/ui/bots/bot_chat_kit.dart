@@ -429,8 +429,20 @@ class BotChatHeader extends StatelessWidget {
                     const SizedBox(width: 8),
                     chip,
                   ],
-                  const SizedBox(width: 8),
+                  // 警示键（离线 / 只读）排在 ⋯ 左边：⋯ 永远是最右那颗，
+                  // 位置不随状态变——「固定」就是这个意思。
+                  if (action case final action?) ...[
+                    const SizedBox(width: 8),
+                    _RoundKey(
+                      key: const ValueKey('bot-action-key'),
+                      icon: action.icon,
+                      tooltip: action.tooltip,
+                      onTap: action.onTap,
+                      iconColor: action.color,
+                    ),
+                  ],
                   if (onMenu != null || menuChildren != null) ...[
+                    const SizedBox(width: 8),
                     if (menuChildren case final menuChildren?)
                       _AnchoredMenu(
                         controller: menuController!,
@@ -447,17 +459,8 @@ class BotChatHeader extends StatelessWidget {
                         // still one long press away.
                         onLongPress: onInfo,
                       ),
-                    if (action != null) const SizedBox(width: 8),
-                  ],
-                  if (action case final action?)
-                    _RoundKey(
-                      key: const ValueKey('bot-action-key'),
-                      icon: action.icon,
-                      tooltip: action.tooltip,
-                      onTap: action.onTap,
-                      iconColor: action.color,
-                    )
-                  else if (onMenu == null && menuChildren == null)
+                  ] else if (action == null) ...[
+                    const SizedBox(width: 8),
                     _RoundKey(
                       key: const ValueKey('bot-details'),
                       icon: AppIcons.info,
@@ -465,6 +468,7 @@ class BotChatHeader extends StatelessWidget {
                       onTap: onInfo ?? onDetails,
                       iconColor: infoGreyed ? DshColors.of(context).textTertiary : null,
                     ),
+                  ],
                 ],
               ),
             ),
