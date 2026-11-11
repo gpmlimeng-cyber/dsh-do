@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
+import '../../state/adaptive_layout_state.dart';
 import '../../state/bots_state.dart';
 import '../../state/room_chat_target.dart';
 import '../common/app_sheet.dart';
@@ -17,6 +18,8 @@ import '../common/page_hero.dart';
 import '../common/segmented_pill.dart';
 import '../common/sheet_title_bar.dart';
 import '../features/feature_format.dart';
+import '../chat/chat_header.dart' show ChatHeader;
+import '../shell/adaptive/detail_panel_keys.dart';
 import '../shell/page_frame.dart';
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
@@ -33,10 +36,17 @@ import 'room_activity_sheet.dart';
 import 'room_session_sheet.dart';
 import 'room_relay_limit_sheet.dart';
 
+/// 群详情画在哪：整页（窄屏），或者宽屏的第三栏。
+enum RoomDetailMode { page, panel }
+
 class RoomDetailsPage extends ConsumerWidget {
-  const RoomDetailsPage({super.key, required this.roomId});
+  const RoomDetailsPage({super.key, required this.roomId}) : mode = RoomDetailMode.page;
+
+  /// 宽屏的三栏：这一页落在聊天右边那一栏里，跟单聊的对话详情一样。
+  const RoomDetailsPage.panel({super.key, required this.roomId}) : mode = RoomDetailMode.panel;
 
   final String roomId;
+  final RoomDetailMode mode;
 
   static Route<void> route(String roomId) => MaterialPageRoute<void>(builder: (_) => RoomDetailsPage(roomId: roomId));
 
@@ -171,7 +181,12 @@ class RoomDetailsPage extends ConsumerWidget {
     await _update(context, ref, scope, (api) => api.deleteRoom(room.id));
     // Removal is expected after success; only connection identity may govern navigation.
     if (context.mounted && scope.connected(context, ref) && ref.read(dsBotProvider).team?.room(room.id) == null) {
-      navigator.popUntil((route) => route.isFirst);
+      // 栏里的详情不是一条路由：收栏就够，别把聊天页一起 pop 掉。
+      if (mode == RoomDetailMode.panel) {
+        ref.read(layoutPrefsProvider.notifier).setPanelOpen(false);
+      } else {
+        navigator.popUntil((route) => route.isFirst);
+      }
     }
   }
 
@@ -184,12 +199,15 @@ class RoomDetailsPage extends ConsumerWidget {
     final mobileUnavailable =
         status.availability == DsBotAvailability.missing || status.availability == DsBotAvailability.outdated;
     if (team == null || room == null || mobileUnavailable) {
-      return AppPage.list(
-        title: l10n.botsGroupChat,
-        children: [
-          DsBotUnavailableMessage(status: status, goneIcon: AppIcons.groupChat, goneTitle: l10n.botsRoomGone),
-        ],
+      final gone = DsBotUnavailableMessage(
+        status: status,
+        goneIcon: AppIcons.groupChat,
+        goneTitle: l10n.botsRoomGone,
       );
+      if (mode == RoomDetailMode.panel) {
+        return _panel(context, title: l10n.botsGroupChat, child: ListView(children: [gone]));
+      }
+      return AppPage.list(title: l10n.botsGroupChat, children: [gone]);
     }
     final dsh = DshColors.of(context);
     final writable = status.readOnly == null;
@@ -213,20 +231,9 @@ class RoomDetailsPage extends ConsumerWidget {
       if (working.isNotEmpty) l10n.botsRoomWorkingCount(working.length),
     ].join(' · ');
     const gap = SizedBox(height: 24);
-    return AppPage(
-      title: room.name,
-      hero: PageHero(
-        leading: RoomAvatar(room: room, team: team, size: 56),
-        title: room.name,
-        subtitle: Text(subtitle.isEmpty ? l10n.botsGroupChat : subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
-        stats: [
-          ('${room.members.length}', l10n.botsMembers),
-          (memory == null ? '—' : '${memory.entries.length}', l10n.botsMemoryUnit),
-        ],
-      ),
-      slivers: [
-        SliverList.list(
-          children: [
+    // 页与栏共用这一份正文：栏只是换了外框（没有大标题、没有返回键）。
+    final body = SliverList.list(
+      children: [
             if (approvals.isNotEmpty) ...[
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -464,8 +471,58 @@ class RoomDetailsPage extends ConsumerWidget {
               ),
             ],
           ],
-        ),
-      ],
+    );
+    if (mode == RoomDetailMode.panel) {
+      return _panel(context, title: room.name, child: CustomScrollView(slivers: [body]));
+    }
+    return AppPage(
+      title: room.name,
+      hero: PageHero(
+        leading: RoomAvatar(room: room, team: team, size: 56),
+        title: room.name,
+        subtitle: Text(subtitle.isEmpty ? l10n.botsGroupChat : subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
+        stats: [
+          ('${room.members.length}', l10n.botsMembers),
+          (memory == null ? '—' : '${memory.entries.length}', l10n.botsMemoryUnit),
+        ],
+      ),
+      slivers: [body],
     );
   }
+
+  /// 宽屏第三栏的外框：顶栏在聊天那条线上（群名 + 「收起这一栏」），下面是
+  /// 同一份内容。没有大标题、没有返回键——它不是一条路由。
+  Widget _panel(BuildContext context, {required String title, required Widget child}) => Column(
+    children: [
+      SizedBox(height: MediaQuery.paddingOf(context).top),
+      SizedBox(
+        key: const ValueKey('room-detail-panel-bar'),
+        height: ChatHeader.barHeightOf(context),
+        child: BackdropGroup(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: [
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Semantics(
+                    header: true,
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const DetailPanelCollapseKey(),
+              ],
+            ),
+          ),
+        ),
+      ),
+      Expanded(child: child),
+    ],
+  );
 }

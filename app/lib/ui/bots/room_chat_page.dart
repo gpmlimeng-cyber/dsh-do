@@ -131,6 +131,22 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBinding
     }
   }
 
+  /// 宽屏第三栏画的是哪一份：会话详情（默认），还是群详情（从 ⋯ 的「详情 /
+  /// 成员」或顶栏群名进来时）。窄屏一律整页 push，跟单聊一致。
+  bool _panelRoom = false;
+
+  /// 群详情：宽屏落在第三栏，窄屏整页 push（跟单聊 `SessionDetailPage.open`
+  /// 同一套判断）。
+  void _openRoomDetails(BuildContext context) {
+    final layout = AdaptiveChrome.layoutOf(context);
+    if (layout != null && layout.isExpanded && layout.panelAvailable) {
+      setState(() => _panelRoom = true);
+      ref.read(layoutPrefsProvider.notifier).setPanelOpen(true);
+      return;
+    }
+    Navigator.of(context).push(RoomDetailsPage.route(widget.roomId));
+  }
+
   void _setGoalExpanded(DsBotGroupGoal? goal, {required bool expanded}) {
     if (goal != null) _goalExpandedByRoom[widget.roomId] = (status: goal.status, expanded: expanded);
     setState(() {});
@@ -359,6 +375,8 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBinding
     setState(() {
       _target = next;
       _draftKey = _draftKeyFor(next);
+      // 换了会话，那一栏回到会话详情：群详情只在「还在群里那本账」上成立。
+      _panelRoom = false;
     });
     _showDraft(_draftKey);
     _mentions.dismiss();
@@ -829,6 +847,13 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBinding
     final infoGreyed = targetBot != null && memberSession == null;
     void openInfo() {
       final layout = AdaptiveChrome.layoutOf(context);
+      // 这颗键（和 ⋯ 的「详情」）在宽屏是那一栏：展开的是会话详情。栏里正
+      // 开着群详情时，先换回会话详情并把栏留着，不顺手把栏关掉。
+      if (layout != null && layout.isExpanded && layout.panelAvailable && _panelRoom) {
+        setState(() => _panelRoom = false);
+        ref.read(layoutPrefsProvider.notifier).setPanelOpen(true);
+        return;
+      }
       if (targetBot == null) {
         // The group's aggregate page has no panel form: beside the chat it is
         // the group Session's own details, which the key folds away.
@@ -1017,7 +1042,9 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBinding
       drawer: _drawerConfig,
       // The column beside the chat: this conversation's details. A member who
       // has no conversation in this group yet leaves it saying why.
-      panel: targetBot == null
+      panel: _panelRoom
+          ? RoomDetailsPage.panel(key: ValueKey('room-panel-${room.id}'), roomId: room.id)
+          : targetBot == null
           ? SessionDetailPage.panel(key: ValueKey('room-detail-$roomSession'), sessionId: roomSession)
           : memberSession == null
           ? const _MemberDetailMissing()
@@ -1049,9 +1076,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBinding
         // The title capsule is the group's: in a member's conversation it
         // switches back to the group chat, in the group chat it opens the
         // group's own details, as it always did.
-        onDetails: targetBot == null
-            ? () => Navigator.of(context).push(RoomDetailsPage.route(room.id))
-            : () => _switchTarget(RoomChatTarget.all),
+        onDetails: targetBot == null ? () => _openRoomDetails(context) : () => _switchTarget(RoomChatTarget.all),
         // 群目标的顶栏，三种形态：
         // 进行中——大胶囊：左段只有群头像（圆心与胶囊圆头对齐、可点进群详情），
         // 右段是完整目标段；暂停——自动收成小球：群名完整，球在胶囊尾端；
@@ -1085,6 +1110,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBinding
           room: room,
           team: team,
           onDetails: openInfo,
+          onMembers: () => _openRoomDetails(context),
           controller: controller,
         ),
         action: situationKey(),
@@ -1650,6 +1676,7 @@ List<Widget> roomMenuItems(
   required DsBotRoom room,
   required DsBotTeam team,
   required VoidCallback onDetails,
+  required VoidCallback onMembers,
   required MenuController controller,
 }) {
   final l10n = context.l10n;
@@ -1688,7 +1715,7 @@ List<Widget> roomMenuItems(
       title: l10n.botsMembers,
       onTap: () {
         close();
-        Navigator.of(context).push(RoomDetailsPage.route(room.id));
+        onMembers();
       },
     ),
   ];
