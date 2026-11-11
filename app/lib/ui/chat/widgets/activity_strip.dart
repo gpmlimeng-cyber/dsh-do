@@ -340,12 +340,15 @@ class _ActivityStripState extends State<ActivityStrip> {
             child: Row(
               children: [
                 if (face != null) ...[face, const SizedBox(width: 8)],
-                Flexible(
+                // 中间这行用 Expanded 吃满余量并自己省略：原来写的是 Flexible +
+                // Spacer，Flexible 是松约束，自己那份没用完的宽度会落到行尾，
+                // 时间是跟着内容走的（不贴右）。
+                Expanded(
                   child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: style),
                 ),
                 const SizedBox(width: 8),
                 SizedBox(height: 14, child: TypingIndicator(color: dsh.textTertiary)),
-                const Spacer(),
+                const SizedBox(width: 12),
                 LiveElapsed(
                   since: a.turnStart ?? a.since,
                   skew: a.skew,
