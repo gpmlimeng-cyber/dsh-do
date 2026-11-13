@@ -27,6 +27,9 @@ class RuntimeUpgradeCompatibilityTest {
         for (tree in listOf("rootfs", "staging")) {
             write("$tree/etc/os-release", "ID=ubuntu\nVERSION_ID=\"24.04\"\n")
             write("$tree/opt/python/bin/python3", "same python binary")
+            for (library in listOf("libc.so.6", "libstdc++.so.6", "libgcc_s.so.1")) {
+                write("$tree/usr/lib/aarch64-linux-gnu/$library", "same $library")
+            }
         }
         write("rootfs/usr/bin/gh", "user tool")
         write("rootfs/var/lib/dpkg/status", "user packages")
@@ -53,9 +56,28 @@ class RuntimeUpgradeCompatibilityTest {
         assertEquals("user pip package", File(base, "rootfs/opt/python/lib/site-packages/custom.py").readText())
     }
 
-    @Test fun changedFactorySystemStopsWithoutResetting() {
+    @Test fun aptLayerRefreshStillUpgradesWhenTheKeptSystemIsIdentical() {
         installed()
         write("rootfs/etc/dsh-app/runtime.json", info("old").put("upgrade", descriptor("b".repeat(64))).toString())
+        assertEquals("b".repeat(64), check().baseId)
+        assertEquals("user tool", File(base, "rootfs/usr/bin/gh").readText())
+        assertEquals("old", File(base, "rootfs.version").readText())
+    }
+
+    @Test fun changedRuntimeLibrariesOrPythonStopWithoutResetting() {
+        installed()
+        write("rootfs/etc/dsh-app/runtime.json", info("old").put("upgrade", descriptor("b".repeat(64))).toString())
+        write("rootfs/usr/lib/aarch64-linux-gnu/libc.so.6", "newer libc")
+        rejected("base")
+
+        installed()
+        write("rootfs/etc/dsh-app/runtime.json", info("old").put("upgrade", descriptor("b".repeat(64))).toString())
+        write("rootfs/opt/python/bin/python3", "different python")
+        rejected("base")
+
+        installed()
+        write("rootfs/etc/dsh-app/runtime.json",
+            info("old").put("upgrade", descriptor("b".repeat(64)).put("ubuntuVersion", "24.04.4")).toString())
         rejected("base")
     }
 

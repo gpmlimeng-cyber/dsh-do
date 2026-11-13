@@ -27,6 +27,9 @@ class RuntimeUpgradeIntegrationTest {
         write("staging/etc/dsh-app/runtime.json", next.toString())
         write("staging/etc/os-release", "ID=ubuntu\nVERSION_ID=24.04\n")
         write("staging/opt/python/bin/python3", "python")
+        for (library in listOf("libc.so.6", "libstdc++.so.6", "libgcc_s.so.1")) {
+            write("staging/usr/lib/aarch64-linux-gnu/$library", "same $library")
+        }
         write("staging/usr/bin/gh", "factory gh (must not replace the user copy)")
         write("staging/var/lib/dpkg/status", "factory package database")
     }
@@ -35,6 +38,9 @@ class RuntimeUpgradeIntegrationTest {
         write("rootfs/etc/dsh-app/runtime.json", info("old", layered).toString())
         write("rootfs/etc/os-release", "ID=ubuntu\nVERSION_ID=24.04\n")
         write("rootfs/opt/python/bin/python3", "python")
+        for (library in listOf("libc.so.6", "libstdc++.so.6", "libgcc_s.so.1")) {
+            write("rootfs/usr/lib/aarch64-linux-gnu/$library", "same $library")
+        }
         write("rootfs/opt/python/lib/site-packages/user.py", "user pip package")
         write("rootfs/usr/bin/gh", "user gh")
         write("rootfs/var/lib/dpkg/status", "user package database")
@@ -60,9 +66,20 @@ class RuntimeUpgradeIntegrationTest {
         }
     }
 
+    @Test fun aptLayerRefreshUpgradesWithoutReplacingTheUserSystem() {
+        installed(true); stage()
+        write("rootfs/etc/dsh-app/runtime.json", info("old", id = "b".repeat(64)).toString())
+        activate()
+        assertEquals("new", File(base, "rootfs.version").readText())
+        assertEquals("user gh", File(base, "rootfs/usr/bin/gh").readText())
+        assertEquals("user package database", File(base, "rootfs/var/lib/dpkg/status").readText())
+        assertEquals("new engine", File(base, "rootfs/opt/dsh/version").readText())
+    }
+
     @Test fun productionRouteDoesNotReinstallAnIncompatibleOrUnidentifiedExistingSystem() {
         installed(true); stage()
         write("rootfs/etc/dsh-app/runtime.json", info("old", id = "b".repeat(64)).toString())
+        write("rootfs/opt/python/bin/python3", "different python")
         assertThrows(RuntimeUpgradeBlocked::class.java) { activate() }
         assertEquals("user gh", File(base, "rootfs/usr/bin/gh").readText())
         assertEquals("old", File(base, "rootfs.version").readText())
