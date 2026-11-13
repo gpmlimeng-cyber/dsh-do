@@ -2619,7 +2619,7 @@ class _BotViewCardState extends State<BotViewCard> {
                     Expanded(child: Text('${node['label'] ?? ''}', style: theme.textTheme.bodySmall)),
                     Text(
                       '${node['value'] ?? ''}',
-                      style: AppType.tabular(theme.textTheme.titleMedium?.copyWith(height: 1.1)),
+                      style: AppType.tabular(theme.textTheme.titleMedium!.copyWith(height: 1.1)),
                     ),
                   ],
                 ),
@@ -2846,7 +2846,7 @@ class _BotViewCardState extends State<BotViewCard> {
                     Expanded(child: Text('${node['label'] ?? ''}', style: theme.textTheme.bodySmall)),
                     Text(
                       value == value.roundToDouble() ? '${value.round()}' : value.toStringAsFixed(1),
-                      style: AppType.tabular(theme.textTheme.bodySmall),
+                      style: AppType.tabular(theme.textTheme.bodySmall!),
                     ),
                   ],
                 ),
@@ -2928,7 +2928,7 @@ class _BotViewCardState extends State<BotViewCard> {
         }
         return rendered;
       case 'options' || 'confirm' || 'form' || 'submit':
-        return [_control(node)];
+        return [_control(node.cast<String, Object?>())];
       default:
         // 认不出的节点（未来的图表类型、HTML、来源列表…）跳过，不影响别的节点。
         return const [];
