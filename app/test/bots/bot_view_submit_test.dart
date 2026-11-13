@@ -90,23 +90,13 @@ void main() {
     expect(calls, 2);
   });
 
+  // 输入控件（slider / number / toggle）与图表现在原生支持了，这里只剩真正
+  // 画不了的两类：算不出值的公式、没见过的输入控件。
   for (final unsafe in <Map<String, Object?>>[
-    {'type': 'slider', 'id': 'price', 'label': 'Price', 'value': 2, 'min': 0, 'max': 5},
-    {'type': 'number', 'id': 'price', 'label': 'Price', 'value': 2},
-    {'type': 'toggle', 'id': 'allow', 'label': 'Allow', 'value': true},
     {'type': 'future-input', 'id': 'unknown'},
     {
       'type': 'text',
       'text': {'=': 'price * 2'},
-    },
-    {
-      'type': 'chart',
-      'categories': ['A'],
-      'series': [
-        {
-          'values': [2],
-        },
-      ],
     },
   ]) {
     test('submit never sends hidden ${unsafe['type']} values/defaults', () {

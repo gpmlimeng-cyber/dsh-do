@@ -2437,8 +2437,48 @@ class BotViewCard extends StatefulWidget {
   State<BotViewCard> createState() => _BotViewCardState();
 }
 
-// Unseen inputs must never turn into silently submitted server defaults.
-bool canRenderBotView(Map<String, Object?> view) => !_viewFormula(view) && _nativeViewNode(view);
+// 一张视图卡能不能原生画：认不出的节点不再连累整张卡——认识的照画，认不出的
+// 跳过。两种例外仍然退回网页：① 带公式（`=` / `let`）的值算不出来；② 带 id 的
+// **输入**节点不认识（不能静默提交服务端默认值）。另外整张卡一个可提交控件都
+// 没有时也没有原生意义，交给网页。
+bool canRenderBotView(Map<String, Object?> view) =>
+    !_viewFormula(view) && _hasViewControl(view) && !_hasUnseenViewInput(view);
+
+/// 这一张卡里有没有能提交的控件（options / confirm / form / submit）。
+bool _hasViewControl(Object? node) {
+  if (node is! Map) return false;
+  if (const {'submit', 'confirm', 'options', 'form'}.contains(node['type'])) return true;
+  final children = node['children'];
+  return children is List && children.any(_hasViewControl);
+}
+
+/// 认不出的、又带 id 的节点＝没见过的输入控件，原生画不了也提交不了。
+bool _hasUnseenViewInput(Object? node) {
+  if (node is! Map) return false;
+  final id = node['id'];
+  if (id is String && id.isNotEmpty && !_knownViewTypes.contains(node['type'])) return true;
+  final children = node['children'];
+  return children is List && children.any(_hasUnseenViewInput);
+}
+
+const _knownViewTypes = {
+  'text',
+  'metric',
+  'progress',
+  'callout',
+  'table',
+  'chart',
+  'choice',
+  'slider',
+  'number',
+  'toggle',
+  'stack',
+  'row',
+  'submit',
+  'confirm',
+  'options',
+  'form',
+};
 
 bool _viewFormula(Object? value) {
   if (value is Map) {
@@ -2449,50 +2489,6 @@ bool _viewFormula(Object? value) {
     return value.values.any(_viewFormula);
   }
   return value is List && value.any(_viewFormula);
-}
-
-bool _viewScalar(Object? value) => value is String || value is bool || (value is num && value.isFinite);
-bool _optionalViewText(Object? value) => value == null || value is String;
-
-bool _nativeViewNode(Object? node, [int depth = 0]) {
-  if (node is! Map || depth > 6) return false;
-  final id = node['id'];
-  final actionId = id is String && id.isNotEmpty;
-  return switch (node['type']) {
-    'text' => node['text'] is String,
-    'metric' => node['label'] is String && _viewScalar(node['value']) && node['caption'] == null,
-    'progress' =>
-      node['percent'] is num &&
-          (node['percent'] as num).isFinite &&
-          _optionalViewText(node['label']) &&
-          node['value'] == null &&
-          node['max'] == null &&
-          node['valueLabel'] == null,
-    'submit' => actionId && _optionalViewText(node['label']),
-    'confirm' => actionId && _optionalViewText(node['confirmLabel']) && _optionalViewText(node['cancelLabel']),
-    'options' =>
-      actionId &&
-          node['options'] is List &&
-          (node['options'] as List).isNotEmpty &&
-          (node['options'] as List).every(
-            (option) => option is Map && option['label'] is String && _optionalViewText(option['description']),
-          ),
-    'form' =>
-      actionId &&
-          _optionalViewText(node['submitLabel']) &&
-          node['fields'] is List &&
-          (node['fields'] as List).every(
-            (field) =>
-                field is Map &&
-                field['id'] is String &&
-                field['label'] is String &&
-                _optionalViewText(field['placeholder']),
-          ),
-    'choice' => _validViewChoice(node),
-    'stack' ||
-    'row' => node['children'] is List && (node['children'] as List).every((child) => _nativeViewNode(child, depth + 1)),
-    _ => false,
-  };
 }
 
 Object? _viewChoiceValue(Map option) => option['value'] ?? option['label'];
@@ -2513,13 +2509,14 @@ bool _validViewChoice(Map node) {
 }
 
 List<Map<String, Object?>> _viewChoices(Map<String, Object?> view) {
-  if (!canRenderBotView(view)) return const [];
   final choices = <Map<String, Object?>>[];
-  void walk(Map node) {
-    if (node['type'] == 'choice') choices.add(node.cast<String, Object?>());
-    if (node['type'] == 'stack' || node['type'] == 'row') {
-      for (final child in node['children'] as List) {
-        walk(child as Map);
+  void walk(Object? node) {
+    if (node is! Map) return;
+    if (node['type'] == 'choice' && _validViewChoice(node)) choices.add(node.cast<String, Object?>());
+    final children = node['children'];
+    if (children is List) {
+      for (final child in children) {
+        walk(child);
       }
     }
   }
@@ -2528,22 +2525,22 @@ List<Map<String, Object?>> _viewChoices(Map<String, Object?> view) {
   return choices;
 }
 
-/// What a view card shows: its lines and the component to answer.
+/// 卡片上那些「一句话」的内容：给不画控件的场合（预览、通知）用。
 ({List<String> lines, Map<String, Object?>? control}) readView(Map<String, Object?> view) {
   final lines = <String>[];
-  if (!canRenderBotView(view)) return (lines: lines, control: null);
+  // 值算不出来、或带一个没见过的输入控件：不暴露可提交控件（不能静默提交默认值）。
+  if (_viewFormula(view) || _hasUnseenViewInput(view)) return (lines: lines, control: null);
   Map<String, Object?>? control;
   void walk(Object? node, int depth) {
-    if (node is! Map || depth > 6) return;
-    final type = node['type'];
-    switch (type) {
+    if (node is! Map || depth > 8) return;
+    switch (node['type']) {
       case 'text':
         if (node['text'] case final String text when text.trim().isNotEmpty) lines.add(text.trim());
       case 'metric':
         lines.add(appL10n.botsViewMetric(node['label'] ?? '', node['value'] ?? ''));
       case 'progress':
         final label = node['label'];
-        lines.add('${label is String && label.isNotEmpty ? '$label ' : ''}${node['percent'] ?? 0}%');
+        lines.add('${label is String && label.isNotEmpty ? '$label ' : ''}${_viewPercent(node).round()}%');
       case 'options' || 'confirm' || 'form' || 'submit':
         control ??= node.cast<String, Object?>();
       default:
@@ -2561,9 +2558,22 @@ List<Map<String, Object?>> _viewChoices(Map<String, Object?> view) {
   return (lines: lines, control: control);
 }
 
+/// 进度：官方两种写法，`percent`，或 `value` + `max`。
+double _viewPercent(Map node) {
+  final percent = node['percent'];
+  if (percent is num && percent.isFinite) return percent.clamp(0, 100).toDouble();
+  final value = node['value'];
+  final max = node['max'];
+  if (value is num && max is num && max > 0) return (value / max * 100).clamp(0, 100).toDouble();
+  return 0;
+}
+
 class _BotViewCardState extends State<BotViewCard> {
   final Set<String> _picked = {};
   final Map<String, Object?> _choiceValues = {};
+
+  /// 输入控件的值（choice / slider / number / toggle），随提交一起发回去。
+  final Map<String, Object?> _inputs = {};
   final Map<String, TextEditingController> _fields = {};
   bool _sending = false;
 
@@ -2577,105 +2587,401 @@ class _BotViewCardState extends State<BotViewCard> {
 
   Future<void> _answer(String action, Map<String, Object?> values) async {
     if (_sending || !canRenderBotView(widget.view.view)) return;
-    final choices = _viewChoices(widget.view.view);
-    final answer = {
-      ...values,
-      if (choices.isNotEmpty)
-        'inputs': {for (final choice in choices) choice['id'] as String: _choiceValues[choice['id']]},
-    };
+    final answer = {...values, if (_inputs.isNotEmpty) 'inputs': Map<String, Object?>.from(_inputs)};
     setState(() => _sending = true);
     final ok = await widget.onAnswer(action, answer);
     if (mounted && !ok) setState(() => _sending = false);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
+  Widget _pad(Widget child, {double top = 0, double bottom = 6}) => Padding(
+    padding: EdgeInsets.fromLTRB(ChatCard.inset, top, ChatCard.inset, bottom),
+    child: child,
+  );
+
+  /// 逐个节点画：认识的画出来，认不出的跳过。
+  List<Widget> _render(Object? node, int depth) {
+    if (node is! Map || depth > 8) return const [];
     final theme = Theme.of(context);
-    if (!canRenderBotView(widget.view.view)) {
-      return ChatCard(
-        icon: AppIcons.panel,
-        title: widget.view.title,
-        titleMaxLines: 2,
-        tone: ChatCardTone.ask,
-        trailing: CardCloseKey(onTap: widget.onDismiss),
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(ChatCard.inset, 4, ChatCard.inset, ChatCard.inset),
-            child: FilledButton(
-              key: const ValueKey('bot-view-open-web'),
-              onPressed: widget.onOpenInWeb,
-              child: Text(l10n.commonOpenInWeb, textAlign: TextAlign.center),
+    final l10n = context.l10n;
+    final dsh = DshColors.of(context);
+    switch (node['type']) {
+      case 'text':
+        return node['text'] is String ? [_pad(Text(node['text'] as String, style: theme.textTheme.bodyMedium))] : const [];
+      case 'metric':
+        return [
+          _pad(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(child: Text('${node['label'] ?? ''}', style: theme.textTheme.bodySmall)),
+                    Text(
+                      '${node['value'] ?? ''}',
+                      style: AppType.tabular(theme.textTheme.titleMedium?.copyWith(height: 1.1)),
+                    ),
+                  ],
+                ),
+                if (node['caption'] case final String caption when caption.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(caption, style: theme.textTheme.bodySmall?.copyWith(color: dsh.textTertiary)),
+                ],
+              ],
             ),
           ),
-        ],
-      );
-    }
-    final (:lines, :control) = readView(widget.view.view);
-    final id = control?['id'] as String? ?? '';
-    final choices = _viewChoices(widget.view.view);
-    final children = <Widget>[
-      for (final line in lines)
-        Padding(
-          padding: const EdgeInsets.fromLTRB(ChatCard.inset, 0, ChatCard.inset, 6),
-          child: Text(line, style: theme.textTheme.bodyMedium),
-        ),
-    ];
-    for (final choice in choices) {
-      final choiceId = choice['id'] as String;
-      final options = (choice['options'] as List).cast<Map>();
-      _choiceValues.putIfAbsent(choiceId, () => choice['value'] ?? _viewChoiceValue(options.first));
-      children.add(
-        Padding(
-          padding: const EdgeInsets.fromLTRB(ChatCard.inset, 4, ChatCard.inset, 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(choice['label'] as String, style: theme.textTheme.bodyMedium),
-              const SizedBox(height: 6),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
+        ];
+      case 'progress':
+        final label = node['label'];
+        return [
+          _pad(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (label is String && label.isNotEmpty)
+                  Text(label, style: theme.textTheme.bodySmall),
+                const SizedBox(height: 4),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: _viewPercent(node) / 100,
+                    minHeight: 6,
+                    backgroundColor: dsh.textTertiary.withValues(alpha: 0.18),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ];
+      case 'callout':
+        final tone = switch (node['tone']) {
+          'good' => dsh.success,
+          'warn' => dsh.warning,
+          'bad' => dsh.danger,
+          _ => dsh.info,
+        };
+        return [
+          _pad(
+            Container(
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+              decoration: BoxDecoration(
+                color: tone.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(AppShape.sm),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  for (final option in options)
-                    CapsuleChoiceChip(
-                      label: option['label'] as String,
-                      selected: _choiceValues[choiceId] == _viewChoiceValue(option),
-                      onSelected: () {
-                        if (_sending) return;
-                        setState(() => _choiceValues[choiceId] = _viewChoiceValue(option));
-                      },
+                  Icon(AppIcons.info, size: 16, color: tone),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text('${node['text'] ?? ''}', style: theme.textTheme.bodySmall?.copyWith(color: tone)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ];
+      case 'table':
+        final columns = node['columns'];
+        final rows = node['rows'];
+        if (columns is! List || rows is! List) return const [];
+        final cells = <Widget>[
+          for (final column in columns)
+            if (column is Map && column['label'] is String)
+              Text(
+                column['label'] as String,
+                style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+              ),
+        ];
+        final body = <Widget>[];
+        for (final row in rows) {
+          if (row is! List) continue;
+          body.add(
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (var i = 0; i < cells.length; i++)
+                    Expanded(
+                      child: Text(
+                        i < row.length ? '${row[i]}' : '',
+                        style: theme.textTheme.bodySmall,
+                      ),
                     ),
                 ],
               ),
-            ],
-          ),
-        ),
-      );
-    }
-    switch (control?['type']) {
-      case 'submit':
-        children.add(
-          _CardActions(
-            children: [
-              Flexible(
-                child: FilledButton(
-                  style: cardButton,
-                  onPressed: _sending ? null : () => _answer(id, const {}),
-                  child: Text(control!['label'] as String? ?? l10n.commonSend, textAlign: TextAlign.center),
+            ),
+          );
+        }
+        return [
+          _pad(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    for (final cell in cells) Expanded(child: cell),
+                  ],
                 ),
-              ),
-            ],
+                ...body,
+              ],
+            ),
           ),
+        ];
+      case 'chart':
+        // 图表画成一行一条的细条：看得懂量级，不引图表库。
+        final categories = node['categories'];
+        final series = node['series'];
+        if (categories is! List || series is! List || series.isEmpty) return const [];
+        final values = (series.first is Map && (series.first as Map)['values'] is List)
+            ? ((series.first as Map)['values'] as List)
+            : const [];
+        var maxValue = 0.0;
+        for (final v in values) {
+          if (v is num && v.isFinite && v > maxValue) maxValue = v.toDouble();
+        }
+        return [
+          _pad(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (var i = 0; i < categories.length; i++)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 3),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 64,
+                          child: Text(
+                            '${categories[i]}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodySmall,
+                          ),
+                        ),
+                        Expanded(
+                          child: FractionallySizedBox(
+                            alignment: Alignment.centerLeft,
+                            widthFactor: maxValue <= 0
+                                ? 0
+                                : ((i < values.length && values[i] is num ? (values[i] as num).toDouble() : 0) /
+                                          maxValue)
+                                      .clamp(0.0, 1.0),
+                            child: Container(
+                              height: 6,
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.55),
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (node['caption'] case final String caption when caption.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(caption, style: theme.textTheme.bodySmall?.copyWith(color: dsh.textTertiary)),
+                  ),
+              ],
+            ),
+          ),
+        ];
+      case 'choice':
+        if (!_validViewChoice(node)) return const [];
+        final choiceId = node['id'] as String;
+        final options = (node['options'] as List).cast<Map>();
+        _choiceValues.putIfAbsent(choiceId, () => node['value'] ?? _viewChoiceValue(options.first));
+        _inputs.putIfAbsent(choiceId, () => _choiceValues[choiceId]);
+        return [
+          _pad(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('${node['label'] ?? ''}', style: theme.textTheme.bodyMedium),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final option in options)
+                      CapsuleChoiceChip(
+                        label: option['label'] as String,
+                        selected: _choiceValues[choiceId] == _viewChoiceValue(option),
+                        onSelected: () {
+                          if (_sending) return;
+                          setState(() {
+                            _choiceValues[choiceId] = _viewChoiceValue(option);
+                            _inputs[choiceId] = _viewChoiceValue(option);
+                          });
+                        },
+                      ),
+                  ],
+                ),
+              ],
+            ),
+            top: 4,
+            bottom: 8,
+          ),
+        ];
+      case 'slider':
+        final id = node['id'];
+        if (id is! String || id.isEmpty) return const [];
+        final min = (node['min'] is num) ? (node['min'] as num).toDouble() : 0.0;
+        final max = (node['max'] is num) ? (node['max'] as num).toDouble() : 100.0;
+        final step = (node['step'] is num) ? (node['step'] as num).toDouble() : 0.0;
+        final initial = (node['value'] is num) ? (node['value'] as num).toDouble() : min;
+        final value = (_inputs[id] is num) ? (_inputs[id] as num).toDouble() : initial;
+        _inputs.putIfAbsent(id, () => initial);
+        final divisions = (step > 0 && max > min) ? ((max - min) / step).round() : null;
+        return [
+          _pad(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(child: Text('${node['label'] ?? ''}', style: theme.textTheme.bodySmall)),
+                    Text(
+                      value == value.roundToDouble() ? '${value.round()}' : value.toStringAsFixed(1),
+                      style: AppType.tabular(theme.textTheme.bodySmall),
+                    ),
+                  ],
+                ),
+                Slider(
+                  value: value.clamp(min, max),
+                  min: min,
+                  max: max,
+                  divisions: (divisions != null && divisions > 0) ? divisions : null,
+                  onChanged: _sending
+                      ? null
+                      : (v) => setState(() => _inputs[id] = step > 0 ? (v / step).round() * step : v),
+                ),
+              ],
+            ),
+            top: 4,
+            bottom: 2,
+          ),
+        ];
+      case 'number':
+        final id = node['id'];
+        if (id is! String || id.isEmpty) return const [];
+        final controller = _fields.putIfAbsent(
+          'number:$id',
+          () => TextEditingController(text: '${node['value'] ?? ''}'),
+        );
+        _inputs.putIfAbsent(id, () => node['value']);
+        return [
+          _pad(
+            TextField(
+              controller: controller,
+              enabled: !_sending,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+              onChanged: (text) {
+                final parsed = num.tryParse(text.trim());
+                _inputs[id] = parsed ?? text.trim();
+              },
+              decoration: InputDecoration(
+                labelText: '${node['label'] ?? ''}',
+                hintText: node['placeholder'] as String?,
+                isDense: true,
+              ),
+            ),
+            top: 4,
+            bottom: 4,
+          ),
+        ];
+      case 'toggle':
+        final id = node['id'];
+        if (id is! String || id.isEmpty) return const [];
+        final value = (_inputs[id] is bool) ? _inputs[id] as bool : (node['value'] == true);
+        _inputs.putIfAbsent(id, () => value);
+        return [
+          _pad(
+            Row(
+              children: [
+                Expanded(child: Text('${node['label'] ?? ''}', style: theme.textTheme.bodyMedium)),
+                Switch(
+                  value: value,
+                  onChanged: _sending ? null : (on) => setState(() => _inputs[id] = on),
+                ),
+              ],
+            ),
+            top: 2,
+            bottom: 2,
+          ),
+        ];
+      case 'stack' || 'row':
+        final children = node['children'];
+        if (children is! List) return const [];
+        final rendered = [for (final child in children) ..._render(child, depth + 1)];
+        if (node['type'] == 'row') {
+          return [
+            if (rendered.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: ChatCard.inset),
+                child: Wrap(spacing: 12, runSpacing: 8, children: rendered.map((w) => w).toList()),
+              ),
+          ];
+        }
+        return rendered;
+      case 'options' || 'confirm' || 'form' || 'submit':
+        return [_control(node)];
+      default:
+        // 认不出的节点（未来的图表类型、HTML、来源列表…）跳过，不影响别的节点。
+        return const [];
+    }
+  }
+
+  /// 可提交那四种：永远原生画出来的控件。
+  Widget _control(Map<String, Object?> control) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final id = control['id'] as String? ?? '';
+    switch (control['type']) {
+      case 'submit':
+        return _CardActions(
+          children: [
+            Flexible(
+              child: FilledButton(
+                style: cardButton,
+                onPressed: _sending ? null : () => _answer(id, const {}),
+                child: Text(control['label'] as String? ?? l10n.commonSend, textAlign: TextAlign.center),
+              ),
+            ),
+          ],
+        );
+      case 'confirm':
+        return _CardActions(
+          children: [
+            OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(0, 36),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                visualDensity: VisualDensity.compact,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              onPressed: _sending ? null : () => _answer(id, {'confirmed': false}),
+              child: Text(control['cancelLabel'] as String? ?? l10n.commonCancel),
+            ),
+            FilledButton(
+              style: cardButton,
+              onPressed: _sending ? null : () => _answer(id, {'confirmed': true}),
+              child: Text(control['confirmLabel'] as String? ?? l10n.commonConfirm),
+            ),
+          ],
         );
       case 'options':
-        final multi = control!['multi'] == true;
+        final multi = control['multi'] == true;
         final options = [
           for (final o in (control['options'] as List?) ?? const [])
             if (o is Map && o['label'] is String) o['label'] as String,
         ];
-        children
-          ..add(
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(ChatCard.inset, 4, ChatCard.inset, 0),
               child: Wrap(
@@ -2702,8 +3008,6 @@ class _BotViewCardState extends State<BotViewCard> {
                 ],
               ),
             ),
-          )
-          ..add(
             _CardActions(
               children: [
                 FilledButton(
@@ -2713,68 +3017,72 @@ class _BotViewCardState extends State<BotViewCard> {
                 ),
               ],
             ),
-          );
-      case 'confirm':
-        children.add(
-          _CardActions(
-            children: [
-              OutlinedButton(
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size(0, 36),
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  visualDensity: VisualDensity.compact,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                onPressed: _sending ? null : () => _answer(id, {'confirmed': false}),
-                child: Text(control!['cancelLabel'] as String? ?? l10n.commonCancel),
-              ),
-              FilledButton(
-                style: cardButton,
-                onPressed: _sending ? null : () => _answer(id, {'confirmed': true}),
-                child: Text(control['confirmLabel'] as String? ?? l10n.commonConfirm),
-              ),
-            ],
-          ),
+          ],
         );
       case 'form':
         final fields = [
-          for (final f in (control!['fields'] as List?) ?? const [])
+          for (final f in (control['fields'] as List?) ?? const [])
             if (f is Map && f['id'] is String) f.cast<String, Object?>(),
         ];
-        for (final field in fields) {
-          final controller = _fields.putIfAbsent(field['id']! as String, TextEditingController.new);
-          children.add(
-            Padding(
-              padding: const EdgeInsets.fromLTRB(ChatCard.inset, 4, ChatCard.inset, 4),
-              child: TextField(
-                controller: controller,
-                enabled: !_sending,
-                decoration: InputDecoration(
-                  labelText: field['label'] as String? ?? '',
-                  hintText: field['placeholder'] as String?,
-                  isDense: true,
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (final field in fields)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(ChatCard.inset, 4, ChatCard.inset, 4),
+                child: TextField(
+                  controller: _fields.putIfAbsent(field['id']! as String, TextEditingController.new),
+                  enabled: !_sending,
+                  decoration: InputDecoration(
+                    labelText: field['label'] as String? ?? '',
+                    hintText: field['placeholder'] as String?,
+                    isDense: true,
+                  ),
                 ),
               ),
+            _CardActions(
+              children: [
+                FilledButton(
+                  style: cardButton,
+                  onPressed: _sending
+                      ? null
+                      : () => _answer(id, {
+                          'fields': {
+                            for (final field in fields) field['id'] as String: _fields[field['id']]?.text ?? '',
+                          },
+                        }),
+                  child: Text(control['submitLabel'] as String? ?? l10n.botsSubmit),
+                ),
+              ],
             ),
-          );
-        }
-        children.add(
-          _CardActions(
-            children: [
-              FilledButton(
-                style: cardButton,
-                onPressed: _sending
-                    ? null
-                    : () => _answer(id, {
-                        'fields': {for (final e in _fields.entries) e.key: e.value.text},
-                      }),
-                child: Text(control['submitLabel'] as String? ?? l10n.botsSubmit),
-              ),
-            ],
-          ),
+          ],
         );
       default:
-        children.add(const SizedBox(height: ChatCard.inset - 6));
+        return const SizedBox.shrink();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    if (!canRenderBotView(widget.view.view)) {
+      return ChatCard(
+        icon: AppIcons.panel,
+        title: widget.view.title,
+        titleMaxLines: 2,
+        tone: ChatCardTone.ask,
+        trailing: CardCloseKey(onTap: widget.onDismiss),
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(ChatCard.inset, 4, ChatCard.inset, ChatCard.inset),
+            child: FilledButton(
+              key: const ValueKey('bot-view-open-web'),
+              onPressed: widget.onOpenInWeb,
+              child: Text(l10n.commonOpenInWeb, textAlign: TextAlign.center),
+            ),
+          ),
+        ],
+      );
     }
     return ChatCard(
       icon: AppIcons.panel,
@@ -2782,7 +3090,7 @@ class _BotViewCardState extends State<BotViewCard> {
       titleMaxLines: 2,
       tone: ChatCardTone.ask,
       trailing: CardCloseKey(onTap: widget.onDismiss),
-      children: children,
+      children: _render(widget.view.view, 0),
     );
   }
 }
