@@ -1412,10 +1412,8 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBinding
             // run holds the send key and the field is empty.
             accessory: _composerAccessory(room: room, running: chat.running),
             // 写 `@` 仍会按光标弹出成员候选；＋ 占住左边那颗键，附件优先。
-            // A host that speaks API 2 is the one that takes attachments on `send`.
-            leading: (status.hello?.api ?? 0) >= 2
-                ? AttachButton(key: const ValueKey('attach-key'), onPressed: api == null || readOnly ? null : _attach)
-                : null,
+            // 和私聊一样，`hello.api` 只说明 host 会哪些回答形状，不决定加号在不在。
+            leading: AttachButton(key: const ValueKey('attach-key'), onPressed: api == null || readOnly ? null : _attach),
             tray: ComposerTrayStack.maybe(
               quote: _quote == null ? null : QuoteChip(quote: _quote!, onRemove: () => setState(() => _quote = null)),
               attachments: _drafts.isEmpty

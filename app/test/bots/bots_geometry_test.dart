@@ -182,6 +182,30 @@ void main() {
     near(capsule.bottom - send.bottom, 6, 'send bottom');
   });
 
+  testWidgets('a Bot host that only advertises API 1 still gets the ＋ key', (tester) async {
+    final transport = FakeDsBotTransport();
+    transport.handlers['hello'] = (_) {
+      final answer = transport.helloAnswer();
+      answer['api'] = 1;
+      answer['apiMax'] = 1;
+      return answer;
+    };
+    await pump(tester, const BotChatPage(botId: 'b2'), transport: transport);
+    expect(find.byKey(const ValueKey('attach-key')), findsOneWidget);
+  });
+
+  testWidgets('a group host that only advertises API 1 still gets the ＋ key', (tester) async {
+    final transport = FakeDsBotTransport();
+    transport.handlers['hello'] = (_) {
+      final answer = transport.helloAnswer();
+      answer['api'] = 1;
+      answer['apiMax'] = 1;
+      return answer;
+    };
+    await pump(tester, const RoomChatPage(roomId: 'r1'), transport: transport);
+    expect(find.byKey(const ValueKey('attach-key')), findsOneWidget);
+  });
+
   testWidgets('new rows align with the avatar rows', (tester) async {
     await pump(tester, const BotsPage());
     for (final (add, title) in [('新建 Bot', 'Chief'), ('新建群聊', '发布会')]) {

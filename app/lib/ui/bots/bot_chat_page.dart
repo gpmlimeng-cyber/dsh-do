@@ -699,10 +699,11 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
           accessory: BotContextRing(sessionId: bot.sessionId, model: botModelSelection(bot)),
           waiting: question != null || view != null,
           waitHint: question != null ? l10n.commonWaitingAnswer : null,
-          // A host that speaks API 2 is the one that takes attachments on `send`.
-          leading: (status.hello?.api ?? 0) >= 2
-              ? AttachButton(key: const ValueKey('attach-key'), onPressed: api == null || readOnly ? null : _attach)
-              : null,
+          // The ＋ stays beside send on every host. `hello.api` names the answer shapes
+          // the host knows, not whether the composer may offer attachments; hiding the
+          // key there looked like the feature had been removed. `send` ignores what a
+          // host does not know, so the key is offered whenever the host is reachable.
+          leading: AttachButton(key: const ValueKey('attach-key'), onPressed: api == null || readOnly ? null : _attach),
           tray: ComposerTrayStack.maybe(
             quote: _quote == null ? null : QuoteChip(quote: _quote!, onRemove: () => setState(() => _quote = null)),
             attachments: _drafts.isEmpty
