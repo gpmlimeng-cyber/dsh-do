@@ -210,7 +210,7 @@ class _PetHostState extends ConsumerState<_PetHost> {
 
   @override
   Widget build(BuildContext context) {
-    ref.watch(petOverlayBridgeProvider);
+    ref.listen<void>(petOverlayBridgeProvider, (_, _) {});
     return const SizedBox.shrink();
   }
 }
@@ -291,7 +291,7 @@ class _WebEntryHostState extends ConsumerState<WebEntryHost> {
       ref.read(appLinksProvider).add(link.appLink);
       return;
     }
-    final request = await ComposeRequest.fromShare(share);
+    final request = await ComposeRequest.fromShare(share, maxBytes: maxWebComposeBytes);
     if (mounted) await _compose(request);
   }
 
@@ -300,6 +300,12 @@ class _WebEntryHostState extends ConsumerState<WebEntryHost> {
       case NewChatEntry():
         // Dictation is the native composer's; the page starts a conversation.
         if (mounted) await _compose(null);
+      case ScreenshotEntry(:final path):
+        await _onShare(
+          IncomingShare(
+            files: [SharedFile(path: path, name: path.split('/').last)],
+          ),
+        );
       case OpenChatEntry(:final host, :final sessionId):
         if (!mounted || !await DiscardGuard.confirmLeave(context) || !mounted) return;
         final hosts = ref.read(hostsProvider);
@@ -316,7 +322,7 @@ class _WebEntryHostState extends ConsumerState<WebEntryHost> {
 
   Future<bool> _onFile(Uri uri) async {
     if (uri.scheme != 'file') return false;
-    final request = await ComposeRequest.fromFile(uri.toFilePath());
+    final request = await ComposeRequest.fromFile(uri.toFilePath(), maxBytes: maxWebComposeBytes);
     if (!mounted) return false;
     await _compose(request);
     return true;

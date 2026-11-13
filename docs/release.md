@@ -316,7 +316,7 @@ scripts/publish-release.sh ../../dist --github
 
 下载、更新检查和 App 的匿名使用报告都记在 Cloudflare 的 Analytics Engine 里，不存 IP；数据模型和隐私说明见 `docs/design/share-links.md` §15。
 
-**开通**（一次）。账号上还没开 Analytics Engine，所以 `wrangler.jsonc` 虽然绑定了三个数据集，部署时默认去掉（否则部署失败）；这期间下载和更新检查不计数，`/api/usage/v1` 是 404。
+**开通**（一次，我们的账号已经做完）。`wrangler.jsonc` 绑定了三个数据集，`provision.sh` 默认带着部署；没开 Analytics Engine 的账号带着它们部署会失败，所以先开通。没开通期间（`--no-analytics`）下载和更新检查不计数，`/api/usage/v1` 是 404。
 
 1. 在 Cloudflare 后台的 Analytics Engine 页面开通（免费计划可用）。
 2. `USAGE_SECRET` 和带上数据集的部署：
@@ -326,10 +326,10 @@ scripts/publish-release.sh ../../dist --github
    (umask 077; openssl rand -base64 32 | tr '+/' '-_' | tr -d '=\n' > <USAGE_SECRET 文件>)
    CLOUDFLARE_API_TOKEN="$(cat <token 文件>)" CLOUDFLARE_ACCOUNT_ID="$(cat ~/keys/dshgo-cloudflare-account-id)" \
      npx wrangler secret put USAGE_SECRET < <USAGE_SECRET 文件>
-   CF_TOKEN_FILE=<token 文件> scripts/provision.sh deploy --analytics   # 绑定 DOWNLOADS、CHECKS、USAGE（数据集第一次写入时自动建）
+   CF_TOKEN_FILE=<token 文件> scripts/provision.sh deploy   # 默认绑定 DOWNLOADS、CHECKS、USAGE（数据集第一次写入时自动建）
    ```
 
-3. 点一次下载页的按钮，几分钟后 `scripts/stats.sh` 有数，就把 `scripts/provision.sh` 里 `ANALYTICS=${DSH_ANALYTICS:-0}` 的默认改成 `1` 并提交。**改之前每次部署都要带 `--analytics`（或 `DSH_ANALYTICS=1`）**：不带的部署会把绑定撤掉，又停止计数。
+3. 点一次下载页的按钮，几分钟后 `scripts/stats.sh` 有数。没开通 Analytics Engine 的账号（fork）部署时要带 `--no-analytics`（或 `DSH_ANALYTICS=0`），否则部署失败。
 
 - 读数用的 token 要加一项权限：Account → Account Analytics → Read（部署用的那把可以一起加，也可以另开一把只读的）。
 - `USAGE_SECRET` 不要换：换了以后安装编号的哈希对不上，留存从那天断开。丢了也只是从头算，不影响 App。
@@ -419,6 +419,7 @@ App 的签名预检认 lineage：新包的签名历史里含已装版本的签�
 - **跳过这个版本**：这个版本不再自动弹，有更新的版本照常提醒；「关于」里显示「已跳过」。手动检查仍会打开弹窗。
 - **稍后**：只关弹窗，下次自动检查（次日）还会提醒。
 - **上次的结果会缓存**：重启后不联网也能看到「新版本」标记；装好新版后自动清掉缓存和残留安装包。
+- **导出安装包**：「可以安装」，或签名不一致 / 安装被拦截的失败界面，可以「导出安装包」：把校验过的包复制到 `Download/DSH-Go/`（MediaStore，文件名就是清单里的资产名）。这是给「首次安装被厂商拦、只能自己重签」的人兜底，不是常规更新路径——重签后的包和官方签名不同，App 内更新会一直停在「签名不一致」，以后每版都得手动重签覆盖装。能走 Shizuku / 本机 ADB 就别走这条路。导出只是复制，`cache/updates/` 里的原文件、安装和清理逻辑都不变（提权安装器要求文件直接在 `cache/updates` 下，别把下载目录搬走）。
 - **磁盘**：开始下载前要求可用空间 ≥ 安装包 × 2 + 64 MB（下载 + 安装暂存）。走补丁也是这个门槛：补丁拼完就删，峰值仍是安装暂存那一刻。
 - 安装用 PackageInstaller 会话（把文件流写进会话），不用 FileProvider，也不需要 `content://`。
 
@@ -493,7 +494,7 @@ App 这边（`app/lib/update/delta.dart`、`app/lib/state/update_state.dart`）�
 | 新版没有本机 flavor 的 APK | 弹窗说明，按钮改为「打开发布页」 |
 | 下载断了 | 保留已下载部分，「重试」接着下 |
 | 校验不通过 | 删除文件，换源重下；都不通过就报错 |
-| 签名不一致 | 安装前拦下，说明要卸载重装，按钮「打开发布页」 |
+| 签名不一致 | 安装前拦下，说明要卸载重装，按钮「打开发布页」「导出安装包」 |
 | 用户在系统确认框里取消 | 回到「安装包已下载」，可再装 |
 
 ## 真机验证清单（尚未在真机上跑过）

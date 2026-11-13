@@ -19,9 +19,9 @@ App（分享面板「链接」）
 
 | 部分 | 位置 |
 |---|---|
-| Worker（API、限速、页面路由、安全头） | `services/share-worker/src/` |
+| Worker（API、限速、查看器路由、插件市场） | `services/share-worker/src/` |
 | 部署配置（无 secret） | `services/share-worker/wrangler.jsonc` |
-| 页面构建（拷贝查看器、着陆页与首页，提取 CSP） | `services/share-worker/scripts/build-site.mjs` |
+| 页面构建（拷贝查看器、着陆页与首页，提取 CSP，生成 `_headers` / `_redirects`） | `services/share-worker/scripts/build-site.mjs` |
 | 首页（社区制作的展示网站） | `site/home/`（说明见其 `README.md`） |
 | 开通与部署脚本 | `services/share-worker/scripts/provision.sh`（账号与 KV id：`scripts/cloudflare.sh`） |
 | 线上 / 本地端到端检查 | `services/share-worker/scripts/e2e.mjs`、`smoke.mjs` |
@@ -39,10 +39,11 @@ App（分享面板「链接」）
 |---|---|
 | `/c/<id>` | 查看器 `c.html`（`site/build/share/c.html`） |
 | `/share/` | 着陆页（`site/share/`，从 `site/build/share/` 拷贝）；App 的 `shareLandingUrl` 指向这里 |
-| `/` | 首页（`site/home/dist/index.html`，拷到 `public/home/`）；页面引用的文件按原路径提供（`/app.js`、`/styles.css`、`/assets/…`，构建时生成清单），直接访问 `/home/…` 是 404 |
+| `/` | 首页（`site/home/dist/`，拷到 `public/` 根下）；页面引用的文件按原路径提供（`/app.js`、`/styles.css`、`/assets/…`），直接访问 `/index.html` 是 404 |
 | `/robots.txt` | 只放行首页和它的文件，其余 `Disallow` |
 
-- 所有请求先过 Worker（`run_worker_first`），路径按字面匹配（`html_handling: none`），未知路径 404。
+- 首页、着陆页和它们的文件是静态资源，**不经过 Worker**（不计 Worker 请求数）：`build-site.mjs` 把每个文件的安全头写进 `public/_headers`（逐个路径，不用通配），`/` 和 `/share/` 由 `public/_redirects` 的 200 改写指到 `index.html`。只有 Worker 自己的路由先进 Worker（`wrangler.jsonc` 的 `run_worker_first` 列表：`/api/*`、`/c/*`、`/market*`、`/p*`、`/beta*`、`/download*`、`/share`（301 到 `/share/`），以及要藏起来的 `/c.html`、`/index.html`）。路径按字面匹配（`html_handling: none`）；没有对应文件的路径也落到 Worker，返回同样的 404。
+- 和全部走 Worker 时相比，头部逐项相同（`wrangler dev` 对比过 111 个请求）；只差两处无关紧要的：对静态文件用 GET/HEAD 以外的方法，405 由资源服务直接给（不带 `Allow`，带该文件的安全头）；304 也带上该文件的 `Cache-Control`。
 - 旧着陆页 `https://ccch1mneyyy.github.io/dsh-go/share/` 保留不下线：已经发出去的分享码链接照常能开，App 也继续认（`legacyShareLandingUrls`）。新生成的分享码链接都用 `go.dshtui.com/share/`。
 - 安全头：
   - HTML：CSP 与页面自带的 `<meta>` 一致，再加 `frame-ancestors 'none'`（构建时从页面里提取，没有 CSP 或允许 `unsafe-inline` 脚本时构建失败）；另有 `X-Frame-Options: DENY`、`Referrer-Policy: no-referrer`、`nosniff`、`COOP`、`Permissions-Policy`、`noindex`。
@@ -139,10 +140,12 @@ CF_TOKEN_FILE=<token 文件> scripts/provision.sh apply   # 建 R2 + 生命周�
 | Worker | `dshgo-share` |
 | Custom Domain | `go.dshtui.com` |
 | R2 bucket | `dshgo-share`（私有；规则 `expire-7d`、`expire-30d`、`abort-multipart`） |
-| R2 bucket | `dshgo-dl`（公开读，只放发版文件，自定义域名 `dl.dshtui.com`；后台建，脚本不建，§14） |
+| R2 bucket | `dshgo-dl`（公开读，放发版文件和插件市场的 `market/`，自定义域名 `dl.dshtui.com`；后台建，脚本不建，§14；Worker 绑定为 `DL`，只写 `market/`） |
 | KV | `dshgo-share-quota`（id 在 `~/keys/dshgo-cloudflare-kv-quota-id` 或 `CF_KV_QUOTA_ID`；`provision.sh apply` 发现或新建时写这个文件） |
 | Rate Limiting 命名空间 | `42001`（上传）、`42002`（读取）、`42003`（App 使用统计，§15）；账号内唯一，别的 Worker 不要复用 |
-| Analytics Engine 数据集 | `wrangler.jsonc` 绑定 `dshgo_downloads`、`dshgo_checks`、`dshgo_usage`（第一次写入时自动建）；账号还没开通 Analytics Engine，部署时默认去掉，`provision.sh deploy --analytics` 才带上（§15） |
+| Analytics Engine 数据集 | `wrangler.jsonc` 绑定 `dshgo_downloads`、`dshgo_checks`、`dshgo_usage`（第一次写入时自动建）；`provision.sh` 默认带上，没开通 Analytics Engine 的账号用 `--no-analytics`（§15） |
+| Cron Trigger | 每 10 分钟一次，把插件市场写到 `dshgo-dl` 的 `market/`（[plugin-market.md](plugin-market.md) §3） |
+| Redirect Rule（zone 级，单条重定向） | 描述 `dshgo-share: plugin market from the public bucket`：`go.dshtui.com/market/index.json`、`/market/dsh-go.json` → 302 `https://dl.dshtui.com/market/<同名>`（带 `Origin` 头的请求不跳）；`provision.sh` 在 `dl` 上的文件和 Worker 一致后按描述建或改，不碰别的规则 |
 | Durable Object | `BetaGuard`（migration `v1`）、`StatsSalt`（`v2`，§15） |
 | Worker secret | `ADMIN_KEY`（管理员删除用；`provision.sh apply` 生成并设置，本地副本默认 `~/.config/keys/dshgo-share-admin.txt`（`ADMIN_FILE`），权限 600，放在仓库外） |
 | Worker secret | `BETA_SECRET`（内测发包，§14；`scripts/beta-keys.sh init` 生成并设置，本地副本默认 `~/keys/dshgo-beta-secret`（`BETA_SECRET_FILE`），权限 600） |
@@ -157,7 +160,7 @@ CF_TOKEN_FILE=<token 文件> scripts/provision.sh apply   # 建 R2 + 生命周�
 
 | 项 | 免费额度 | 本服务用量 | 够用到 |
 |---|---|---|---|
-| Worker 请求 | 10 万 / 天 | 打开一次 2–3 次（页面、密文、浏览器自己要的图标），上传 1 次 | 约 3–5 万次打开 / 天 |
+| Worker 请求 | 10 万 / 天 | 打开一次 2 次（查看器、密文；图标等静态文件不算），上传 1 次；首页、着陆页不算；插件市场在 `dl.dshtui.com`，不算 | 约 4 万次打开 / 天 |
 | Worker CPU | 10 ms / 次 | 以 I/O 为主；20 MB 上传的拷贝在毫秒级 | — |
 | R2 存储 | 10 GB-月 | 每条约 50 KB（纯文字）到几 MB（带图） | 约几万条存活链接 |
 | R2 写（A 类） | 100 万 / 月 | 上传 1 次（删除不收费） | 约 3 万次上传 / 天 |
@@ -166,7 +169,7 @@ CF_TOKEN_FILE=<token 文件> scripts/provision.sh apply   # 建 R2 + 生命周�
 | KV 读 / 写 | 10 万 / 1000 每天 | 每次上传各 1 | 约 1000 次上传 / 天（超了小时额度失效，分钟限速仍在） |
 | Analytics Engine 写 | 10 万个数据点 / 天（以 Cloudflare 价格页为准） | 每次点下载、每次带令牌的更新检查、每份 App 使用报告各 1 | 三者合计约 10 万 / 天；超了只是少记，不影响下载 |
 
-- 早期完全够用。最先碰到的是 KV 写入（1000 次上传 / 天）和 Worker 请求（约 3–5 万次打开 / 天）。
+- 早期完全够用。最先碰到的是 KV 写入（1000 次上传 / 天）和 Worker 请求（下载页、更新检查、使用统计等每天约 2 万次，剩下的够约 4 万次打开）。
 - 超出后升级 Workers Paid（$5 / 月）：请求 1000 万 / 月，KV 写 100 万 / 月；R2 超额按 $0.015 / GB-月、A 类 $4.5 / 百万、B 类 $0.36 / 百万计。
 - 「永久」链接会持续占空间，是长期成本的主要来源。
 
@@ -289,9 +292,7 @@ CLOUDFLARE_API_TOKEN="$(cat <token 文件>)" npx wrangler secret put ADMIN_KEY <
 
 ## 15. 统计与隐私
 
-> **当前没有开通 Analytics Engine**：`wrangler.jsonc` 绑定了三个数据集，但 `provision.sh` 部署时默认把它们去掉（带着绑定的部署在没开通的账号上会失败），所以下载按钮和更新检查照常工作但不计数（也不去取当天的盐），`POST /api/usage/v1` 恒为 404（App 当天不再上报），`scripts/stats.sh` 没有数据可读。
->
-> **打开**：① Cloudflare 后台开通 Analytics Engine；② 设好 `USAGE_SECRET`（`docs/release.md`「统计」）；③ `CF_TOKEN_FILE=… scripts/provision.sh deploy --analytics`（或 `DSH_ANALYTICS=1`）；④ 几分钟后 `scripts/stats.sh` 有数，就把 `provision.sh` 的默认（`ANALYTICS=${DSH_ANALYTICS:-0}`）改成 `1` 并提交，否则下一次不带开关的部署会把绑定撤掉。之后下面的设计原样生效；`wrangler dev` 本地一直带着这三个绑定。
+> 我们的账号已开通 Analytics Engine，`provision.sh` 默认带着三个数据集部署。Fork 的账号没开通时用 `provision.sh deploy --no-analytics`（或 `DSH_ANALYTICS=0`）：带着绑定的部署在没开通的账号上会失败；去掉后下载按钮和更新检查照常工作但不计数（也不去取当天的盐），`POST /api/usage/v1` 恒为 404（App 当天不再上报），`scripts/stats.sh` 没有数据可读。`wrangler dev` 本地一直带着这三个绑定。
 
 公测起统计三样东西，都只在服务端，都写进 Workers Analytics Engine（AE），**没有公开的查询端点**：只能用 `scripts/stats.sh` 凭 API token 读。代码在 `src/stats.ts`、`src/usage.ts`。
 
@@ -299,7 +300,7 @@ CLOUDFLARE_API_TOKEN="$(cat <token 文件>)" npx wrangler secret put ADMIN_KEY <
 |---|---|---|---|
 | `dshgo_downloads` | 点下载按钮：`GET /download/get?via=cn\|global\|github&v=<版本>`，记一次再 302 到这条线路的真实地址 | `blob1` 日期（UTC+8）、`blob2` 线路、`blob3` 版本、`blob4` 国家（`request.cf.country`，没有记 `XX`）、`blob5` 当天设备码；`double1` 1 | IP、UA、完整 URL |
 | `dshgo_checks` | 带通道令牌的 App 检查更新：`GET /beta/update.json` 答 200 | `blob1` 日期、`blob2` 当天设备码、`blob3` App 版本、`blob4` ABI（UA 写了才有，见下）、`blob5` 国家 | IP、UA、令牌 |
-| `dshgo_usage` | App 的匿名使用报告：`POST /api/usage/v1`（0.9.9 起，App 里可关） | `blob1` 报告的日期、`blob2` 安装编号的哈希、`blob3` 版本、`blob4` ABI、`blob5` 厂商（小写）、`blob6` 语言、`blob7` 运行方式；`double1` 构建号、`double2` 系统 API、`double3`–`double8` 对话轮次、语音、手机操控、分享、生成、插件 | IP、安装编号原文、对话、文件、账号 |
+| `dshgo_usage` | App 的匿名使用报告：`POST /api/usage/v1`（0.9.9 起，App 里可关） | `blob1` 报告的日期、`blob2` 安装编号的哈希、`blob3` 版本、`blob4` ABI、`blob5` 厂商（小写）、`blob6` 语言、`blob7` 运行方式、`blob8` 机型（小写，v2 起）、`blob9` 厂商系统及版本（小写，v2 起）；`double1` 构建号、`double2` 系统 API、`double3`–`double8` 对话轮次、语音、手机操控、分享、生成、插件 | IP、安装编号原文、对话、文件、账号 |
 
 **当天设备码**（下载和更新检查用来估「多少台设备」）：`HMAC(当天的盐, IP + "\n" + User-Agent)` 取 64 位。IPv6 按 /64（同 §5）。盐是 32 字节随机数，由 Durable Object `StatsSalt`（全站一个）在当天第一次用到时生成，存到当天结束，alarm 一到就删；Worker 在内存里记着当天的盐，日期变了就换。所以：
 - 同一天内同一 IP + 同一浏览器 / App 是同一个码，可以去重；
@@ -333,6 +334,15 @@ CLOUDFLARE_API_TOKEN="$(cat <token 文件>)" npx wrangler secret put ADMIN_KEY <
 | `engine` | `direct`、`proot`、`none` |
 | `counts` | 正好这六个键，非负整数，上限 `turns` 5000、`voice` 2000、`phone` 2000、`share` 1000、`gen` 1000、`plugins` 500 |
 
+**v2**（1.0.15 起，同一个地址）：`"v":2`，在 v1 的字段之外正好再多两个，同样 1–32 个 ASCII 字母、数字、空格、`. _ -`，存小写：
+
+| 字段 | 内容 |
+|---|---|
+| `model` | `Build.MODEL`，例：`v2405a`、`pjz110` |
+| `rom` | 厂商系统和版本，按系统属性依次认 HarmonyOS、HyperOS、MIUI、OriginOS / Funtouch、realme UI、ColorOS（一加的 OxygenOS 也报这个属性）、MagicOS、EMUI、One UI；都不是写 `android` |
+
+v1 照收，`blob8`、`blob9` 记空。App 先发 v2，答 `400` 就把同一天改发 v1，这次运行里后面都发 v1，所以 Worker 部署前后都不丢数。报表里机型和系统版本只列至少 20 个安装共用的值，其余算「其他」。
+
 - 成功 `204`；格式不对 `400`；不是 JSON `415`；超过 2 KB `413`；同一客户端每分钟超过 20 次 `429`（`USAGE_LIMIT`，限速只在 Cloudflare 的分钟计数里用到 IP，不落盘）；没配 `USAGE_SECRET` 时 `404`。
 - `iid` 只以 `HMAC(USAGE_SECRET, "iid\n" + iid)` 的前 128 位存下：能按天数不同的安装、算留存，反推不出 `iid`。`USAGE_SECRET` 换了，新旧哈希对不上，留存从换的那天断开。
 - **同一安装同一天只算一次**：Worker 在内存里记着写过的（日期, 哈希），重复的不再写；跨 isolate 的重复由 `stats.sh` 按（日期, 安装）去重，功能计数取较大的一份。
@@ -343,7 +353,7 @@ CLOUDFLARE_API_TOKEN="$(cat <token 文件>)" npx wrangler secret put ADMIN_KEY <
 |---|---|
 | 下载 | 每天点击次数、人（当天设备码去重）、分线路、分版本；窗口内国家 / 地区占比 |
 | 近似日活 | 每天带令牌检查更新的设备码数、检查次数、按设备的版本分布 |
-| App 统计 | 每天日活（安装去重）和各功能日总量；7 日留存（D 天新出现、D+7 天仍上报；此前 21 天没出现过才算新，所以是粗略值）；版本、ABI、厂商、运行方式、语言、系统 API 分布 |
+| App 统计 | 每天日活（安装去重）和各功能日总量；7 日留存（D 天新出现、D+7 天仍上报；此前 21 天没出现过才算新，所以是粗略值）；版本、ABI、厂商、运行方式、语言、系统 API 分布；机型、厂商系统版本分布（v2 起，少于 20 个安装的值归入「其他」） |
 
 - 点击次数不等于下载完成次数：直链、断点续传、App 内更新都不经过按钮。HEAD、旧版本的按钮、刷量（同一客户端每分钟超过 120 次）不计，但照常跳转。
 - AE 数据量大时会采样，计数用 `SUM(_sample_interval)` 还原；去重的设备数在采样时会偏低。AE 只保留约 3 个月，要长期留存就定期把 `stats.sh` 的输出存档。
@@ -351,6 +361,6 @@ CLOUDFLARE_API_TOKEN="$(cat <token 文件>)" npx wrangler secret put ADMIN_KEY <
 
 **页面上的说明**（下载页页脚，`src/download-page.ts`）：
 
-> 隐私：我们只统计下载和更新检查的次数（含线路、版本、国家/地区），设备数用每天更换、无法还原的哈希估算。App 的匿名使用统计只含版本、系统、厂商、语言、运行方式和各功能使用次数，以随机安装编号区分设备，可在 App 里关闭。不存 IP，不收集账号、对话和文件。
+> 隐私：我们只统计下载和更新检查的次数（含线路、版本、国家/地区），设备数用每天更换、无法还原的哈希估算。App 的匿名使用统计只含版本、系统及厂商系统版本、厂商和机型、语言、运行方式和各功能使用次数，以随机安装编号区分设备，可在 App 里关闭。不存 IP，不收集账号、对话和文件。
 
-> Privacy: we count downloads and update checks (with route, version and country) and estimate device numbers with a one-way hash that changes daily. The app's anonymous usage stats hold only its version, Android version, maker, language, engine mode and feature counts, tell devices apart by a random install ID, and can be turned off in the app. These records hold no IP addresses, and we never collect accounts, chats or files.
+> Privacy: we count downloads and update checks (with route, version and country) and estimate device numbers with a one-way hash that changes daily. The app's anonymous usage stats hold only its version, Android version, maker, model, the maker's system version, language, engine mode and feature counts, tell devices apart by a random install ID, and can be turned off in the app. These records hold no IP addresses, and we never collect accounts, chats or files.

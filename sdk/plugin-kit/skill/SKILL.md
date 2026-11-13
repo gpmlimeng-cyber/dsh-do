@@ -32,6 +32,9 @@ whenToUse: The user wants to add something of their own to the dsh-go phone app 
 | 按钮要读剪贴板 / 输入框 / 某条回复，或要算点什么 | 本技能：`composer.actions` / `message.actions` + `on(id)` |
 | 一直看得到的一行数字 | 本技能：`composer.strip` + `strip(id)` |
 | 一整页信息 | 本技能：`panels` + `panel(id)` |
+| 不常用但要顺手的工具 | 本技能：`composer.tools`（加号面板，要较新的 App） |
+| 对整段对话做事：导出、归档 | 本技能：`session.actions`（右侧栏「信息」，要较新的 App） |
+| 每轮一眼看到的数字 | 本技能：`turn.note` + `turnNote(id)`（回合脚注，要较新的 App） |
 | 某个工具的结果画成卡片 | 本技能：工具 `output.presentationMeta` 返回 `{ "dsh-go/view": 视图 }`，不需要清单 |
 | 把回复读出来、开口就停、跟读字幕 | 本技能：`capabilities` + `media` / `micro` / `overlays`（见下文「声音与字幕」） |
 
@@ -87,11 +90,14 @@ whenToUse: The user wants to add something of their own to the dsh-go phone app 
 | `composer.actions` | 2 | `label` 10 字 | `id` `label` `icon?` `effect?` | 有 `effect`：App 直接执行，不写代码；否则调 `on(id)` |
 | `message.actions` | 2 | `label` 12 字 | 同上 | 同上 |
 | `composer.strip` | 1 | `text` 24 字 | `id` `icon?` `text?` `panel?` | `panel` → 打开该面板；否则 `on(id)` |
-| `panels` | 4 | `title` 16 字 | `id` `title` `icon?` `placement?` `view?` | 视图里的按钮 / 行 / 选项 → `actions` |
+| `panels` | 4 | `title` 16 字 | `id` `title` `icon?` `placement?` `presentation?` `view?` | 视图里的按钮 / 行 / 选项 → `actions` |
+| `composer.tools` | 2 | `label` 8 字 | `id` `label` `icon?` `effect?` `panel?` `requires?` | `panel` / `effect` App 直接执行（两者只写一个）；否则 `on(id)` |
+| `session.actions` | 2 | `label` 12 字 | `id` `label` `icon?` `effect?` `requires?` | 同胶囊 |
+| `turn.note` | 1 | 每段 16 字 | `id` | 不能点；`turnNote(id, (scope, emit) => …)` 里 `emit({ 回合序号: { text, tone? } })` |
 
 - `title`、`label`、`text` 写字符串或 `{ "zh": "…", "en": "…" }`；中英文都不能超上限。插件名 `title` ≤ 24 字。
 - `id`：字母数字开头，字母数字和 `_ . -`，≤ 40 字；**整个插件内不能重复**（跨插槽也算）。
-- `wants`：`clipboard`、`draft`（输入框文字）只给胶囊；`message`（被长按的回复正文）只给菜单项。
+- `wants`：`clipboard`、`draft`（输入框文字）只给胶囊和 `composer.tools`；`message`（被长按的回复正文）只给菜单项。
 - `placement`：`session.tab`（对话详情页，scope 带 sessionId，缺省）、`features`（全部功能）、`chat.panel`（聊天页输入框上方「插件」胶囊打开的弹层，scope 带 sessionId）。
 - 静态 `effect` 只能用 `insert` `command` `open` `link` `toast` `copy`。
 - `icon`：bolt star sparkle heart flag bookmark pin bell clock alarm calendar todo note document folder search code terminal globe chart lightbulb book puzzle robot chat mail translate image camera mic link summary wrench bug travel school home play refresh archive team wallet palette coin money speaker read copy quote share edit write save paste add remove delete clear fork regenerate reply select-text qr download downloads external info warning check done success error question pending running tip list table panel sidebar menu more expand collapse file folder-open workspace storage pdf zip slides article text diff gallery audio music video video-file play-video pause stop replay generate-image generate-video diagram plugin bot agent skill model tool workflow goal plan job automation command trajectory web web-search browser history time today timezone schedule repeat reminder user account group chats mention invite announcement reaction poll notification send community forum feedback wechat qq telegram discord phone computer cloud server power restart retry theme color text-size pet featured badge favorite settings
@@ -158,6 +164,17 @@ ctx.dshGo.on('translate', (scope) => ({
 
 一棵 JSON 组件树。任何值都可以写绑定 `{ "$": "data.a.b" }`，从推来的数据里取，取不到显示「—」；工具卡没有数据，直接写值。
 
+**先选视图版本**：根节点不写 `v` 或写 `v: 1` 时使用 v1 组件和原样式；需要新增控件、结构组件或有界样式时，在根节点写 `v: 2`。清单的 `dshGo.v` 仍为 `1`，与视图版本分开。
+
+下表只列 v1 的基础组件。v2 的完整组件与字段见自带的 `kit/schema/view.schema.json`；App 仓库的 `docs/plugins/components.md`、`styles.md`、`inputs.md` 说明新增组件、样式和表单。不要因为组件不在下表就拒绝 v2。兼容旧 App 时按 `caps.components` / SDK 的 `adaptView` 降级，文字保留 `text` 等基础字段。
+
+```json
+{"v":2,"type":"stack","accent":"teal","children":[
+  {"type":"text","text":"示例","style":{"size":"title","weight":"bold"}},
+  {"type":"emptyState","title":"暂时没有内容"}
+]}
+```
+
 | 组件 | 字段 |
 |---|---|
 | `stack` / `row` | `children`（row 窄屏自动折行）；根节点可带 `title` |
@@ -208,8 +225,8 @@ ctx.dshGo.onCapability((scope, { event }) => {})   // audio.ended / voice.speech
 
 ## 规矩
 
-- 不能自定义颜色、字体、尺寸、动画；只有组件和语义色调。观感由 App 决定。
+- v1 保留原样式；v2 可用文档列出的颜色、语义字号、字重、spans 和容器样式。不要写任意 CSS、字体文件、尺寸、透明度、渐变或动画参数；实际几何、可读色和内容边界仍由 App 决定。
 - 文案短、全角标点；报错像人话（「剪贴板里没有文字」），不写英文异常。
 - 不在视图、清单、代码里放密钥和令牌；读到的剪贴板 / 消息只用于这一次点按。
 - 不在没有点按时做有副作用的事；`insert` 永远不发送。
-- 不要编造字段；不在上面表里的 App 不认识。完整说明在 App 仓库的 `docs/plugins/`。
+- 按所选视图版本的 schema 和组件目录写字段，用自带检查器验证；不要编造未支持的字段。完整说明在 App 仓库的 `docs/plugins/`。
