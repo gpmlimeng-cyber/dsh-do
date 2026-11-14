@@ -369,6 +369,8 @@ class DsBot {
     this.createdAt,
     this.createdBy,
     this.workDir,
+    this.preview,
+    this.lastAt,
   }) : sessionId = sessionId ?? id;
 
   factory DsBot.fromJson(Object? json) {
@@ -394,6 +396,8 @@ class DsBot {
       createdAt: asEpochMs(map['createdAt']),
       createdBy: asString(map['createdBy']),
       workDir: asString(map['workDir']),
+      preview: asString(map['preview']),
+      lastAt: asEpochMs(map['lastAt']),
     );
   }
 
@@ -428,6 +432,12 @@ class DsBot {
   final String? createdBy;
   final String? workDir;
 
+  /// 最后一条有内容的消息（宿主折叠过空白）；列表第二行用它，空时回落到状态。
+  final String? preview;
+
+  /// 那条消息的时间（宿主 `lastAt`）；列表右侧的时间用它。
+  final DateTime? lastAt;
+
   /// The color it shows in: the picked one, else the one its id picks.
   String get ink => dsBotIsColor(color) ? dsBotCurrentColor(color!) : dsBotDefaultColor(id);
 
@@ -449,6 +459,7 @@ class DsBotRoom {
     this.pausedCallIds = const [],
     this.notice = '',
     this.preview,
+    this.lastAt,
     this.createdAt,
     this.workDir,
     this.parts = const [],
@@ -473,6 +484,7 @@ class DsBotRoom {
       ],
       notice: asString(map['notice']) ?? '',
       preview: asString(map['preview']),
+      lastAt: asEpochMs(map['lastAt']),
       createdAt: asEpochMs(map['createdAt']),
       workDir: asString(map['workDir']),
       parts: asStringList(map['parts']),
@@ -513,6 +525,9 @@ class DsBotRoom {
 
   /// The last line: `User`'s words, or `Name：text`.
   final String? preview;
+
+  /// 那条消息的时间（宿主 `lastAt`）。
+  final DateTime? lastAt;
   final DateTime? createdAt;
   final String? workDir;
 

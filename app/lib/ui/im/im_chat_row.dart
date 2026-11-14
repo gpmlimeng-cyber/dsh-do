@@ -45,11 +45,16 @@ class ImChatRow extends StatelessWidget {
     final question = team.questionOf(bot) != null || team.viewOf(bot) != null;
     final String preview;
     Color? previewColor;
-    // M3（别改顺序）：等你确认（琥珀）> 正在输入 > 已完成。
+    // 第二行先给宿主带来的最后一条消息（网页端列表也是这么显示）；没有才回落
+    // 到状态。回落里的 M3（别改顺序）：等你确认（琥珀）> 正在输入 > 已完成。
     // 专业首页（bots_page.dart）是「工作中」优先；这里按需求反着来，Bot 一边
     // 干活一边等人回答时，要让人先看到「等你确认」。测试
     // `im_fixtures_test` 的 approvalAndWorkTransport 按这个顺序断言。
-    if (question) {
+    final tail = bot.preview?.trim() ?? '';
+    if (tail.isNotEmpty) {
+      // 消息预览用常规次要色，不是状态色。
+      preview = tail;
+    } else if (question) {
       preview = l10n.commonWaitingAnswer;
       previewColor = colors.warning;
     } else if (doing != null) {
@@ -68,7 +73,7 @@ class ImChatRow extends StatelessWidget {
       name: bot.name,
       preview: preview,
       previewColor: previewColor,
-      time: notice?.time,
+      time: notice?.time ?? bot.lastAt,
       unread: unread,
       semanticsLabel: [
         bot.name,
@@ -110,7 +115,10 @@ class ImRoomRow extends StatelessWidget {
     final waiting = live.approvals.any((a) => a.roomId == room.id && a.answerable);
     final String preview;
     Color? previewColor;
-    if (waiting) {
+    final lastLine = roomPreview(room, team);
+    if (lastLine.isNotEmpty) {
+      preview = lastLine;
+    } else if (waiting) {
       preview = l10n.botsMemberNeedsApproval;
       previewColor = colors.warning;
     } else if (working.isNotEmpty) {
@@ -120,15 +128,14 @@ class ImRoomRow extends StatelessWidget {
           : l10n.botsNamesWorking(names.take(2).join(l10n.botsNameSeparator));
       previewColor = colors.info;
     } else {
-      final line = roomPreview(room, team);
-      preview = line.isEmpty ? l10n.botsMemberCount(room.members.length) : line;
+      preview = l10n.botsMemberCount(room.members.length);
     }
     return ImChatRowShell(
       avatar: RoomAvatar(room: room, team: team, size: ImChatRow.avatarSize),
       name: room.name,
       preview: preview,
       previewColor: previewColor,
-      time: notice?.time,
+      time: notice?.time ?? room.lastAt,
       unread: unread,
       semanticsLabel: [
         room.name,

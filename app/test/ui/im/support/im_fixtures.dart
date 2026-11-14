@@ -154,6 +154,20 @@ FakeDsBotTransport longNameTransport() {
   return transport;
 }
 
+
+/// A team where one Bot carries the host's last reply (`preview` / `lastAt`) and
+/// another does not, for the row's second line: preview first, status fallback
+/// only when it is absent.
+FakeDsBotTransport previewTransport() {
+  final data = sampleTeam(working: false);
+  final now = DateTime.now().millisecondsSinceEpoch;
+  setBotField(data, 'b2', 'preview', '初稿写好了，放在 docs/launch.md');
+  setBotField(data, 'b2', 'lastAt', now - 60000);
+  final transport = FakeDsBotTransport(team: data);
+  transport.handlers['state'] = (_) => data;
+  return transport;
+}
+
 /// A team with no Bots and no groups: the two empty states.
 FakeDsBotTransport emptyTeamTransport() {
   final data = sampleTeam(working: false);

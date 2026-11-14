@@ -164,10 +164,17 @@ class _List extends ConsumerWidget {
     final pinnedIds = ref.watch(imPinnedProvider);
     final readOnly = status.readOnly != null;
     DateTime? latest(String id) => inbox.latest[id]?.time;
-    DateTime? at(DateTime? a, DateTime? b) => a ?? b;
+    // 排序时间：宿主给的 lastAt 最准，其次本次运行收到的通知，最后创建时间。
+    DateTime? latestOf(List<DateTime?> values) {
+      for (final value in values) {
+        if (value != null) return value;
+      }
+      return null;
+    }
+
     final entries = <_Entry>[
-      for (final bot in team.bots) _Entry.bot(bot, at(latest(bot.id), bot.createdAt)),
-      for (final room in team.rooms) _Entry.room(room, at(latest(room.id), room.createdAt)),
+      for (final bot in team.bots) _Entry.bot(bot, latestOf([bot.lastAt, latest(bot.id), bot.createdAt])),
+      for (final room in team.rooms) _Entry.room(room, latestOf([room.lastAt, latest(room.id), room.createdAt])),
     ]..sort((a, b) => (b.time ?? DateTime(0)).compareTo(a.time ?? DateTime(0)));
     if (entries.isEmpty) {
       return _Empty(
@@ -216,6 +223,7 @@ class _List extends ConsumerWidget {
         children: [
           if (pinned.isNotEmpty)
             _PinnedArea(
+              key: const Key('im-pinned-area'),
               entries: pinned,
               team: team,
               inbox: inbox,
@@ -261,6 +269,7 @@ class _List extends ConsumerWidget {
 /// 顶部置顶瓦片：1 个居中大瓦片，2–3 个一行均分，再多横向滚动。
 class _PinnedArea extends StatelessWidget {
   const _PinnedArea({
+    super.key,
     required this.entries,
     required this.team,
     required this.inbox,
@@ -281,6 +290,7 @@ class _PinnedArea extends StatelessWidget {
   Widget _tile(BuildContext context, _Entry entry, double width) => SizedBox(
     width: width,
     child: _PinnedTile(
+      key: ValueKey('im-pinned-tile-${entry.key}'),
       entry: entry,
       team: team,
       inbox: inbox,
@@ -323,6 +333,7 @@ class _PinnedArea extends StatelessWidget {
 
 class _PinnedTile extends StatelessWidget {
   const _PinnedTile({
+    super.key,
     required this.entry,
     required this.team,
     required this.inbox,

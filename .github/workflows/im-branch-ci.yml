@@ -55,3 +55,10 @@ jobs:
       # the same push, and its 20-minute pass is no use as a loop.
       - name: Test the light home
         run: flutter test --reporter expanded test/ui/im
+      # The light list reads new fields off the client package's models.
+      - name: Test the client package
+        working-directory: packages/dsh_client
+        run: |
+          dart pub get
+          dart analyze
+          dart test
