@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:dsh_client/dsh_client.dart' show ImageAttachment;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -12,8 +13,9 @@ import 'connection_state.dart';
 /// Something picked in the composer and not sent yet.
 ///
 /// Images DSH takes inline (png, jpeg, webp, gif) ride in the prompt itself;
-/// anything else is staged first with `fileUploads/upload` and referenced by
-/// its receipt. Which one is decided from the bytes, not the file name.
+/// anything else is staged first (`fileUploads/upload`, or a streamed binary
+/// upload on hosts that support it) and referenced by its receipt. Which one
+/// is decided from the bytes, not the file name.
 class DraftAttachment {
   DraftAttachment({required this.name, required this.bytes, this.mediaType}) : id = _nextId++;
 
@@ -34,8 +36,8 @@ class DraftAttachment {
   int get size => bytes.length;
 }
 
-/// Valid file picks plus the first rejected item, so one large file does not
-/// discard the rest of a multi-selection.
+/// Valid file picks plus the first rejected item, so an unreadable or oversized
+/// file does not discard the rest of a multi-selection.
 class PickedAttachments {
   const PickedAttachments(this.attachments, {this.problem});
 
@@ -46,12 +48,21 @@ class PickedAttachments {
 /// DSH's inline image limit (`SessionProjections.imageLimits` default).
 const maxImageBytes = 20 * 1024 * 1024;
 
-/// Files travel base64 inside one RPC frame; keep them to what a phone can
-/// hold twice over without trouble.
-const maxFileBytes = 30 * 1024 * 1024;
+/// Files stream to the engine (`/api/session/uploadFileBinary`), so the
+/// transfer holds about one copy of the file; the picker still keeps the
+/// staged bytes (about two while assembling), so one message also has
+/// [maxMessageBytes]. On a host without that route the client falls back to
+/// base64 and refuses what one RPC frame can't hold.
+const maxFileBytes = 200 * 1024 * 1024;
 
 /// At most this many attachments per message (DSH allows 20 images).
 const maxAttachments = 9;
+
+/// Bytes one message's attachments may hold. The picker and the tray keep
+/// every file in memory until the message is sent, so the ceiling is the
+/// phone's heap rather than the Host; the share path's Kotlin budget
+/// (`MAX_TOTAL_BYTES`) matches this.
+const maxMessageBytes = 400 * 1024 * 1024;
 
 /// Media type when [bytes] is an image DSH accepts inline, else null.
 String? inlineImageType(Uint8List bytes) {
@@ -94,11 +105,30 @@ String? attachmentProblem(DraftAttachment a) {
   return null;
 }
 
+/// Bytes held by [attachments], counted against [maxMessageBytes].
+int totalAttachmentBytes(Iterable<DraftAttachment> attachments) {
+  var total = 0;
+  for (final a in attachments) {
+    total += a.size;
+  }
+  return total;
+}
+
+/// Why [a] can't join a message already holding [heldBytes], or null when it
+/// fits. Checked in every path that grows the tray, so repeated picks cannot
+/// pile past [maxMessageBytes] (or [limit], a smaller carrier such as the web
+/// page's composer).
+String? attachmentBudgetProblem(int heldBytes, DraftAttachment a, {int limit = maxMessageBytes}) =>
+    heldBytes + a.size > limit ? appL10n.stateAttachmentTotalLimit : null;
+
 /// The system pickers behind the composer's ＋ menu. Tests swap in a fake.
 abstract class AttachmentPicker {
   Future<List<DraftAttachment>> pickImages({required int limit});
   Future<DraftAttachment?> takePhoto();
-  Future<PickedAttachments> pickFiles({int limit = maxAttachments});
+
+  /// [heldBytes] is what the tray already holds: the picker refuses to retain
+  /// more once the message's byte budget is spent, before opening a file.
+  Future<PickedAttachments> pickFiles({int limit = maxAttachments, int heldBytes = 0});
 
   /// A small text file (an SSH private key); null when cancelled.
   Future<String?> pickTextFile({int maxBytes = 64 * 1024});
@@ -139,9 +169,12 @@ class DeviceAttachmentPicker implements AttachmentPicker {
   }
 
   @override
-  Future<PickedAttachments> pickFiles({int limit = maxAttachments}) async {
+  Future<PickedAttachments> pickFiles({int limit = maxAttachments, int heldBytes = 0}) async {
     final picked = await FilePicker.pickFiles();
     final accepted = <DraftAttachment>[];
+    // Bytes already in the tray plus what this pick has retained so far: the
+    // budget covers the whole message, not one picker invocation.
+    var usedBytes = heldBytes;
     String? problem;
     for (final file in picked) {
       if (accepted.length >= limit) {
@@ -155,37 +188,56 @@ class DeviceAttachmentPicker implements AttachmentPicker {
         problem ??= appL10n.stateAttachmentFileLimit(file.name);
         continue;
       }
+      if (length != null && usedBytes + length > maxMessageBytes) {
+        problem ??= appL10n.stateAttachmentTotalLimit;
+        continue;
+      }
       final bytes = BytesBuilder(copy: false);
       final prefix = Uint8List(12);
       var prefixLength = 0;
       String? mediaType;
       var tooLarge = false;
-      await for (final chunk in file.readAsByteStream()) {
-        // Signatures may span chunks. Inspect only the small prefix before
-        // retaining a chunk, and use image limits even with a misleading name.
-        final take = (prefix.length - prefixLength).clamp(0, chunk.length);
-        prefix.setRange(prefixLength, prefixLength + take, chunk);
-        prefixLength += take;
-        mediaType = inlineImageType(Uint8List.sublistView(prefix, 0, prefixLength));
-        final budget = mediaType == null ? maxFileBytes : maxImageBytes;
-        if ((length != null && length > budget) || chunk.length > budget - bytes.length) {
-          tooLarge = true;
-          break; // Cancels the stream without retaining the excess chunk.
+      var overMessageBudget = false;
+      try {
+        await for (final chunk in file.readAsByteStream()) {
+          // Signatures may span chunks. Inspect only the small prefix before
+          // retaining a chunk, and use image limits even with a misleading name.
+          final take = (prefix.length - prefixLength).clamp(0, chunk.length);
+          prefix.setRange(prefixLength, prefixLength + take, chunk);
+          prefixLength += take;
+          mediaType = inlineImageType(Uint8List.sublistView(prefix, 0, prefixLength));
+          final budget = mediaType == null ? maxFileBytes : maxImageBytes;
+          if ((length != null && length > budget) || chunk.length > budget - bytes.length) {
+            tooLarge = true;
+            break; // Cancels the stream without retaining the excess chunk.
+          }
+          if (chunk.length > maxMessageBytes - usedBytes - bytes.length) {
+            tooLarge = true;
+            overMessageBudget = true;
+            break;
+          }
+          bytes.add(chunk);
         }
-        bytes.add(chunk);
+      } on Exception {
+        // Partial bytes are not an attachment and have not consumed usedBytes.
+        problem ??= appL10n.stateShareReadFailed(file.name);
+        continue;
       }
       if (tooLarge) {
-        problem ??= mediaType == null
-            ? appL10n.stateAttachmentFileLimit(file.name)
-            : appL10n.stateAttachmentImageLimit(file.name);
+        problem ??= overMessageBudget
+            ? appL10n.stateAttachmentTotalLimit
+            : (mediaType == null
+                  ? appL10n.stateAttachmentFileLimit(file.name)
+                  : appL10n.stateAttachmentImageLimit(file.name));
         continue;
       }
       final attachment = DraftAttachment(name: file.name, bytes: bytes.takeBytes(), mediaType: mediaType);
-      final issue = attachmentProblem(attachment);
+      final issue = attachmentProblem(attachment) ?? attachmentBudgetProblem(usedBytes, attachment);
       if (issue != null) {
         problem ??= issue;
       } else {
         accepted.add(attachment);
+        usedBytes += attachment.size;
       }
     }
     return PickedAttachments(accepted, problem: problem);
@@ -217,8 +269,8 @@ final attachmentPickerProvider = Provider<AttachmentPicker>((ref) => const Devic
 
 /// Bytes of an image a session's log refers to (`session/attachment`), for
 /// thumbnails of sent messages. Dropped once no bubble shows it.
-final sessionImageProvider = FutureProvider.autoDispose.family<Uint8List, (String, String)>((ref, key) async {
-  final (sessionId, attachmentId) = key;
+final sessionImageProvider = FutureProvider.autoDispose.family<Uint8List, (String, ImageAttachment)>((ref, key) async {
+  final (sessionId, attachment) = key;
   final client = ref.watch(activeConnectionProvider.select((c) => c.value?.client));
   if (client == null) throw StateError(appL10n.commonNotConnected);
   // Scrolling a bubble out and back shouldn't refetch; let it go a bit later.
@@ -227,5 +279,5 @@ final sessionImageProvider = FutureProvider.autoDispose.family<Uint8List, (Strin
   ref.onCancel(() => release = Timer(const Duration(seconds: 30), link.close));
   ref.onResume(() => release?.cancel());
   ref.onDispose(() => release?.cancel());
-  return (await client.attachment(sessionId, attachmentId)).bytes;
+  return (await client.attachment(sessionId, attachment)).bytes;
 });

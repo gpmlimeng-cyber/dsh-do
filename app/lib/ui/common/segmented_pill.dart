@@ -36,6 +36,7 @@ class SegmentedPill<T> extends StatefulWidget {
     required this.onChanged,
     this.expand = true,
     this.height = 36,
+    this.onReselect,
   }) : assert(segments.length >= 2);
 
   final List<PillSegment<T>> segments;
@@ -43,6 +44,10 @@ class SegmentedPill<T> extends StatefulWidget {
 
   /// Null disables the control.
   final ValueChanged<T>? onChanged;
+
+  /// A tap on the segment already selected (a 「自定义」 one opening its
+  /// editor again); a drag that ends where it began is not one.
+  final ValueChanged<T>? onReselect;
 
   /// Fill the available width (each segment an equal share); false sizes the
   /// control to its longest label.
@@ -86,14 +91,20 @@ class _SegmentedPillState<T> extends State<SegmentedPill<T>> {
     return i < 0 ? 0 : i;
   }
 
-  void _pick(int index) {
+  void _pick(int index, {bool tick = true}) {
     final onChanged = widget.onChanged;
     if (onChanged == null) return;
     final value = widget.segments[index].value;
     if (value != widget.selected) {
-      HapticFeedback.selectionClick();
+      if (tick) HapticFeedback.selectionClick();
       onChanged(value);
     }
+  }
+
+  void _tap(int index) {
+    final value = widget.segments[index].value;
+    if (value == widget.selected && widget.onReselect != null) return widget.onReselect!(value);
+    _pick(index);
   }
 
   @override
@@ -113,6 +124,8 @@ class _SegmentedPillState<T> extends State<SegmentedPill<T>> {
       MediaQuery.textScalerOf(context).scale(style.fontSize!) * style.height! + 2 * SegmentedPill.inset + 14,
     );
 
+    final fluid = AppMotion.fluid(context);
+
     Widget pill(double width) {
       final segment = (width - 2 * SegmentedPill.inset) / n;
       final rest = SegmentedPill.inset + _index * segment;
@@ -122,12 +135,24 @@ class _SegmentedPillState<T> extends State<SegmentedPill<T>> {
       return GestureDetector(
         behavior: HitTestBehavior.opaque,
         onHorizontalDragStart: enabled ? (_) => setState(() => _drag = rest) : null,
-        onHorizontalDragUpdate: enabled ? (d) => setState(() => _drag = (_drag ?? rest) + d.delta.dx) : null,
+        onHorizontalDragUpdate: enabled
+            ? (d) {
+                final next = ((_drag ?? rest) + d.delta.dx).clamp(
+                  SegmentedPill.inset,
+                  SegmentedPill.inset + (n - 1) * segment,
+                );
+                // One tick per segment crossed.
+                final under = ((next - SegmentedPill.inset) / segment).round();
+                if (fluid && under != current) HapticFeedback.selectionClick();
+                setState(() => _drag = (_drag ?? rest) + d.delta.dx);
+              }
+            : null,
         onHorizontalDragEnd: enabled
             ? (_) {
                 final target = current;
                 setState(() => _drag = null);
-                _pick(target);
+                // The fluid tier ticked as the thumb crossed over.
+                _pick(target, tick: !fluid);
               }
             : null,
         onHorizontalDragCancel: () => setState(() => _drag = null),
@@ -140,25 +165,35 @@ class _SegmentedPillState<T> extends State<SegmentedPill<T>> {
             child: Stack(
               children: [
                 AnimatedPositioned(
-                  duration: _drag == null ? AppMotion.of(context, AppMotion.standard) : Duration.zero,
-                  curve: AppMotion.std,
+                  duration: _drag != null
+                      ? Duration.zero
+                      : fluid
+                      ? AppMotion.thumbCurve.duration
+                      : AppMotion.of(context, AppMotion.standard),
+                  curve: fluid ? AppMotion.thumbCurve : AppMotion.std,
                   left: left,
                   top: SegmentedPill.inset,
                   bottom: SegmentedPill.inset,
                   width: segment,
-                  child: DecoratedBox(
-                    decoration: ShapeDecoration(
-                      color: thumb,
-                      shape: const StadiumBorder(),
-                      shadows: dark
-                          ? null
-                          : [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.08),
-                                blurRadius: 6,
-                                offset: const Offset(0, 1),
-                              ),
-                            ],
+                  // The fluid tier's thumb swells a little under the finger.
+                  child: AnimatedScale(
+                    scale: fluid && _drag != null ? 1.04 : 1,
+                    duration: AppMotion.quick,
+                    curve: AppMotion.std,
+                    child: DecoratedBox(
+                      decoration: ShapeDecoration(
+                        color: thumb,
+                        shape: const StadiumBorder(),
+                        shadows: dark
+                            ? null
+                            : [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.08),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 1),
+                                ),
+                              ],
+                      ),
                     ),
                   ),
                 ),
@@ -169,14 +204,14 @@ class _SegmentedPillState<T> extends State<SegmentedPill<T>> {
                         child: Semantics(
                           button: true,
                           enabled: enabled,
-                          onTap: enabled ? () => _pick(i) : null,
+                          onTap: enabled ? () => _tap(i) : null,
                           selected: i == _index,
                           inMutuallyExclusiveGroup: true,
                           label: widget.segments[i].label,
                           excludeSemantics: true,
                           child: GestureDetector(
                             behavior: HitTestBehavior.opaque,
-                            onTap: enabled ? () => _pick(i) : null,
+                            onTap: enabled ? () => _tap(i) : null,
                             child: Center(
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(horizontal: 6),
