@@ -142,16 +142,6 @@ class _ImTabKey extends StatelessWidget {
                 fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
               ),
             ),
-            const SizedBox(height: 3),
-            AnimatedContainer(
-              duration: AppMotion.of(context, AppMotion.quick),
-              width: 4,
-              height: 4,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: selected ? theme.colorScheme.primary : Colors.transparent,
-              ),
-            ),
           ],
         ),
       ),
