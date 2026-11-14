@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../state/bots_state.dart';
+import '../bots/bot_chat_kit.dart' show BotChatLook;
 import '../bots/bot_chat_page.dart';
 import '../bots/room_chat_page.dart';
 import 'im_companions_page.dart';
@@ -35,7 +36,7 @@ class ImShellState extends ConsumerState<ImShell> {
   }
 
   void _openBot(String botId) {
-    unawaited(Navigator.of(context).push(BotChatPage.route(botId)));
+    unawaited(Navigator.of(context).push(BotChatPage.route(botId, look: BotChatLook.light)));
   }
 
   void _openRoom(String roomId) {

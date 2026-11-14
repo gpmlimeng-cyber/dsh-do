@@ -38,6 +38,11 @@ abstract final class ImStrings {
   static String get profileSettings => _zh ? '它的设定' : 'Its instructions';
   static String get profileMemory => _zh ? '它记得的事' : 'What it remembers';
   static String get profileDelete => _zh ? '删除 Bot' : 'Delete Bot';
+  static String get renameBot => _zh ? '改名字' : 'Rename';
+  static String get renameRole => _zh ? '改角色' : 'Edit role';
+  static String get roleEmpty => _zh ? '还没写角色' : 'No role yet';
+  static String get profileSettingsHint => _zh ? '它要怎么说话' : 'How it should talk';
+  static String deleteBotBody(String name) => _zh ? '删除「$name」后，它记得的事和对话都会没有。' : 'Deleting $name also removes its chats and what it remembers.';
   static String memoryCount(int n) => _zh ? '它记得 $n 件事' : 'Remembers $n things';
   static String get memoryEmpty => _zh ? '还没记住什么' : 'Nothing remembered yet';
 

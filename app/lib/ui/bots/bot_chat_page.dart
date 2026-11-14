@@ -59,13 +59,20 @@ import 'bot_memory_notice.dart';
 import 'bot_memory_page.dart';
 import 'bot_format.dart';
 import 'bot_pending_card.dart';
+import '../im/im_bot_profile_page.dart';
+import '../im/im_intro.dart';
+import '../im/im_strings.dart';
 
 class BotChatPage extends ConsumerStatefulWidget {
-  const BotChatPage({super.key, required this.botId});
+  const BotChatPage({super.key, required this.botId, this.look = BotChatLook.pro});
 
   final String botId;
 
-  static Route<void> route(String botId) => MaterialPageRoute<void>(builder: (_) => BotChatPage(botId: botId));
+  /// 专业（默认）还是轻松；只改外观，不改发送/队列/流式/审批/分页的行为。
+  final BotChatLook look;
+
+  static Route<void> route(String botId, {BotChatLook look = BotChatLook.pro}) =>
+      MaterialPageRoute<void>(builder: (_) => BotChatPage(botId: botId, look: look));
 
   @override
   ConsumerState<BotChatPage> createState() => _BotChatPageState();
@@ -403,7 +410,8 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
       files: client?.supportsEndpoint('fileUploads/upload') ?? true,
       limit: room,
       // 本对话 (permissions, plan mode) acts on the session behind this Bot.
-      sessionId: sessionId,
+      // 轻松模式不看权限/计划模式，传 null 让面板只剩相册/拍照/文件。
+      sessionId: widget.look == BotChatLook.light ? null : sessionId,
     );
     if (!mounted || picked == null || picked.isEmpty) return;
     setState(() => _drafts = [..._drafts, ...picked]);
@@ -530,8 +538,13 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
         leadingTooltip: botMenuTooltip(context, layout),
         // The title capsule opens the Bot's own details; the key on the right
         // opens the conversation's (trajectory, files, progress).
-        onDetails: () => Navigator.of(context).push(BotDetailsPage.route(bot.id)),
-        onInfo: () => openBotDetail(context, ref, layout: layout, sessionId: bot.sessionId),
+        // 轻松模式：资料卡换成不露 token/原始记录的轻量页，右侧详情键去掉。
+        onDetails: () => Navigator.of(context).push(
+          widget.look == BotChatLook.light ? ImBotProfilePage.route(bot.id) : BotDetailsPage.route(bot.id),
+        ),
+        onInfo: widget.look == BotChatLook.light
+            ? null
+            : () => openBotDetail(context, ref, layout: layout, sessionId: bot.sessionId),
         infoTooltip: layout.isExpanded && layout.panelAvailable
             ? (ref.watch(layoutPrefsProvider).panelOpen ? l10n.shellCollapseDetails : l10n.shellChatDetails)
             : null,
@@ -551,7 +564,15 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
               hasEarlier: chat.hasEarlier,
               loadingEarlier: chat.loadingEarlier,
               onEarlier: () => ref.read(botChatProvider(widget.botId).notifier).loadEarlier(),
-              empty: _Intro(bot: bot),
+              empty: widget.look == BotChatLook.light
+                  ? ImIntro(
+                      bot: bot,
+                      onSay: (line) {
+                        _input.text = line;
+                        unawaited(_send(sendTarget, bot.sessionId));
+                      },
+                    )
+                  : _Intro(bot: bot),
               rowBuilder: (context, row) => Padding(
                 padding: rowPadding(row),
                 child: switch (row) {
@@ -628,7 +649,10 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
                       icon: AppIcons.swap,
                     ),
                     DsBotItemKind.answer => BotEventLine(text: l10n.botsAnsweredQuestion, icon: AppIcons.done),
-                    DsBotItemKind.divider => BotEventLine(text: l10n.botsEarlierMessages, icon: AppIcons.history),
+                    DsBotItemKind.divider => BotEventLine(
+                      text: widget.look == BotChatLook.light ? ImStrings.segmentDivider : l10n.botsEarlierMessages,
+                      icon: AppIcons.history,
+                    ),
                     DsBotItemKind.tool => BotToolRow(name: item.toolName ?? '', status: item.toolStatus),
                     // A step's thinking is the conversation's own row: the
                     // same collapsible pill the native chat draws, in place,
@@ -678,8 +702,14 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
         BotErrorSlot(
           error: chat.error,
           onDismiss: () => ref.read(botChatProvider(widget.botId).notifier).dismissError(),
+          action: widget.look == BotChatLook.light
+              ? (label: ImStrings.retry, onPressed: () => unawaited(ref.read(botChatProvider(widget.botId).notifier).reload()))
+              : null,
         ),
         BotComposerDeck(
+          // 轻松模式不显示目标/待办/权限条和活动条。
+          showSessionBars: widget.look == BotChatLook.pro,
+          showActivity: widget.look == BotChatLook.pro,
           sessionId: bot.sessionId,
           running: ownTurn,
           activityBot: bot,
@@ -696,7 +726,7 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
           focusNode: _focus,
           connected: api != null && !readOnly,
           voice: _voice,
-          accessory: BotContextRing(sessionId: bot.sessionId, model: botModelSelection(bot)),
+          accessory: widget.look == BotChatLook.light ? null : BotContextRing(sessionId: bot.sessionId, model: botModelSelection(bot)),
           waiting: question != null || view != null,
           waitHint: question != null ? l10n.commonWaitingAnswer : null,
           // The ＋ stays beside send on every host. `hello.api` names the answer shapes
@@ -716,10 +746,13 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
           hasAttachments: _drafts.isNotEmpty,
           // As in the chat: the model this Bot answers with sits inside the open
           // composer, beside the keys, and opens the same sheet the header's chip does.
-          footer: ComposerModelPill(
-            selection: botModelSelection(bot),
-            onSelected: (selection) => unawaited(applyBotModel(context, ref, bot, selection)),
-          ),
+          // 模型名不露给轻松模式。
+          footer: widget.look == BotChatLook.light
+              ? null
+              : ComposerModelPill(
+                  selection: botModelSelection(bot),
+                  onSelected: (selection) => unawaited(applyBotModel(context, ref, bot, selection)),
+                ),
           running: ownTurn,
           onSend: () => _send(sendTarget, bot.sessionId),
           onSendOptions: () => _sendOptions(sendTarget, bot, running: ownTurn),

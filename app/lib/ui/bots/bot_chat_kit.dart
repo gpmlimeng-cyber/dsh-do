@@ -45,6 +45,13 @@ import 'bots_page.dart' show BotTag;
 
 // ── Header ───────────────────────────────────────────────────────────────────
 
+/// 这个 Bot 聊天页画给哪套界面：专业页（默认），还是轻松模式（lib/ui/im/）。
+///
+/// 只改外观，不改行为：发送、队列、流式、审批、历史分页全部共用。默认 [pro]，
+/// 现有的 22 处 `BotChatPage(botId:)` 调用一行不用改。
+enum BotChatLook { pro, light }
+
+
 /// Three floating chrome-glass pieces, like the chat's own header: back, a
 /// title pill (the face, the name, one line of status), details.
 ///
@@ -723,10 +730,13 @@ class _BotChatFrameState extends State<BotChatFrame> {
 
 /// An error over the composer, or nothing.
 class BotErrorSlot extends StatelessWidget {
-  const BotErrorSlot({super.key, required this.error, required this.onDismiss});
+  const BotErrorSlot({super.key, required this.error, required this.onDismiss, this.action});
 
   final String? error;
   final VoidCallback onDismiss;
+
+  /// 横幅上的一个动作（轻松模式给「重试」；专业页不传）。
+  final NoticeAction? action;
 
   @override
   Widget build(BuildContext context) => SmoothSize(
@@ -737,7 +747,7 @@ class BotErrorSlot extends StatelessWidget {
         ? const SizedBox(width: double.infinity)
         : Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: ErrorBanner(message: error!, onDismiss: onDismiss),
+            child: ErrorBanner(message: error!, onDismiss: onDismiss, action: action),
           ),
   );
 }

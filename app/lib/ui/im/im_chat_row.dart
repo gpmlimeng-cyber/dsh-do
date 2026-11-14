@@ -43,8 +43,10 @@ class ImChatRow extends StatelessWidget {
     final question = team.questionOf(bot) != null || team.viewOf(bot) != null;
     final String preview;
     Color? previewColor;
-    // M3：等你确认（琥珀）> 正在输入 > 已完成。专业首页是「工作中」优先，
-    // 这里按需求反着来：Bot 一边干活一边等人回答时，要让人先看到「等你确认」。
+    // M3（别改顺序）：等你确认（琥珀）> 正在输入 > 已完成。
+    // 专业首页（bots_page.dart）是「工作中」优先；这里按需求反着来，Bot 一边
+    // 干活一边等人回答时，要让人先看到「等你确认」。测试
+    // `im_fixtures_test` 的 approvalAndWorkTransport 按这个顺序断言。
     if (question) {
       preview = l10n.commonWaitingAnswer;
       previewColor = colors.warning;
