@@ -1,7 +1,9 @@
-// 轻松模式的「消息」：Bot 与群聊行式列表。
+// 轻松模式的「消息」：一条平铺的会话列表 + 顶部置顶瓦片（照 Miffan）。
 //
-// 顺序与专业首页一致（`bots_page.dart:88-95`）：主 Bot 先，其余按最近活动，
-// 群聊在后。未读是 `DsBotInbox` 的内存计数：冷启动清零，别当持久未读用。
+// - 不分组：Bot 与群聊混在一起，按最近活跃排序，主 Bot 不再强制在前。
+// - 置顶单独一块头像瓦片，不混在列表里：1 个居中大瓦片，2–3 个一行均分，
+//   再多横向滚动；长按瓦片或行出「置顶/取消置顶」，状态存本机（im.pinned）。
+// - 未读是 `DsBotInbox` 的内存计数：冷启动清零，别当持久未读用。
 import 'dart:async';
 
 import 'package:dsh_client/dsh_client.dart';
@@ -10,12 +12,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
 import '../../state/bots_state.dart';
+import '../bots/bot_avatar.dart';
 import '../bots/install_card.dart';
 import '../bots/new_bot_page.dart';
 import '../bots/new_room_sheet.dart';
 import '../common/app_sheet.dart';
-import '../features/feature_kit.dart' show QuietSpinner;
 import '../common/sheet_title_bar.dart';
+import '../features/feature_kit.dart' show QuietSpinner;
 import '../features/feature_widgets.dart';
 import '../shell/page_frame.dart' show GlassIconButton;
 import '../shell/session_search_page.dart' show showSessionSearch;
@@ -23,6 +26,7 @@ import '../theme/app_icons.dart';
 import '../theme/theme.dart';
 import 'im_chat_row.dart';
 import 'im_page_scaffold.dart';
+import 'im_pinned.dart';
 import 'im_strings.dart';
 
 class ImMessagesPage extends ConsumerWidget {
@@ -126,6 +130,19 @@ class ImMessagesPage extends ConsumerWidget {
   }
 }
 
+/// 一条会话：Bot 或群聊，混排时只需要 id、名字、时间和两个回调。
+class _Entry {
+  const _Entry.bot(DsBot this.bot, this.time) : room = null;
+  const _Entry.room(DsBotRoom this.room, this.time) : bot = null;
+
+  final DsBot? bot;
+  final DsBotRoom? room;
+  final DateTime? time;
+
+  String get key => bot != null ? 'bot:${bot!.id}' : 'room:${room!.id}';
+  String get name => bot?.name ?? room!.name;
+}
+
 class _List extends ConsumerWidget {
   const _List({
     required this.status,
@@ -144,58 +161,235 @@ class _List extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final inbox = ref.watch(dsBotInboxProvider);
+    final pinnedIds = ref.watch(imPinnedProvider);
     final readOnly = status.readOnly != null;
     DateTime? latest(String id) => inbox.latest[id]?.time;
-    int newest(DateTime? a, DateTime? b) => (b ?? DateTime(0)).compareTo(a ?? DateTime(0));
-    final mains = <DsBot>[];
-    for (final id in team.mainBotIds) {
-      final bot = team.bot(id);
-      if (bot != null) mains.add(bot);
+    DateTime? at(DateTime? a, DateTime? b) => a ?? b;
+    final entries = <_Entry>[
+      for (final bot in team.bots) _Entry.bot(bot, at(latest(bot.id), bot.createdAt)),
+      for (final room in team.rooms) _Entry.room(room, at(latest(room.id), room.createdAt)),
+    ]..sort((a, b) => (b.time ?? DateTime(0)).compareTo(a.time ?? DateTime(0)));
+    if (entries.isEmpty) {
+      return _Empty(
+        onCreate: readOnly ? null : () => Navigator.of(context).push(NewBotPage.route()),
+        onDiscover: onGoDiscover,
+      );
     }
-    final others = <DsBot>[
-      for (final bot in team.bots)
-        if (!team.isMain(bot.id)) bot,
-    ]..sort((a, b) => newest(latest(a.id) ?? a.createdAt, latest(b.id) ?? b.createdAt));
-    final rooms = [...team.rooms]..sort((a, b) => newest(latest(a.id) ?? a.createdAt, latest(b.id) ?? b.createdAt));
-    if (team.bots.isEmpty && team.rooms.isEmpty) {
-      return _Empty(onCreate: readOnly ? null : () => Navigator.of(context).push(NewBotPage.route()), onDiscover: onGoDiscover);
-    }
-    final children = <Widget>[];
-    void group(String title, List<Widget> rows) {
-      if (rows.isEmpty) return;
-      children.add(Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
-        child: Text(
-          title,
-          style: Theme.of(context).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600, color: DshColors.of(context).textTertiary),
-        ),
-      ));
-      children.addAll(rows);
+    final pinned = [for (final entry in entries) if (pinnedIds.contains(entry.key)) entry];
+    final rest = [for (final entry in entries) if (!pinnedIds.contains(entry.key)) entry];
+    void open(_Entry entry) {
+      if (entry.bot case final bot?) {
+        onOpenBot(bot.id);
+      } else if (entry.room case final room?) {
+        onOpenRoom(room.id);
+      }
     }
 
-    group(ImStrings.pinnedGroup, [
-      for (final bot in mains)
-        ImChatRow(bot: bot, team: team, live: status.live, inbox: inbox, onTap: () => onOpenBot(bot.id)),
-    ]);
-    group(ImStrings.chatsGroup, [
-      for (final bot in others)
-        ImChatRow(bot: bot, team: team, live: status.live, inbox: inbox, onTap: () => onOpenBot(bot.id)),
-    ]);
-    group(ImStrings.roomsGroup, [
-      for (final room in rooms)
-        ImRoomRow(room: room, team: team, live: status.live, inbox: inbox, onTap: () => onOpenRoom(room.id)),
-    ]);
+    void longPress(_Entry entry) => unawaited(_pinSheet(context, ref, entry));
+
+    Widget rowFor(_Entry entry) {
+      final bot = entry.bot;
+      if (bot != null) {
+        return ImChatRow(
+          bot: bot,
+          team: team,
+          live: status.live,
+          inbox: inbox,
+          onTap: () => open(entry),
+          onLongPress: () => longPress(entry),
+        );
+      }
+      return ImRoomRow(
+        room: entry.room!,
+        team: team,
+        live: status.live,
+        inbox: inbox,
+        onTap: () => open(entry),
+        onLongPress: () => longPress(entry),
+      );
+    }
+
     return RefreshIndicator(
       onRefresh: () => ref.read(dsBotProvider.notifier).refresh(),
       child: ListView(
-        padding: const EdgeInsets.only(top: 4, bottom: 24),
-        children: children,
+        padding: const EdgeInsets.only(top: 2, bottom: 24),
+        children: [
+          if (pinned.isNotEmpty)
+            _PinnedArea(
+              entries: pinned,
+              team: team,
+              inbox: inbox,
+              onOpen: open,
+              onLongPress: longPress,
+            ),
+          if (pinned.isNotEmpty && rest.isNotEmpty) const SizedBox(height: 6),
+          for (final entry in rest) rowFor(entry),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pinSheet(BuildContext context, WidgetRef ref, _Entry entry) async {
+    final pinned = ref.read(imPinnedProvider).contains(entry.key);
+    final choice = await showAppSheet<String>(
+      context,
+      builder: (sheet) => SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SheetTitleBar(entry.name),
+            SheetGroup(
+              children: [
+                ListTile(
+                  leading: Icon(pinned ? AppIcons.pinActive : AppIcons.pin),
+                  title: Text(pinned ? ImStrings.unpin : ImStrings.pin),
+                  onTap: () => Navigator.pop(sheet, 'pin'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+    if (choice == 'pin') await ref.read(imPinnedProvider.notifier).toggle(entry.key);
+  }
+}
+
+/// 顶部置顶瓦片：1 个居中大瓦片，2–3 个一行均分，再多横向滚动。
+class _PinnedArea extends StatelessWidget {
+  const _PinnedArea({
+    required this.entries,
+    required this.team,
+    required this.inbox,
+    required this.onOpen,
+    required this.onLongPress,
+  });
+
+  final List<_Entry> entries;
+  final DsBotTeam team;
+  final DsBotInbox inbox;
+  final ValueChanged<_Entry> onOpen;
+  final ValueChanged<_Entry> onLongPress;
+
+  static const _large = 96.0;
+  static const _small = 76.0;
+  static const _height = 118.0;
+
+  Widget _tile(BuildContext context, _Entry entry, double width) => SizedBox(
+    width: width,
+    child: _PinnedTile(
+      entry: entry,
+      team: team,
+      inbox: inbox,
+      onTap: () => onOpen(entry),
+      onLongPress: () => onLongPress(entry),
+      avatarSize: width >= 90 ? 80 : 64,
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    if (entries.length == 1) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+        child: Center(child: _tile(context, entries.first, _large)),
+      );
+    }
+    if (entries.length <= 3) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
+        child: Row(
+          children: [
+            for (final entry in entries) Expanded(child: _tile(context, entry, _small)),
+          ],
+        ),
+      );
+    }
+    return SizedBox(
+      height: _height,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
+        itemCount: entries.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        itemBuilder: (context, index) => _tile(context, entries[index], _small),
       ),
     );
   }
 }
 
-/// 团队还读不出来时的四种状态：离线 / 中继 / 没装 / 装旧了 / 失败 / 加载中。
+class _PinnedTile extends StatelessWidget {
+  const _PinnedTile({
+    required this.entry,
+    required this.team,
+    required this.inbox,
+    required this.onTap,
+    required this.onLongPress,
+    required this.avatarSize,
+  });
+
+  final _Entry entry;
+  final DsBotTeam team;
+  final DsBotInbox inbox;
+  final VoidCallback onTap;
+  final VoidCallback onLongPress;
+  final double avatarSize;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = DshColors.of(context);
+    final bot = entry.bot;
+    final room = entry.room;
+    final unread = bot != null ? inbox.unreadOf(bot.id) : inbox.unreadOf(room!.id);
+    final avatar = bot != null
+        ? BotAvatar(bot: bot, size: avatarSize)
+        : RoomAvatar(room: room!, team: team, size: avatarSize);
+    return Semantics(
+      button: true,
+      label: entry.name,
+      excludeSemantics: true,
+      child: InkWell(
+        borderRadius: AppShape.radiusLg,
+        onTap: onTap,
+        onLongPress: onLongPress,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  avatar,
+                  if (unread > 0)
+                    Positioned(
+                      top: -4,
+                      right: -6,
+                      child: ImUnreadBadge(unread),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                entry.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.labelMedium?.copyWith(fontSize: 12.5, color: colors.textTertiary),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 团队还读不出来时的几种状态：离线 / 中继 / 没装 / 装旧了 / 失败 / 加载中。
 class _NotReady extends ConsumerWidget {
   const _NotReady({required this.status});
 

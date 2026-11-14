@@ -44,6 +44,7 @@ import 'bot_stop_guard.dart';
 import 'bot_action_scope.dart';
 import '../shell/drawer/drawer_destination.dart';
 import '../shell/session_drawer_host.dart';
+import '../im/im_strings.dart';
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
 import 'bot_attachment_open.dart';
@@ -77,16 +78,24 @@ import 'room_full_text_sheet.dart';
 final Map<String, ({String status, bool expanded})> _goalExpandedByRoom = <String, ({String status, bool expanded})>{};
 
 class RoomChatPage extends ConsumerStatefulWidget {
-  const RoomChatPage({super.key, required this.roomId, this.initialTarget = RoomChatTarget.all});
+  const RoomChatPage({super.key, required this.roomId, this.initialTarget = RoomChatTarget.all, this.light = false});
 
   final String roomId;
+
+  /// 轻松模式（lib/ui/im/）：左键是「返回消息」，没有会话抽屉与详情列。
+  final bool light;
 
   /// The conversation to open on: the group chat (default) or one member's
   /// conversation in it. Later switches are page state, not routes.
   final RoomChatTarget initialTarget;
 
-  static Route<void> route(String roomId, {RoomChatTarget initialTarget = RoomChatTarget.all}) =>
-      MaterialPageRoute<void>(builder: (_) => RoomChatPage(roomId: roomId, initialTarget: initialTarget));
+  static Route<void> route(
+    String roomId, {
+    RoomChatTarget initialTarget = RoomChatTarget.all,
+    bool light = false,
+  }) => MaterialPageRoute<void>(
+    builder: (_) => RoomChatPage(roomId: roomId, initialTarget: initialTarget, light: light),
+  );
 
   @override
   ConsumerState<RoomChatPage> createState() => _RoomChatPageState();
@@ -1040,11 +1049,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBinding
       _goalExpandedByRoom.remove(room.id);
     });
 
-    return BotAdaptiveFrame(
-      drawer: _drawerConfig,
-      // The column beside the chat: this conversation's details. A member who
-      // has no conversation in this group yet leaves it saying why.
-      panel: panelRoom
+    final details = panelRoom
           ? RoomDetailsPage.panel(key: ValueKey('room-panel-${room.id}'), roomId: room.id)
           : targetBot == null
           ? SessionDetailPage.panel(key: ValueKey('room-detail-$roomSession'), sessionId: roomSession)
@@ -1053,11 +1058,18 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBinding
           : SessionDetailPage.panel(
               key: ValueKey('member-detail-$memberSession'),
               sessionId: memberSession,
-            ),
+            );
+    return BotAdaptiveFrame(
+      // 轻松模式没有会话列表：抽屉、侧栏和详情列一起关掉。
+      drawer: widget.light ? null : _drawerConfig,
+      // The column beside the chat: this conversation's details. A member who
+      // has no conversation in this group yet leaves it saying why.
+      panel: widget.light ? null : details,
       builder: (context, layout) => BotChatFrame(
       header: BotChatHeader(
         // Three columns: the rail owns the chats key, the header drops its own.
-        showLeading: !layout.isExpanded,
+        // 轻松模式的左键固定是「返回消息」。
+        showLeading: widget.light ? true : !layout.isExpanded,
         // The group is what the page is about, in either conversation: its face
         // and its title stay, and the member is named on the line below.
         face: RoomAvatar(room: room, team: team, size: BotChatHeader.faceSize),
@@ -1073,8 +1085,11 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBinding
             : '‹ ${l10n.botsGroupChat} · ${targetBot.name}',
         tone: statusLine.tone,
         scrolledUnder: _scrolled,
-        onLeading: () => onBotMenu(context, ref, layout, () => _drawer.toggle(context)),
-        leadingTooltip: botMenuTooltip(context, layout),
+        onLeading: widget.light
+            ? () => Navigator.of(context).pop()
+            : () => onBotMenu(context, ref, layout, () => _drawer.toggle(context)),
+        leadingIcon: widget.light ? AppIcons.back : null,
+        leadingTooltip: widget.light ? ImStrings.backToMessages : botMenuTooltip(context, layout),
         // The title capsule is the group's: in a member's conversation it
         // switches back to the group chat, in the group chat it opens the
         // group's own details, as it always did.

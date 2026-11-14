@@ -521,21 +521,29 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
     final modelScope = BotActionScope(ref, botId: bot.id);
     final sendTarget = BotActionScope(ref, botId: bot.id);
 
+    final light = widget.look == BotChatLook.light;
     return BotAdaptiveFrame(
-      drawer: _drawerConfig,
+      // 轻松模式没有会话列表：抽屉、侧栏和详情列一起关掉。
+      drawer: light ? null : _drawerConfig,
       // The column beside the chat on a wide window; the key folds it away.
-      panel: SessionDetailPage.panel(key: ValueKey('bot-detail-${bot.sessionId}'), sessionId: bot.sessionId),
+      panel: light
+          ? null
+          : SessionDetailPage.panel(key: ValueKey('bot-detail-${bot.sessionId}'), sessionId: bot.sessionId),
       builder: (context, layout) => BotChatFrame(
       header: BotChatHeader(
         // Three columns: the rail owns the chats key, the header drops its own.
-        showLeading: !layout.isExpanded,
+        // 轻松模式的左键固定是「返回消息」。
+        showLeading: light ? true : !layout.isExpanded,
         face: BotAvatar(bot: bot, size: BotChatHeader.faceSize),
         title: bot.name,
         status: label,
         tone: tone,
         scrolledUnder: _scrolled,
-        onLeading: () => onBotMenu(context, ref, layout, () => _drawer.toggle(context)),
-        leadingTooltip: botMenuTooltip(context, layout),
+        onLeading: light
+            ? () => Navigator.of(context).pop()
+            : () => onBotMenu(context, ref, layout, () => _drawer.toggle(context)),
+        leadingIcon: light ? AppIcons.back : null,
+        leadingTooltip: light ? ImStrings.backToMessages : botMenuTooltip(context, layout),
         // The title capsule opens the Bot's own details; the key on the right
         // opens the conversation's (trajectory, files, progress).
         // 轻松模式：资料卡换成不露 token/原始记录的轻量页，右侧详情键去掉。

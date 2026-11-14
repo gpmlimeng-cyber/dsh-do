@@ -101,6 +101,10 @@ class BotChatHeader extends StatelessWidget {
   /// What the header's first key does; the default steps back.
   final VoidCallback? onLeading;
 
+  /// The first key's glyph when it is not the default one (≡ for a page that
+  /// opens its chat list, ‹ for the light home's 返回消息).
+  final IconData? leadingIcon;
+
   /// What that key says: 返回 on a phone; folding the sidebar on a wide window.
   final String? leadingTooltip;
   final ValueNotifier<double>? scrolledUnder;
@@ -392,7 +396,7 @@ class BotChatHeader extends StatelessWidget {
                   if (showLeading)
                   _RoundKey(
                     key: const ValueKey('bot-back'),
-                    icon: onLeading == null ? AppIcons.back : AppIcons.menu,
+                    icon: leadingIcon ?? (onLeading == null ? AppIcons.back : AppIcons.menu),
                     tooltip: onLeading == null ? l10n.commonBack : (leadingTooltip ?? l10n.chatChats),
                     onTap: onLeading ?? () => Navigator.of(context).maybePop(),
                   ),

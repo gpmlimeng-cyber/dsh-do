@@ -17,9 +17,6 @@ abstract final class ImStrings {
 
   // ── 消息 ──
   static String get messagesTitle => _zh ? '消息' : 'Messages';
-  static String get pinnedGroup => _zh ? '置顶' : 'Pinned';
-  static String get chatsGroup => _zh ? '对话' : 'Chats';
-  static String get roomsGroup => _zh ? '群聊' : 'Groups';
   static String get newBot => _zh ? '新建 Bot' : 'New Bot';
   static String get newRoom => _zh ? '新建群聊' : 'New group';
   static String get search => _zh ? '搜索' : 'Search';
@@ -71,6 +68,9 @@ abstract final class ImStrings {
   // ── 时间线（轻量外观） ──
   static String get segmentDivider => _zh ? '上下文已满，从这里开始新的一段' : 'Context was full — a new part starts here';
   static String get moreMenu => _zh ? '更多' : 'More';
+  static String get backToMessages => _zh ? '返回消息' : 'Back to messages';
+  static String get pin => _zh ? '置顶' : 'Pin';
+  static String get unpin => _zh ? '取消置顶' : 'Unpin';
   static String get openInPro => _zh ? '在专业模式里打开' : 'Open in Pro mode';
   static String get profile => _zh ? 'Bot 资料' : 'Bot profile';
   static String get retry => _zh ? '重试' : 'Try again';

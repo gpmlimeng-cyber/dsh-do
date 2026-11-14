@@ -40,7 +40,7 @@ class ImShellState extends ConsumerState<ImShell> {
   }
 
   void _openRoom(String roomId) {
-    unawaited(Navigator.of(context).push(RoomChatPage.route(roomId)));
+    unawaited(Navigator.of(context).push(RoomChatPage.route(roomId, light: true)));
   }
 
   @override

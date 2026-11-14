@@ -21,6 +21,7 @@ class ImChatRow extends StatelessWidget {
     required this.live,
     required this.inbox,
     required this.onTap,
+    this.onLongPress,
   });
 
   final DsBot bot;
@@ -28,6 +29,7 @@ class ImChatRow extends StatelessWidget {
   final DsBotLive live;
   final DsBotInbox inbox;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
   static const height = 72.0;
   static const avatarSize = 48.0;
@@ -75,6 +77,7 @@ class ImChatRow extends StatelessWidget {
         if (unread > 0) l10n.botsUnreadCount(unread),
       ].join(l10n.botsListSeparator),
       onTap: onTap,
+      onLongPress: onLongPress,
     );
   }
 }
@@ -87,6 +90,7 @@ class ImRoomRow extends StatelessWidget {
     required this.live,
     required this.inbox,
     required this.onTap,
+    this.onLongPress,
   });
 
   final DsBotRoom room;
@@ -94,6 +98,7 @@ class ImRoomRow extends StatelessWidget {
   final DsBotLive live;
   final DsBotInbox inbox;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -131,6 +136,7 @@ class ImRoomRow extends StatelessWidget {
         if (unread > 0) l10n.botsUnreadCount(unread),
       ].join(l10n.botsListSeparator),
       onTap: onTap,
+      onLongPress: onLongPress,
     );
   }
 }
@@ -144,6 +150,7 @@ class ImChatRowShell extends StatelessWidget {
     required this.preview,
     required this.onTap,
     required this.semanticsLabel,
+    this.onLongPress,
     this.previewColor,
     this.time,
     this.unread = 0,
@@ -157,6 +164,7 @@ class ImChatRowShell extends StatelessWidget {
   final int unread;
   final String semanticsLabel;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -169,6 +177,7 @@ class ImChatRowShell extends StatelessWidget {
       excludeSemantics: true,
       child: InkWell(
         onTap: onTap,
+        onLongPress: onLongPress,
         child: SizedBox(
           height: ImChatRow.height,
           child: Padding(
