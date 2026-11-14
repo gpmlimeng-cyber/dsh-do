@@ -3,6 +3,10 @@
 // cross-fades and lands on the same conversation on the same host: the web page
 // opens the native conversation; the native shell opens what the page reported
 // last (WebHome keeps currentSessionProvider current).
+//
+// 轻松模式 (lib/state/im_mode_state.dart) comes first: while it is on, this
+// build returns the IM shell and never reaches the 界面 choice — the light home
+// has no web counterpart, and its tabs replace the professional home.
 
 import 'dart:async';
 
@@ -10,8 +14,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
+import '../../state/im_mode_state.dart';
 import '../../state/sessions_state.dart';
 import '../../state/ui_mode_state.dart';
+import '../im/im_shell.dart';
 import '../shell/home_shell.dart';
 import '../shell/last_conversation_host.dart';
 import '../shell/page_frame.dart';
@@ -41,6 +47,9 @@ class _ModeHomeState extends ConsumerState<ModeHome> {
   /// The drawer's ⇄ key posts a request instead of switching by itself: the
   /// home is the only thing that outlives every page, so it does the switch.
   Future<void> _becomeWeb() async {
+    // 轻松模式 draws no web home: a request that arrives while it is on would
+    // switch 网页模式 behind the IM shell and surprise the person later.
+    if (ref.read(interfaceModeProvider).light) return;
     final container = ProviderScope.containerOf(context, listen: false);
     await container.read(uiModeProvider.notifier).set(UiMode.web);
     if (!mounted) return;
@@ -50,6 +59,18 @@ class _ModeHomeState extends ConsumerState<ModeHome> {
   @override
   Widget build(BuildContext context) {
     ref.listen(webModeRequestProvider, (_, _) => unawaited(_becomeWeb()));
+    // 轻松模式: its own home, before 界面 is even read. Read back like 界面, so
+    // the first frame is not the other home's.
+    final face = ref.watch(interfaceModeProvider);
+    if (!face.loaded) return const AppBackdrop(child: SizedBox.expand());
+    if (face.light) {
+      return AnimatedSwitcher(
+        duration: AppMotion.of(context, AppMotion.page),
+        switchInCurve: AppMotion.enter,
+        switchOutCurve: AppMotion.exit,
+        child: const KeyedSubtree(key: ValueKey(InterfaceMode.light), child: ImShell()),
+      );
+    }
     final mode = ref.watch(uiModeProvider);
     if (!mode.loaded) {
       // Read back with the rest of the settings: no frame of the other home.

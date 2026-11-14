@@ -1,0 +1,39 @@
+# Temporary lane for the IM light-mode work: runs the app checks on every push
+# to its own branch, because ci.yml only listens to main and pull requests.
+# Delete this file before the branch is merged.
+name: IM light mode
+
+on:
+  push:
+    branches: [feat/im-light-mode]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: 3.47.7
+  TZ: Asia/Shanghai
+
+jobs:
+  app:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Pub get
+        run: flutter pub get
+      - name: Analyze
+        run: flutter analyze
+      - name: Test
+        run: flutter test --reporter expanded

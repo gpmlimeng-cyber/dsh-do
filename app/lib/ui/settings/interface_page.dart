@@ -10,10 +10,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
 import '../../state/engine_settings_state.dart';
+import '../../state/im_mode_state.dart';
 import '../../state/quick_panel_state.dart';
 import '../../state/settings_state.dart';
 import '../../state/table_tint_state.dart';
 import '../../state/ui_mode_state.dart';
+import '../common/app_sheet.dart';
+import '../common/sheet_title_bar.dart';
 import '../engine_settings/namespace_copy.dart';
 import '../engine_settings/schema_form.dart';
 import '../shell/page_frame.dart';
@@ -21,10 +24,77 @@ import '../shell/quick_panel.dart';
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
 import '../web/local_web_screen.dart';
+import 'im_face_strings.dart';
 import 'quick_panel_items_sheet.dart';
 import 'settings_widgets.dart';
 
 SchemaFieldSpec _field(String ns, String key) => SchemaFieldSpec(ns, [key], copy: copyOf(ns, [key]));
+
+/// 聊天界面: 专业 (the home that has always been there) or 轻松 (the IM shell,
+/// lib/ui/im/). A one-time card explains it the first time; the light home has
+/// no web counterpart, so a switch out of 网页模式 comes with the change.
+Future<void> chooseInterfaceFace(BuildContext context, WidgetRef ref, InterfaceMode mode) async {
+  if (mode == ref.read(interfaceModeProvider).mode) return;
+  final notifier = ref.read(interfaceModeProvider.notifier);
+  if (mode == InterfaceMode.light) {
+    if (!await notifier.introSeen()) {
+      if (!context.mounted) return;
+      final confirmed = await _showImIntro(context);
+      await notifier.markIntroSeen();
+      if (!confirmed || !context.mounted) return;
+    }
+    if (ref.read(uiModeProvider).web) {
+      await ref.read(uiModeProvider.notifier).set(UiMode.native);
+      if (!context.mounted) return;
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        SnackBar(content: Text(ImFaceStrings.lightNativeOnly)),
+      );
+    }
+  }
+  await notifier.set(mode);
+  if (!context.mounted) return;
+  // The home is under this page: closing the stack lands on the new one.
+  Navigator.of(context, rootNavigator: true).popUntil((route) => route.isFirst);
+}
+
+Future<bool> _showImIntro(BuildContext context) async {
+  final confirmed = await showAppSheet<bool>(
+    context,
+    builder: (sheet) => SafeArea(
+      top: false,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SheetTitleBar(ImFaceStrings.introTitle),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(kSheetGutter, 0, kSheetGutter, 8),
+            child: Text(
+              ImFaceStrings.introBody,
+              style: Theme.of(sheet).textTheme.bodyMedium?.copyWith(color: Theme.of(sheet).colorScheme.onSurfaceVariant),
+            ),
+          ),
+          SheetGroup(
+            children: [
+              ListTile(
+                leading: const Icon(AppIcons.done),
+                title: Text(ImFaceStrings.introStart),
+                onTap: () => Navigator.pop(sheet, true),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+        ],
+      ),
+    ),
+  );
+  return confirmed == true;
+}
+
+String _faceLabel(InterfaceMode mode) => switch (mode) {
+  InterfaceMode.pro => ImFaceStrings.pro,
+  InterfaceMode.light => ImFaceStrings.light,
+};
 
 class InterfacePage extends ConsumerWidget {
   const InterfacePage({super.key});
@@ -44,6 +114,7 @@ class InterfacePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
     final mode = ref.watch(uiModeProvider.select((s) => s.mode));
+    final face = ref.watch(interfaceModeProvider.select((s) => s.mode));
     final settings = ref.watch(settingsProvider);
     final tableTint = ref.watch(tableTintProvider);
     final engine = ref.watch(engineSettingsProvider).value;
@@ -52,8 +123,32 @@ class InterfacePage extends ConsumerWidget {
       title: l10n.hubSettingsInterface,
       children: [
         SettingsSection(
+          title: ImFaceStrings.faceTitle,
+          spot: Spots.uiMode,
+          children: [
+            for (final option in InterfaceMode.values)
+              Semantics(
+                checked: option == face,
+                inMutuallyExclusiveGroup: true,
+                child: SettingsTile(
+                  key: ValueKey('interface-face-${option.name}'),
+                  title: _faceLabel(option),
+                  subtitle: option == InterfaceMode.light ? ImFaceStrings.lightHint : null,
+                  trailing: SizedBox.square(
+                    dimension: 32,
+                    child: Icon(option == face ? AppIcons.radioOn : AppIcons.radioOff, size: 24),
+                  ),
+                  onTap: () => unawaited(chooseInterfaceFace(context, ref, option)),
+                ),
+              ),
+          ],
+        ),
+        SettingsSection(
           title: l10n.hubInterfaceHome,
           spot: Spots.uiMode,
+          // 轻松模式 draws no web home: the choice stays stored, but the rows
+          // wait until 专业模式 is back.
+          footer: face == InterfaceMode.light ? Text(ImFaceStrings.lightNativeOnly) : null,
           children: [
             for (final m in UiMode.values)
               Semantics(
@@ -67,7 +162,7 @@ class InterfacePage extends ConsumerWidget {
                     dimension: 32,
                     child: Icon(m == mode ? AppIcons.radioOn : AppIcons.radioOff, size: 24),
                   ),
-                  onTap: () => choose(context, ref, m),
+                  onTap: face == InterfaceMode.light ? null : () => choose(context, ref, m),
                 ),
               ),
           ],
