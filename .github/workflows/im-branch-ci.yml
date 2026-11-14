@@ -13,6 +13,9 @@ permissions:
 
 env:
   FLUTTER_VERSION: 3.47.7
+  NOTO_CJK_VERSION: 1:20230817+repack1-3
+  NOTO_EMOJI_VERSION: v2.051
+  DSH_TEST_FONT_DIR: /usr/share/fonts/opentype/noto
   TZ: Asia/Shanghai
 
 jobs:
@@ -31,8 +34,19 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
+      # The tests draw text, and the harness wants these exact faces: the same
+      # fonts ci.yml installs for the goldens.
+      - name: Install the test fonts
+        working-directory: ${{ runner.temp }}
+        run: |
+          sudo apt-get update -q
+          apt-get download fonts-noto-cjk="$NOTO_CJK_VERSION" fonts-noto-cjk-extra="$NOTO_CJK_VERSION"
+          for deb in fonts-noto-cjk*.deb; do dpkg-deb -x "$deb" unpacked; done
+          sudo install -Dm644 -t "$DSH_TEST_FONT_DIR" unpacked/usr/share/fonts/opentype/noto/NotoSansCJK-{Regular,Bold,Light}.ttc
+          curl -fsSL --retry 3 -o /tmp/NotoColorEmoji.ttf "https://raw.githubusercontent.com/googlefonts/noto-emoji/$NOTO_EMOJI_VERSION/fonts/NotoColorEmoji.ttf"
+          sudo install -Dm644 /tmp/NotoColorEmoji.ttf /usr/share/fonts/noto/NotoColorEmoji.ttf
       - name: Pub get
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
       # The rc line already carries a few warnings in files this work does not
       # touch; they stay visible, but only errors fail this lane.
       - name: Analyze
