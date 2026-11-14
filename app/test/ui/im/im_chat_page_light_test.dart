@@ -27,16 +27,21 @@ void main() {
 
   testWidgets('light leading goes back to the messages list', (tester) async {
     final semantics = tester.ensureSemantics();
-    addTearDown(semantics.dispose);
-    usePhoneView(tester);
-    await tester.pumpWidget(goldenApp(
-      brightness: Brightness.light,
-      home: const BotChatPage(botId: 'b2', look: BotChatLook.light),
-      overrides: dsBotOverrides(dividerTransport()),
-    ));
-    await frames(tester);
-    // The leading key is a rounded key with a Semantics label, not a Tooltip.
-    expect(find.bySemanticsLabel(ImStrings.backToMessages), findsOneWidget);
+    try {
+      usePhoneView(tester);
+      await tester.pumpWidget(goldenApp(
+        brightness: Brightness.light,
+        home: const BotChatPage(botId: 'b2', look: BotChatLook.light),
+        overrides: dsBotOverrides(dividerTransport()),
+      ));
+      await frames(tester);
+      // The leading key is a rounded key with a Semantics label, not a Tooltip.
+      expect(find.bySemanticsLabel(ImStrings.backToMessages), findsOneWidget);
+    } finally {
+      // Dispose inside the body, not in tearDown: the handle must be gone before
+      // the test returns or Flutter asserts it was still active.
+      semantics.dispose();
+    }
   });
 
   testWidgets('light draws the light wording on a part boundary', (tester) async {

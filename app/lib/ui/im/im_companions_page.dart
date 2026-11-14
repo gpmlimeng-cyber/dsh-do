@@ -55,14 +55,18 @@ class _Grid extends StatelessWidget {
 
   static const _spacing = 12.0;
   static const _columns = 2;
+  static const _gutter = 16.0;
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final width = (constraints.maxWidth - _spacing * (_columns - 1)) / _columns;
+        // 列宽要从「滚动视图去掉左右留白后」的宽度算：用外层整宽算会让两张卡
+        // 刚好超出 2×16，Wrap 把第二张折到下一行，看起来像只有左列。
+        final available = constraints.maxWidth - _gutter * 2 - _spacing * (_columns - 1);
+        final width = available > 0 ? available / _columns : 0.0;
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+          padding: const EdgeInsets.fromLTRB(_gutter, 4, _gutter, 24),
           child: Wrap(
             spacing: _spacing,
             runSpacing: _spacing,
