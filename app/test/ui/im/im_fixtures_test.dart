@@ -93,11 +93,14 @@ void main() {
     ));
     await frames(tester);
     final l10n = tester.element(find.byType(BotChatPage)).l10n;
-    // The page loads its chat after the first frame: pump until the row is there.
-    for (var i = 0; i < 20 && find.text(l10n.botsEarlierMessages).evaluate().isEmpty; i++) {
+    // BotEventLine draws `Text.rich` (its icon is a WidgetSpan), so the row is a
+    // rich text whose plain text also carries the icon placeholder: match the
+    // text inside it, with findRichText.
+    final dividerRow = find.textContaining(l10n.botsEarlierMessages, findRichText: true);
+    for (var i = 0; i < 20 && dividerRow.evaluate().isEmpty; i++) {
       await tester.pump(const Duration(milliseconds: 100));
     }
-    expect(find.text(l10n.botsEarlierMessages), findsOneWidget);
+    expect(dividerRow, findsOneWidget);
   });
 
   testWidgets('a very long name stays one row and raises no layout error', (tester) async {
