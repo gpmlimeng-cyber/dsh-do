@@ -1,11 +1,13 @@
 // The light-mode fixtures, each shape checked without a UI so a broken fixture
-// fails here before the IM tests read it. The two widget tests run the divider
-// and the long name through the pages that already exist: that is also the pro
-// mode's baseline, which the `BotChatLook` change must keep unchanged.
+// fails here before the IM tests read it. The two widget tests keep the UI out
+// of the setup: the divider row is pumped on its own (the whole page dials a
+// WebSocket through its Sessions drawer in tests) and the long name goes through
+// the Bot list, which also guards the pro mode the `BotChatLook` change touches.
 
 import 'package:dsh_app/l10n/l10n.dart';
-import 'package:dsh_app/ui/bots/bot_chat_page.dart';
+import 'package:dsh_app/ui/bots/bot_chat_kit.dart';
 import 'package:dsh_app/ui/bots/bots_page.dart';
+import 'package:dsh_app/ui/theme/app_icons.dart';
 import 'package:dsh_client/dsh_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -84,23 +86,19 @@ void main() {
     });
   });
 
-  testWidgets('a part divider renders as the earlier-part row', (tester) async {
-    usePhoneView(tester);
-    await tester.pumpWidget(goldenApp(
-      home: const BotChatPage(botId: 'm1'),
-      brightness: Brightness.light,
-      overrides: dsBotOverrides(dividerTransport()),
+  testWidgets('a part divider renders its text as a rich line', (tester) async {
+    // The whole page opens a Sessions drawer whose provider dials a WebSocket in
+    // tests, so this pumps the row on its own: BotEventLine is what a divider
+    // draws, and the row is the only thing under test here.
+    final l10n = lookupL10n(const Locale('en'));
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: BotEventLine(text: l10n.botsEarlierMessages, icon: AppIcons.history),
+      ),
     ));
-    await frames(tester);
-    final l10n = tester.element(find.byType(BotChatPage)).l10n;
-    // BotEventLine draws `Text.rich` (its icon is a WidgetSpan), so the row is a
-    // rich text whose plain text also carries the icon placeholder: match the
-    // text inside it, with findRichText.
-    final dividerRow = find.textContaining(l10n.botsEarlierMessages, findRichText: true);
-    for (var i = 0; i < 20 && dividerRow.evaluate().isEmpty; i++) {
-      await tester.pump(const Duration(milliseconds: 100));
-    }
-    expect(dividerRow, findsOneWidget);
+    // BotEventLine draws `Text.rich` (its icon is a WidgetSpan): the plain text
+    // carries the icon placeholder, so match inside it with findRichText.
+    expect(find.textContaining(l10n.botsEarlierMessages, findRichText: true), findsOneWidget);
   });
 
   testWidgets('a very long name stays one row and raises no layout error', (tester) async {
