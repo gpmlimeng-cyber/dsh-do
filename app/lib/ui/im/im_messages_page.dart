@@ -46,6 +46,7 @@ class ImMessagesPage extends ConsumerWidget {
     final status = ref.watch(dsBotProvider);
     final team = status.team;
     return ImPageScaffold(
+      backdrop: false,
       title: ImStrings.messagesTitle,
       actions: [
         GlassIconButton(

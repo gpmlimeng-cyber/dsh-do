@@ -19,6 +19,7 @@ import 'im_discover_page.dart';
 import 'im_me_page.dart';
 import 'im_messages_page.dart';
 import 'im_tab_bar.dart';
+import '../wallpaper/wallpaper_backdrop.dart';
 
 class ImShell extends ConsumerStatefulWidget {
   const ImShell({super.key});
@@ -53,7 +54,9 @@ class ImShellState extends ConsumerState<ImShell> {
         if (didPop) return;
         setState(() => _tab = ImTab.messages);
       },
-      child: Scaffold(
+      // 壁纸/渐变铺满整屏（含底部栏和手势条），四个 Tab 页不再各自画背景。
+      child: WallpaperBackdrop(
+        child: Scaffold(
         backgroundColor: Colors.transparent,
         body: IndexedStack(
           index: _tab.index,
@@ -69,6 +72,7 @@ class ImShellState extends ConsumerState<ImShell> {
           ],
         ),
         bottomNavigationBar: ImTabBar(current: _tab, onSelect: _select, unread: unread),
+        ),
       ),
     );
   }

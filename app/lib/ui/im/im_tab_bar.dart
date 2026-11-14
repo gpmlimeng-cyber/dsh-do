@@ -42,36 +42,29 @@ class ImTabBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final dsh = DshColors.of(context);
-    final surfaces = DshSurfaces.of(context);
     final insets = MediaQuery.paddingOf(context);
     final selected = theme.colorScheme.primary;
     final idle = dsh.textTertiary;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: surfaces.backdropTop,
-        border: Border(
-          top: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5), width: 0.5),
-        ),
-      ),
-      child: Padding(
-        padding: EdgeInsets.only(bottom: insets.bottom),
-        child: SizedBox(
-          height: height,
-          child: Row(
-            children: [
-              for (final tab in ImTab.values)
-                Expanded(
-                  child: _ImTabKey(
-                    tab: tab,
-                    selected: tab == current,
-                    unread: tab == ImTab.messages && unread,
-                    iconColor: tab == current ? selected : idle,
-                    labelColor: tab == current ? selected : idle,
-                    onTap: () => onSelect(tab),
-                  ),
+    // 不画自己的底：壁纸/渐变从壳那一层直接透到屏幕最底，底部安全区也透明，
+    // Tab 和内容看起来是一整块。对比度由壁纸层的守护主题负责。
+    return Padding(
+      padding: EdgeInsets.only(bottom: insets.bottom),
+      child: SizedBox(
+        height: height,
+        child: Row(
+          children: [
+            for (final tab in ImTab.values)
+              Expanded(
+                child: _ImTabKey(
+                  tab: tab,
+                  selected: tab == current,
+                  unread: tab == ImTab.messages && unread,
+                  iconColor: tab == current ? selected : idle,
+                  labelColor: tab == current ? selected : idle,
+                  onTap: () => onSelect(tab),
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
       ),
     );
@@ -126,7 +119,6 @@ class _ImTabKey extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: theme.colorScheme.primary,
                           shape: BoxShape.circle,
-                          border: Border.all(color: DshSurfaces.of(context).backdropTop, width: 1),
                         ),
                       ),
                     ),

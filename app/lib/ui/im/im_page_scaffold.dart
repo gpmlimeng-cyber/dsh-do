@@ -24,6 +24,7 @@ class ImPageScaffold extends StatelessWidget {
     this.subtitle,
     this.actions = const [],
     this.back = false,
+    this.backdrop = true,
     this.padding = const EdgeInsets.only(top: 4),
     required this.child,
   });
@@ -40,6 +41,10 @@ class ImPageScaffold extends StatelessWidget {
   /// 从 Tab 里推进来的页面（资料卡等）为 true；Tab 根页为 false。
   final bool back;
 
+  /// 自己画不画壁纸/渐变。壳内的四个 Tab 页传 false（背景由 `ImShell` 那一层
+  /// 铺满整屏，连底部栏一起）；被 push 的页面仍为 true，盖住壳时自己画。
+  final bool backdrop;
+
   /// 内容自己的内边距；横向留白由本框架给。
   final EdgeInsetsGeometry padding;
 
@@ -50,10 +55,7 @@ class ImPageScaffold extends StatelessWidget {
     final safe = MediaQuery.paddingOf(context);
     final side = AppPage.sideFor(MediaQuery.sizeOf(context).width, inset: sideInsetFor(safe));
     final l10n = context.l10n;
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: dshSystemOverlay(Theme.of(context).brightness),
-      child: WallpaperBackdrop(
-        child: Builder(
+    final content = Builder(
           builder: (context) {
             // 壁纸在时这里是守护过的 Theme（淡色文字仍够对比）。
             final theme = Theme.of(context);
@@ -123,8 +125,11 @@ class ImPageScaffold extends StatelessWidget {
               ),
             );
           },
-        ),
-      ),
+        );
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: dshSystemOverlay(Theme.of(context).brightness),
+      // 壳内的 Tab 页不自己画背景（壳那一层铺满整屏）；被 push 的页面自己画。
+      child: backdrop ? WallpaperBackdrop(child: content) : content,
     );
   }
 }

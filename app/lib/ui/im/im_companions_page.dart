@@ -24,6 +24,7 @@ class ImCompanionsPage extends ConsumerWidget {
     final status = ref.watch(dsBotProvider);
     final team = status.team;
     return ImPageScaffold(
+      backdrop: false,
       title: ImStrings.companionsTitle,
       child: team == null
           ? ListView(

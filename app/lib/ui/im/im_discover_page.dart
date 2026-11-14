@@ -120,6 +120,7 @@ class ImDiscoverPage extends ConsumerWidget {
     ];
 
     return ImPageScaffold(
+      backdrop: false,
       title: ImStrings.discoverTitle,
       child: ListView(
         padding: const EdgeInsets.only(top: 4, bottom: 24),

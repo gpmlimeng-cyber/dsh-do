@@ -33,6 +33,7 @@ class ImMePage extends ConsumerWidget {
     }
 
     return ImPageScaffold(
+      backdrop: false,
       title: ImStrings.meTitle,
       child: ListView(
         padding: const EdgeInsets.only(top: 4, bottom: 24),
