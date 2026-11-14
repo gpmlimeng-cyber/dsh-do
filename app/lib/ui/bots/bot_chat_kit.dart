@@ -69,6 +69,7 @@ class BotChatHeader extends StatelessWidget {
     required this.tone,
     required this.onDetails,
     this.onLeading,
+    this.leadingIcon,
     this.leadingTooltip,
     this.scrolledUnder,
     this.chip,
