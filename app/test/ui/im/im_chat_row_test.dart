@@ -7,6 +7,7 @@ import 'package:dsh_app/state/bots_state.dart' show DsBotInbox;
 import 'package:dsh_app/ui/bots/bot_format.dart' show workPhrase;
 import 'package:dsh_app/ui/im/im_chat_row.dart';
 import 'package:dsh_client/dsh_client.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../chat/support/harness.dart' show loadTestFonts, testApp, usePhoneView;
@@ -28,13 +29,13 @@ void main() {
     final team = DsBotTeam.fromJson(state);
     final live = DsBotLive.fromJson(state);
     final bot = team.bot('b2')!;
-    await tester.pumpWidget(testApp(ImChatRow(
+    await tester.pumpWidget(testApp(Scaffold(body: ImChatRow(
       bot: bot,
       team: team,
       live: live,
       inbox: const DsBotInbox(),
       onTap: () {},
-    )));
+    ))));
     final l10n = tester.element(find.byType(ImChatRow)).l10n;
     expect(find.text(l10n.commonWaitingAnswer), findsOneWidget);
     final doing = workPhrase(live.bots['b2'], activity: live.activity['b2'], team: team);
@@ -48,13 +49,13 @@ void main() {
     final team = DsBotTeam.fromJson(state);
     final live = DsBotLive.fromJson(state);
     final bot = team.bot('b2')!;
-    await tester.pumpWidget(testApp(ImChatRow(
+    await tester.pumpWidget(testApp(Scaffold(body: ImChatRow(
       bot: bot,
       team: team,
       live: live,
       inbox: const DsBotInbox(),
       onTap: () {},
-    )));
+    ))));
     final l10n = tester.element(find.byType(ImChatRow)).l10n;
     final doing = workPhrase(live.bots['b2'], activity: live.activity['b2'], team: team);
     expect(doing, isNotNull);
@@ -71,13 +72,13 @@ void main() {
       'work': {'bots': <String, Object?>{}, 'rooms': <String, Object?>{}, 'approvals': <Object?>[]},
     });
     final bot = team.bot('b2')!;
-    await tester.pumpWidget(testApp(ImChatRow(
+    await tester.pumpWidget(testApp(Scaffold(body: ImChatRow(
       bot: bot,
       team: team,
       live: live,
       inbox: const DsBotInbox(),
       onTap: () {},
-    )));
+    ))));
     expect(find.text(bot.role), findsOneWidget);
   });
 }
