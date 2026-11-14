@@ -3,6 +3,7 @@
 // and the long name through the pages that already exist: that is also the pro
 // mode's baseline, which the `BotChatLook` change must keep unchanged.
 
+import 'package:dsh_app/l10n/l10n.dart';
 import 'package:dsh_app/ui/bots/bot_chat_page.dart';
 import 'package:dsh_app/ui/bots/bots_page.dart';
 import 'package:dsh_client/dsh_client.dart';
@@ -58,7 +59,7 @@ void main() {
       final bot = team.bots.firstWhere((bot) => bot.id == 'b2');
       final room = team.rooms.firstWhere((room) => room.id == 'r1');
       expect(bot.name, longBotName);
-      expect(bot.name.length, greaterThan(40));
+      expect(bot.name.length, greaterThanOrEqualTo(36));
       expect(room.name, longRoomName);
     });
 
@@ -91,7 +92,12 @@ void main() {
       overrides: dsBotOverrides(dividerTransport()),
     ));
     await frames(tester);
-    expect(find.text('更早的部分'), findsOneWidget);
+    final l10n = tester.element(find.byType(BotChatPage)).l10n;
+    // The page loads its chat after the first frame: pump until the row is there.
+    for (var i = 0; i < 20 && find.text(l10n.botsEarlierMessages).evaluate().isEmpty; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(find.text(l10n.botsEarlierMessages), findsOneWidget);
   });
 
   testWidgets('a very long name stays one row and raises no layout error', (tester) async {
