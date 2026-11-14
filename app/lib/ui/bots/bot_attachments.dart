@@ -1,6 +1,9 @@
 // Attachments in a Bot's chat and in a group chat. The ＋ panel and the system
 // pickers are the chat page's own; what differs here is where the bytes go:
-// images ride inline in `send`, files are staged first and travel as receipts.
+// photos are staged first (`stage-image`) and named as ids in `send`, files are
+// staged and travel as receipts.
+import 'dart:convert';
+
 import 'package:dsh_client/dsh_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -68,20 +71,23 @@ Future<List<DraftAttachment>?> pickBotAttachments(
   return picked.attachments;
 }
 
-/// Inline images and the receipts of the files staged in [sessionId].
+/// The staged ids of the photos and the receipts of the files in [sessionId].
 ///
-/// Uploads one at a time on purpose: a failure says which file it was, and the
-/// conversation keeps whatever arrived before it.
-Future<({List<PromptImage> images, List<String> receipts})> stageBotAttachments(
+/// The host's `send` takes ids, not bytes: each photo goes up first through
+/// [DsBotApi.stageImage] and the message names it. One at a time on purpose: a
+/// failure says which file it was, and the conversation keeps whatever arrived
+/// before it.
+Future<({List<String> images, List<String> receipts})> stageBotAttachments(
   DshClient client,
   String sessionId,
-  List<DraftAttachment> attachments,
-) async {
-  final images = <PromptImage>[];
+  List<DraftAttachment> attachments, {
+  required DsBotApi api,
+}) async {
+  final images = <String>[];
   final receipts = <String>[];
   for (final attachment in attachments) {
     if (attachment.isImage) {
-      images.add(PromptImage.fromBytes(attachment.bytes, mediaType: attachment.mediaType!, name: attachment.name));
+      images.add(await api.stageImage(attachment.mediaType!, base64Encode(attachment.bytes)));
     } else {
       final receipt = await client.uploadFile(sessionId, attachment.bytes, name: attachment.name);
       receipts.add(receipt.receiptId);

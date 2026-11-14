@@ -1988,13 +1988,32 @@ class DsBotApi {
     return const DsBotRoomProgress();
   }
 
-  /// Sends [text] to a Bot (its id) or a group (its id), with images inline
-  /// and the receipts of the files already staged in that conversation. Text
-  /// alone is one of the three.
+  /// Stages one photo for the next [send] (host API 2): the bytes travel here,
+  /// the message names the returned id. The host refuses a `send` that names a
+  /// photo it never staged (`bot/stale`), so every photo goes through here
+  /// first — a message may carry several, one call each.
+  Future<String> stageImage(String mediaType, String data) async {
+    final answer = asMapOrEmpty(
+      await call(
+        'stage-image',
+        {'mediaType': mediaType, 'data': data},
+        const Duration(seconds: 60),
+      ),
+    );
+    final id = asString(answer['id']);
+    if (id == null || id.isEmpty) {
+      throw const DshTransportException('The host did not stage the photo');
+    }
+    return id;
+  }
+
+  /// Sends [text] to a Bot (its id) or a group (its id), with the ids of the
+  /// photos already staged by [stageImage] and the receipts of the files
+  /// staged in that conversation. Text alone is one of the three.
   Future<DsBotSendResult> send(
     String conversationId,
     String text, {
-    List<PromptImage> images = const [],
+    List<String> imageIds = const [],
     List<String> fileReceiptIds = const [],
     /// How the message reaches a running turn: `steer` joins its next step,
     /// `queue` waits for it to end. Anything else is the host's default
@@ -2008,7 +2027,7 @@ class DsBotApi {
     await call('send', {
       'sessionId': conversationId,
       'text': text,
-      if (images.isNotEmpty) 'images': [for (final image in images) image.toJson()],
+      if (imageIds.isNotEmpty) 'images': imageIds,
       if (fileReceiptIds.isNotEmpty) 'fileReceiptIds': fileReceiptIds,
       if (mode != null) 'mode': mode,
       if (requestId != null && requestId.isNotEmpty) 'requestId': requestId,

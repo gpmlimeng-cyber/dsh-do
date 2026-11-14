@@ -309,11 +309,11 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBinding
         await client.updateQueue(inbox.sessionId, b.itemId, remove: true);
       }
       if (ref.read(roomChatProvider(widget.roomId)).running) await client.cancel(inbox.sessionId);
-      final staged = await stageBotAttachments(client, inbox.sessionId, pending.drafts);
+      final staged = await stageBotAttachments(client, inbox.sessionId, pending.drafts, api: api);
       await api.send(
         widget.roomId,
         pending.text,
-        images: staged.images,
+        imageIds: staged.images,
         fileReceiptIds: staged.receipts,
         mode: 'queue',
         requestId: pending.requestId,
@@ -354,13 +354,14 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBinding
   /// 重试 a failed send: the same request id, the staged attachments again.
   Future<void> _retryPending(DsBotPending pending) async {
     final client = ref.read(activeConnectionProvider).value?.client;
+    final api = ref.read(dsBotProvider.notifier).api;
     final controller = ref.read(roomChatProvider(widget.roomId).notifier);
-    if (client == null) return;
+    if (client == null || api == null) return;
     try {
-      final staged = await stageBotAttachments(client, _roomSession(), pending.drafts);
+      final staged = await stageBotAttachments(client, _roomSession(), pending.drafts, api: api);
       await controller.send(
         pending.text,
-        images: staged.images,
+        imageIds: staged.images,
         fileReceiptIds: staged.receipts,
         pending: pending,
       );
@@ -623,7 +624,8 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBinding
           return sent;
         }
         final client = ref.read(activeConnectionProvider).value?.client;
-        if (client == null) return false;
+        final api = ref.read(dsBotProvider.notifier).api;
+        if (client == null || api == null) return false;
         final outgoing = withQuote(text, quote);
         // The bubble shows at once, with the pictures still on this phone; the
         // host only logs the line once a relay runs, which can take a while.
@@ -631,10 +633,10 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBinding
         try {
           // The line reaches the round through the group's current Session; a
           // group that moved on has a newer one than its id.
-          final staged = await stageBotAttachments(client, _roomSession(), attachments);
+          final staged = await stageBotAttachments(client, _roomSession(), attachments, api: api);
           final sent = await controller.send(
             outgoing,
-            images: staged.images,
+            imageIds: staged.images,
             fileReceiptIds: staged.receipts,
             mode: botSendMode(mode),
             pending: pending,

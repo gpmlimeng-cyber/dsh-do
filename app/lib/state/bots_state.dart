@@ -1024,14 +1024,14 @@ class BotChatController extends Notifier<BotChatState> {
   /// it shows at once and leaves the pending list when the chat echoes it.
   Future<bool> send(
     String text, {
-    List<PromptImage> images = const [],
+    List<String> imageIds = const [],
     List<String> fileReceiptIds = const [],
     String? mode,
     DsBotPending? pending,
   }) async {
     final api = _api;
     final trimmed = text.trim();
-    if (api == null || (trimmed.isEmpty && images.isEmpty && fileReceiptIds.isEmpty)) return false;
+    if (api == null || (trimmed.isEmpty && imageIds.isEmpty && fileReceiptIds.isEmpty)) return false;
     final generation = _generation;
     int? newest;
     for (final item in state.items) {
@@ -1051,7 +1051,7 @@ class BotChatController extends Notifier<BotChatState> {
       final sent = await api.send(
         botId,
         trimmed,
-        images: images,
+        imageIds: imageIds,
         fileReceiptIds: fileReceiptIds,
         mode: mode,
         requestId: entry.requestId,
@@ -1342,14 +1342,14 @@ class RoomChatController extends Notifier<RoomChatState> {
 
   Future<bool> send(
     String text, {
-    List<PromptImage> images = const [],
+    List<String> imageIds = const [],
     List<String> fileReceiptIds = const [],
     String? mode,
     DsBotPending? pending,
   }) async {
     final api = _api;
     final trimmed = text.trim();
-    if (api == null || (trimmed.isEmpty && images.isEmpty && fileReceiptIds.isEmpty)) return false;
+    if (api == null || (trimmed.isEmpty && imageIds.isEmpty && fileReceiptIds.isEmpty)) return false;
     final generation = _generation;
     final entry = pending ?? newPending(trimmed);
     state = state.copyWith(
@@ -1365,7 +1365,7 @@ class RoomChatController extends Notifier<RoomChatState> {
       final sent = await api.send(
         roomId,
         trimmed,
-        images: images,
+        imageIds: imageIds,
         fileReceiptIds: fileReceiptIds,
         mode: mode,
         requestId: entry.requestId,

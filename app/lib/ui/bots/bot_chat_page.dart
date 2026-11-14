@@ -262,11 +262,11 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
         await client.updateQueue(inbox.sessionId, b.itemId, remove: true);
       }
       if (running) await client.cancel(inbox.sessionId);
-      final staged = await stageBotAttachments(client, inbox.sessionId, pending.drafts);
+      final staged = await stageBotAttachments(client, inbox.sessionId, pending.drafts, api: api);
       await api.send(
         widget.botId,
         pending.text,
-        images: staged.images,
+        imageIds: staged.images,
         fileReceiptIds: staged.receipts,
         mode: 'queue',
         requestId: pending.requestId,
@@ -306,13 +306,14 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
   /// 重试 a failed send: the same request id, the staged attachments again.
   Future<void> _retryPending(DsBotPending pending) async {
     final client = ref.read(activeConnectionProvider).value?.client;
+    final api = ref.read(dsBotProvider.notifier).api;
     final bot = ref.read(dsBotProvider).team?.bot(widget.botId);
-    if (client == null || bot == null) return;
+    if (client == null || api == null || bot == null) return;
     try {
-      final staged = await stageBotAttachments(client, bot.sessionId, pending.drafts);
+      final staged = await stageBotAttachments(client, bot.sessionId, pending.drafts, api: api);
       await ref.read(botChatProvider(widget.botId).notifier).send(
         pending.text,
-        images: staged.images,
+        imageIds: staged.images,
         fileReceiptIds: staged.receipts,
         pending: pending,
       );
@@ -349,12 +350,13 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
           return sent;
         }
         final client = ref.read(activeConnectionProvider).value?.client;
-        if (client == null) return false;
+        final api = ref.read(dsBotProvider.notifier).api;
+        if (client == null || api == null) return false;
         try {
-          final staged = await stageBotAttachments(client, part, attachments);
+          final staged = await stageBotAttachments(client, part, attachments, api: api);
           final sent = await controller.send(
             withQuote(text, quote),
-            images: staged.images,
+            imageIds: staged.images,
             fileReceiptIds: staged.receipts,
             mode: botSendMode(mode),
           );
