@@ -14,7 +14,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../bots/support.dart' show dsBotOverrides;
-import '../../chat/support/harness.dart' show loadTestFonts, usePhoneView;
+import '../../chat/support/harness.dart' show loadTestFonts, testTheme, usePhoneView;
 import '../../shell/golden_harness.dart' show goldenApp;
 import 'support/im_fixtures.dart';
 
@@ -92,6 +92,8 @@ void main() {
     // draws, and the row is the only thing under test here.
     final l10n = lookupL10n(const Locale('en'));
     await tester.pumpWidget(MaterialApp(
+      // BotEventLine reads DshColors from the theme, which needs the app theme.
+      theme: testTheme(Brightness.light),
       home: Scaffold(
         body: BotEventLine(text: l10n.botsEarlierMessages, icon: AppIcons.history),
       ),
