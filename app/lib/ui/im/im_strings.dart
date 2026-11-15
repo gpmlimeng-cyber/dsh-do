@@ -66,6 +66,19 @@ abstract final class ImStrings {
   static String get lookKindEmoji => _zh ? '表情头像' : 'Emoji';
   static String get lookKindPhoto => _zh ? '宿主照片' : 'Host photo';
   static String get lookKindDefault => _zh ? '默认形象' : 'Default look';
+  // ── 想多久再回 ──
+  static String get replyPace => _zh ? '想多久再回' : 'How long to think';
+  static String get replyPaceHint => _zh ? '只影响这一只伙伴，随时可以改' : 'Only this buddy; change it any time';
+  static String replyPaceHintFor(String name) => _zh ? '只影响「$name」，随时可以改' : 'Only $name; change it any time';
+  static String get replyPaceInstant => _zh ? '秒回' : 'Instantly';
+  static String get replyPaceInstantHint => _zh ? '直接回答，适合闲聊 · 通常要几秒' : 'Answer straight away; good for chat';
+  static String get replyPaceAuto => _zh ? '看情况' : 'Depends';
+  static String get replyPaceAutoHint => _zh ? '简单的马上回，难的会多想想' : 'Quick when easy, slower when hard';
+  static String get replyPaceThink => _zh ? '多想想' : 'Think a bit';
+  static String get replyPaceThinkHint => _zh ? '回得慢一点，答得更周全 · 通常要几十秒' : 'Slower, but more thorough; tens of seconds';
+  static String get replyPaceDeep => _zh ? '深思熟虑' : 'Think hard';
+  static String get replyPaceDeepHint => _zh ? '适合难题、写代码、做计划，会多用一些额度 · 通常要一两分钟' : 'Hard problems, code, plans; uses more quota';
+  static String get replyPaceRecommended => _zh ? '推荐' : 'Recommended';
   static String get roleEmpty => _zh ? '还没写角色' : 'No role yet';
   static String get profileSettingsHint => _zh ? '它要怎么说话' : 'How it should talk';
   static String deleteBotBody(String name) => _zh ? '删除「$name」后，它记得的事和对话都会没有。' : 'Deleting $name also removes its chats and what it remembers.';

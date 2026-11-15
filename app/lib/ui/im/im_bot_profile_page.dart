@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
 import '../../state/bot_avatar_state.dart';
+import '../../state/bot_effort.dart';
 import '../../state/bots_state.dart';
 import '../../state/features_state.dart' show permissionStateProvider;
 import '../bots/bot_avatar.dart';
@@ -23,6 +24,7 @@ import '../settings/index/spots.dart' show SettingsPageId;
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
 import 'im_page_scaffold.dart';
+import 'im_reply_pace.dart';
 import 'im_strings.dart';
 
 class ImBotProfilePage extends ConsumerWidget {
@@ -49,6 +51,8 @@ class ImBotProfilePage extends ConsumerWidget {
       BotAvatarConfig(kind: BotAvatarKind.photo) => ImStrings.lookKindPhoto,
       _ => ImStrings.lookKindDefault,
     };
+    final efforts = ref.watch(modelEffortsProvider(bot.model));
+    final pace = paceOf(bot.effort, efforts);
     final memory = ref.watch(dsBotMemoryProvider((botId: botId, roomId: null))).value;
     final permission = ref.watch(permissionStateProvider(bot.sessionId)).value;
     final api = ref.read(dsBotProvider.notifier).api;
@@ -160,6 +164,31 @@ class ImBotProfilePage extends ConsumerWidget {
                 icon: AppIcons.restart,
                 title: ImStrings.profileLookReset,
                 onTap: () => ref.read(botAvatarProvider.notifier).clear(bot.id),
+              ),
+            if (efforts.isNotEmpty)
+              ListPageRow(
+                icon: AppIcons.generating,
+                title: ImStrings.replyPace,
+                subtitle: '${replyPaceLabel(pace)} · ${replyPaceHint(pace)}',
+                onTap: () => showReplyPaceSheet(
+                  context,
+                  current: pace,
+                  botName: bot.name,
+                  onSelect: (next) async {
+                    final wire = wireEffortFor(next, efforts);
+                    // 「看情况」且本来就没存过 effort：不用发请求。
+                    if (wire.isEmpty && (bot.effort == null || bot.effort!.isEmpty)) return true;
+                    final messenger = ScaffoldMessenger.maybeOf(context);
+                    try {
+                      await api.updateBot(bot.id, effort: wire);
+                      await ref.read(dsBotProvider.notifier).refresh();
+                      return true;
+                    } catch (error) {
+                      messenger?.showSnackBar(SnackBar(content: Text(describeDsBotError(error))));
+                      return false;
+                    }
+                  },
+                ),
               ),
             ListPageRow(
               icon: AppIcons.goal,
