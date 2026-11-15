@@ -109,7 +109,7 @@ class _RoomAggregateDetailsPageState extends ConsumerState<RoomAggregateDetailsP
                     _RoomChangesTab(room: room, team: team, roomSession: roomSession),
                     _RoomFilesTab(room: room, team: team, roomSession: roomSession),
                     _RoomProgressTab(room: room, team: team, roomSession: roomSession),
-                    _RoomContextTab(room: room, team: team, activity: activity, roomSession: roomSession),
+                    _RoomContextTab(room: room, activity: activity, roomSession: roomSession),
                   ],
                 ),
               ),

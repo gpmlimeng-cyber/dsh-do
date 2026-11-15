@@ -14,6 +14,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
 import '../../state/adaptive_layout_state.dart';
+import '../../state/sessions_state.dart' show currentSessionProvider;
 import '../session/session_detail_page.dart';
 import '../shell/session_search_page.dart' show showSessionSearch;
 import '../theme/backdrop.dart' show AppBackdrop;
@@ -67,12 +68,14 @@ class BotAdaptiveFrame extends ConsumerWidget {
         animate: prefs.loaded,
         body: builder(context, layout),
         sidebar: config != null && sidebar
-            ? SessionsDrawer(
-                key: const ValueKey('bot-sidebar'),
-                // It stays: picking a conversation just shows it.
-                onClose: () {},
-                onOpen: config.onDestination,
+            ? _DrawerChoiceWatcher(
                 onChosen: config.onChosen,
+                child: SessionsDrawer(
+                  key: const ValueKey('bot-sidebar'),
+                  // It stays: picking a conversation just shows it.
+                  onClose: () {},
+                  onOpen: config.onDestination,
+                ),
               )
             : null,
         // Without a widget here the layout still reserves the rail's width and
@@ -202,4 +205,37 @@ class _SideParallax extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 上游的 SessionsDrawer 不再给 `onChosen`：侧栏选另一个会话时，由这里监听
+/// 当前会话的变化，替 Bot/群聊页退回壳层（和浮层抽屉里的补偿同一套行为）。
+class _DrawerChoiceWatcher extends ConsumerStatefulWidget {
+  const _DrawerChoiceWatcher({required this.onChosen, required this.child});
+
+  final VoidCallback onChosen;
+  final Widget child;
+
+  @override
+  ConsumerState<_DrawerChoiceWatcher> createState() => _DrawerChoiceWatcherState();
+}
+
+class _DrawerChoiceWatcherState extends ConsumerState<_DrawerChoiceWatcher> {
+  ProviderSubscription<String?>? _sub;
+
+  @override
+  void initState() {
+    super.initState();
+    _sub = ref.listenManual<String?>(currentSessionProvider, (previous, next) {
+      if (next != null && next != previous) widget.onChosen();
+    });
+  }
+
+  @override
+  void dispose() {
+    _sub?.close();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }

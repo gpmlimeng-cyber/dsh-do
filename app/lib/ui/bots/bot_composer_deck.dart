@@ -11,7 +11,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../state/bots_state.dart';
 import '../../state/chat_state.dart';
-import '../../state/cloud_speech.dart';
 import '../../state/connection_state.dart';
 import '../../state/room_activity_state.dart' show roomMembersActivityProvider, roomUsageTotal;
 import '../../state/session_modes.dart';
@@ -248,7 +247,8 @@ VoiceInputController createBotVoice(
   bridge: ref.read(voiceBridgeProvider),
   mode: () => ref.read(voiceSettingsProvider.notifier).ready(),
   // 云端 is the app's own call, on the providers the app already reads.
-  cloud: () => alive() ? resolveCloudSpeechModelFrom(ref) : Future<CloudSpeechModel?>.value(),
+  // 云端识别由 `voiceCloudProvider` 决定（同一个 resolver 聊天页也在用）。
+  cloud: (mode) => alive() ? ref.read(voiceCloudProvider)(mode) : Future<VoiceCloud?>.value(),
   // The voice model lives in the on-device engine: it counts for that host only.
   modelReady: () =>
       alive() &&

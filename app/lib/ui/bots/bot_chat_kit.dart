@@ -1674,8 +1674,6 @@ class BotReplyText extends StatelessWidget {
       streaming: streaming,
       selectable: false,
       repairBareViews: true,
-      mentions: mentions,
-      onLinkTap: onLinkTap,
     ),
   );
 }

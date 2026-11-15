@@ -1609,7 +1609,14 @@ class _TavernChatPageState extends ConsumerState<TavernChatPage> {
             },
             // 舞台 in place of ⓘ (the title opens the quick look); beside the story
             // on a wide screen, it needs no key.
-            action: beside ? null : (AppIcons.sidebar, l10n.tavernStage, () => _scaffold.currentState?.openEndDrawer()),
+            action: beside
+                ? null
+                : (
+                    icon: AppIcons.sidebar,
+                    tooltip: l10n.tavernStage,
+                    onTap: () => _scaffold.currentState?.openEndDrawer(),
+                    color: null,
+                  ),
           ),
         ),
         // The story under 酒馆设置's text size and spacing.

@@ -306,8 +306,6 @@ class _PhoneDndPageState extends ConsumerState<PhoneDndPage> {
           if (!bg.effectiveReady && !waiting)
             PhoneNote(tone: NoteTone.warn, text: bg.effectiveReason ?? l10n.phoneNotReadyYet),
           // A failed self-check never takes the channel away; real failures come from the task itself.
-          if (bg.effectiveReady && bg.selfCheckWarning != null)
-            PhoneNote(key: const ValueKey('phone-dnd-self-check-warning'), text: bg.selfCheckWarning!),
         ],
         if (_error case final error? when error != bg.effectiveReason) PhoneNote(tone: NoteTone.warn, text: error),
         if (bg.keep.enabled && _keepStatus(bg.keep).$1 != null)
