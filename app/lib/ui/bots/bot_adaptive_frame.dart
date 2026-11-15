@@ -23,7 +23,6 @@ import '../shell/adaptive/adaptive_layout.dart';
 import '../shell/adaptive/adaptive_scaffold.dart';
 import '../shell/adaptive/open_detail.dart';
 import '../shell/adaptive/adaptive_rail.dart';
-import '../shell/drawer/drawer_destination.dart';
 import '../shell/session_drawer_host.dart';
 import '../shell/sessions_drawer.dart';
 

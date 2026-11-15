@@ -37,8 +37,8 @@ class LastConversation {
   Map<String, Object?> toJson() => {
     'kind': kind.name,
     'id': id,
-    if (memberId case final member?) 'memberId': member,
-    if (at case final at?) 'at': at.toUtc().toIso8601String(),
+    'memberId': ?memberId,
+    'at': ?at?.toUtc().toIso8601String(),
   };
 
   static LastConversation? fromJson(Object? json) {

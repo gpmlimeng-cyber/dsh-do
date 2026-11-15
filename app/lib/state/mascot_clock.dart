@@ -14,7 +14,6 @@
 // 测试：`MascotClockScope(clock: …)` 注入一个不自己走的时钟，用
 // `advanceTo()` 推到固定相位，就能断言「同屏多个头像读到同一个值」；
 // 真实时钟下 `tester.binding.transientCallbackCount` 应为 1（旧实现是每个头像 1）。
-import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 

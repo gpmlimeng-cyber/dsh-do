@@ -125,11 +125,11 @@ class DrawerView {
             if (DrawerFolder.fromJson(raw) case final f? when seen.add(f.id)) f,
       ],
       sort: map['sort'] == 'created' ? DrawerSort.created : DrawerSort.activity,
-      pinnedBots: [
+      pinnedBots: <String>{
         if (map['pinnedBots'] case final List<Object?> keys)
           for (final key in keys)
             if (key is String && key.isNotEmpty) key,
-      ].toSet().toList(),
+      }.toList(),
     );
   }
 

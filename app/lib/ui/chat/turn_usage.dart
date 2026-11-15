@@ -12,9 +12,7 @@ import 'trajectory_sheet.dart' show TimelineBar;
 import 'usage_sheet.dart' show formatPercent, formatTokens;
 
 class TurnUsageCard extends StatelessWidget {
-  const TurnUsageCard({super.key, required List<TurnTrace> turns})
-    : entries = const [],
-      turns = turns;
+  const TurnUsageCard({super.key, required this.turns}) : entries = const [];
 
   /// Turns from more than one conversation (a group draws each member's). The
   /// label replaces 「第 N 轮」, because turn numbers restart per conversation.
