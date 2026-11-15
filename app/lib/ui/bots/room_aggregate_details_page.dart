@@ -229,7 +229,7 @@ class _RoomTrajectoryTabState extends ConsumerState<_RoomTrajectoryTab> {
                 _Chip(
                   key: ValueKey('room-trajectory-${member.id}'),
                   label: member.name,
-                  avatar: BotAvatar(bot: member, size: 20),
+                  avatar: BotAvatar(bot: member, size: 28),
                   selected: _memberId == member.id,
                   onTap: () => setState(() => _memberId = member.id),
                 ),
@@ -316,7 +316,7 @@ class _RoomChangesTab extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
             child: Row(
               children: [
-                if (bot != null) ...[BotAvatar(bot: bot, size: 20), const SizedBox(width: 8)],
+                if (bot != null) ...[BotAvatar(bot: bot, size: 28), const SizedBox(width: 8)],
                 Text(
                   bot?.name ?? l10n.botsGroupChat,
                   style: theme.textTheme.labelLarge,
@@ -430,7 +430,7 @@ class _RoomFilesTabState extends State<_RoomFilesTab> {
                 _Chip(
                   key: const ValueKey('room-files-admin'),
                   label: admin.name,
-                  avatar: BotAvatar(bot: admin, size: 20),
+                  avatar: BotAvatar(bot: admin, size: 28),
                   selected: sessionId == memberSessionFor(widget.room, admin),
                   onTap: () => setState(() => _sessionId = memberSessionFor(widget.room, admin)),
                 ),
@@ -440,7 +440,7 @@ class _RoomFilesTabState extends State<_RoomFilesTab> {
                 _Chip(
                   key: ValueKey('room-files-${bot.id}'),
                   label: bot.name,
-                  avatar: BotAvatar(bot: bot, size: 20),
+                  avatar: BotAvatar(bot: bot, size: 28),
                   selected: sessionId == memberSessionFor(widget.room, bot),
                   onTap: () => setState(() => _sessionId = memberSessionFor(widget.room, bot)),
                 ),
@@ -605,7 +605,7 @@ class _RoomProgressTab extends ConsumerWidget {
                 if (team.bot(work.botId) case final bot?)
                   ListPageRow(
                     key: ValueKey('room-progress-work-${bot.id}'),
-                    leading: BotAvatar(bot: bot, size: 28),
+                    leading: BotAvatar(bot: bot, size: 32),
                     title: bot.name,
                     subtitle: workPhrase(work, team: team) ?? l10n.botsWorking,
                     subtitleMaxLines: 1,
@@ -615,7 +615,7 @@ class _RoomProgressTab extends ConsumerWidget {
                 if (team.bot(approval.botId) case final bot?)
                   ListPageRow(
                     key: ValueKey('room-progress-approval-${bot.id}'),
-                    leading: BotAvatar(bot: bot, size: 28),
+                    leading: BotAvatar(bot: bot, size: 32),
                     title: bot.name,
                     subtitle: l10n.botsMemberNeedsApproval,
                     subtitleMaxLines: 1,
@@ -629,7 +629,7 @@ class _RoomProgressTab extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(8, 0, 8, 6),
             child: Row(
               children: [
-                BotAvatar(bot: bot, size: 20),
+                BotAvatar(bot: bot, size: 28),
                 const SizedBox(width: 8),
                 Text(bot.name, style: theme.textTheme.labelLarge),
                 const Spacer(),

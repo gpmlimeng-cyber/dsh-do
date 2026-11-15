@@ -239,7 +239,7 @@ class _RoomSessionSheetState extends State<_RoomSessionSheet> {
       final selected = filtering ? _mode.memberId == bot.id : _target.memberId == bot.id;
       return ListPageRow(
         key: ValueKey('room-member-${bot.id}'),
-        leading: BotAvatar(bot: bot, size: 24),
+        leading: BotAvatar(bot: bot, size: 28),
         title: bot.name,
         subtitle: time != null ? shortTime(time, now: now) : (spokenAt == null ? l10n.botsRoomNeverSpoke : null),
         subtitleColor: spokenAt == null ? dsh.textTertiary : null,
