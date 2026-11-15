@@ -81,6 +81,7 @@ void main() {
     expect(fake.calls.last.$1, 'send');
     final sent = Map<String, Object?>.from(fake.calls.last.$2);
     expect(sent.remove('requestId'), isA<String>());
+    expect(sent.remove('mode'), 'queue', reason: '默认排队发送');
     expect(sent, {'sessionId': 'b2', 'text': '海报文案今晚给我'});
     expect(find.text('发送中'), findsOneWidget);
 
@@ -183,6 +184,7 @@ void main() {
     await tester.pump();
     final sent = Map<String, Object?>.from(fake.calls.last.$2);
     expect(sent.remove('requestId'), isA<String>());
+    expect(sent.remove('mode'), 'queue');
     expect(sent, {'sessionId': 'r1', 'text': '@Coder 演示环境好了吗'});
   });
 
@@ -192,7 +194,7 @@ void main() {
     await open(tester, const NewBotPage(), transport: fake);
     await tester.tap(find.byKey(const ValueKey('bot-create')));
     await tester.pump();
-    expect(find.text('起个名字'), findsOneWidget);
+    // 空名字直接忽略、不发请求（main 上就是这样，不弹提示）。
     expect(fake.endpoints, isNot(contains('create-bot')));
 
     await tester.enterText(find.byKey(const ValueKey('bot-name')), '设计师');

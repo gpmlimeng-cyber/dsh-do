@@ -15,6 +15,7 @@ import 'package:dsh_app/ui/chat/voice/voice_bridge.dart';
 import 'package:dsh_app/state/models_state.dart';
 import 'package:dsh_app/state/notify_state.dart';
 import 'package:dsh_app/state/sessions_state.dart' show sessionsProvider;
+import 'package:dsh_app/state/workspaces_state.dart';
 import 'package:dsh_app/state/plugins_state.dart';
 import 'package:dsh_app/ui/bots/bot_format.dart' show botClock;
 import 'package:dsh_client/dsh_client.dart';
@@ -147,6 +148,9 @@ List<Override> dsBotOverrides(
   /// 抽屉一挂上就会建 SessionsController；默认给空列表，别让它去连引擎。
   /// 自己已经覆盖 sessionsProvider 的用例传 false，免得同一容器覆盖两次。
   bool sessions = true,
+  /// 页头的工作区切换器会建 WorkspacesController（同样会连 mux）；默认给个
+  /// 不连网的 ready 状态，自己覆盖了 workspacesProvider 的用例传 false。
+  bool workspaces = true,
 }) => [
   activeConnectionProvider.overrideWithValue(noEngine ? const AsyncData<HostConnection?>(null) : AsyncData(connection ?? fakeConnection)),
   dsBotApiFactoryProvider.overrideWithValue((_) => DsBotApi(transport)),
@@ -168,7 +172,14 @@ List<Override> dsBotOverrides(
   // override of the same provider.
   modelCatalogProvider.overrideWith((ref) async => catalog ?? testCatalog),
   if (sessions) sessionsProvider.overrideWith(() => shell.FakeSessions(const [])),
+  if (workspaces) workspacesProvider.overrideWith(FakeWorkspaces.new),
 ];
+
+/// A workspace list that never asks the host: the page header only needs the state.
+class FakeWorkspaces extends WorkspacesController {
+  @override
+  WorkspacesState build() => const WorkspacesState(status: WorkspacesStatus.ready);
+}
 
 /// No model downloaded and none wanted: the microphone stays away.
 class FakeVoiceModel extends VoiceModelController {
