@@ -422,17 +422,7 @@ class _ColorCell extends StatelessWidget {
                     emotion: '02',
                     size: 58,
                   ),
-                  if (selected)
-                    Positioned(
-                      right: -2,
-                      top: -2,
-                      child: Container(
-                        width: 18,
-                        height: 18,
-                        decoration: BoxDecoration(shape: BoxShape.circle, color: theme.colorScheme.primary),
-                        child: Icon(AppIcons.selected, size: 13, color: theme.colorScheme.onPrimary),
-                      ),
-                    ),
+                  // 选中只靠格子本身的底色 + 主色描边，不盖对钩。
                 ],
               ),
             ),
