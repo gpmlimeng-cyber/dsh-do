@@ -39,27 +39,31 @@ void main() {
     expect(items.last.kind, DsBotItemKind.thinking);
   });
 
-  test('a finished turn keeps no thinking', () {
+  test('a finished turn keeps its thinking line', () {
+    // botTranscriptItems 现在直通：思考行「一条、跑到哪跟到哪」，不按 running 丢。
     final items = botTranscriptItems([_bot('先说说', 1), _thinking(2)], running: false);
-    expect(items.map((item) => item.kind), [DsBotItemKind.bot]);
+    expect(items.map((item) => item.kind), [DsBotItemKind.bot, DsBotItemKind.thinking]);
   });
 
-  test('thinking followed by a reply or a tool row is over', () {
-    expect(botTranscriptItems([_thinking(1), _bot('答复', 2)], running: true), hasLength(1));
-    expect(botTranscriptItems([_thinking(1), _tool('read_file', 2)], running: true), hasLength(1));
+  test('thinking stays when a reply or a tool row follows', () {
+    expect(botTranscriptItems([_thinking(1), _bot('答复', 2)], running: true), hasLength(2));
+    expect(botTranscriptItems([_thinking(1), _tool('read_file', 2)], running: true), hasLength(2));
   });
 
-  test('several steps of one turn make one line', () {
+  test('every thinking row is kept; the row itself collapses the details', () {
     final items = botTranscriptItems(
       [_thinking(1), _tool('read_file', 2), _thinking(3), _tool('bash', 4), _thinking(5)],
       running: true,
     );
-    expect(items.where((item) => item.kind == DsBotItemKind.thinking), hasLength(1));
+    expect(items.where((item) => item.kind == DsBotItemKind.thinking), hasLength(3));
     expect(items.last.kind, DsBotItemKind.thinking);
   });
 
-  test('a history page without a running turn adds nothing', () {
-    expect(botTranscriptItems([_bot('旧消息', 1), _thinking(2)], running: false).single.kind, DsBotItemKind.bot);
+  test('a history page keeps its thinking row too', () {
+    expect(
+      botTranscriptItems([_bot('旧消息', 1), _thinking(2)], running: false).map((item) => item.kind),
+      [DsBotItemKind.bot, DsBotItemKind.thinking],
+    );
   });
 
   testWidgets('a thinking line draws under the Bot name while it runs', (tester) async {

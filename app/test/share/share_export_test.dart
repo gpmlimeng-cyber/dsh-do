@@ -63,13 +63,14 @@ void main() {
     final capture = captureShareCard(key).then((value) => png = value);
     await _drainUntil(tester, () => false);
     expect(png, isNull, reason: 'the picture has not come yet');
-    expect(find.byType(RawImage), findsNothing);
+    // 卡上的品牌 logo 先画出来；等的是消息里那张照片，不是它。
+    expect(find.byType(RawImage), findsOneWidget, reason: '只有品牌 logo');
 
     gate.complete();
     await _drainUntil(tester, () => png != null);
     await capture;
     expect(png, isNotNull);
-    expect(find.byType(RawImage), findsOneWidget, reason: 'drawn before the capture');
+    expect(find.byType(RawImage), findsNWidgets(2), reason: 'logo 和照片都在');
   });
 
   testWidgets('a picture that never comes does not hold the export', (tester) async {
