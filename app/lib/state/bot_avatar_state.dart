@@ -5,9 +5,9 @@
 // A Bot without an entry renders exactly as before — photo if the Host has
 // one, else the initial — so old Bots and a cleared store change nothing.
 //
-// The mascot model is [MascotSpec] (ui/mascots/mascot_avatar.dart): 前端's
-// renderer enums plus the serialisation, one definition only. This file owns
-// where it is stored and how it degrades, not how it is drawn.
+// The mascot model is [MascotSpec] (state/mascot_spec.dart): 前端's renderer
+// enums plus the serialisation, one definition only. This file owns where it
+// is stored and how it degrades, not how it is drawn.
 
 import 'dart:async';
 import 'dart:convert';
@@ -16,7 +16,7 @@ import 'dart:math';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../ui/mascots/mascot_avatar.dart' show MascotCharacter, MascotColor, MascotMotion, MascotSpec;
+import 'mascot_spec.dart';
 import 'hosts_state.dart';
 
 /// How a Bot's avatar is drawn.
@@ -96,7 +96,8 @@ class BotAvatarStore extends Notifier<Map<String, BotAvatarConfig>> {
   static const maxPerHost = 200;
 
   /// host.encode() → {botId → config}, every Host seen on this phone.
-  Map<String, Map<String, BotAvatarConfig>> _all = {};
+  final Map<String, Map<String, BotAvatarConfig>> _all = {};
+
   late String _hostKey;
   bool _restored = false;
 

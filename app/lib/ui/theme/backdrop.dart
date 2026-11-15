@@ -123,7 +123,7 @@ class BackdropVeil extends StatelessWidget {
 
   /// 顶部版:从顶边往下 [height] 实心,再往下 [feather] 缓缓淡出(页面顶栏
   /// 后面)。同样要铺满整页、和页面左上角对齐。
-  BackdropVeil.top({super.key, required double height, this.feather = 14, this.glow = true, this.opacity = 1})
+  const BackdropVeil.top({super.key, required double height, this.feather = 14, this.glow = true, this.opacity = 1})
     : solidHeight = _FixedHeight(height),
       featherShare = null,
       inside = false,
@@ -131,7 +131,7 @@ class BackdropVeil extends StatelessWidget {
 
   /// The page's own backdrop over the whole box it is given (the composer's
   /// plate): [opacity] below 1 lets the conversation behind show through.
-  BackdropVeil.area({super.key, this.feather = 14, this.glow = true, this.opacity = 0.86})
+  const BackdropVeil.area({super.key, this.feather = 14, this.glow = true, this.opacity = 0.86})
     : solidHeight = const _FixedHeight(100000),
       featherShare = null,
       inside = false,
