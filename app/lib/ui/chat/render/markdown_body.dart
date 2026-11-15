@@ -26,6 +26,7 @@ import 'code_block.dart';
 import 'markdown_blocks.dart';
 import 'markdown_image.dart';
 import 'markdown_math.dart';
+import 'message_mentions.dart';
 import 'math_syntax.dart';
 import 'stream_repair.dart';
 import 'table_syntax.dart';
@@ -76,6 +77,7 @@ class MarkdownBody extends StatefulWidget {
     this.selectable = true,
     this.secondary = false,
     this.repairBareViews = false,
+    this.mentions = const [],
   });
 
   final String text;
@@ -91,6 +93,9 @@ class MarkdownBody extends StatefulWidget {
 
   /// 次级排版(思考过程):小一号、次级文字色,标题也不抢眼。
   final bool secondary;
+
+  /// 群里被叫到的成员：`@名字` 按各人的墨色画。空表不扫。
+  final List<InlineMention> mentions;
 
   /// 助手回复:模型把 `dsh-ui` 的 JSON 裸着写进正文时,也当成视图画
   /// (见 [fenceBareDshUiViews])。别的 Markdown(文档、说明页)不开。
@@ -239,6 +244,16 @@ class MarkdownBody extends StatefulWidget {
 
   /// The cursor with a [MarkdownPatterns] list, one list per list.
   static final _streamingWith = Expando<List<InlinePattern>>('streamingWith');
+
+  /// A marked mention ([markMentions]) → the member's own ink.
+  static final _mentionPattern = InlinePattern(
+    pattern: RegExp('$mentionMarkOpen([^$mentionMarkClose]*)$mentionMarkClose'),
+    builder: (context, match, style) {
+      final marked = match[1] ?? '';
+      final ink = _MentionInk.maybeOf(context)?[marked.toLowerCase()];
+      return TextSpan(text: marked, style: ink == null ? style : style.copyWith(color: ink));
+    },
+  );
 
   // Builders stay static. gpt_markdown 1.4.0's config.isSame ignores
   // onLinkTap identity; its cached spans may retain this context-only callback.
@@ -606,12 +621,14 @@ class _MarkdownBodyState extends State<MarkdownBody> {
   late String _source = _prepare();
 
   String _prepare() {
+    // `@成员` 先圈出来再交给 Markdown：只多两个私用区字符，语法照旧。
+    final text = widget.mentions.isEmpty ? widget.text : markMentions(widget.text, widget.mentions);
     if (widget.reveal) {
-      return MarkdownBody._prepareRevealed(widget.text, repairBareViews: widget.repairBareViews);
+      return MarkdownBody._prepareRevealed(text, repairBareViews: widget.repairBareViews);
     }
     _repair = widget.streaming ? (_repair ?? StreamingMarkdownRepair()) : null;
     return MarkdownBody._prepareSource(
-      widget.text,
+      text,
       streaming: widget.streaming,
       repairBareViews: widget.repairBareViews,
       repair: _repair,
@@ -640,7 +657,8 @@ class _MarkdownBodyState extends State<MarkdownBody> {
     if (oldWidget.text != widget.text ||
         oldWidget.streaming != widget.streaming ||
         oldWidget.reveal != widget.reveal ||
-        oldWidget.repairBareViews != widget.repairBareViews) {
+        oldWidget.repairBareViews != widget.repairBareViews ||
+        !listEquals([for (final m in oldWidget.mentions) m.name], [for (final m in widget.mentions) m.name])) {
       _source = _prepare();
     }
   }
@@ -668,12 +686,16 @@ class _MarkdownBodyState extends State<MarkdownBody> {
       blockAnimation: widget.reveal ? GptMarkdownBlockAnimation.fadeIn : GptMarkdownBlockAnimation.none,
       charactersPerSecond: MarkdownBody._revealPace,
       revealFadeSeconds: MarkdownBody._revealFade,
-      inlinePatterns: switch ((widget.streaming && !widget.reveal, MarkdownPatterns.maybeOf(context))) {
-        (true, null) => MarkdownBody._streamingPatterns,
-        (false, null) => null,
-        (true, final extra?) => MarkdownBody._streamingWith[extra] ??= [...MarkdownBody._streamingPatterns, ...extra],
-        (false, final extra?) => extra,
-      },
+      inlinePatterns: () {
+        final base = switch ((widget.streaming && !widget.reveal, MarkdownPatterns.maybeOf(context))) {
+          (true, null) => MarkdownBody._streamingPatterns,
+          (false, null) => null,
+          (true, final extra?) => MarkdownBody._streamingWith[extra] ??= [...MarkdownBody._streamingPatterns, ...extra],
+          (false, final extra?) => extra,
+        };
+        if (widget.mentions.isEmpty) return base;
+        return [...?base, MarkdownBody._mentionPattern];
+      }(),
       onLinkTap: (url, title) => MarkdownBody._onLinkTap(context, url, title),
       codeBuilder: MarkdownBody._codeBuilder,
       inlineCodeBuilder: MarkdownBody._inlineCodeBuilder,
@@ -694,6 +716,10 @@ class _MarkdownBodyState extends State<MarkdownBody> {
         ? Consumer(builder: (context, ref, _) => withTint(ref.watch(tableTintProvider)))
         : withTint(TableTint.follow);
     // 表格、成块公式横向放不下时,两端淡出提示还能横滑。
+    // 正文里的 `@成员` 按各人的墨色画；没有成员就不套这一层。
+    if (widget.mentions.isNotEmpty) {
+      markdown = _MentionInk(ink: _mentionInk(widget.mentions), child: markdown);
+    }
     markdown = ScrollConfiguration(behavior: const EdgeFadeScrollBehavior(), child: markdown);
     if (widget.reveal) markdown = _RevealStreaming(streaming: widget.streaming, blocks: _blocks, child: markdown);
     if (widget.selectable) markdown = SelectionArea(child: markdown);
@@ -729,4 +755,21 @@ class _RevealStreaming extends InheritedWidget {
 
   @override
   bool updateShouldNotify(_RevealStreaming oldWidget) => streaming != oldWidget.streaming;
+}
+
+/// `@名字`(小写) → 该成员的墨色，供 [_MarkdownBodyState] 的标记模式查。
+Map<String, Color> _mentionInk(List<InlineMention> mentions) => {
+  for (final mention in mentions) '@${mention.name.toLowerCase()}': mention.color,
+};
+
+class _MentionInk extends InheritedWidget {
+  const _MentionInk({required this.ink, required super.child});
+
+  final Map<String, Color> ink;
+
+  static Map<String, Color>? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_MentionInk>()?.ink;
+
+  @override
+  bool updateShouldNotify(_MentionInk oldWidget) => !mapEquals(oldWidget.ink, ink);
 }

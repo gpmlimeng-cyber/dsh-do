@@ -1913,8 +1913,10 @@ class _TavernChatPageState extends ConsumerState<TavernChatPage> {
             ),
           ),
         ],
-      ),
-    );
+          ),   // BotChatFrame
+        ),     // WallpaperBackdrop.scene
+      ),       // Scaffold
+    );         // _IslandsScope
   }
 }
 
