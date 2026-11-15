@@ -37,6 +37,13 @@ abstract final class ImStrings {
   static String get profileDelete => _zh ? '删除 Bot' : 'Delete Bot';
   static String get renameBot => _zh ? '改名字' : 'Rename';
   static String get renameRole => _zh ? '改角色' : 'Edit role';
+  static String get profileLook => _zh ? '更换形象' : 'Change look';
+  static String get profileLookReset => _zh ? '恢复默认形象' : 'Reset look';
+  static String get lookKindMascot => _zh ? '吉祥物' : 'Mascot';
+  static String get lookKindLetter => _zh ? '字团' : 'Letter';
+  static String get lookKindEmoji => _zh ? '表情头像' : 'Emoji';
+  static String get lookKindPhoto => _zh ? '宿主照片' : 'Host photo';
+  static String get lookKindDefault => _zh ? '默认形象' : 'Default look';
   static String get roleEmpty => _zh ? '还没写角色' : 'No role yet';
   static String get profileSettingsHint => _zh ? '它要怎么说话' : 'How it should talk';
   static String deleteBotBody(String name) => _zh ? '删除「$name」后，它记得的事和对话都会没有。' : 'Deleting $name also removes its chats and what it remembers.';

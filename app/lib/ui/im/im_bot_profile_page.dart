@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
+import '../../state/bot_avatar_state.dart';
 import '../../state/bots_state.dart';
 import '../../state/features_state.dart' show permissionStateProvider;
 import '../bots/bot_avatar.dart';
@@ -16,6 +17,7 @@ import '../bots/bot_memory_page.dart';
 import '../bots/bot_sheets.dart' show confirmDelete, showTextEditSheet;
 import '../common/list_page_row.dart';
 import '../features/feature_format.dart' show permissionName;
+import '../mascots/mascot_customizer.dart' show openMascotCustomizer;
 import '../settings/index/settings_pages.dart' show settingsPage;
 import '../settings/index/spots.dart' show SettingsPageId;
 import '../theme/app_icons.dart';
@@ -39,11 +41,34 @@ class ImBotProfilePage extends ConsumerWidget {
     if (bot == null) {
       return const ImPageScaffold(title: 'Bot', back: true, child: SizedBox.shrink());
     }
+    final look = ref.watch(botAvatarProvider.select((byBot) => byBot[botId]));
+    final lookKind = switch (look) {
+      BotAvatarConfig(kind: BotAvatarKind.mascot) => ImStrings.lookKindMascot,
+      BotAvatarConfig(kind: BotAvatarKind.text) => ImStrings.lookKindLetter,
+      BotAvatarConfig(kind: BotAvatarKind.emoji) => ImStrings.lookKindEmoji,
+      BotAvatarConfig(kind: BotAvatarKind.photo) => ImStrings.lookKindPhoto,
+      _ => ImStrings.lookKindDefault,
+    };
     final memory = ref.watch(dsBotMemoryProvider((botId: botId, roomId: null))).value;
     final permission = ref.watch(permissionStateProvider(bot.sessionId)).value;
     final api = ref.read(dsBotProvider.notifier).api;
     final preset = permission?.current;
     final ability = preset == null ? null : permissionName(preset);
+
+    Future<void> editLook() async {
+      final initial = look?.mascot ?? letterMascotOf(look, bot.id);
+      final choice = await openMascotCustomizer(
+        context,
+        initial: initial,
+        text: look?.kind == BotAvatarKind.text,
+        name: bot.name,
+      );
+      if (choice == null || !context.mounted) return;
+      await ref.read(botAvatarProvider.notifier).set(
+        bot.id,
+        choice.text ? BotAvatarConfig.text(choice.spec) : BotAvatarConfig.mascot(choice.spec),
+      );
+    }
 
     Future<void> editText({required String title, required String initial, required bool multiline, required Future<void> Function(String) save}) async {
       final text = await showTextEditSheet(context, title: title, initial: initial, multiline: multiline);
@@ -116,6 +141,18 @@ class ImBotProfilePage extends ConsumerWidget {
                 save: (text) => api.updateBot(bot.id, instructions: text),
               ),
             ),
+            ListPageRow(
+              icon: AppIcons.pet,
+              title: ImStrings.profileLook,
+              subtitle: lookKind,
+              onTap: editLook,
+            ),
+            if (look != null)
+              ListPageRow(
+                icon: AppIcons.restart,
+                title: ImStrings.profileLookReset,
+                onTap: () => ref.read(botAvatarProvider.notifier).clear(bot.id),
+              ),
             ListPageRow(
               icon: AppIcons.goal,
               title: ImStrings.profileMemory,
