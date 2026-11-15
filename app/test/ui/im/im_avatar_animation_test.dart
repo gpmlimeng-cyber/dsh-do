@@ -90,14 +90,17 @@ void main() {
     expect(painters.every((painter) => identical(painter.clock, clock)), isTrue);
     expect(clock.holders, painters.length);
 
-    // Half of the lively period: every avatar reads the same phase from the clock.
+    // 两个头像的动作档位可能不同（周期 1100 / 3200 / 2400ms），所以相位按
+    // 各自的周期算：同一时刻推进后，每个都等于 clock 在该周期下的相位。
     clock.advanceTo(const Duration(milliseconds: 550));
     await tester.pump();
     final after = mascotPainters(tester);
     expect(after.length, 2);
-    expect(after.map((painter) => painter.period).toSet().length, 1);
+    expect(after.every((painter) => identical(painter.clock, clock)), isTrue);
     for (final painter in after) {
-      expect(clock.phaseOf(painter.period), closeTo(0.5, 0.001));
+      final period = painter.period.inMilliseconds;
+      expect(period, greaterThan(0));
+      expect(clock.phaseOf(painter.period), closeTo((550 % period) / period, 0.002));
     }
   });
 
