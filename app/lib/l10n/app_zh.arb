@@ -1556,14 +1556,6 @@
   "botsAddMemory": "添加记忆",
   "botsMemoryReplyExample": "比如：回复尽量简短",
   "botsMemoryDraftExample": "比如：周五前交初稿",
-  "botsMemoryUpdated": "记忆已更新",
-  "botsMemoryAlready": "已经保存过了",
-  "botsMemoryFailed": "没能保存到记忆",
-  "botsMemoryUnchanged": "记忆没有变化",
-  "botsMemoryReasonEmpty": "没有内容可保存",
-  "botsMemoryReasonNoMatch": "没有匹配的条目",
-  "botsMemoryReasonRefused": "记忆拒绝了这次改动",
-  "botsMemoryReasonOther": "记忆没能改动",
   "botsMemoryCount": "记忆 · {count}",
   "@botsMemoryCount": {
     "placeholders": {
@@ -2123,6 +2115,14 @@
   "botsMobileApiRequired": "可先在网页版中使用",
   "botsMobileApiMissing": "手机端暂不支持，可先在网页版中使用",
   "botsCreationConnectionChanged": "连接已变化，请重新打开创建页面后再操作。",
+  "botsMemoryUpdated": "记忆已更新",
+  "botsMemoryAlready": "已经保存过了",
+  "botsMemoryFailed": "没能保存到记忆",
+  "botsMemoryUnchanged": "记忆没有变化",
+  "botsMemoryReasonEmpty": "没有内容可保存",
+  "botsMemoryReasonNoMatch": "没有匹配的条目",
+  "botsMemoryReasonRefused": "记忆拒绝了这次改动",
+  "botsMemoryReasonOther": "记忆没能改动",
   "botsPermissionGroupWide": "本群统一权限",
   "botsPermissionGroupWideOn": "对本群所有成员的会话生效，切换会立刻改掉现有会话",
   "botsPermissionGroupWideOff": "每个成员用它自己的权限预设",
@@ -3685,6 +3685,43 @@
   "companionAdaptUnreadable": "模型的回答看不懂",
   "companionAdaptEmpty": "模型没找到能用的对应",
   "companionAdaptNetwork": "网络不通",
+  "companionNeedsAttention": "有件事要你确认，点这里去看",
+  "companionMenuInvite": "主动邀请",
+  "companionMenuInviteHint": "你安静陪着她时，她偶尔会邀你一起歇一会儿",
+  "companionTaskDone": "「{title}」那边跑完啦。",
+  "@companionTaskDone": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "companionTaskFailed": "「{title}」好像出错了，要去看看吗？",
+  "@companionTaskFailed": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "companionTaskApproval": "「{title}」在等你批准。",
+  "@companionTaskApproval": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "companionTaskApprovalUntitled": "你那边有件事在等你批准。",
+  "companionTaskQuestion": "「{title}」有事想问你。",
+  "@companionTaskQuestion": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "companionTaskQuestionUntitled": "你那边有个问题在等你回答。",
   "automaticDiagnosticsRecover": "恢复本地记录",
   "automaticDiagnosticsRecoverHint": "仅在本机恢复分析记录，跳过已留存故障，不重新发送旧请求。",
   "automaticDiagnosticsTitle": "自动故障分析",
@@ -4427,7 +4464,6 @@
   "engineModelCapabilities": "能力",
   "engineModelInputType": "输入类型",
   "engineModelInputText": "文本",
-  "engineModelInputTextAudio": "文本和音频",
   "engineModelInputTextImage": "文本和图片",
   "engineModelThinking": "思考",
   "engineModelVision": "识图",
@@ -4444,6 +4480,7 @@
       }
     }
   },
+  "engineModelInputTextAudio": "文本和音频",
   "featuresCordisSubtitle": "动态插件 · 引擎重启后清空",
   "featuresCordisUnavailable": "这个连接看不到 Cordis",
   "featuresCordisRemoteUnavailable": "经 DSH Remote 中转时不可用",
@@ -5714,6 +5751,11 @@
   "hubQuickPanelSwipeHint": "在对话里从右向左滑。代码块、表格这些能横向滚动的内容不受影响。",
   "hubQuickPanelItems": "显示的入口",
   "hubQuickPanelItemsNone": "没有选择，左滑不会打开",
+  "aboutPitch": "Coka，Your AI Coworker",
+  "hubGroupBot": "Bot",
+  "hubBotThinking": "显示思考过程",
+  "hubFlatBubbles": "消息平铺（不用气泡）",
+  "hubBubbleWidth": "气泡宽度",
   "launchScreenTitle": "启动画面",
   "launchDefault": "默认",
   "launchCustom": "自定义",
@@ -5727,7 +5769,6 @@
   "launchBackdropWhite": "白色",
   "launchBackdropBlack": "黑色",
   "launchReplace": "更换图片或视频",
-  "launchAnimation": "启动动画",
   "launchPreview": "预览",
   "launchFooter": "图片、动图 8 MB 以内，视频 30 MB 以内。冷启动时完整播放一遍，轻点可跳过",
   "launchChanged": "启动画面已更换",
@@ -5761,6 +5802,7 @@
   "iconShortcutFailed": "没能添加，稍后再试",
   "searchKwLaunchScreen": "开屏,启动动画,闪屏,开机画面,欢迎画面",
   "searchKwIconShortcut": "快捷方式,自定义图标,桌面图片,换图标",
+  "launchAnimation": "启动动画",
   "liveThinking": "正在思考",
   "liveWorking": "正在干活",
   "liveJuggling": "子代理在帮忙",
@@ -10873,6 +10915,32 @@
       }
     }
   },
+  "shellFolderSessions": "{count} 个会话",
+  "@shellFolderSessions": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "shellGroups": "分组",
+  "shellNewFolderName": "分组名称",
+  "shellNewFolderTaken": "已经有叫这个名字的分组了",
+  "shellNewNamedBot": "新建 Bot「{name}」",
+  "@shellNewNamedBot": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "shellNewPanelBots": "Bot",
+  "shellNewPanelGroups": "群",
+  "shellNewPanelNew": "新建",
+  "shellNewPanelRecent": "最近 3 个",
+  "shellNewPanelSearch": "搜索 Bot、群、分组，或直接写名字",
+  "shellNewPanelStart": "开始对话",
+  "shellNewPanelTitle": "新建",
   "speechReadAloud": "朗读",
   "speechReadAloudStop": "停止朗读",
   "speechReadSection": "朗读",
@@ -14175,15 +14243,6 @@
   "updateCheck": "检查更新",
   "updateAutoCheck": "自动检查更新",
   "updateAutoCheckDaily": "每天检查一次",
-  "updateIncludePreviews": "检查更新时包含预览版",
-  "updateBasedOn": "基于上游 {version}",
-  "@updateBasedOn": {
-    "placeholders": {
-      "version": {
-        "type": "String"
-      }
-    }
-  },
   "updateTileDownloading": "下载中",
   "updateTileDownloadingPercent": "下载中 {percent}%",
   "@updateTileDownloadingPercent": {
@@ -14342,6 +14401,15 @@
     "placeholders": {
       "percent": {
         "type": "int"
+      }
+    }
+  },
+  "updateIncludePreviews": "检查更新时包含预览版",
+  "updateBasedOn": "基于上游 {version}",
+  "@updateBasedOn": {
+    "placeholders": {
+      "version": {
+        "type": "String"
       }
     }
   },
@@ -15889,6 +15957,18 @@
   "voiceCloudFooter": "录音会发给这个服务识别。Key 只存在这台手机上。",
   "voiceCloudBaseHelper": "填到 /v1 为止，App 会请求 …/audio/transcriptions",
   "voiceCloudModelHelper": "例如 whisper-1、FunAudioLLM/SenseVoiceSmall",
+  "voiceCloudConfigure": "去配置云端语音模型",
+  "voiceCloudEmpty": "还没有配置云端语音模型",
+  "voiceCloudNeedPick": "先在设置里选一个云端语音模型",
+  "voiceEngineBusy": "引擎正忙或响应超时，语音模型暂时用不了，稍后再点一次",
+  "voiceEngineModelMissing": "语音模型已下载，但引擎没有加载它；请重启 App，或在语音设置里检查插件",
+  "voiceEnginePreparing": "正在准备语音模型…",
+  "voiceEnginePreparingTimeout": "语音模型还在准备，稍后再点一次",
+  "voiceModelEngineMissing": "引擎没加载语音插件",
+  "voiceModelEngineMissingNote": "语音插件没在引擎里，重启引擎后再试",
+  "voiceModelFailLost": "语音模型文件不在了，请重新下载",
+  "voiceModelLostNote": "本地模型已丢失，重新下载后可用",
+  "voiceModelRestartEngine": "重启引擎",
   "voiceScribeReadFailed": "没能读取语音设置，请重试。",
   "voiceScribeSavedReadFailed": "已保存，刷新后可查看最新设置。",
   "voiceScribeSaveUnconfirmed": "没能确认保存，请刷新或重试。",
@@ -16145,6 +16225,9 @@
   "workshopAccountSignOut": "退出登录",
   "workshopAccountSignedOut": "已退出。要彻底收回授权，去 GitHub 设置里的 Applications 页撤销。",
   "workshopAccountSignOutFailed": "没能退出，稍后再试。",
+  "workshopErrorForumMismatch": "登录的论坛和工坊认的不是同一个，请重新登录。",
+  "workshopErrorForumDown": "论坛暂时联系不上，稍后再试。",
+  "workshopDisclosureForum": "核对身份的论坛",
   "workshopInstalledEmptyTitle": "还没有从工坊装过东西",
   "workshopInstalledEmptyMessage": "在「发现」里装上的宠物和伙伴会列在这里。",
   "workshopInstalledEmptyAction": "去发现",

@@ -79,5 +79,17 @@
   "voiceCloudSection": "Cloud recognition service",
   "voiceCloudFooter": "Recordings are sent to this service. The key stays on this phone.",
   "voiceCloudBaseHelper": "Up to /v1; the app calls …/audio/transcriptions",
-  "voiceCloudModelHelper": "For example whisper-1 or FunAudioLLM/SenseVoiceSmall"
+  "voiceCloudModelHelper": "For example whisper-1 or FunAudioLLM/SenseVoiceSmall",
+  "voiceCloudConfigure": "Configure a cloud speech model",
+  "voiceCloudEmpty": "No cloud speech model is configured",
+  "voiceCloudNeedPick": "Pick a cloud speech model in Settings first",
+  "voiceEngineBusy": "The engine is busy or did not answer in time, so the voice model is not ready yet. Try again in a moment.",
+  "voiceEngineModelMissing": "The voice model is downloaded, but the engine has not loaded it. Restart the app, or check the voice plugin in settings.",
+  "voiceEnginePreparing": "Preparing the voice model…",
+  "voiceEnginePreparingTimeout": "The voice model is still preparing. Try again in a moment.",
+  "voiceModelEngineMissing": "The engine has not loaded the voice plugin",
+  "voiceModelEngineMissingNote": "The voice plugin is not in the engine. Restart the engine and try again.",
+  "voiceModelFailLost": "The voice model’s files are gone. Download it again.",
+  "voiceModelLostNote": "The local model is gone. Download it again to use it.",
+  "voiceModelRestartEngine": "Restart engine"
 }

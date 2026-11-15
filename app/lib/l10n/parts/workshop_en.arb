@@ -158,5 +158,8 @@
         "type": "String"
       }
     }
-  }
+  },
+  "workshopErrorForumMismatch": "The forum you signed in to isn't the one this Workshop uses. Sign in again.",
+  "workshopErrorForumDown": "The forum can't be reached right now. Try again later.",
+  "workshopDisclosureForum": "Forum that confirms who you are"
 }

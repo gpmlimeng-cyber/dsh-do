@@ -2,8 +2,6 @@
   "updateCheck": "Check for updates",
   "updateAutoCheck": "Check automatically",
   "updateAutoCheckDaily": "Once a day",
-  "updateIncludePreviews": "Include preview builds when checking",
-  "updateBasedOn": "Based on upstream {version}",
   "updateTileDownloading": "Downloading",
   "updateTileDownloadingPercent": "Downloading {percent}%",
   "updateTileVerifying": "Verifying",
@@ -84,5 +82,7 @@
   "updateOpenPermissionSettings": "Turn on",
   "updateNoAbiPackage": "No {abi} package for this release yet. Check the release page.",
   "updateNoPackage": "No package for this release yet. Check the release page.",
-  "updateDownloadingPercent": "Downloading {percent}%"
+  "updateDownloadingPercent": "Downloading {percent}%",
+  "updateIncludePreviews": "Include preview builds when checking",
+  "updateBasedOn": "Based on upstream {version}"
 }

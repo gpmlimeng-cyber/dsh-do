@@ -324,7 +324,16 @@
   "companionMovesTry": "试一下",
   "companionPackLegacyModel": "这是 Cubism 2 的旧模型（.moc 和 model.json），手机上的运行库只认 Cubism 3 以后的 .moc3。用 Cubism Editor 打开后导出成 moc3 再导入就行。",
   "companionFailedMocVersion": "这个模型是用更新版本的 Cubism 导出的（moc 版本 {version}），手机上的运行库最高只认到 {latest}。在 Cubism Editor 里导出成旧一点的版本再导入就行。",
-  "@companionFailedMocVersion": {"placeholders": {"version": {"type": "String"}, "latest": {"type": "String"}}},
+  "@companionFailedMocVersion": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      },
+      "latest": {
+        "type": "String"
+      }
+    }
+  },
   "companionMenuAdapt": "适配这个模型",
   "companionAdaptHint": "用你配好的模型（你的 Key，按次计费）看一遍这个角色，把转头、眨眼、表情和摸哪里对上。会发出去的：模型名、参数名单、表情动作和部件的名字、你下面写的话和现在的适配表；模型文件和贴图不发。",
   "companionAdaptOffer": "这个模型要适配一下：用你配好的模型看一遍它的参数名单和表情动作的名字（不发模型文件），会用你的 Key 调用一次。以后的新模型就自动来，菜单里能关。",
@@ -338,12 +347,61 @@
   "companionAdaptStart": "让我适应一下这个新身体……",
   "companionAdaptDone": "好啦，这个身体我会用了。",
   "companionAdaptDoneNote": "好啦，这个身体我会用了。{note}",
-  "@companionAdaptDoneNote": {"placeholders": {"note": {"type": "String"}}},
+  "@companionAdaptDoneNote": {
+    "placeholders": {
+      "note": {
+        "type": "String"
+      }
+    }
+  },
   "companionAdaptUndone": "好，换回原来的样子了。",
   "companionAdaptNoKey": "要用你的模型帮我适配，先在设置里填上 API Key。",
   "companionAdaptFailed": "这次没适应好（{reason}），可以在菜单的「适配这个模型」里再试一次。",
-  "@companionAdaptFailed": {"placeholders": {"reason": {"type": "String"}}},
+  "@companionAdaptFailed": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
   "companionAdaptUnreadable": "模型的回答看不懂",
   "companionAdaptEmpty": "模型没找到能用的对应",
-  "companionAdaptNetwork": "网络不通"
+  "companionAdaptNetwork": "网络不通",
+  "companionNeedsAttention": "有件事要你确认，点这里去看",
+  "companionMenuInvite": "主动邀请",
+  "companionMenuInviteHint": "你安静陪着她时，她偶尔会邀你一起歇一会儿",
+  "companionTaskDone": "「{title}」那边跑完啦。",
+  "@companionTaskDone": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "companionTaskFailed": "「{title}」好像出错了，要去看看吗？",
+  "@companionTaskFailed": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "companionTaskApproval": "「{title}」在等你批准。",
+  "@companionTaskApproval": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "companionTaskApprovalUntitled": "你那边有件事在等你批准。",
+  "companionTaskQuestion": "「{title}」有事想问你。",
+  "@companionTaskQuestion": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "companionTaskQuestionUntitled": "你那边有个问题在等你回答。"
 }

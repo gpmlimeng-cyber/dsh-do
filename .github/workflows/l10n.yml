@@ -29,6 +29,21 @@ jobs:
         run: python3 tool/l10n_merge.py
         working-directory: app
 
+      - name: Commit the regenerated outputs back to this branch
+        # 手机跑不了 `flutter gen-l10n`：这里直接提交回分支，CI 的
+        # `git diff --exit-code -- lib/l10n` 就不会再因为 gen/ 过期而红。
+        # 仓库的 token 默认只读，所以要靠上面 permissions: contents: write。
+        run: |
+          git config user.name "dsh-go"
+          git config user.email "dsh-go@localhost"
+          git add -- app/lib/l10n
+          if git diff --cached --quiet; then
+            echo "l10n outputs already up to date"
+          else
+            git commit -m "Regenerate the l10n outputs"
+            git push
+          fi
+
       - name: Bundle what changed
         run: |
           mkdir -p /tmp/l10n

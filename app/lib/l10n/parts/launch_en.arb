@@ -12,7 +12,6 @@
   "launchBackdropWhite": "White",
   "launchBackdropBlack": "Black",
   "launchReplace": "Replace picture or video",
-  "launchAnimation": "Launch animation",
   "launchPreview": "Preview",
   "launchFooter": "Pictures and animations up to 8 MB, videos up to 30 MB. Plays through once on a cold start; tap to skip.",
   "launchChanged": "Launch screen changed",
@@ -38,5 +37,6 @@
   "iconShortcutUnsupported": "This home screen doesn’t take shortcuts",
   "iconShortcutFailed": "Couldn’t add it. Try again later.",
   "searchKwLaunchScreen": "splash,startup,launch animation,opening screen",
-  "searchKwIconShortcut": "shortcut,custom icon,home screen picture"
+  "searchKwIconShortcut": "shortcut,custom icon,home screen picture",
+  "launchAnimation": "Launch animation"
 }

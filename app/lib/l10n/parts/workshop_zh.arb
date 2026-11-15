@@ -158,5 +158,8 @@
         "type": "String"
       }
     }
-  }
+  },
+  "workshopErrorForumMismatch": "登录的论坛和工坊认的不是同一个，请重新登录。",
+  "workshopErrorForumDown": "论坛暂时联系不上，稍后再试。",
+  "workshopDisclosureForum": "核对身份的论坛"
 }
