@@ -109,7 +109,7 @@ class BotDetailsPage extends ConsumerWidget {
     // 不留第二套实现（页签里那份是 `embedded`，不转，免得自己转自己）。
     // 第一次还没聊过的 Bot（没有 parts）没有会话详情可开，就地用同一份内容。
     if (!embedded && (bot.parts.isNotEmpty || bot.sessionId != bot.id)) {
-      return SessionDetailPage(sessionId: bot.sessionId, initialTab: SessionTab.details, scopeLabel: bot.name);
+      return SessionDetailPage(sessionId: bot.sessionId, initialTab: SessionTab.context, scopeLabel: bot.name);
     }
     final usageResult = ref.watch(dsBotUsageProvider(bot.id));
     final usage = usageResult.value;

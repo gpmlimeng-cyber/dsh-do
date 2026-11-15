@@ -15,6 +15,7 @@ import '../../state/connection_state.dart';
 import '../../state/room_activity_state.dart' show roomMembersActivityProvider, roomUsageTotal;
 import '../../state/session_modes.dart';
 import '../../state/usage_state.dart';
+import '../../speech/voice_cloud.dart';
 import '../../state/voice_model_state.dart';
 import '../../state/voice_state.dart';
 import '../../state/voice_settings.dart';
