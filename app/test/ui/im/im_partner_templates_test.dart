@@ -38,16 +38,14 @@ void main() {
     usePhoneView(tester);
     await tester.pumpWidget(goldenApp(home: const ImPartnerTemplatesPage(), brightness: Brightness.light));
     await frames(tester);
-    // The search field itself carries the typed text, so match inside the list only.
-    Finder row() => find.descendant(
-      of: find.byType(ListView).first,
-      matching: find.text(reviewer.nameZh),
-    );
-    expect(row(), findsOneWidget);
+    expect(find.text(reviewer.nameZh), findsOneWidget);
 
-    await tester.enterText(find.byKey(const ValueKey('template-search')), reviewer.nameZh);
+    // 只搜名字的一个片段：输入框里出现的是片段，整名只可能来自结果行。
+    // （搜整名时输入框自己也带这个词，find.text 会命中两次。）
+    final fragment = reviewer.nameZh.substring(0, 2);
+    await tester.enterText(find.byKey(const ValueKey('template-search')), fragment);
     await frames(tester);
-    expect(row(), findsOneWidget);
+    expect(find.text(reviewer.nameZh), findsOneWidget);
   });
 
   testWidgets('a coming-soon template shows the disabled create key', (tester) async {
