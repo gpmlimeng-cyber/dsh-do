@@ -16,6 +16,7 @@ import '../shell/golden_harness.dart' show goldenApp;
 import 'support.dart';
 import 'package:dsh_app/state/chat_state.dart' show chatProvider, ChatState;
 import 'package:dsh_app/state/sessions_state.dart' show sessionsProvider;
+import 'package:dsh_app/state/workspaces_state.dart' show workspacesProvider;
 
 class _Host extends ActiveHostController {
   @override
@@ -66,6 +67,7 @@ void main() {
             brightness: Brightness.light,
             overrides: [
               sessionsProvider.overrideWith(() => shell.FakeSessions(const [])),
+              workspacesProvider.overrideWith(FakeWorkspaces.new),
               chatProvider.overrideWith2((id) => FakeChatController(id, const ChatState(loading: false))),
               activeHostProvider.overrideWith(_Host.new),
               activeConnectionProvider.overrideWith((ref) {
@@ -97,7 +99,17 @@ void main() {
           'memory-edit' || 'memory-delete' => '回复尽量简短，先说结论',
           _ => appL10n.botsAddMemory,
         };
-        await tester.scrollUntilVisible(find.text(label), 250, scrollable: find.byType(Scrollable).first);
+        // 页头/抽屉也有可滚动区，滚详情页自己的那个，别滚错。
+        await tester.scrollUntilVisible(
+          find.text(label),
+          250,
+          scrollable: find
+              .descendant(
+                of: isRoom ? find.byType(RoomDetailsPage) : find.byType(BotDetailsPage),
+                matching: find.byType(Scrollable),
+              )
+              .first,
+        );
         await tester.ensureVisible(find.text(label));
         await frames(tester);
         await tester.tap(find.text(label));

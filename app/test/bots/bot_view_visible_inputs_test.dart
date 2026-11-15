@@ -19,6 +19,7 @@ import '../shell/golden_harness.dart' show goldenApp;
 import 'support.dart';
 import 'package:dsh_app/state/chat_state.dart' show chatProvider, ChatState;
 import 'package:dsh_app/state/sessions_state.dart' show sessionsProvider;
+import 'package:dsh_app/state/workspaces_state.dart' show workspacesProvider;
 
 class _Host extends ActiveHostController {
   @override
@@ -102,6 +103,7 @@ void main() {
         home: const BotChatPage(botId: 'writer'),
         overrides: [
               sessionsProvider.overrideWith(() => shell.FakeSessions(const [])),
+              workspacesProvider.overrideWith(FakeWorkspaces.new),
               chatProvider.overrideWith2((id) => FakeChatController(id, const ChatState(loading: false))),
           activeHostProvider.overrideWith(_Host.new),
           activeConnectionProvider.overrideWith((ref) {
