@@ -1143,7 +1143,27 @@ class MascotPainter extends CustomPainter {
       canvas.drawPath(h, dark);
     }
 
+    // 五官三档对每个角色都生效：简约＝竖条眼，圆点＝小圆眼；
+    // 「开心」仍画弧线，免得情绪全被档位吃掉。芽团另有自己的实现。
+    final fixedFace = spec.face != MascotFace.standard && eyes != 'happy';
+    void simpleEye(double x) => canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(center: Offset(x, eyeY), width: r.width * 0.11, height: r.height * 0.20),
+        Radius.circular(r.width * 0.055),
+      ),
+      dark,
+    );
+    void dotEye(double x) => canvas.drawCircle(Offset(x, eyeY), r.width * 0.048, dark);
+
     for (final (x, left) in [(lx, true), (rx, false)]) {
+      if (fixedFace) {
+        if (spec.face == MascotFace.simple) {
+          simpleEye(x);
+        } else {
+          dotEye(x);
+        }
+        continue;
+      }
       switch (eyes) {
         case 'closed':
           closedEye(x);
