@@ -25,6 +25,7 @@ import '../common/list_page_row.dart';
 import '../mascots/mascot_avatar.dart';
 import '../mascots/mascot_customizer.dart' show openMascotCustomizer;
 import '../mascots/mascot_letter_avatar.dart';
+import '../im/im_partner_templates.dart' show PartnerTemplate;
 import '../providers/provider_widgets.dart' show FormBottomBar, FormFieldBlock, FormFieldGroup;
 import '../settings/settings_widgets.dart' show SettingsSection;
 import '../shell/page_frame.dart';
@@ -43,13 +44,17 @@ const botTraitsEn = ['Patient', 'Direct', 'Humorous', 'Curious', 'Rigorous', 'Qu
 String _t(String zh, String en) => AppLocale.current.languageCode == 'zh' ? zh : en;
 
 class NewBotPage extends ConsumerStatefulWidget {
-  const NewBotPage({super.key, this.initialName});
+  const NewBotPage({super.key, this.initialName, this.template});
 
   /// A name typed in 新建's search field: the page opens with it filled in.
   final String? initialName;
 
-  static Route<void> route({String? initialName}) =>
-      MaterialPageRoute<void>(builder: (_) => NewBotPage(initialName: initialName));
+  /// 模板：进页时把名字/角色/说明/形象预填好；`instructions` 原样透传，
+  /// 不走「性格 + 补充」合成（模板自带完整 prompt）。
+  final PartnerTemplate? template;
+
+  static Route<void> route({String? initialName, PartnerTemplate? template}) =>
+      MaterialPageRoute<void>(builder: (_) => NewBotPage(initialName: initialName, template: template));
 
   @override
   ConsumerState<NewBotPage> createState() => _NewBotPageState();
@@ -67,13 +72,20 @@ String? newBotInstructions(String typed, {required bool visualReplies}) {
 }
 
 class _NewBotPageState extends ConsumerState<NewBotPage> {
-  late final _name = TextEditingController(text: widget.initialName ?? '');
-  final _role = TextEditingController();
-  final _instructions = TextEditingController();
+  late final _name = TextEditingController(text: _templateName ?? widget.initialName ?? '');
+
+  /// 模板名跟随界面语言；英文名缺失（即将支持的条目）时用中文名。
+  String? get _templateName {
+    final template = widget.template;
+    if (template == null) return null;
+    return AppLocale.isEnglish && template.nameEn.isNotEmpty ? template.nameEn : template.nameZh;
+  }
+  late final _role = TextEditingController(text: widget.template?.role ?? '');
+  late final _instructions = TextEditingController(text: widget.template?.instructions ?? '');
   final _random = math.Random();
 
-  /// 外观：进来就随机一个吉祥物；也可以切回文字头像（颜色仍归这里）。
-  late MascotSpec _spec = MascotSpec.random(_random);
+  /// 外观：模板带自己的形象；手填就随机一个。也可以切回字团。
+  late MascotSpec _spec = widget.template?.mascot ?? MascotSpec.random(_random);
   bool _textAvatar = false;
 
   /// 选中的性格（不预选）。
@@ -128,7 +140,12 @@ class _NewBotPageState extends ConsumerState<NewBotPage> {
   }
 
   /// 性格 + 补充合成 instructions（性格不新增宿主字段；原有 dsh-ui 提示照旧最后追加）。
+  /// 模板模式例外：模板的 prompt 原样发出，不合成、不追加。
   String? _instructionsText() {
+    if (widget.template != null) {
+      final typed = _instructions.text.trim();
+      return typed.isEmpty ? null : typed;
+    }
     final traits = [for (final i in _traits.toList()..sort()) (AppLocale.isEnglish ? botTraitsEn : botTraitsZh)[i]];
     final typed = _instructions.text.trim();
     final parts = [

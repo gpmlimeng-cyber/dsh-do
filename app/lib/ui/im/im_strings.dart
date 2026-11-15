@@ -31,6 +31,19 @@ abstract final class ImStrings {
   static String get companionsTitle => _zh ? '伙伴' : 'Buddies';
   static String get memoryHint => _zh ? '点开看它记得什么' : 'See what it remembers';
   static String get companionBusy => _zh ? '正在忙' : 'Working';
+  // ── 伙伴模板 ──
+  static String get templateStart => _zh ? '从模板开始' : 'Start from a template';
+  static String get templateAll => _zh ? '全部模板' : 'All templates';
+  static String get templatesTitle => _zh ? '模板' : 'Templates';
+  static String get templateSearch => _zh ? '搜名字或一句话' : 'Search name or one-liner';
+  static String get templateAllCategory => _zh ? '全部' : 'All';
+  static String get templateComingSoon => _zh ? '即将支持' : 'Coming soon';
+  static String get templateUse => _zh ? '用这个模板创建' : 'Create from this template';
+  static String get templateResponsible => _zh ? '它负责什么' : 'What it does';
+  static String get templateHow => _zh ? '工作方式与边界' : 'How it works, and what it will not do';
+  static String get templateSource => _zh ? '来源' : 'Source';
+  static String get templateBlank => _zh ? '自己做' : 'Start from scratch';
+  static String get templateBlankHint => _zh ? '从空白伙伴开始' : 'A blank buddy';
   static String get companionWaiting => _zh ? '等你确认' : 'Needs you';
   static String get profileSend => _zh ? '发消息' : 'Message';
   static String get profileAbilities => _zh ? '它现在能做什么' : 'What it can do';

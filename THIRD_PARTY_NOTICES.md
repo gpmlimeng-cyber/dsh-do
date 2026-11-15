@@ -893,3 +893,15 @@ the SDK or promise to clear or stop sending previously accumulated SDK statistic
 The dsh-go anonymous usage statistics switch does not control this SDK.
 The Apache 2.0 license for documentation sample code is not the license for
 this SDK binary. This notice does not replace Google's SDK terms.
+
+### grok-bot-cn（MIT）
+
+| 项 | 内容 |
+|---|---|
+| 项目 | grok-bot-cn，https://github.com/junze-xu/grok-bot-cn |
+| 版权人 | Copyright (c) 2026 junze-xu |
+| 许可 | MIT |
+| 快照 | commit `f7ecd0aa142b1ea69f5c0cd8f421eba9c4e4f15c`（catalog v1.1.0） |
+| 用途 | 轻松模式「伙伴模板」的分类、名称、一句话简介与「任务 / 边界 / 工作方式」改编文案；生成期读取，App 运行时不联网请求该仓库 |
+
+只取了模板元数据与改编后的说明文本，不含其 `skills/`（技能）、`routines/`（例行程序）、`patterns/`（模式）、`teams/`（团队安装）以及 `PROFILE.md` 原文。改编文案见 `tooling/partner_templates/adapted.json`，生成物为 `app/lib/ui/im/im_partner_templates.g.dart`；输入快照是 `tooling/partner_templates/catalog.json`。

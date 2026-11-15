@@ -11,11 +11,14 @@ import '../../l10n/l10n.dart';
 import '../../state/bots_state.dart';
 import '../bots/bot_avatar.dart';
 import '../bots/install_card.dart';
-import '../bots/new_bot_page.dart';
 import '../features/feature_widgets.dart';
+import '../mascots/mascot_avatar.dart';
+import '../shell/page_frame.dart' show GlassIconButton;
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
 import 'im_bot_profile_page.dart';
+import 'im_partner_templates.dart';
+import 'im_partner_templates_page.dart';
 import 'im_page_scaffold.dart';
 import 'im_strings.dart';
 
@@ -32,6 +35,13 @@ class ImCompanionsPage extends ConsumerWidget {
     return ImPageScaffold(
       backdrop: false,
       title: ImStrings.companionsTitle,
+      actions: [
+        GlassIconButton(
+          icon: AppIcons.add,
+          tooltip: ImStrings.newBot,
+          onPressed: () => startPartnerFromTemplate(context),
+        ),
+      ],
       child: team == null
           ? ListView(
               padding: const EdgeInsets.only(top: 24),
@@ -50,7 +60,7 @@ class ImCompanionsPage extends ConsumerWidget {
               ],
             )
           : team.bots.isEmpty
-          ? _Empty(onCreate: () => Navigator.of(context).push(NewBotPage.route()))
+          ? _Empty(onCreate: () => startPartnerFromTemplate(context))
           : _CompanionList(team: team, live: status.live, inbox: ref.watch(dsBotInboxProvider), onOpenBot: onOpenBot),
     );
   }
@@ -111,21 +121,98 @@ class _CompanionList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-      itemCount: team.bots.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 8),
-      itemBuilder: (context, i) {
-        final bot = team.bots[i];
-        return _CompanionRow(
-          bot: bot,
-          busy: live.bots[bot.id] != null,
-          waiting: _waiting(bot),
-          unread: inbox.unreadOf(bot.id),
-          onOpenProfile: () => Navigator.of(context).push(ImBotProfilePage.route(bot.id)),
-          onOpenChat: () => onOpenBot(bot.id),
-        );
-      },
+    return Column(
+      children: [
+        const _TemplateStrip(),
+        Expanded(
+          child: ListView.separated(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+            itemCount: team.bots.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 8),
+            itemBuilder: (context, i) {
+              final bot = team.bots[i];
+              return _CompanionRow(
+                bot: bot,
+                busy: live.bots[bot.id] != null,
+                waiting: _waiting(bot),
+                unread: inbox.unreadOf(bot.id),
+                onOpenProfile: () => Navigator.of(context).push(ImBotProfilePage.route(bot.id)),
+                onOpenChat: () => onOpenBot(bot.id),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// 首页推荐：6 个 featured 模板横滑，末尾一个「全部模板」。
+class _TemplateStrip extends StatelessWidget {
+  const _TemplateStrip();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = DshColors.of(context);
+    final featured = featuredPartnerTemplates.toList();
+    if (featured.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 2, 16, 6),
+          child: Row(
+            children: [
+              Text(
+                ImStrings.templateStart,
+                style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: () => Navigator.of(context).push(ImPartnerTemplatesPage.route()),
+                behavior: HitTestBehavior.opaque,
+                child: Text(
+                  ImStrings.templateAll,
+                  style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.primary),
+                ),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(
+          height: 104,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            itemCount: featured.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 10),
+            itemBuilder: (context, i) {
+              final template = featured[i];
+              return GestureDetector(
+                key: ValueKey('template-card-${template.id}'),
+                onTap: () => Navigator.of(context).push(ImPartnerTemplateDetailPage.route(template)),
+                child: SizedBox(
+                  width: 78,
+                  child: Column(
+                    children: [
+                      SizedBox.square(dimension: 56, child: MascotAvatar(spec: template.mascot, size: 56)),
+                      const SizedBox(height: 6),
+                      Text(
+                        templateName(template),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.labelSmall?.copyWith(color: colors.textTertiary),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }
