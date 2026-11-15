@@ -14,7 +14,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../chat/support/harness.dart';
-import '../shell/golden_harness.dart' show FakeSessions, goldenApp;
+import '../shell/golden_harness.dart' as shell;
+import '../shell/golden_harness.dart' show goldenApp;
 import 'support.dart';
 import 'package:dsh_app/state/chat_state.dart' show chatProvider, ChatState;
 import 'package:dsh_app/state/sessions_state.dart' show sessionsProvider;
@@ -53,7 +54,7 @@ void main() {
           goldenApp(
             brightness: Brightness.light,
             home: const BotChatPage(botId: 'writer'),
-            overrides: [...dsBotOverrides(fake), sessionsProvider.overrideWith(() => FakeSessions(const [])),],
+            overrides: dsBotOverrides(fake),
           ),
         );
         await frames(t);
@@ -100,7 +101,7 @@ void main() {
         brightness: Brightness.light,
         home: const BotChatPage(botId: 'writer'),
         overrides: [
-              sessionsProvider.overrideWith(() => FakeSessions(const [])),
+              sessionsProvider.overrideWith(() => shell.FakeSessions(const [])),
               chatProvider.overrideWith2((id) => FakeChatController(id, const ChatState(loading: false))),
           activeHostProvider.overrideWith(_Host.new),
           activeConnectionProvider.overrideWith((ref) {

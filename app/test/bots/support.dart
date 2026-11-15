@@ -14,6 +14,7 @@ import 'package:dsh_app/state/voice_state.dart';
 import 'package:dsh_app/ui/chat/voice/voice_bridge.dart';
 import 'package:dsh_app/state/models_state.dart';
 import 'package:dsh_app/state/notify_state.dart';
+import 'package:dsh_app/state/sessions_state.dart' show sessionsProvider;
 import 'package:dsh_app/state/plugins_state.dart';
 import 'package:dsh_app/ui/bots/bot_format.dart' show botClock;
 import 'package:dsh_client/dsh_client.dart';
@@ -23,6 +24,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../chat/support/composer_fakes.dart' show FakeVoiceBridge;
 import '../chat/support/harness.dart' show FakeChatController, FakeUsage, StaticRuntime, fakeConnection, testCatalog;
+import '../shell/golden_harness.dart' as shell;
 
 class FakeDsBotTransport implements DsBotTransport {
   FakeDsBotTransport({Map<String, Object?>? team}) {
@@ -142,6 +144,9 @@ List<Override> dsBotOverrides(
   ModelCatalog? catalog,
   /// 页面不该碰引擎 mux（golden 里的 HTTP mock 不支持 WebSocket 升级）。
   bool noEngine = false,
+  /// 抽屉一挂上就会建 SessionsController；默认给空列表，别让它去连引擎。
+  /// 自己已经覆盖 sessionsProvider 的用例传 false，免得同一容器覆盖两次。
+  bool sessions = true,
 }) => [
   activeConnectionProvider.overrideWithValue(noEngine ? const AsyncData<HostConnection?>(null) : AsyncData(connection ?? fakeConnection)),
   dsBotApiFactoryProvider.overrideWithValue((_) => DsBotApi(transport)),
@@ -162,6 +167,7 @@ List<Override> dsBotOverrides(
   // A test that needs a specific catalog passes it here, not as a second
   // override of the same provider.
   modelCatalogProvider.overrideWith((ref) async => catalog ?? testCatalog),
+  if (sessions) sessionsProvider.overrideWith(() => shell.FakeSessions(const [])),
 ];
 
 /// No model downloaded and none wanted: the microphone stays away.
