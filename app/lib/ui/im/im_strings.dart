@@ -30,6 +30,8 @@ abstract final class ImStrings {
   // ── 伙伴 ──
   static String get companionsTitle => _zh ? '伙伴' : 'Buddies';
   static String get memoryHint => _zh ? '点开看它记得什么' : 'See what it remembers';
+  static String get companionBusy => _zh ? '正在忙' : 'Working';
+  static String get companionWaiting => _zh ? '等你确认' : 'Needs you';
   static String get profileSend => _zh ? '发消息' : 'Message';
   static String get profileAbilities => _zh ? '它现在能做什么' : 'What it can do';
   static String get profileSettings => _zh ? '它的设定' : 'Its instructions';

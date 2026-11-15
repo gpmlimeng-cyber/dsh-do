@@ -93,7 +93,11 @@ class ImBotProfilePage extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
             child: Column(
               children: [
-                BotAvatar(bot: bot, size: 96, emotion: '02', animate: true),
+                GestureDetector(
+                  key: const ValueKey('im-profile-avatar'),
+                  onTap: editLook,
+                  child: BotAvatar(bot: bot, size: 112, emotion: '02', animate: true),
+                ),
                 const SizedBox(height: 12),
                 Text(bot.name, style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600)),
                 if (bot.role.trim().isNotEmpty) ...[
