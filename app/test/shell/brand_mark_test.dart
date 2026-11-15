@@ -80,7 +80,8 @@ void main() {
 
   testWidgets('sizes: the glyph keeps its aspect, the tile is square', (tester) async {
     await tester.pumpWidget(
-      MaterialApp(
+      ProviderScope(
+        child: MaterialApp(
         theme: buildLightTheme(),
         home: const Row(
           mainAxisSize: MainAxisSize.min,
@@ -89,6 +90,7 @@ void main() {
             BrandMark(key: ValueKey('mono'), size: 18, color: Colors.black),
             BrandMark(key: ValueKey('tile'), size: 52, tile: true),
           ],
+        ),
         ),
       ),
     );

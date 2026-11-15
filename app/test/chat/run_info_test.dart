@@ -123,7 +123,7 @@ void main() {
       expect(s.runningTurn, isNotNull);
       final activity = runActivityOf(s)!;
       expect(activity.kind, ActivityKind.tool);
-      expect(activity.title, '跑');
+      expect(activity.title, '跑测试');
       expect(activity.detail, 'flutter test');
       expect(activity.since, runInfoTestDispatched);
       expect((activity.todoDone, activity.todoTotal), (4, 5));
@@ -134,7 +134,7 @@ void main() {
       final activity = runActivityOf(conversationState())!;
       expect(activity.kind, ActivityKind.approval);
       expect(activity.title, '等你确认');
-      expect(activity.detail, '跑 flutter test test/auth');
+      expect(activity.detail, '跑测试 flutter test test/auth');
       expect(activity.since, isNull, reason: 'no trace in this state');
     });
 

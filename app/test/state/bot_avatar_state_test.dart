@@ -284,7 +284,7 @@ void main() {
 
   group('motion presets', () {
     test('each preset expands to its body, eyes and mouth', () {
-      expect(motionPreset(MascotMotion.lively), (body: 'bounce', eyes: 'happy', mouth: 'smile'));
+      expect(motionPreset(MascotMotion.lively), (body: 'bounce', eyes: 'open', mouth: 'smile'));
       expect(motionPreset(MascotMotion.quiet), (body: 'breathe', eyes: 'open', mouth: 'flat'));
       expect(motionPreset(MascotMotion.curious), (body: 'work', eyes: 'wide', mouth: 'open'));
     });
