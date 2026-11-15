@@ -543,7 +543,9 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBinding
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (botLineAttachments(
+        if (botItemAttachments(
+              context,
+              ref,
               item,
               roomSession,
               onOpenFile: (file) => openBotAttachmentFile(context, ref, file: file, roomId: room.id),
@@ -1229,7 +1231,9 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBinding
                     DsBotItemKind.user => BotUserMessage(
                       text: botLineText(item),
                       images: item.images,
-                      attachments: botLineAttachments(
+                      attachments: botItemAttachments(
+                        context,
+                        ref,
                         item,
                         roomSession,
                         onOpenFile: (file) => openBotAttachmentFile(context, ref, file: file, roomId: room.id),

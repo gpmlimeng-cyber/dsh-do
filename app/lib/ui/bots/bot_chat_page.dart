@@ -612,7 +612,9 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
                     DsBotItemKind.user => BotUserMessage(
                       text: botLineText(item),
                       images: item.images,
-                      attachments: botLineAttachments(
+                      attachments: botItemAttachments(
+                        context,
+                        ref,
                         item,
                         bot.sessionId,
                         onOpenFile: (file) => openBotAttachmentFile(
@@ -629,7 +631,9 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
                       children: [
                         // A Bot's own attachments draw like the person's do;
                         // the pictures among them open full screen already.
-                        if (botLineAttachments(
+                        if (botItemAttachments(
+                        context,
+                        ref,
                         item,
                         chat.sessionId,
                         onOpenFile: (file) => openBotAttachmentFile(

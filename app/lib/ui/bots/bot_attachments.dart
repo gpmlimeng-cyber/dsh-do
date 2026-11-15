@@ -11,8 +11,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
 import '../../state/attachments.dart';
+import '../../state/bots_state.dart' show dsBotProvider;
 import '../chat/widgets/attachments.dart';
 import '../chat/widgets/plus_panel.dart';
+import 'bot_image_attachments.dart';
 
 /// Opens the ＋ panel and returns what it picked; null when cancelled.
 ///
@@ -94,6 +96,33 @@ Future<({List<String> images, List<String> receipts})> stageBotAttachments(
     }
   }
   return (images: images, receipts: receipts);
+}
+
+/// A line's pictures (ids the host sent) and its file cards, in that order.
+///
+/// Pictures need the host's `images` capability: an older host sends only a
+/// count, and the bubble keeps its 「图片」 placeholder. `image-preview` decides
+/// whether a thumbnail is asked for at all (without it the bytes are the full
+/// picture, so the tile waits for a tap).
+Widget? botItemAttachments(
+  BuildContext context,
+  WidgetRef ref,
+  DsBotItem item,
+  String? sessionId, {
+  void Function(FileAttachment file)? onOpenFile,
+}) {
+  final files = botLineAttachments(item, sessionId, onOpenFile: onOpenFile);
+  final canImages = ref.watch(dsBotProvider.select((status) => status.supports('images')));
+  final images = sessionId == null || item.imageRefs.isEmpty || !canImages
+      ? null
+      : BotImageAttachments(sessionId: sessionId, refs: item.imageRefs);
+  if (images == null) return files;
+  if (files == null) return images;
+  return Column(
+    mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: CrossAxisAlignment.end,
+    children: [images, const SizedBox(height: 4), files],
+  );
 }
 
 /// The attachments a line carries, as the chat's own row of pictures and file

@@ -984,6 +984,27 @@ class DsBotPermissionOption {
   final String? description;
 }
 
+/// One picture a message carries: the host names it, the bytes come later
+/// through [DsBotApi.image] with this [attachmentId].
+class DsBotImageRef {
+  const DsBotImageRef({required this.attachmentId, this.mime, this.name});
+
+  factory DsBotImageRef.fromJson(Object? json) {
+    final map = asMapOrEmpty(json);
+    final id = asString(map['attachmentId']) ?? asString(map['id']) ?? '';
+    return DsBotImageRef(
+      attachmentId: id,
+      mime: asString(map['mime']) ?? asString(map['mediaType']) ?? asString(map['mimeType']),
+      name: asString(map['name']),
+    );
+  }
+
+  /// What [DsBotApi.image] takes; the host's own `block.attachment.attachmentId`.
+  final String attachmentId;
+  final String? mime;
+  final String? name;
+}
+
 class DsBotItem {
   const DsBotItem({
     required this.kind,
@@ -998,6 +1019,7 @@ class DsBotItem {
     this.role,
     this.roomId,
     this.images = 0,
+    this.imageRefs = const [],
     this.files = const [],
     this.callId,
     this.toolName,
@@ -1037,6 +1059,9 @@ class DsBotItem {
       role: asString(map['role']),
       roomId: asString(map['roomId']),
       images: asInt(map['images']) ?? 0,
+      // Host 1.3.6+: the pictures themselves as ids (the count is [images]).
+      // An older host sends only the count.
+      imageRefs: [for (final ref in asListOrEmpty(map['imageRefs'])) DsBotImageRef.fromJson(ref)],
       files: [for (final file in asListOrEmpty(map['files'])) DsBotAttachmentRef.fromJson(file)],
       callId: asString(map['callId']),
       toolName: asString(map['name']),
@@ -1986,6 +2011,37 @@ class DsBotApi {
       if (entry.roomId == null || entry.roomId == roomId) return entry;
     }
     return const DsBotRoomProgress();
+  }
+
+  /// One picture of a message, by the id in [DsBotImageRef.attachmentId].
+  ///
+  /// [sessionId] is the conversation the picture belongs to — a Bot's current
+  /// part (`bot.sessionId`) or the group's (`room.sessionId`), never the Bot's
+  /// id: the host walks that Session's parts back to find the attachment.
+  /// [preview] asks for the host's small JPEG (longest side 512); only
+  /// `image-preview` hosts honour it, and a small picture comes back as-is
+  /// without a `preview` field. The answer is base64 in `data`.
+  Future<({String mime, String data})> image(
+    String sessionId,
+    String attachmentId, {
+    bool preview = false,
+  }) async {
+    final map = asMapOrEmpty(
+      await call(
+        'image',
+        {
+          'sessionId': sessionId,
+          'attachmentId': attachmentId,
+          if (preview) 'preview': true,
+        },
+        Duration(seconds: preview ? 30 : 45),
+      ),
+    );
+    final data = asString(map['data']);
+    if (data == null || data.isEmpty) {
+      throw const DshTransportException('The host sent no picture data');
+    }
+    return (mime: asString(map['mime']) ?? 'image/jpeg', data: data);
   }
 
   /// Stages one photo for the next [send] (host API 2): the bytes travel here,
