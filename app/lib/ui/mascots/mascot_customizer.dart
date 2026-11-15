@@ -228,23 +228,39 @@ class _CharacterGrid extends StatelessWidget {
     MascotCharacter.mango: '歪椭圆 · 一头略尖',
   };
 
+  static const _hintsEn = {
+    MascotCharacter.sprout: 'Leaf sway · carved bowl',
+    MascotCharacter.robot: 'Blinking antenna · round case',
+    MascotCharacter.ghost: 'Floats · wavy tail',
+    MascotCharacter.jelly: 'Soft shine · springy dome',
+    MascotCharacter.orb: 'Plain little ball · no topper',
+    MascotCharacter.star: 'Rounded star · puffed middle',
+    MascotCharacter.triangle: 'Gummy triangle · soft corners',
+    MascotCharacter.onigiri: 'Creamy rice ball · seaweed base',
+    MascotCharacter.potato: 'Lumpy oval · speckled',
+    MascotCharacter.orange: 'Flattened orange · tiny leaf',
+    MascotCharacter.pear: 'Pear waist · fruit freckles',
+    MascotCharacter.mango: 'Tilted oval · pointed tip',
+  };
+
   @override
   Widget build(BuildContext context) {
     return GridView.count(
-      crossAxisCount: 3,
+      // 紧凑网格：4 列，格子矮一些，一屏能看完 12 个角色。
+      crossAxisCount: 4,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 8,
-      childAspectRatio: 0.92,
+      mainAxisSpacing: 8,
+      crossAxisSpacing: 6,
+      childAspectRatio: 0.84,
       children: [
         for (final character in MascotCharacter.values)
           _CharacterCell(
             label: character.label,
-            hint: _t(_hints[character]!, _hints[character]!),
+            hint: AppLocale.isEnglish ? _hintsEn[character]! : _hints[character]!,
             selected: spec.character == character,
             onTap: () => onPick(character),
-            avatar: MascotAvatar(spec: spec.copyWith(character: character), emotion: '02', size: 44),
+            avatar: MascotAvatar(spec: spec.copyWith(character: character), size: 40),
           ),
       ],
     );
@@ -274,7 +290,7 @@ class _CharacterCell extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: AppMotion.of(context, AppMotion.quick),
-        padding: const EdgeInsets.fromLTRB(8, 12, 8, 10),
+        padding: const EdgeInsets.fromLTRB(6, 8, 6, 6),
         decoration: ShapeDecoration(
           color: selected ? theme.colorScheme.primary.withValues(alpha: 0.10) : theme.colorScheme.surface,
           shape: RoundedSuperellipseBorder(
@@ -289,12 +305,12 @@ class _CharacterCell extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             avatar,
-            const SizedBox(height: 8),
-            Text(label, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 2),
+            const SizedBox(height: 4),
+            Text(label, style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 1),
             Text(
               hint,
-              maxLines: 2,
+              maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
               style: theme.textTheme.labelSmall?.copyWith(color: DshColors.of(context).textTertiary, height: 1.25),

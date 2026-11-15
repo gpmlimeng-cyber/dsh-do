@@ -161,3 +161,19 @@ class _MascotClockMarker extends InheritedWidget {
   @override
   bool updateShouldNotify(_MascotClockMarker oldWidget) => !identical(oldWidget.clock, clock);
 }
+
+/// 眨眼的纯函数：给定共享时钟时间和 seed，这一刻闭不闭眼。
+///
+/// 周期 2.2–4.8 秒（按 seed 错开），闭眼 110ms；`seed % 100 < 18` 的还会在
+/// 160ms 后补一次 90ms 的连眨。和画法无关（哪种眼睛不眨由渲染层决定），
+/// painter 和测试共用这一份，别各写一套。
+bool mascotBlinkAt(Duration elapsed, int seed) {
+  final period = 2200 + (seed % 2600);
+  final phase = (elapsed.inMilliseconds + seed) % period;
+  if (phase < 110) return true;
+  if (seed % 100 < 18) {
+    final second = phase - 160;
+    return second >= 0 && second < 90;
+  }
+  return false;
+}

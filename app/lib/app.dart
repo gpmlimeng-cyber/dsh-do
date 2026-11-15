@@ -12,6 +12,7 @@ import 'state/app_info.dart';
 import 'state/appearance_state.dart';
 import 'state/locale_state.dart';
 import 'state/mascot_clock.dart';
+import 'state/mascot_gaze.dart';
 import 'state/star_prompt.dart' show starPromptGateProvider, starPromptProvider;
 import 'state/tile_style_state.dart';
 import 'ui/common/route_observer.dart';
@@ -194,20 +195,22 @@ class _DshAppState extends ConsumerState<DshApp> with WidgetsBindingObserver {
           // 头像动画共用一个时钟：一屏多个吉祥物也只有一个 ticker。放在
           // MediaQuery 里面，头像读到的是合并后的 disableAnimations。
           child: MascotClockScope(
-            child: AppMotionScope(
-              fluid: fluid,
-              child: ThemeRevealHost(
-                // 整棵树最底下垫一层不透明的页面底色：任何一帧只要上层没画
-                // 东西（重建、关闭动画、首帧），看见的是页面底色而不是纯黑。
-                // 壁纸和渐变都画在它上面，所以看不出区别。
-                child: ColoredBox(
-                  color: Theme.of(context).scaffoldBackgroundColor,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      MirroredSideInsets(child: child!),
-                      const LaunchLayer(),
-                    ],
+            child: MascotGazeScope(
+              child: AppMotionScope(
+                fluid: fluid,
+                child: ThemeRevealHost(
+                  // 整棵树最底下垫一层不透明的页面底色：任何一帧只要上层没画
+                  // 东西（重建、关闭动画、首帧），看见的是页面底色而不是纯黑。
+                  // 壁纸和渐变都画在它上面，所以看不出区别。
+                  child: ColoredBox(
+                    color: Theme.of(context).scaffoldBackgroundColor,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        MirroredSideInsets(child: child!),
+                        const LaunchLayer(),
+                      ],
+                    ),
                   ),
                 ),
               ),

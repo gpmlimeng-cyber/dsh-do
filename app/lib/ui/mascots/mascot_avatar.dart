@@ -19,6 +19,7 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/l10n.dart';
 import '../../state/mascot_clock.dart';
+import '../../state/mascot_gaze.dart';
 
 /// 14 个角色，顺序即选择器里的顺序（新角色只能加在末尾：顺序是存档索引）。
 enum MascotCharacter {
@@ -490,6 +491,9 @@ class MascotAvatar extends StatefulWidget {
 class _MascotAvatarState extends State<MascotAvatar> with SingleTickerProviderStateMixin {
   /// 共享时钟：有 scope 时用它，一屏多个头像共用一个 ticker。
   MascotClock? _clock;
+
+  /// 全 App 的注视状态（没有 scope 时不做注视）。
+  MascotGaze? _gaze;
   bool _holding = false;
 
   /// 没有共享时钟时（单页测试/独立预览）退回本地控制器。
@@ -522,6 +526,7 @@ class _MascotAvatarState extends State<MascotAvatar> with SingleTickerProviderSt
   /// 只决定「要不要动」：共享时钟 acquire/release，没有时钟才起本地控制器。
   void _syncAnimation() {
     final clock = MascotClockScope.maybeOf(context);
+    _gaze = MascotGazeScope.maybeOf(context);
     final reduced = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
     final active = widget.animate && !reduced && TickerMode.of(context);
 
@@ -596,6 +601,7 @@ class _MascotAvatarState extends State<MascotAvatar> with SingleTickerProviderSt
       dark: dark,
       clock: clock,
       period: period ?? _durationOf(widget.spec.motion),
+      gaze: active ? _gaze : null,
     );
 
     // 共享时钟：把时钟当 repaint 交给画笔，一帧只重画、不重建 widget。
@@ -635,6 +641,7 @@ class MascotPainter extends CustomPainter {
     this.letter,
     this.clock,
     this.period = const Duration(milliseconds: 1100),
+    this.gaze,
   }) : super(repaint: clock);
 
   final MascotSpec spec;
@@ -645,6 +652,14 @@ class MascotPainter extends CustomPainter {
 
   /// 这一档动作的周期；共享时钟按它取模。
   final Duration period;
+
+  /// 全 App 的注视状态；null 时不做注视（静态帧、独立预览）。
+  final MascotGaze? gaze;
+
+  /// 同一副形象用同一个 seed：眼睛自动漂和眨眼都按它错开。
+  int get gazeSeed => spec.seed != 0
+      ? spec.seed
+      : Object.hash(spec.character, spec.color, spec.motion);
 
   /// 字团用：非空时在五官位置画这个字，不画眼睛/嘴/腮红。
   final String? letter;
@@ -660,8 +675,11 @@ class MascotPainter extends CustomPainter {
     final phase = clock?.phaseOf(period) ?? this.phase;
     final t = phase * 2 * math.pi;
     final expression = emotion == null ? expressionFor(spec) : (mascotExpressions[emotion] ?? expressionFor(spec));
+    // 注视与眨眼：都只读共享时钟，不另起计时器。
+    final look = gaze?.resolve(seed: gazeSeed) ?? Offset.zero;
+    final blinking = _blinkingNow();
     if (spec.character == MascotCharacter.sprout) {
-      _paintSprout(canvas, size, expression, t, letter);
+      _paintSprout(canvas, size, expression, t, letter, look: look, blinking: blinking);
       return;
     }
 
@@ -702,11 +720,21 @@ class MascotPainter extends CustomPainter {
     canvas.scale(1, scaleY);
     canvas.translate(-size.width / 2 + shake, -size.height / 2 + dy);
 
+    final three = spec.view == MascotView.three;
+    if (three) {
+      // 3D 的「远近」：z 呼吸 + 随注视轻微转头（侧转时补一点体积，别变窄）。
+      final breath = 0.98 + 0.02 * (0.5 + 0.5 * math.sin(t * 0.9));
+      final yaw = look.dx * 9.4;
+      canvas.translate(size.width / 2, size.height * 0.55);
+      canvas.rotate(look.dx * 0.06);
+      canvas.scale(breath * (1 - yaw.abs() * 0.0025), breath);
+      canvas.translate(-size.width / 2, -size.height * 0.55);
+    }
+
     // 角团下宽上尖，重心压在底部：整体上移一点，视觉重心才落在画布中央。
     // 其余角色按原矩形画，不动。
     final lift = spec.character == MascotCharacter.triangle ? s * 0.08 : 0.0;
     final rect = Rect.fromLTWH(s * 0.10, s * 0.20 - lift, s * 0.80, s * 0.70);
-    final three = spec.view == MascotView.three;
     final top = _lighten(body, 0.34);
     final bottom = _darken(body, 0.30);
 
@@ -752,7 +780,14 @@ class MascotPainter extends CustomPainter {
           ).createShader(rect),
       );
       canvas.drawOval(
-        Rect.fromCenter(center: Offset(rect.left + rect.width * 0.30, rect.top + rect.height * 0.22), width: rect.width * 0.34, height: rect.height * 0.20),
+        Rect.fromCenter(
+          center: Offset(
+            rect.left + rect.width * (0.30 + look.dx * 0.05),
+            rect.top + rect.height * (0.22 + look.dy * 0.04),
+          ),
+          width: rect.width * 0.34,
+          height: rect.height * 0.20,
+        ),
         Paint()..color = Colors.white.withValues(alpha: dark ? 0.22 : 0.38),
       );
       canvas.restore();
@@ -765,7 +800,7 @@ class MascotPainter extends CustomPainter {
     if (letter case final glyph?) {
       _glyph(canvas, rect, glyph);
     } else {
-      _face(canvas, rect, t, expression.eyes, expression.mouth, three: three);
+      _face(canvas, rect, t, expression.eyes, expression.mouth, three: three, look: look, blinking: blinking);
     }
 
     canvas.restore();
@@ -1087,6 +1122,15 @@ class MascotPainter extends CustomPainter {
 
   /// [eyes]/[mouth] 是情绪配方里的词（open/closed/wide/happy/sad/thinking/
   /// angry/love/cry/bored；neutral/smile/open/flat/frown/talk）。
+  /// 用共享时钟算眨眼：周期 2.2–4.8s（按 seed 错开），闭眼 110ms；
+  /// `seed % 100 < 18` 的还会在 160ms 后补一次 90ms 的连眨。
+  /// 眨眼节奏见 `state/mascot_clock.dart` 的 [mascotBlinkAt]（纯函数，测试同一份）。
+  bool _blinkingNow() {
+    final now = gaze?.clock.elapsed ?? clock?.elapsed;
+    if (now == null) return false;
+    return mascotBlinkAt(now, gazeSeed);
+  }
+
   /// 字团的脸：身体中间一个字；深底白字、浅底深字，按身体明度挑。
   void _glyph(Canvas canvas, Rect r, String glyph) {
     final glyphInk = body.computeLuminance() < 0.42 ? Colors.white.withValues(alpha: 0.94) : _darken(body, 0.62);
@@ -1107,11 +1151,32 @@ class MascotPainter extends CustomPainter {
     painter.paint(canvas, center);
   }
 
-  void _face(Canvas canvas, Rect r, double t, String eyes, String mouth, {required bool three}) {
-    final gaze = spec.motion == MascotMotion.curious ? math.sin(t) * r.width * 0.035 : 0.0;
-    final eyeY = r.top + r.height * 0.44;
-    final lx = r.center.dx - r.width * 0.18 + gaze;
-    final rx = r.center.dx + r.width * 0.18 + gaze;
+  void _face(
+    Canvas canvas,
+    Rect r,
+    double t,
+    String eyes,
+    String mouth, {
+    required bool three,
+    Offset look = Offset.zero,
+    bool blinking = false,
+  }) {
+    // 好奇档自带的左右看，叠加在注视方向之上。
+    final drift = spec.motion == MascotMotion.curious ? math.sin(t) * r.width * 0.035 : 0.0;
+    // 注视：瞳孔最多 ±8/±6（100 制），眼球轻微放大压扁；2D 脸转 5°、3D 3.4°。
+    final gx = look.dx * 8 * (r.width / 80);
+    final gy = look.dy * 6 * (r.height / 70);
+    final pivot = Offset(r.center.dx, r.top + r.height * 0.5);
+    canvas.save();
+    canvas.translate(pivot.dx, pivot.dy);
+    canvas.rotate(look.dx * (three ? 0.06 : 0.087));
+    canvas.scale(1 + look.dx.abs() * 0.035 * (r.width / 80), 1 - look.dx.abs() * 0.1 * (r.width / 80));
+    canvas.translate(-pivot.dx, -pivot.dy);
+    // 角团下宽上尖，五官放在几何中线会显得偏高，往下压一点更顺眼。
+    final faceDrop = spec.character == MascotCharacter.triangle ? r.height * 0.10 : 0.0;
+    final eyeY = r.top + r.height * 0.44 + gy + faceDrop;
+    final lx = r.center.dx - r.width * 0.18 + drift + gx;
+    final rx = r.center.dx + r.width * 0.18 + drift + gx;
     final ink = _darken(body, 0.62);
     final white = Paint()..color = Colors.white.withValues(alpha: 0.92);
     final dark = Paint()..color = ink;
@@ -1198,6 +1263,11 @@ class MascotPainter extends CustomPainter {
     void dotEye(double x) => canvas.drawCircle(Offset(x, eyeY), r.width * 0.048, dark);
 
     for (final (x, left) in [(lx, true), (rx, false)]) {
+      // 自动眨眼：眼白类才眨，弧线/爱心/生气保持原样。
+      if (blinking && !fixedFace && !const {'happy', 'closed', 'love', 'angry', 'cry'}.contains(eyes)) {
+        closedEye(x);
+        continue;
+      }
       if (fixedFace) {
         if (spec.face == MascotFace.simple) {
           simpleEye(x);
@@ -1271,6 +1341,7 @@ class MascotPainter extends CustomPainter {
           stroke,
         );
     }
+    canvas.restore();
   }
 
   // ── 芽团（sprout）：按 lively-mascot 的数值 1:1 重画 ────────────────────
@@ -1280,7 +1351,7 @@ class MascotPainter extends CustomPainter {
   // 眼坐标 34,43 与 66,43、眼白 rx10 ry11.5、瞳孔 r6.2、腮红 20/80,57）、
   // src/characters/sprout.model.css|js（border-radius 50% 50% 46% 49%、叶子
   // 37×40 在 top -34、脚的 22×16 椭圆）。
-  void _paintSprout(Canvas canvas, Size size, MascotExpression expr, double t, String? letter) {
+  void _paintSprout(Canvas canvas, Size size, MascotExpression expr, double t, String? letter, {Offset look = Offset.zero, bool blinking = false}) {
     const contentW = 100.0;
     const bodyTop = 40.0;
     const contentH = 148.0;
@@ -1399,6 +1470,13 @@ class MascotPainter extends CustomPainter {
       // 字团：五官位置换成名字首字，不画眼/嘴/腮红。
       _sproutGlyph(canvas, f, u, glyph);
     } else {
+      // 注视：脸整体轻微旋转/缩放（瞳孔偏移在 _sproutEyes 里）。
+      final pivot = f(50, 50);
+      canvas.save();
+      canvas.translate(pivot.dx, pivot.dy);
+      canvas.rotate(look.dx * (three ? 0.06 : 0.087));
+      canvas.scale(1 + look.dx.abs() * 0.035, 1 - look.dx.abs() * 0.1);
+      canvas.translate(-pivot.dx, -pivot.dy);
       // 腮红。
       for (final cx in [20.0, 80.0]) {
         canvas.drawOval(
@@ -1406,8 +1484,9 @@ class MascotPainter extends CustomPainter {
           Paint()..color = accent.withValues(alpha: 0.75),
         );
       }
-      _sproutEyes(canvas, f, u, expr.eyes, t, spec.face, math.sin(t) > 0.997, three: three);
+      _sproutEyes(canvas, f, u, expr.eyes, t, spec.face, blinking, three: three, look: look);
       _sproutMouth(canvas, f, u, expr.mouth);
+      canvas.restore();
     }
     canvas.restore();
     // 特效锚点在角色头上（engine 的 head 锚点 50,14；按身体比例折算）。
@@ -1428,7 +1507,7 @@ class MascotPainter extends CustomPainter {
     painter.paint(canvas, Offset(center.dx - painter.width / 2, center.dy - painter.height / 2));
   }
 
-  void _sproutEyes(Canvas canvas, Offset Function(double, double) f, double u, String style, double t, MascotFace face, bool blinking, {required bool three}) {
+  void _sproutEyes(Canvas canvas, Offset Function(double, double) f, double u, String style, double t, MascotFace face, bool blinking, {required bool three, Offset look = Offset.zero}) {
     final white = Paint()..color = Colors.white;
     final line = Paint()
       ..color = ink
@@ -1439,7 +1518,7 @@ class MascotPainter extends CustomPainter {
     final pupilOffset = style == 'thinking' ? Offset(-1.4 * u, -2.0 * u) : Offset.zero;
 
     for (final cx in [34.0, 66.0]) {
-      final center = f(cx, 43);
+      final center = f(cx, 43) + Offset(look.dx * 8 * u, look.dy * 6 * u);
       if (blinking && face == MascotFace.standard && style != 'happy' && style != 'closed') {
         canvas.drawLine(Offset(center.dx - 8 * u, center.dy), Offset(center.dx + 8 * u, center.dy), line);
         continue;
@@ -1699,6 +1778,7 @@ class MascotPainter extends CustomPainter {
       oldDelegate.letter != letter ||
       oldDelegate.clock != clock ||
       oldDelegate.period != period ||
+      oldDelegate.gaze != gaze ||
       oldDelegate.body != body ||
       oldDelegate.phase != phase ||
       oldDelegate.dark != dark;
