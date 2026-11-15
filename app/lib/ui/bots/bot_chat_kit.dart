@@ -1661,7 +1661,7 @@ class BotReplyText extends StatelessWidget {
         await shareText(context, plain);
       case MessageAction.quote:
         onQuote?.call(plain);
-      case MessageAction.edit || MessageAction.regenerate || MessageAction.branch:
+      case MessageAction.edit || MessageAction.regenerate || MessageAction.branch || MessageAction.readAloud:
         break;
     }
   }

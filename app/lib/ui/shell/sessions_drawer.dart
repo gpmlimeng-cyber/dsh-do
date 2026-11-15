@@ -498,6 +498,7 @@ class _SessionList extends ConsumerWidget {
     }
     return DrawerConversationList(
       now: now,
+      onClose: onClose,
       onNewChat: onClose,
       readOnly: scope.readOnly,
       leading: showBots

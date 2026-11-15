@@ -476,7 +476,6 @@ class _UpdateSheetState extends ConsumerState<UpdateSheet> {
         final (title, text) = describeUpdateProblem(
           update.problem ?? UpdateProblem.installFailed,
           size: update.asset?.size,
-          detail: update.problemDetail,
         );
         return _Notice(
           icon: AppIcons.error,

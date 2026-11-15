@@ -52,7 +52,8 @@ String voiceModelFailureText(L10n l10n, VoiceModelFailure? failure, {int? needed
   VoiceModelFailure.integrity => l10n.voiceModelFailIntegrity,
   VoiceModelFailure.storage => l10n.voiceModelFailStorage(voiceModelMegabytes(neededBytes ?? voiceModelDefaultBytes)),
   VoiceModelFailure.engine => l10n.voiceModelFailEngine,
-  VoiceModelFailure.unknown || null => l10n.voiceModelFailUnknown,
+  // 模型文件被清掉/丢了，用户看到的仍是「下载没完成」，重新下载即可。
+  VoiceModelFailure.lost || VoiceModelFailure.unknown || null => l10n.voiceModelFailUnknown,
 };
 
 /// A download the person asked for: the card's 下载, 继续下载, 重试 and 重新下载
