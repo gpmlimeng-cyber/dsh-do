@@ -1178,11 +1178,11 @@ class MascotPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
 
     void roundEye(double x, double radius, {double dx = 0, double dy = 0}) {
+      // 眼白 + 瞳孔 + 高光。2D 也画：不画的话「默认」在小尺寸缩略图上
+      // 和「圆点」几乎一样，用户分不出两档。
+      canvas.drawCircle(Offset(x, eyeY), radius * 1.35, white);
       canvas.drawCircle(Offset(x, eyeY), radius, dark);
-      // 2D 是扁平贴纸，不留眼白高光点。
-      if (three) {
-        canvas.drawCircle(Offset(x - radius * 0.35 + dx, eyeY - radius * 0.35 + dy), radius * 0.34, white);
-      }
+      canvas.drawCircle(Offset(x - radius * 0.35 + dx, eyeY - radius * 0.35 + dy), radius * 0.36, white);
     }
 
     void closedEye(double x) {

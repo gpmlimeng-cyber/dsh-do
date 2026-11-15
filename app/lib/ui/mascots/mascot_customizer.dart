@@ -498,7 +498,7 @@ class _FaceList extends StatelessWidget {
                   children: [
                     // 卡片里画「这个档位的静态五官」：带情绪会变成笑脸弧线，
                     // 和「眼白 + 瞳孔 + 高光」这类说明对不上。
-                    MascotAvatar(spec: spec.copyWith(face: face), size: 46),
+                    MascotAvatar(spec: spec.copyWith(face: face), size: 52),
                     const SizedBox(height: 8),
                     Text(face.label, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
                     const SizedBox(height: 2),
