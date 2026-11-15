@@ -46,7 +46,11 @@ void main() {
   testWidgets('the add sheet is at least 80% of the screen tall', (tester) async {
     await openDrawer(tester, FakeDsBotTransport());
     expect(find.text(ImStrings.addCompanion), findsOneWidget);
-    expect(find.text(ImStrings.templateStart), findsOneWidget);
+    // 页面上模板横滑区也有「从模板开始」，所以按抽屉独有的行 key 断。
+    expect(
+      find.byKey(ValueKey('template-add-${featuredPartnerTemplates.first.id}')),
+      findsOneWidget,
+    );
 
     final screenHeight = tester.view.physicalSize.height / tester.view.devicePixelRatio;
     final boxes = tester.widgetList<SizedBox>(
