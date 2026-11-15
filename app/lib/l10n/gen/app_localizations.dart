@@ -4532,54 +4532,6 @@ abstract class L10n {
   /// **'比如：周五前交初稿'**
   String get botsMemoryDraftExample;
 
-  /// No description provided for @botsMemoryUpdated.
-  ///
-  /// In zh, this message translates to:
-  /// **'记忆已更新'**
-  String get botsMemoryUpdated;
-
-  /// No description provided for @botsMemoryAlready.
-  ///
-  /// In zh, this message translates to:
-  /// **'已经保存过了'**
-  String get botsMemoryAlready;
-
-  /// No description provided for @botsMemoryFailed.
-  ///
-  /// In zh, this message translates to:
-  /// **'没能保存到记忆'**
-  String get botsMemoryFailed;
-
-  /// No description provided for @botsMemoryUnchanged.
-  ///
-  /// In zh, this message translates to:
-  /// **'记忆没有变化'**
-  String get botsMemoryUnchanged;
-
-  /// No description provided for @botsMemoryReasonEmpty.
-  ///
-  /// In zh, this message translates to:
-  /// **'没有内容可保存'**
-  String get botsMemoryReasonEmpty;
-
-  /// No description provided for @botsMemoryReasonNoMatch.
-  ///
-  /// In zh, this message translates to:
-  /// **'没有匹配的条目'**
-  String get botsMemoryReasonNoMatch;
-
-  /// No description provided for @botsMemoryReasonRefused.
-  ///
-  /// In zh, this message translates to:
-  /// **'记忆拒绝了这次改动'**
-  String get botsMemoryReasonRefused;
-
-  /// No description provided for @botsMemoryReasonOther.
-  ///
-  /// In zh, this message translates to:
-  /// **'记忆没能改动'**
-  String get botsMemoryReasonOther;
-
   /// No description provided for @botsMemoryCount.
   ///
   /// In zh, this message translates to:
@@ -6079,6 +6031,54 @@ abstract class L10n {
   /// In zh, this message translates to:
   /// **'连接已变化，请重新打开创建页面后再操作。'**
   String get botsCreationConnectionChanged;
+
+  /// No description provided for @botsMemoryUpdated.
+  ///
+  /// In zh, this message translates to:
+  /// **'记忆已更新'**
+  String get botsMemoryUpdated;
+
+  /// No description provided for @botsMemoryAlready.
+  ///
+  /// In zh, this message translates to:
+  /// **'已经保存过了'**
+  String get botsMemoryAlready;
+
+  /// No description provided for @botsMemoryFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'没能保存到记忆'**
+  String get botsMemoryFailed;
+
+  /// No description provided for @botsMemoryUnchanged.
+  ///
+  /// In zh, this message translates to:
+  /// **'记忆没有变化'**
+  String get botsMemoryUnchanged;
+
+  /// No description provided for @botsMemoryReasonEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有内容可保存'**
+  String get botsMemoryReasonEmpty;
+
+  /// No description provided for @botsMemoryReasonNoMatch.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有匹配的条目'**
+  String get botsMemoryReasonNoMatch;
+
+  /// No description provided for @botsMemoryReasonRefused.
+  ///
+  /// In zh, this message translates to:
+  /// **'记忆拒绝了这次改动'**
+  String get botsMemoryReasonRefused;
+
+  /// No description provided for @botsMemoryReasonOther.
+  ///
+  /// In zh, this message translates to:
+  /// **'记忆没能改动'**
+  String get botsMemoryReasonOther;
 
   /// No description provided for @botsPermissionGroupWide.
   ///
@@ -11222,6 +11222,60 @@ abstract class L10n {
   /// **'网络不通'**
   String get companionAdaptNetwork;
 
+  /// No description provided for @companionNeedsAttention.
+  ///
+  /// In zh, this message translates to:
+  /// **'有件事要你确认，点这里去看'**
+  String get companionNeedsAttention;
+
+  /// No description provided for @companionMenuInvite.
+  ///
+  /// In zh, this message translates to:
+  /// **'主动邀请'**
+  String get companionMenuInvite;
+
+  /// No description provided for @companionMenuInviteHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'你安静陪着她时，她偶尔会邀你一起歇一会儿'**
+  String get companionMenuInviteHint;
+
+  /// No description provided for @companionTaskDone.
+  ///
+  /// In zh, this message translates to:
+  /// **'「{title}」那边跑完啦。'**
+  String companionTaskDone(String title);
+
+  /// No description provided for @companionTaskFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'「{title}」好像出错了，要去看看吗？'**
+  String companionTaskFailed(String title);
+
+  /// No description provided for @companionTaskApproval.
+  ///
+  /// In zh, this message translates to:
+  /// **'「{title}」在等你批准。'**
+  String companionTaskApproval(String title);
+
+  /// No description provided for @companionTaskApprovalUntitled.
+  ///
+  /// In zh, this message translates to:
+  /// **'你那边有件事在等你批准。'**
+  String get companionTaskApprovalUntitled;
+
+  /// No description provided for @companionTaskQuestion.
+  ///
+  /// In zh, this message translates to:
+  /// **'「{title}」有事想问你。'**
+  String companionTaskQuestion(String title);
+
+  /// No description provided for @companionTaskQuestionUntitled.
+  ///
+  /// In zh, this message translates to:
+  /// **'你那边有个问题在等你回答。'**
+  String get companionTaskQuestionUntitled;
+
   /// No description provided for @automaticDiagnosticsRecover.
   ///
   /// In zh, this message translates to:
@@ -13604,12 +13658,6 @@ abstract class L10n {
   /// **'文本'**
   String get engineModelInputText;
 
-  /// No description provided for @engineModelInputTextAudio.
-  ///
-  /// In zh, this message translates to:
-  /// **'文本和音频'**
-  String get engineModelInputTextAudio;
-
   /// No description provided for @engineModelInputTextImage.
   ///
   /// In zh, this message translates to:
@@ -13663,6 +13711,12 @@ abstract class L10n {
   /// In zh, this message translates to:
   /// **'{count} 项'**
   String engineSettingsGroupCount(int count);
+
+  /// No description provided for @engineModelInputTextAudio.
+  ///
+  /// In zh, this message translates to:
+  /// **'文本和音频'**
+  String get engineModelInputTextAudio;
 
   /// No description provided for @featuresCordisSubtitle.
   ///
@@ -16994,6 +17048,36 @@ abstract class L10n {
   /// **'没有选择，左滑不会打开'**
   String get hubQuickPanelItemsNone;
 
+  /// No description provided for @aboutPitch.
+  ///
+  /// In zh, this message translates to:
+  /// **'Coka，Your AI Coworker'**
+  String get aboutPitch;
+
+  /// No description provided for @hubGroupBot.
+  ///
+  /// In zh, this message translates to:
+  /// **'Bot'**
+  String get hubGroupBot;
+
+  /// No description provided for @hubBotThinking.
+  ///
+  /// In zh, this message translates to:
+  /// **'显示思考过程'**
+  String get hubBotThinking;
+
+  /// No description provided for @hubFlatBubbles.
+  ///
+  /// In zh, this message translates to:
+  /// **'消息平铺（不用气泡）'**
+  String get hubFlatBubbles;
+
+  /// No description provided for @hubBubbleWidth.
+  ///
+  /// In zh, this message translates to:
+  /// **'气泡宽度'**
+  String get hubBubbleWidth;
+
   /// No description provided for @launchScreenTitle.
   ///
   /// In zh, this message translates to:
@@ -17071,12 +17155,6 @@ abstract class L10n {
   /// In zh, this message translates to:
   /// **'更换图片或视频'**
   String get launchReplace;
-
-  /// No description provided for @launchAnimation.
-  ///
-  /// In zh, this message translates to:
-  /// **'启动动画'**
-  String get launchAnimation;
 
   /// No description provided for @launchPreview.
   ///
@@ -17233,6 +17311,12 @@ abstract class L10n {
   /// In zh, this message translates to:
   /// **'快捷方式,自定义图标,桌面图片,换图标'**
   String get searchKwIconShortcut;
+
+  /// No description provided for @launchAnimation.
+  ///
+  /// In zh, this message translates to:
+  /// **'启动动画'**
+  String get launchAnimation;
 
   /// No description provided for @liveThinking.
   ///
@@ -32462,6 +32546,78 @@ abstract class L10n {
   /// **'在「{path}」里调整'**
   String shellQuickPanelHint(String path);
 
+  /// No description provided for @shellFolderSessions.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 个会话'**
+  String shellFolderSessions(int count);
+
+  /// No description provided for @shellGroups.
+  ///
+  /// In zh, this message translates to:
+  /// **'分组'**
+  String get shellGroups;
+
+  /// No description provided for @shellNewFolderName.
+  ///
+  /// In zh, this message translates to:
+  /// **'分组名称'**
+  String get shellNewFolderName;
+
+  /// No description provided for @shellNewFolderTaken.
+  ///
+  /// In zh, this message translates to:
+  /// **'已经有叫这个名字的分组了'**
+  String get shellNewFolderTaken;
+
+  /// No description provided for @shellNewNamedBot.
+  ///
+  /// In zh, this message translates to:
+  /// **'新建 Bot「{name}」'**
+  String shellNewNamedBot(String name);
+
+  /// No description provided for @shellNewPanelBots.
+  ///
+  /// In zh, this message translates to:
+  /// **'Bot'**
+  String get shellNewPanelBots;
+
+  /// No description provided for @shellNewPanelGroups.
+  ///
+  /// In zh, this message translates to:
+  /// **'群'**
+  String get shellNewPanelGroups;
+
+  /// No description provided for @shellNewPanelNew.
+  ///
+  /// In zh, this message translates to:
+  /// **'新建'**
+  String get shellNewPanelNew;
+
+  /// No description provided for @shellNewPanelRecent.
+  ///
+  /// In zh, this message translates to:
+  /// **'最近 3 个'**
+  String get shellNewPanelRecent;
+
+  /// No description provided for @shellNewPanelSearch.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索 Bot、群、分组，或直接写名字'**
+  String get shellNewPanelSearch;
+
+  /// No description provided for @shellNewPanelStart.
+  ///
+  /// In zh, this message translates to:
+  /// **'开始对话'**
+  String get shellNewPanelStart;
+
+  /// No description provided for @shellNewPanelTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'新建'**
+  String get shellNewPanelTitle;
+
   /// No description provided for @speechReadAloud.
   ///
   /// In zh, this message translates to:
@@ -42134,18 +42290,6 @@ abstract class L10n {
   /// **'每天检查一次'**
   String get updateAutoCheckDaily;
 
-  /// No description provided for @updateIncludePreviews.
-  ///
-  /// In zh, this message translates to:
-  /// **'检查更新时包含预览版'**
-  String get updateIncludePreviews;
-
-  /// No description provided for @updateBasedOn.
-  ///
-  /// In zh, this message translates to:
-  /// **'基于上游 {version}'**
-  String updateBasedOn(String version);
-
   /// No description provided for @updateTileDownloading.
   ///
   /// In zh, this message translates to:
@@ -42631,6 +42775,18 @@ abstract class L10n {
   /// In zh, this message translates to:
   /// **'正在下载 {percent}%'**
   String updateDownloadingPercent(int percent);
+
+  /// No description provided for @updateIncludePreviews.
+  ///
+  /// In zh, this message translates to:
+  /// **'检查更新时包含预览版'**
+  String get updateIncludePreviews;
+
+  /// No description provided for @updateBasedOn.
+  ///
+  /// In zh, this message translates to:
+  /// **'基于上游 {version}'**
+  String updateBasedOn(String version);
 
   /// No description provided for @usageStatsTitle.
   ///
@@ -45482,6 +45638,78 @@ abstract class L10n {
   /// **'例如 whisper-1、FunAudioLLM/SenseVoiceSmall'**
   String get voiceCloudModelHelper;
 
+  /// No description provided for @voiceCloudConfigure.
+  ///
+  /// In zh, this message translates to:
+  /// **'去配置云端语音模型'**
+  String get voiceCloudConfigure;
+
+  /// No description provided for @voiceCloudEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'还没有配置云端语音模型'**
+  String get voiceCloudEmpty;
+
+  /// No description provided for @voiceCloudNeedPick.
+  ///
+  /// In zh, this message translates to:
+  /// **'先在设置里选一个云端语音模型'**
+  String get voiceCloudNeedPick;
+
+  /// No description provided for @voiceEngineBusy.
+  ///
+  /// In zh, this message translates to:
+  /// **'引擎正忙或响应超时，语音模型暂时用不了，稍后再点一次'**
+  String get voiceEngineBusy;
+
+  /// No description provided for @voiceEngineModelMissing.
+  ///
+  /// In zh, this message translates to:
+  /// **'语音模型已下载，但引擎没有加载它；请重启 App，或在语音设置里检查插件'**
+  String get voiceEngineModelMissing;
+
+  /// No description provided for @voiceEnginePreparing.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在准备语音模型…'**
+  String get voiceEnginePreparing;
+
+  /// No description provided for @voiceEnginePreparingTimeout.
+  ///
+  /// In zh, this message translates to:
+  /// **'语音模型还在准备，稍后再点一次'**
+  String get voiceEnginePreparingTimeout;
+
+  /// No description provided for @voiceModelEngineMissing.
+  ///
+  /// In zh, this message translates to:
+  /// **'引擎没加载语音插件'**
+  String get voiceModelEngineMissing;
+
+  /// No description provided for @voiceModelEngineMissingNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'语音插件没在引擎里，重启引擎后再试'**
+  String get voiceModelEngineMissingNote;
+
+  /// No description provided for @voiceModelFailLost.
+  ///
+  /// In zh, this message translates to:
+  /// **'语音模型文件不在了，请重新下载'**
+  String get voiceModelFailLost;
+
+  /// No description provided for @voiceModelLostNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'本地模型已丢失，重新下载后可用'**
+  String get voiceModelLostNote;
+
+  /// No description provided for @voiceModelRestartEngine.
+  ///
+  /// In zh, this message translates to:
+  /// **'重启引擎'**
+  String get voiceModelRestartEngine;
+
   /// No description provided for @voiceScribeReadFailed.
   ///
   /// In zh, this message translates to:
@@ -46579,6 +46807,24 @@ abstract class L10n {
   /// In zh, this message translates to:
   /// **'没能退出，稍后再试。'**
   String get workshopAccountSignOutFailed;
+
+  /// No description provided for @workshopErrorForumMismatch.
+  ///
+  /// In zh, this message translates to:
+  /// **'登录的论坛和工坊认的不是同一个，请重新登录。'**
+  String get workshopErrorForumMismatch;
+
+  /// No description provided for @workshopErrorForumDown.
+  ///
+  /// In zh, this message translates to:
+  /// **'论坛暂时联系不上，稍后再试。'**
+  String get workshopErrorForumDown;
+
+  /// No description provided for @workshopDisclosureForum.
+  ///
+  /// In zh, this message translates to:
+  /// **'核对身份的论坛'**
+  String get workshopDisclosureForum;
 
   /// No description provided for @workshopInstalledEmptyTitle.
   ///

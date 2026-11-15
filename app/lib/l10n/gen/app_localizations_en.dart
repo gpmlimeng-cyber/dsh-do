@@ -2587,30 +2587,6 @@ class L10nEn extends L10n {
   String get botsMemoryDraftExample => 'For example: First draft by Friday';
 
   @override
-  String get botsMemoryUpdated => 'Memory updated';
-
-  @override
-  String get botsMemoryAlready => 'Already saved';
-
-  @override
-  String get botsMemoryFailed => 'Couldn\'t save to memory';
-
-  @override
-  String get botsMemoryUnchanged => 'Memory not changed';
-
-  @override
-  String get botsMemoryReasonEmpty => 'Write something to save';
-
-  @override
-  String get botsMemoryReasonNoMatch => 'No saved entry matched';
-
-  @override
-  String get botsMemoryReasonRefused => 'The memory refused this change';
-
-  @override
-  String get botsMemoryReasonOther => 'The memory could not be changed';
-
-  @override
   String botsMemoryCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: 'Memory · $count', one: 'Memory · 1');
     return '$_temp0';
@@ -3478,6 +3454,30 @@ class L10nEn extends L10n {
 
   @override
   String get botsCreationConnectionChanged => 'The connection changed. Reopen this form to create on the current host.';
+
+  @override
+  String get botsMemoryUpdated => 'Memory updated';
+
+  @override
+  String get botsMemoryAlready => 'Already saved';
+
+  @override
+  String get botsMemoryFailed => 'Couldn\'t save to memory';
+
+  @override
+  String get botsMemoryUnchanged => 'Memory not changed';
+
+  @override
+  String get botsMemoryReasonEmpty => 'Write something to save';
+
+  @override
+  String get botsMemoryReasonNoMatch => 'No saved entry matched';
+
+  @override
+  String get botsMemoryReasonRefused => 'The memory refused this change';
+
+  @override
+  String get botsMemoryReasonOther => 'The memory could not be changed';
 
   @override
   String get botsPermissionGroupWide => 'One permission preset for this group';
@@ -6404,6 +6404,41 @@ class L10nEn extends L10n {
   String get companionAdaptNetwork => 'no connection';
 
   @override
+  String get companionNeedsAttention => 'Something needs your confirmation. Tap to see it';
+
+  @override
+  String get companionMenuInvite => 'Invitations';
+
+  @override
+  String get companionMenuInviteHint => 'When you sit quietly with her, she may now and then ask you to rest together';
+
+  @override
+  String companionTaskDone(String title) {
+    return '\"$title\" is done over there.';
+  }
+
+  @override
+  String companionTaskFailed(String title) {
+    return '\"$title\" seems to have hit an error. Take a look?';
+  }
+
+  @override
+  String companionTaskApproval(String title) {
+    return '\"$title\" is waiting for your approval.';
+  }
+
+  @override
+  String get companionTaskApprovalUntitled => 'Something over there is waiting for your approval.';
+
+  @override
+  String companionTaskQuestion(String title) {
+    return '\"$title\" has a question for you.';
+  }
+
+  @override
+  String get companionTaskQuestionUntitled => 'There\'s a question waiting for you over there.';
+
+  @override
   String get automaticDiagnosticsRecover => 'Recover local records';
 
   @override
@@ -7742,9 +7777,6 @@ class L10nEn extends L10n {
   String get engineModelInputText => 'Text';
 
   @override
-  String get engineModelInputTextAudio => 'Text and audio';
-
-  @override
   String get engineModelInputTextImage => 'Text + image';
 
   @override
@@ -7773,6 +7805,9 @@ class L10nEn extends L10n {
     String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count settings', one: '1 setting');
     return '$_temp0';
   }
+
+  @override
+  String get engineModelInputTextAudio => 'Text and audio';
 
   @override
   String get featuresCordisSubtitle => 'Dynamic plugins · Cleared when the engine restarts';
@@ -9715,6 +9750,21 @@ class L10nEn extends L10n {
   String get hubQuickPanelItemsNone => 'Nothing chosen: a left swipe won\'t open it';
 
   @override
+  String get aboutPitch => 'Coka, Your AI Coworker';
+
+  @override
+  String get hubGroupBot => 'Bots';
+
+  @override
+  String get hubBotThinking => 'Show the thinking';
+
+  @override
+  String get hubFlatBubbles => 'Flat messages (no bubbles)';
+
+  @override
+  String get hubBubbleWidth => 'Bubble width';
+
+  @override
   String get launchScreenTitle => 'Launch screen';
 
   @override
@@ -9752,9 +9802,6 @@ class L10nEn extends L10n {
 
   @override
   String get launchReplace => 'Replace picture or video';
-
-  @override
-  String get launchAnimation => 'Launch animation';
 
   @override
   String get launchPreview => 'Preview';
@@ -9837,6 +9884,9 @@ class L10nEn extends L10n {
 
   @override
   String get searchKwIconShortcut => 'shortcut,custom icon,home screen picture';
+
+  @override
+  String get launchAnimation => 'Launch animation';
 
   @override
   String get liveThinking => 'Thinking';
@@ -18721,6 +18771,52 @@ class L10nEn extends L10n {
   }
 
   @override
+  String shellFolderSessions(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count conversations',
+      one: '1 conversation',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get shellGroups => 'Folders';
+
+  @override
+  String get shellNewFolderName => 'Folder name';
+
+  @override
+  String get shellNewFolderTaken => 'A folder with that name already exists';
+
+  @override
+  String shellNewNamedBot(String name) {
+    return 'New Bot “$name”';
+  }
+
+  @override
+  String get shellNewPanelBots => 'Bots';
+
+  @override
+  String get shellNewPanelGroups => 'Groups';
+
+  @override
+  String get shellNewPanelNew => 'New';
+
+  @override
+  String get shellNewPanelRecent => 'Recent 3';
+
+  @override
+  String get shellNewPanelSearch => 'Search Bots, groups and folders, or type a name';
+
+  @override
+  String get shellNewPanelStart => 'Start a conversation';
+
+  @override
+  String get shellNewPanelTitle => 'New';
+
+  @override
   String get speechReadAloud => 'Read aloud';
 
   @override
@@ -24273,14 +24369,6 @@ class L10nEn extends L10n {
   String get updateAutoCheckDaily => 'Once a day';
 
   @override
-  String get updateIncludePreviews => 'Include preview builds when checking';
-
-  @override
-  String updateBasedOn(String version) {
-    return 'Based on upstream $version';
-  }
-
-  @override
   String get updateTileDownloading => 'Downloading';
 
   @override
@@ -24550,6 +24638,14 @@ class L10nEn extends L10n {
   @override
   String updateDownloadingPercent(int percent) {
     return 'Downloading $percent%';
+  }
+
+  @override
+  String get updateIncludePreviews => 'Include preview builds when checking';
+
+  @override
+  String updateBasedOn(String version) {
+    return 'Based on upstream $version';
   }
 
   @override
@@ -26375,6 +26471,44 @@ class L10nEn extends L10n {
   String get voiceCloudModelHelper => 'For example whisper-1 or FunAudioLLM/SenseVoiceSmall';
 
   @override
+  String get voiceCloudConfigure => 'Configure a cloud speech model';
+
+  @override
+  String get voiceCloudEmpty => 'No cloud speech model is configured';
+
+  @override
+  String get voiceCloudNeedPick => 'Pick a cloud speech model in Settings first';
+
+  @override
+  String get voiceEngineBusy =>
+      'The engine is busy or did not answer in time, so the voice model is not ready yet. Try again in a moment.';
+
+  @override
+  String get voiceEngineModelMissing =>
+      'The voice model is downloaded, but the engine has not loaded it. Restart the app, or check the voice plugin in settings.';
+
+  @override
+  String get voiceEnginePreparing => 'Preparing the voice model…';
+
+  @override
+  String get voiceEnginePreparingTimeout => 'The voice model is still preparing. Try again in a moment.';
+
+  @override
+  String get voiceModelEngineMissing => 'The engine has not loaded the voice plugin';
+
+  @override
+  String get voiceModelEngineMissingNote => 'The voice plugin is not in the engine. Restart the engine and try again.';
+
+  @override
+  String get voiceModelFailLost => 'The voice model’s files are gone. Download it again.';
+
+  @override
+  String get voiceModelLostNote => 'The local model is gone. Download it again to use it.';
+
+  @override
+  String get voiceModelRestartEngine => 'Restart engine';
+
+  @override
   String get voiceScribeReadFailed => 'Could not read voice settings. Retry.';
 
   @override
@@ -26961,6 +27095,16 @@ class L10nEn extends L10n {
 
   @override
   String get workshopAccountSignOutFailed => 'Couldn\'t sign out. Try again later.';
+
+  @override
+  String get workshopErrorForumMismatch =>
+      'The forum you signed in to isn\'t the one this Workshop uses. Sign in again.';
+
+  @override
+  String get workshopErrorForumDown => 'The forum can\'t be reached right now. Try again later.';
+
+  @override
+  String get workshopDisclosureForum => 'Forum that confirms who you are';
 
   @override
   String get workshopInstalledEmptyTitle => 'Nothing from the Workshop yet';

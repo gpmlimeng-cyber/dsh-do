@@ -2446,30 +2446,6 @@ class L10nZh extends L10n {
   String get botsMemoryDraftExample => '比如：周五前交初稿';
 
   @override
-  String get botsMemoryUpdated => '记忆已更新';
-
-  @override
-  String get botsMemoryAlready => '已经保存过了';
-
-  @override
-  String get botsMemoryFailed => '没能保存到记忆';
-
-  @override
-  String get botsMemoryUnchanged => '记忆没有变化';
-
-  @override
-  String get botsMemoryReasonEmpty => '没有内容可保存';
-
-  @override
-  String get botsMemoryReasonNoMatch => '没有匹配的条目';
-
-  @override
-  String get botsMemoryReasonRefused => '记忆拒绝了这次改动';
-
-  @override
-  String get botsMemoryReasonOther => '记忆没能改动';
-
-  @override
   String botsMemoryCount(int count) {
     return '记忆 · $count';
   }
@@ -3302,6 +3278,30 @@ class L10nZh extends L10n {
 
   @override
   String get botsCreationConnectionChanged => '连接已变化，请重新打开创建页面后再操作。';
+
+  @override
+  String get botsMemoryUpdated => '记忆已更新';
+
+  @override
+  String get botsMemoryAlready => '已经保存过了';
+
+  @override
+  String get botsMemoryFailed => '没能保存到记忆';
+
+  @override
+  String get botsMemoryUnchanged => '记忆没有变化';
+
+  @override
+  String get botsMemoryReasonEmpty => '没有内容可保存';
+
+  @override
+  String get botsMemoryReasonNoMatch => '没有匹配的条目';
+
+  @override
+  String get botsMemoryReasonRefused => '记忆拒绝了这次改动';
+
+  @override
+  String get botsMemoryReasonOther => '记忆没能改动';
 
   @override
   String get botsPermissionGroupWide => '本群统一权限';
@@ -6058,6 +6058,41 @@ class L10nZh extends L10n {
   String get companionAdaptNetwork => '网络不通';
 
   @override
+  String get companionNeedsAttention => '有件事要你确认，点这里去看';
+
+  @override
+  String get companionMenuInvite => '主动邀请';
+
+  @override
+  String get companionMenuInviteHint => '你安静陪着她时，她偶尔会邀你一起歇一会儿';
+
+  @override
+  String companionTaskDone(String title) {
+    return '「$title」那边跑完啦。';
+  }
+
+  @override
+  String companionTaskFailed(String title) {
+    return '「$title」好像出错了，要去看看吗？';
+  }
+
+  @override
+  String companionTaskApproval(String title) {
+    return '「$title」在等你批准。';
+  }
+
+  @override
+  String get companionTaskApprovalUntitled => '你那边有件事在等你批准。';
+
+  @override
+  String companionTaskQuestion(String title) {
+    return '「$title」有事想问你。';
+  }
+
+  @override
+  String get companionTaskQuestionUntitled => '你那边有个问题在等你回答。';
+
+  @override
   String get automaticDiagnosticsRecover => '恢复本地记录';
 
   @override
@@ -7346,9 +7381,6 @@ class L10nZh extends L10n {
   String get engineModelInputText => '文本';
 
   @override
-  String get engineModelInputTextAudio => '文本和音频';
-
-  @override
   String get engineModelInputTextImage => '文本和图片';
 
   @override
@@ -7376,6 +7408,9 @@ class L10nZh extends L10n {
   String engineSettingsGroupCount(int count) {
     return '$count 项';
   }
+
+  @override
+  String get engineModelInputTextAudio => '文本和音频';
 
   @override
   String get featuresCordisSubtitle => '动态插件 · 引擎重启后清空';
@@ -9219,6 +9254,21 @@ class L10nZh extends L10n {
   String get hubQuickPanelItemsNone => '没有选择，左滑不会打开';
 
   @override
+  String get aboutPitch => 'Coka，Your AI Coworker';
+
+  @override
+  String get hubGroupBot => 'Bot';
+
+  @override
+  String get hubBotThinking => '显示思考过程';
+
+  @override
+  String get hubFlatBubbles => '消息平铺（不用气泡）';
+
+  @override
+  String get hubBubbleWidth => '气泡宽度';
+
+  @override
   String get launchScreenTitle => '启动画面';
 
   @override
@@ -9256,9 +9306,6 @@ class L10nZh extends L10n {
 
   @override
   String get launchReplace => '更换图片或视频';
-
-  @override
-  String get launchAnimation => '启动动画';
 
   @override
   String get launchPreview => '预览';
@@ -9339,6 +9386,9 @@ class L10nZh extends L10n {
 
   @override
   String get searchKwIconShortcut => '快捷方式,自定义图标,桌面图片,换图标';
+
+  @override
+  String get launchAnimation => '启动动画';
 
   @override
   String get liveThinking => '正在思考';
@@ -17750,6 +17800,46 @@ class L10nZh extends L10n {
   }
 
   @override
+  String shellFolderSessions(int count) {
+    return '$count 个会话';
+  }
+
+  @override
+  String get shellGroups => '分组';
+
+  @override
+  String get shellNewFolderName => '分组名称';
+
+  @override
+  String get shellNewFolderTaken => '已经有叫这个名字的分组了';
+
+  @override
+  String shellNewNamedBot(String name) {
+    return '新建 Bot「$name」';
+  }
+
+  @override
+  String get shellNewPanelBots => 'Bot';
+
+  @override
+  String get shellNewPanelGroups => '群';
+
+  @override
+  String get shellNewPanelNew => '新建';
+
+  @override
+  String get shellNewPanelRecent => '最近 3 个';
+
+  @override
+  String get shellNewPanelSearch => '搜索 Bot、群、分组，或直接写名字';
+
+  @override
+  String get shellNewPanelStart => '开始对话';
+
+  @override
+  String get shellNewPanelTitle => '新建';
+
+  @override
   String get speechReadAloud => '朗读';
 
   @override
@@ -23059,14 +23149,6 @@ class L10nZh extends L10n {
   String get updateAutoCheckDaily => '每天检查一次';
 
   @override
-  String get updateIncludePreviews => '检查更新时包含预览版';
-
-  @override
-  String updateBasedOn(String version) {
-    return '基于上游 $version';
-  }
-
-  @override
   String get updateTileDownloading => '下载中';
 
   @override
@@ -23330,6 +23412,14 @@ class L10nZh extends L10n {
   @override
   String updateDownloadingPercent(int percent) {
     return '正在下载 $percent%';
+  }
+
+  @override
+  String get updateIncludePreviews => '检查更新时包含预览版';
+
+  @override
+  String updateBasedOn(String version) {
+    return '基于上游 $version';
   }
 
   @override
@@ -25040,6 +25130,42 @@ class L10nZh extends L10n {
   String get voiceCloudModelHelper => '例如 whisper-1、FunAudioLLM/SenseVoiceSmall';
 
   @override
+  String get voiceCloudConfigure => '去配置云端语音模型';
+
+  @override
+  String get voiceCloudEmpty => '还没有配置云端语音模型';
+
+  @override
+  String get voiceCloudNeedPick => '先在设置里选一个云端语音模型';
+
+  @override
+  String get voiceEngineBusy => '引擎正忙或响应超时，语音模型暂时用不了，稍后再点一次';
+
+  @override
+  String get voiceEngineModelMissing => '语音模型已下载，但引擎没有加载它；请重启 App，或在语音设置里检查插件';
+
+  @override
+  String get voiceEnginePreparing => '正在准备语音模型…';
+
+  @override
+  String get voiceEnginePreparingTimeout => '语音模型还在准备，稍后再点一次';
+
+  @override
+  String get voiceModelEngineMissing => '引擎没加载语音插件';
+
+  @override
+  String get voiceModelEngineMissingNote => '语音插件没在引擎里，重启引擎后再试';
+
+  @override
+  String get voiceModelFailLost => '语音模型文件不在了，请重新下载';
+
+  @override
+  String get voiceModelLostNote => '本地模型已丢失，重新下载后可用';
+
+  @override
+  String get voiceModelRestartEngine => '重启引擎';
+
+  @override
   String get voiceScribeReadFailed => '没能读取语音设置，请重试。';
 
   @override
@@ -25607,6 +25733,15 @@ class L10nZh extends L10n {
 
   @override
   String get workshopAccountSignOutFailed => '没能退出，稍后再试。';
+
+  @override
+  String get workshopErrorForumMismatch => '登录的论坛和工坊认的不是同一个，请重新登录。';
+
+  @override
+  String get workshopErrorForumDown => '论坛暂时联系不上，稍后再试。';
+
+  @override
+  String get workshopDisclosureForum => '核对身份的论坛';
 
   @override
   String get workshopInstalledEmptyTitle => '还没有从工坊装过东西';
