@@ -159,7 +159,7 @@ class _PreviewCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final caption = text
-        ? '${_t('文字头像', 'Text')} · ${spec.color.zh} · ${spec.motion.zh}'
+        ? '${_t('文字头像', 'Text')} · ${spec.color.label} · ${spec.motion.label}'
         : spec.caption;
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
@@ -257,7 +257,7 @@ class _CharacterGrid extends StatelessWidget {
         ),
         for (final character in MascotCharacter.values)
           _CharacterCell(
-            label: character.zh,
+            label: character.label,
             hint: _t(_hints[character]!, _hints[character]!),
             selected: !text && spec.character == character,
             onTap: () => onPick(character),
@@ -395,7 +395,7 @@ class _ColorGrid extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  color == MascotColor.model ? _t('默认色', 'Model') : color.zh,
+                  color == MascotColor.model ? _t('默认色', 'Model') : color.label,
                   maxLines: 1,
                   style: theme.textTheme.labelMedium,
                 ),
@@ -447,7 +447,7 @@ class _FaceList extends StatelessWidget {
                   children: [
                     MascotAvatar(spec: spec.copyWith(face: face), emotion: '02', size: 46),
                     const SizedBox(height: 8),
-                    Text(face.zh, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                    Text(face.label, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
                     const SizedBox(height: 2),
                     Text(
                       _hints[face] ?? '',
@@ -504,7 +504,7 @@ class _MotionList extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(motion.zh, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
+                          Text(motion.label, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
                           const SizedBox(height: 2),
                           Text(
                             motion.hintZh,

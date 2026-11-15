@@ -40,7 +40,7 @@ class MascotGalleryPage extends StatelessWidget {
                 SizedBox(
                   width: 52,
                   child: Text(
-                    motion.zh,
+                    motion.label,
                     style: theme.textTheme.labelSmall?.copyWith(color: colors.textTertiary),
                   ),
                 ),
@@ -65,7 +65,7 @@ class MascotGalleryPage extends StatelessWidget {
                 MascotAvatar(spec: MascotSpec(character: character), size: 40),
                 const SizedBox(width: 10),
                 Text(
-                  '${character.zh}  ${character.name}',
+                  '${character.label}  ${character.name}',
                   style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
               ],

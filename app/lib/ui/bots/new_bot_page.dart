@@ -221,7 +221,7 @@ class _NewBotPageState extends ConsumerState<NewBotPage> {
                   const SizedBox(height: 10),
                   Text(
                     _textAvatar
-                        ? '${_t('文字头像', 'Text')} · ${_spec.color.zh} · ${_spec.motion.zh}'
+                        ? '${_t('文字头像', 'Text')} · ${_spec.color.label} · ${_spec.motion.label}'
                         : _spec.caption,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(color: DshColors.of(context).textTertiary),
                   ),

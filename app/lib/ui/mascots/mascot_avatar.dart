@@ -29,6 +29,7 @@ enum MascotCharacter {
 
   const MascotCharacter(this.zh, this.en);
   final String zh;
+  String get label => AppLocale.isEnglish ? en : zh;
   final String en;
 
   /// 角色默认配色（demo 每个角色自带 skin；「跟随默认」用它）。
@@ -82,6 +83,7 @@ enum MascotFace {
   const MascotFace(this.wire, this.zh, this.en);
   final String wire;
   final String zh;
+  String get label => AppLocale.isEnglish ? en : zh;
   final String en;
 }
 
@@ -93,6 +95,7 @@ enum MascotMotion {
 
   const MascotMotion(this.zh, this.en, this.hintZh);
   final String zh;
+  String get label => AppLocale.isEnglish ? en : zh;
   final String en;
   final String hintZh;
 }
@@ -117,6 +120,9 @@ enum MascotColor {
 
   const MascotColor(this.zh, this.en, this.ink, this.outlineInk, this.accent);
   final String zh;
+
+  /// 界面上的名字：跟随 App 语言。
+  String get label => AppLocale.isEnglish ? en : zh;
   final String en;
 
   /// 身体主色；渐变和高光都从这里推。
@@ -246,8 +252,12 @@ class MascotSpec {
   );
 
   /// 「芽团 · 月光 · 好奇」。
-  String get caption =>
-      '${character.zh} · ${color.zh} · ${motionCustom ? (AppLocale.isEnglish ? 'Custom' : '自定义') : motion.zh}';
+  String get caption {
+    final third = motionCustom
+        ? (AppLocale.isEnglish ? 'Custom' : '自定义')
+        : motion.label;
+    return '${character.label} · ${color.label} · $third';
+  }
 
   Map<String, Object?> toJson() => {
     'character': character.name,
@@ -272,8 +282,9 @@ class MascotSpec {
       face: _faceOf(json['face']),
       motion: _byName(MascotMotion.values, json['motion'], MascotMotion.lively),
       color: _colorOf(json['color']),
-      view: _byName(MascotView.values, json['view'], MascotView.three, wire: true),
-      outline: json['outline'] == true,
+      // 视图/边框固定：用户定死 3D、不显示外框，读到别的值也按这个跑。
+      view: MascotView.three,
+      outline: false,
       body: _choiceOf(json['body'], mascotBodyActions),
       eyes: _choiceOf(json['eyes'], mascotEyeStates),
       mouth: _choiceOf(json['mouth'], mascotMouthStates),
