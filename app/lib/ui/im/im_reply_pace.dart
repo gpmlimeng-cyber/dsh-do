@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import '../../state/bot_effort.dart';
 import '../common/app_sheet.dart';
 import '../common/list_page_row.dart';
+import '../common/sheet_title_bar.dart';
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
 import 'im_strings.dart';
