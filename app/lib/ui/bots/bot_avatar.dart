@@ -43,10 +43,16 @@ class BotAvatar extends ConsumerWidget {
     // 本机头像覆盖（state/bot_avatar_state.dart）：吉祥物 / 表情；没配过就是原来的
     // 照片或文字首字母。列表里默认静态（animate:false），不建 ticker。
     final config = ref.watch(botAvatarProvider.select((byBot) => byBot[bot.id]));
-    // 文字头像＝字团：身体/颜色/动作沿用吉祥物那套，脸换成名字首字。
+    // 旧 kind=text 存档仍画字团；没配置（也没照片）的 Bot 改成按 id 派生的吉祥物。
     Widget letter() => MascotLetterAvatar(
-      spec: letterMascotOf(config, bot.id),
+      spec: derivedMascotOf(config, bot.id),
       letter: monogramOf(bot.name),
+      size: size,
+      animate: animate,
+      emotion: emotion,
+    );
+    Widget derived() => MascotAvatar(
+      spec: derivedMascotOf(config, bot.id),
       size: size,
       animate: animate,
       emotion: emotion,
@@ -60,7 +66,7 @@ class BotAvatar extends ConsumerWidget {
       ),
       BotAvatarConfig(kind: BotAvatarKind.text) => letter(),
       _ => photo == null
-          ? letter()
+          ? derived()
           : ClipOval(
               child: Image.memory(
                 photo,
@@ -68,7 +74,7 @@ class BotAvatar extends ConsumerWidget {
                 height: size,
                 fit: BoxFit.cover,
                 gaplessPlayback: true,
-                errorBuilder: (context, _, _) => letter(),
+                errorBuilder: (context, _, _) => derived(),
               ),
             ),
     };

@@ -23,7 +23,6 @@ import '../../state/mascot_clock.dart';
 /// 14 个角色，顺序即选择器里的顺序（新角色只能加在末尾：顺序是存档索引）。
 enum MascotCharacter {
   sprout('芽团', 'Sprout'),
-  cat('猫团', 'Cat'),
   robot('机团', 'Robot'),
   ghost('幽团', 'Ghost'),
   jelly('果冻', 'Jelly'),
@@ -32,7 +31,6 @@ enum MascotCharacter {
   triangle('角团', 'Triangle'),
   onigiri('饭团', 'Rice ball'),
   potato('芋团', 'Potato'),
-  watermelon('瓜团', 'Watermelon'),
   orange('橘团', 'Orange'),
   pear('梨团', 'Pear'),
   mango('芒团', 'Mango');
@@ -45,7 +43,6 @@ enum MascotCharacter {
   /// 角色默认配色（demo 每个角色自带 skin；「跟随默认」用它）。
   MascotSkin get skin => switch (this) {
     MascotCharacter.sprout => const MascotSkin(Color(0xFF48FF42), Color(0xFF080808), Color(0xFFFF9FB6)),
-    MascotCharacter.cat => const MascotSkin(Color(0xFF3D4852), Color(0xFF131A20), Color(0xFFEEB3C1)),
     MascotCharacter.robot => const MascotSkin(Color(0xFF6F879B), Color(0xFF162332), Color(0xFF74E5FF)),
     MascotCharacter.ghost => const MascotSkin(Color(0xFFBDEEF2), Color(0xFF23434D), Color(0xFFA9D9FF)),
     MascotCharacter.jelly => const MascotSkin(Color(0xFFF29CC2), Color(0xFF5A243E), Color(0xFFFFE0A8)),
@@ -54,7 +51,6 @@ enum MascotCharacter {
     MascotCharacter.triangle => const MascotSkin(Color(0xFF8FE3C8), Color(0xFF1F4A3F), Color(0xFFFFB7C5)),
     MascotCharacter.onigiri => const MascotSkin(Color(0xFFF7F1E3), Color(0xFF3A342A), Color(0xFFF19CA0)),
     MascotCharacter.potato => const MascotSkin(Color(0xFFC8A165), Color(0xFF4A3A1C), Color(0xFFE8C98F)),
-    MascotCharacter.watermelon => const MascotSkin(Color(0xFF3E9E5B), Color(0xFF255F37), Color(0xFFFF6E7E)),
     MascotCharacter.orange => const MascotSkin(Color(0xFFF5811F), Color(0xFF934D13), Color(0xFFFFD7A0)),
     MascotCharacter.pear => const MascotSkin(Color(0xFFC7D96B), Color(0xFF778240), Color(0xFFF0EFC9)),
     MascotCharacter.mango => const MascotSkin(Color(0xFFEFA13F), Color(0xFF8F6126), Color(0xFFFFE1A8)),
@@ -63,7 +59,6 @@ enum MascotCharacter {
   /// 写进宿主 `bot.color` 的色名（model 时按角色映射，架构给的对照表）。
   String get hostColor => switch (this) {
     MascotCharacter.sprout => 'green',
-    MascotCharacter.cat => 'charcoal',
     MascotCharacter.robot => 'gray',
     MascotCharacter.ghost => 'cyan',
     MascotCharacter.jelly => 'rose',
@@ -72,7 +67,6 @@ enum MascotCharacter {
     MascotCharacter.triangle => 'cyan',
     MascotCharacter.onigiri => 'gray',
     MascotCharacter.potato => 'brown',
-    MascotCharacter.watermelon => 'green',
     MascotCharacter.orange => 'orange',
     MascotCharacter.pear => 'yellow',
     MascotCharacter.mango => 'tangerine',
@@ -117,15 +111,19 @@ enum MascotFace {
 
 /// 3 档动作（动画等级）。
 enum MascotMotion {
-  lively('活泼', 'Lively', '轻快、有弹性'),
-  quiet('安静', 'Quiet', '缓慢、克制'),
-  curious('好奇', 'Curious', '目光先行');
+  lively('活泼', 'Lively', '轻快、有弹性', 'Light and springy'),
+  quiet('安静', 'Quiet', '缓慢、克制', 'Slow and steady'),
+  curious('好奇', 'Curious', '目光先行', 'Looks around first');
 
-  const MascotMotion(this.zh, this.en, this.hintZh);
+  const MascotMotion(this.zh, this.en, this.hintZh, this.hintEn);
   final String zh;
   String get label => AppLocale.isEnglish ? en : zh;
   final String en;
   final String hintZh;
+  final String hintEn;
+
+  /// 卡片上的一句说明。
+  String get hint => AppLocale.isEnglish ? hintEn : hintZh;
 }
 
 /// 11 个 demo 预设 + 6 个 Miffan 预设，最后一项「跟随角色默认」按角色 skin 画、不存色值。
@@ -725,7 +723,6 @@ class MascotPainter extends CustomPainter {
 
     final path = switch (spec.character) {
       MascotCharacter.sprout => _bowl(rect),
-      MascotCharacter.cat => _cat(rect),
       MascotCharacter.robot => _robot(rect),
       MascotCharacter.ghost => _ghost(rect),
       MascotCharacter.jelly => _jelly(rect),
@@ -734,7 +731,6 @@ class MascotPainter extends CustomPainter {
       MascotCharacter.triangle => _triangle(rect),
       MascotCharacter.onigiri => _onigiri(rect),
       MascotCharacter.potato => _potato(rect),
-      MascotCharacter.watermelon => _watermelon(rect),
       MascotCharacter.orange => _orange(rect),
       MascotCharacter.pear => _pear(rect),
       MascotCharacter.mango => _mango(rect),
@@ -787,22 +783,6 @@ class MascotPainter extends CustomPainter {
       ..quadraticBezierTo(r.center.dx, r.bottom + r.height * 0.06, r.center.dx - r.width * 0.34, r.bottom - r.height * 0.04)
       ..quadraticBezierTo(r.left - r.width * 0.02, r.center.dy + r.height * 0.10, r.left + r.width * 0.06, r.top + r.height * 0.18)
       ..close();
-    return path;
-  }
-
-  Path _cat(Rect r) {
-    final path = Path()..addOval(r.deflate(0));
-    // 两只三角形耳朵。
-    for (final left in [true, false]) {
-      final x = left ? r.left + r.width * 0.16 : r.right - r.width * 0.16;
-      final dir = left ? -1.0 : 1.0;
-      final ear = Path()
-        ..moveTo(x, r.top + r.height * 0.10)
-        ..lineTo(x + dir * r.width * 0.12, r.top - r.height * 0.16)
-        ..lineTo(x + dir * r.width * 0.26, r.top + r.height * 0.04)
-        ..close();
-      path.addPath(ear, Offset.zero);
-    }
     return path;
   }
 
@@ -913,8 +893,6 @@ class MascotPainter extends CustomPainter {
   }
 
   // 瓜团：绿皮圆球（条纹在 _charParts 里画）。
-  Path _watermelon(Rect r) => Path()..addOval(Rect.fromLTWH(r.left, r.top, r.width, r.height));
-
   // 橘团：略扁的橙色圆球。
   Path _orange(Rect r) => Path()
     ..addOval(
@@ -990,18 +968,6 @@ class MascotPainter extends CustomPainter {
           ..close();
         canvas.drawPath(leaf, Paint()..color = _lighten(body, 0.10));
         canvas.restore();
-      case MascotCharacter.cat:
-        // 耳朵内圈。
-        for (final left in [true, false]) {
-          final x = left ? r.left + r.width * 0.20 : r.right - r.width * 0.20;
-          final dir = left ? -1.0 : 1.0;
-          final inner = Path()
-            ..moveTo(x, r.top + r.height * 0.08)
-            ..lineTo(x + dir * r.width * 0.07, r.top - r.height * 0.08)
-            ..lineTo(x + dir * r.width * 0.16, r.top + r.height * 0.04)
-            ..close();
-          canvas.drawPath(inner, Paint()..color = _lighten(body, 0.22).withValues(alpha: 0.85));
-        }
       case MascotCharacter.robot:
         // 天线 + 两侧耳钉。
         final antenna = Paint()
@@ -1050,28 +1016,6 @@ class MascotPainter extends CustomPainter {
         canvas.drawOval(Rect.fromCenter(center: Offset(r.left + r.width * 0.26, r.top + r.height * 0.30), width: size.width * 0.050, height: size.width * 0.034), spot);
         canvas.drawOval(Rect.fromCenter(center: Offset(r.right - r.width * 0.24, r.center.dy + r.height * 0.06), width: size.width * 0.040, height: size.width * 0.028), spot);
         canvas.drawOval(Rect.fromCenter(center: Offset(r.center.dx - r.width * 0.06, r.bottom - r.height * 0.16), width: size.width * 0.030, height: size.width * 0.022), spot);
-      case MascotCharacter.watermelon:
-        // 瓜团：竖向深色条纹 + 底部一圈浅色，裁进圆里。
-        canvas.save();
-        canvas.clipPath(Path()..addOval(Rect.fromLTWH(r.left, r.top, r.width, r.height)));
-        final stripe = Paint()
-          ..color = _darken(body, 0.34).withValues(alpha: 0.55)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = r.width * 0.055
-          ..strokeCap = StrokeCap.round;
-        for (final dx in [-0.24, 0.0, 0.24]) {
-          canvas.drawPath(
-            Path()
-              ..moveTo(r.center.dx + r.width * dx, r.top - r.height * 0.05)
-              ..quadraticBezierTo(r.center.dx + r.width * dx * 1.55, r.center.dy, r.center.dx + r.width * dx, r.bottom + r.height * 0.05),
-            stripe,
-          );
-        }
-        canvas.drawOval(
-          Rect.fromLTWH(r.left + r.width * 0.20, r.bottom - r.height * 0.24, r.width * 0.60, r.height * 0.16),
-          Paint()..color = _lighten(body, 0.34).withValues(alpha: 0.55),
-        );
-        canvas.restore();
       case MascotCharacter.orange:
         // 橘团：短蒂 + 一片小绿叶 + 表皮几颗低透明深点。
         final stem = Paint()

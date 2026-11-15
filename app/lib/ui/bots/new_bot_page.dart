@@ -24,7 +24,6 @@ import '../common/discard_guard.dart';
 import '../common/list_page_row.dart';
 import '../mascots/mascot_avatar.dart';
 import '../mascots/mascot_customizer.dart' show openMascotCustomizer;
-import '../mascots/mascot_letter_avatar.dart';
 import '../im/im_partner_templates.dart' show PartnerTemplate;
 import '../providers/provider_widgets.dart' show FormBottomBar, FormFieldBlock, FormFieldGroup;
 import '../settings/settings_widgets.dart' show SettingsSection;
@@ -84,9 +83,8 @@ class _NewBotPageState extends ConsumerState<NewBotPage> {
   late final _instructions = TextEditingController(text: widget.template?.instructions ?? '');
   final _random = math.Random();
 
-  /// 外观：模板带自己的形象；手填就随机一个。也可以切回字团。
+  /// 外观：模板带自己的形象；手填就随机一个。
   late MascotSpec _spec = widget.template?.mascot ?? MascotSpec.random(_random);
-  bool _textAvatar = false;
 
   /// 选中的性格（不预选）。
   final _traits = <int>{};
@@ -105,7 +103,6 @@ class _NewBotPageState extends ConsumerState<NewBotPage> {
     _role.text,
     _instructions.text,
     _spec.toJson(),
-    _textAvatar,
     _traits.toList()..sort(),
     _model?.provider,
     _model?.model,
@@ -156,20 +153,14 @@ class _NewBotPageState extends ConsumerState<NewBotPage> {
   }
 
   Future<void> _customize() async {
-    final choice = await openMascotCustomizer(context, initial: _spec, text: _textAvatar, name: _name.text);
+    final choice = await openMascotCustomizer(context, initial: _spec);
     if (choice == null || !mounted) return;
-    setState(() {
-      _spec = choice.spec;
-      _textAvatar = choice.text;
-    });
+    setState(() => _spec = choice.spec);
   }
 
   void _randomize() {
-    // Miffan 规则：角色和颜色必换、动作随机；五官不动。文字头像也切回吉祥物。
-    setState(() {
-      _spec = MascotSpec.randomDifferent(_spec, _random);
-      _textAvatar = false;
-    });
+    // Miffan 规则：角色和颜色必换、动作随机；五官不动。
+    setState(() => _spec = MascotSpec.randomDifferent(_spec, _random));
   }
 
   Future<void> _create() async {
@@ -193,7 +184,7 @@ class _NewBotPageState extends ConsumerState<NewBotPage> {
       // 头像只存本机：创建成功拿到 id 再写。
       await ref
           .read(botAvatarProvider.notifier)
-          .set(bot.id, _textAvatar ? BotAvatarConfig.text(_spec) : BotAvatarConfig.mascot(_spec));
+          .set(bot.id, BotAvatarConfig.mascot(_spec));
       if (!mounted || !scope.connected(ref)) return;
       await hub.refresh();
       if (!mounted || !scope.connected(ref)) return;
@@ -232,15 +223,11 @@ class _NewBotPageState extends ConsumerState<NewBotPage> {
                   GestureDetector(
                     key: const ValueKey('bot-avatar-preview'),
                     onTap: _customize,
-                    child: _textAvatar
-                        ? MascotLetterAvatar(spec: _spec, letter: monogramOf(name), size: 112, animate: true)
-                        : MascotAvatar(spec: _spec, size: 112, animate: true),
+                    child: MascotAvatar(spec: _spec, size: 112, animate: true),
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    _textAvatar
-                        ? '${_t('字团', 'Letter')} · ${_spec.color.label} · ${_spec.face.label}·${_spec.motion.label}'
-                        : _spec.caption,
+                    _spec.caption,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(color: DshColors.of(context).textTertiary),
                   ),
                   const SizedBox(height: 12),

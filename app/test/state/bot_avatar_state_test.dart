@@ -32,8 +32,8 @@ void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   // A non-default look on every axis, so a dropped field fails a round trip.
-  final cat = MascotSpec(
-    character: MascotCharacter.cat,
+  final ghost = MascotSpec(
+    character: MascotCharacter.ghost,
     face: MascotFace.values[1],
     motion: MascotMotion.quiet,
     color: MascotColor.lavender,
@@ -45,11 +45,11 @@ void main() {
 
   group('serialisation', () {
     test('a mascot survives the JSON round trip', () {
-      final config = BotAvatarConfig.mascot(cat);
+      final config = BotAvatarConfig.mascot(ghost);
       final wire = jsonDecode(jsonEncode(config.toJson())) as Map<String, Object?>;
       final look = wire['mascot']! as Map<String, Object?>;
-      expect(look['character'], 'cat');
-      expect(look['face'], cat.face.wire);
+      expect(look['character'], 'ghost');
+      expect(look['face'], ghost.face.wire);
       expect(look['motion'], 'quiet');
       expect(look['color'], 'lavender');
       expect(look['view'], 'three');
@@ -58,7 +58,7 @@ void main() {
       final back = BotAvatarConfig.fromJson(wire);
       expect(back, config);
       expect(back.isMascot, isTrue);
-      expect(back.mascot!.face, cat.face);
+      expect(back.mascot!.face, ghost.face);
       expect(back.mascot!.color, MascotColor.lavender);
       expect(back.mascot!.view, MascotView.three);
       expect(back.mascot!.outline, isFalse);
@@ -95,7 +95,7 @@ void main() {
     test('missing view and outline read as 2D without the outline', () {
       final config = BotAvatarConfig.fromJson({
         'kind': 'mascot',
-        'mascot': {'character': 'cat', 'face': 'default', 'color': 'mint'},
+        'mascot': {'character': 'ghost', 'face': 'default', 'color': 'mint'},
       });
       expect(config.mascot!.view, MascotView.flat);
       expect(config.mascot!.outline, isFalse);
@@ -114,13 +114,26 @@ void main() {
     });
 
     test('a mascot whose whole payload is not a map falls back to the defaults', () {
-      final config = BotAvatarConfig.fromJson({'kind': 'mascot', 'mascot': 'cat'});
+      final config = BotAvatarConfig.fromJson({'kind': 'mascot', 'mascot': 'oops'});
       expect(config.isMascot, isTrue);
       expect(config.mascot, const MascotSpec());
     });
   });
 
   group('old saves', () {
+    test('removed roles read back as sprout and keep the rest', () {
+      // cat / watermelon went away with the 字团 cut; the name no longer resolves.
+      for (final old in ['cat', 'watermelon']) {
+        final config = BotAvatarConfig.fromJson({
+          'kind': 'mascot',
+          'mascot': {'character': old, 'color': 'sky', 'motion': 'quiet'},
+        });
+        expect(config.mascot!.character, MascotCharacter.sprout, reason: old);
+        expect(config.mascot!.color, MascotColor.sky, reason: '$old keeps its colour');
+        expect(config.mascot!.motion, MascotMotion.quiet, reason: '$old keeps its motion');
+      }
+    });
+
     test('the old face names read as the default face', () {
       for (final old in ['gentle', 'curious', 'happy']) {
         final config = BotAvatarConfig.fromJson({
@@ -224,7 +237,7 @@ void main() {
       }
       const models = {
         MascotCharacter.sprout: 'green',
-        MascotCharacter.cat: 'charcoal',
+        MascotCharacter.pear: 'yellow',
         MascotCharacter.robot: 'gray',
         MascotCharacter.ghost: 'cyan',
         MascotCharacter.jelly: 'rose',
@@ -251,7 +264,7 @@ void main() {
     });
 
     test('randomDifferent changes the character and colour and keeps the rest', () {
-      final before = cat;
+      final before = ghost;
       final next = MascotSpec.randomDifferent(before, Random(7));
       expect(next.character, isNot(before.character));
       expect(next.color, isNot(before.color));
@@ -287,14 +300,14 @@ void main() {
     test('the caption is 角色 · 颜色 · 表情 in both languages', () {
       addTearDown(() => AppLocale.use(AppLocale.zhCN));
       AppLocale.use(AppLocale.zhCN);
-      expect(cat.caption,
-          '${MascotCharacter.cat.zh} · ${MascotColor.lavender.zh} · ${cat.face.zh}·${cat.motion.zh}');
+      expect(ghost.caption,
+          '${MascotCharacter.ghost.zh} · ${MascotColor.lavender.zh} · ${ghost.face.zh}·${ghost.motion.zh}');
 
       AppLocale.use(AppLocale.en);
-      expect(cat.caption,
-          '${MascotCharacter.cat.en} · ${MascotColor.lavender.en} · ${cat.face.en}·${cat.motion.en}');
+      expect(ghost.caption,
+          '${MascotCharacter.ghost.en} · ${MascotColor.lavender.en} · ${ghost.face.en}·${ghost.motion.en}');
       // No Chinese left in the English caption (G7).
-      expect(RegExp(r'[\u4e00-\u9fff]').hasMatch(cat.caption), isFalse);
+      expect(RegExp(r'[\u4e00-\u9fff]').hasMatch(ghost.caption), isFalse);
     });
 
     test('a preset caption follows the app language too', () {
@@ -321,25 +334,25 @@ void main() {
       // role is added; every other Bot keeps its id-derived stability.
       final seed = stableSeedOf('b1');
       final colors = [for (final color in MascotColor.values) if (color != MascotColor.model) color];
-      final derived = letterMascotOf(null, 'b1');
+      final derived = derivedMascotOf(null, 'b1');
       expect(derived.character, MascotCharacter.values[seed % MascotCharacter.values.length]);
       expect(derived.color, colors[(seed ~/ 7) % colors.length]);
       expect(derived.motion, MascotMotion.values[(seed ~/ 13) % MascotMotion.values.length]);
-      expect(letterMascotOf(null, 'b1'), derived);
+      expect(derivedMascotOf(null, 'b1'), derived);
     });
 
-    test('the fourteen-role derivation table is stable', () {
+    test('the twelve-role derivation table is stable', () {
       // Indices follow the enum order (new roles and Miffan colours appended at the
       // end); the colour pool is the 17 presets, model excluded; motion is 3 presets.
       final colors = [for (final color in MascotColor.values) if (color != MascotColor.model) color];
       const table = [
         ('b1', 0, 0, 2),
         ('b3', 10, 13, 1),
-        ('bot-1', 2, 2, 2),
-        ('猫团', 13, 10, 1),
+        ('bot-1', 0, 2, 2),
+        ('猫团', 11, 10, 1),
       ];
       for (final (id, character, color, motion) in table) {
-        final derived = letterMascotOf(null, id);
+        final derived = derivedMascotOf(null, id);
         expect(derived.character, MascotCharacter.values[character], reason: '$id character');
         expect(derived.color, colors[color], reason: '$id colour');
         expect(derived.motion, MascotMotion.values[motion], reason: '$id motion');
@@ -347,24 +360,24 @@ void main() {
     });
 
     test('different Bots do not all get the same body', () {
-      final looks = {for (final id in ['a', 'b', 'c', 'd', 'e']) letterMascotOf(null, id)};
+      final looks = {for (final id in ['a', 'b', 'c', 'd', 'e']) derivedMascotOf(null, id)};
       expect(looks.length, greaterThan(1));
     });
 
     test('a text config with a body keeps that body', () {
-      final config = BotAvatarConfig.text(cat);
-      expect(letterMascotOf(config, 'b1'), cat);
+      final config = BotAvatarConfig.text(ghost);
+      expect(derivedMascotOf(config, 'b1'), ghost);
     });
 
     test('the kept body survives the JSON round trip', () {
-      final config = BotAvatarConfig.text(cat);
+      final config = BotAvatarConfig.text(ghost);
       final wire = jsonDecode(jsonEncode(config.toJson())) as Map<String, Object?>;
       expect(wire['kind'], 'text');
       expect(wire['mascot'], isNotNull);
       final back = BotAvatarConfig.fromJson(wire);
       expect(back, config);
       expect(back.kind, BotAvatarKind.text);
-      expect(back.mascot, cat);
+      expect(back.mascot, ghost);
     });
   });
 
@@ -380,17 +393,17 @@ void main() {
     test('a set look is still there on the next launch', () async {
       final first = await open();
       addTearDown(first.dispose);
-      await first.read(botAvatarProvider.notifier).set('b1', BotAvatarConfig.mascot(cat));
+      await first.read(botAvatarProvider.notifier).set('b1', BotAvatarConfig.mascot(ghost));
 
       final again = await open();
       addTearDown(again.dispose);
-      expect(again.read(botAvatarProvider.notifier).of('b1'), BotAvatarConfig.mascot(cat));
+      expect(again.read(botAvatarProvider.notifier).of('b1'), BotAvatarConfig.mascot(ghost));
     });
 
     test('clearing brings the Bot back to its old avatar', () async {
       final container = await open();
       addTearDown(container.dispose);
-      await container.read(botAvatarProvider.notifier).set('b1', BotAvatarConfig.mascot(cat));
+      await container.read(botAvatarProvider.notifier).set('b1', BotAvatarConfig.mascot(ghost));
       await container.read(botAvatarProvider.notifier).clear('b1');
       expect(container.read(botAvatarProvider.notifier).of('b1'), isNull);
     });

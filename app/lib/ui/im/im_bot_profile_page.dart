@@ -56,18 +56,10 @@ class ImBotProfilePage extends ConsumerWidget {
     final ability = preset == null ? null : permissionName(preset);
 
     Future<void> editLook() async {
-      final initial = look?.mascot ?? letterMascotOf(look, bot.id);
-      final choice = await openMascotCustomizer(
-        context,
-        initial: initial,
-        text: look?.kind == BotAvatarKind.text,
-        name: bot.name,
-      );
+      final initial = look?.mascot ?? derivedMascotOf(look, bot.id);
+      final choice = await openMascotCustomizer(context, initial: initial);
       if (choice == null || !context.mounted) return;
-      await ref.read(botAvatarProvider.notifier).set(
-        bot.id,
-        choice.text ? BotAvatarConfig.text(choice.spec) : BotAvatarConfig.mascot(choice.spec),
-      );
+      await ref.read(botAvatarProvider.notifier).set(bot.id, BotAvatarConfig.mascot(choice.spec));
     }
 
     Future<void> editText({required String title, required String initial, required bool multiline, required Future<void> Function(String) save}) async {

@@ -17,7 +17,7 @@ class MascotLetterAvatar extends StatelessWidget {
     this.emotion,
   });
 
-  /// 身体/颜色/动作从这套配置来（旧 Bot 由 `letterMascotOf` 按 id 派生）。
+  /// 身体/颜色/动作从这套配置来（旧 Bot 由 `derivedMascotOf` 按 id 派生）。
   final MascotSpec spec;
 
   /// 已经取好的首字素，如「芽」「J」「😀」「👨‍👩‍👧」。

@@ -77,10 +77,10 @@ void main() {
     }
   });
 
-  test('there are fourteen characters with distinct names and host colours', () {
-    expect(MascotCharacter.values.length, 14);
-    expect({for (final character in MascotCharacter.values) character.name}.length, 14);
-    expect({for (final character in MascotCharacter.values) character.zh}.length, 14);
+  test('there are twelve characters with distinct names and host colours', () {
+    expect(MascotCharacter.values.length, 12);
+    expect({for (final character in MascotCharacter.values) character.name}.length, 12);
+    expect({for (final character in MascotCharacter.values) character.zh}.length, 12);
     // The host accepts only these colour names; every role's default colour must be one.
     const hostColours = {
       'deepseek', 'blue', 'violet', 'orange', 'green', 'magenta', 'cyan', 'red', 'yellow',
@@ -91,16 +91,16 @@ void main() {
     }
   });
 
-  test('the four fruit roles are appended after potato with their final colours', () {
-    // Order is the save index: existing roles first, the four fruits only appended.
-    expect([for (final character in MascotCharacter.values.take(10)) character.name],
-        ['sprout', 'cat', 'robot', 'ghost', 'jelly', 'orb', 'star', 'triangle', 'onigiri', 'potato']);
-    expect([for (final character in MascotCharacter.values.skip(10)) character.name],
-        ['watermelon', 'orange', 'pear', 'mango']);
+  test('the three fruit roles are appended after potato with their final colours', () {
+    // Order is the save index: existing roles first, the fruits only appended.
+    // cat and watermelon were removed with the 字团 cut, so the pool is 12.
+    expect([for (final character in MascotCharacter.values.take(9)) character.name],
+        ['sprout', 'robot', 'ghost', 'jelly', 'orb', 'star', 'triangle', 'onigiri', 'potato']);
+    expect([for (final character in MascotCharacter.values.skip(9)) character.name],
+        ['orange', 'pear', 'mango']);
 
     // body, outline (body × 0.6), accent and the host colour, from the agreed table.
     const table = {
-      'watermelon': (0xFF3E9E5B, 0xFF255F37, 0xFFFF6E7E, 'green'),
       'orange': (0xFFF5811F, 0xFF934D13, 0xFFFFD7A0, 'orange'),
       'pear': (0xFFC7D96B, 0xFF778240, 0xFFF0EFC9, 'yellow'),
       'mango': (0xFFEFA13F, 0xFF8F6126, 0xFFFFE1A8, 'tangerine'),
