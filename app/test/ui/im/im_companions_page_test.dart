@@ -6,6 +6,7 @@ import 'package:dsh_app/ui/bots/bot_avatar.dart';
 import 'package:dsh_app/ui/bots/new_bot_page.dart';
 import 'package:dsh_app/ui/im/im_bot_profile_page.dart';
 import 'package:dsh_app/ui/im/im_companions_page.dart';
+import 'package:dsh_app/ui/im/im_partner_templates.dart';
 import 'package:dsh_app/ui/im/im_strings.dart';
 import 'package:dsh_client/dsh_client.dart';
 import 'package:flutter/material.dart';
@@ -103,5 +104,15 @@ void main() {
     await tester.tap(find.text(ImStrings.emptyBotsCreate));
     await frames(tester);
     expect(find.byType(NewBotPage), findsOneWidget);
+  });
+
+  testWidgets('the template strip comes after the last Bot row', (tester) async {
+    await open(tester, FakeDsBotTransport());
+    final card = find.byKey(ValueKey('template-card-${featuredPartnerTemplates.first.id}'));
+    expect(card, findsOneWidget, reason: '模板横滑区应该在页面上');
+    // Coder 是示例团队里最后一个伙伴，模板区要整体落在它下面。
+    final lastRowBottom = tester.getBottomLeft(find.text('Coder')).dy;
+    final stripTop = tester.getTopLeft(card).dy;
+    expect(stripTop, greaterThan(lastRowBottom), reason: '模板区要移到伙伴列表之后，不在顶部');
   });
 }

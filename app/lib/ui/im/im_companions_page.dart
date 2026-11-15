@@ -139,27 +139,24 @@ class _CompanionList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    // 模板区放在伙伴列表之后（页面最后一块），上下各留 16；顶部只剩标题和「+」。
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
       children: [
-        const _TemplateStrip(),
-        Expanded(
-          child: ListView.separated(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-            itemCount: team.bots.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 8),
-            itemBuilder: (context, i) {
-              final bot = team.bots[i];
-              return _CompanionRow(
-                bot: bot,
-                busy: live.bots[bot.id] != null,
-                waiting: _waiting(bot),
-                unread: inbox.unreadOf(bot.id),
-                onOpenProfile: () => Navigator.of(context).push(ImBotProfilePage.route(bot.id)),
-                onOpenChat: () => onOpenBot(bot.id),
-              );
-            },
+        for (var i = 0; i < team.bots.length; i++) ...[
+          if (i > 0) const SizedBox(height: 8),
+          _CompanionRow(
+            bot: team.bots[i],
+            busy: live.bots[team.bots[i].id] != null,
+            waiting: _waiting(team.bots[i]),
+            unread: inbox.unreadOf(team.bots[i].id),
+            onOpenProfile: () => Navigator.of(context).push(ImBotProfilePage.route(team.bots[i].id)),
+            onOpenChat: () => onOpenBot(team.bots[i].id),
           ),
-        ),
+        ],
+        const SizedBox(height: 16),
+        const _TemplateStrip(),
+        const SizedBox(height: 16),
       ],
     );
   }
@@ -179,7 +176,7 @@ class _TemplateStrip extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 2, 16, 6),
+          padding: const EdgeInsets.only(bottom: 6),
           child: Row(
             children: [
               Text(
@@ -202,7 +199,7 @@ class _TemplateStrip extends StatelessWidget {
           height: 104,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            padding: const EdgeInsets.only(bottom: 8),
             itemCount: featured.length,
             separatorBuilder: (_, _) => const SizedBox(width: 10),
             itemBuilder: (context, i) {
