@@ -429,7 +429,7 @@ class _ColorCell extends StatelessWidget {
                         width: 18,
                         height: 18,
                         decoration: BoxDecoration(shape: BoxShape.circle, color: theme.colorScheme.primary),
-                        child: Icon(Icons.check, size: 13, color: theme.colorScheme.onPrimary),
+                        child: Icon(AppIcons.selected, size: 13, color: theme.colorScheme.onPrimary),
                       ),
                     ),
                 ],
@@ -441,7 +441,6 @@ class _ColorCell extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.labelSmall?.copyWith(
-                fontSize: 12,
                 fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
               ),
             ),
@@ -624,7 +623,7 @@ class _MotionList extends StatelessWidget {
                       ),
                     ),
                     Icon(
-                      spec.motion == motion ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                      spec.motion == motion ? AppIcons.radioOn : AppIcons.radioOff,
                       color: spec.motion == motion ? theme.colorScheme.primary : theme.colorScheme.outline,
                     ),
                   ],

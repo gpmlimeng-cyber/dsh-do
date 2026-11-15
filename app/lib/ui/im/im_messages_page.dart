@@ -18,6 +18,7 @@ import '../bots/mascot_mood.dart';
 import '../bots/new_bot_page.dart';
 import '../bots/new_room_sheet.dart';
 import '../common/app_sheet.dart';
+import '../common/list_page_row.dart';
 import '../common/sheet_title_bar.dart';
 import '../features/feature_kit.dart' show QuietSpinner;
 import '../features/feature_widgets.dart';
@@ -106,14 +107,14 @@ class ImMessagesPage extends ConsumerWidget {
             SheetTitleBar(ImStrings.newBot),
             SheetGroup(
               children: [
-                ListTile(
-                  leading: const Icon(AppIcons.bot),
-                  title: Text(ImStrings.newBot),
+                ListPageRow(
+                  icon: AppIcons.bot,
+                  title: ImStrings.newBot,
                   onTap: () => Navigator.pop(sheet, 'bot'),
                 ),
-                ListTile(
-                  leading: const Icon(AppIcons.newGroupChat),
-                  title: Text(ImStrings.newRoom),
+                ListPageRow(
+                  icon: AppIcons.newGroupChat,
+                  title: ImStrings.newRoom,
                   onTap: () => Navigator.pop(sheet, 'room'),
                 ),
               ],
@@ -257,9 +258,9 @@ class _List extends ConsumerWidget {
             SheetTitleBar(entry.name),
             SheetGroup(
               children: [
-                ListTile(
-                  leading: Icon(pinned ? AppIcons.pinActive : AppIcons.pin),
-                  title: Text(pinned ? ImStrings.unpin : ImStrings.pin),
+                ListPageRow(
+                  icon: pinned ? AppIcons.pinActive : AppIcons.pin,
+                  title: pinned ? ImStrings.unpin : ImStrings.pin,
                   onTap: () => Navigator.pop(sheet, 'pin'),
                 ),
               ],
@@ -404,7 +405,7 @@ class _PinnedTile extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
-                style: theme.textTheme.labelMedium?.copyWith(fontSize: 12.5, color: colors.textTertiary),
+                style: theme.textTheme.labelMedium?.copyWith(color: colors.textTertiary),
               ),
             ],
           ),

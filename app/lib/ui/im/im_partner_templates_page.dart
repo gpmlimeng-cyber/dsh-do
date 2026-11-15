@@ -5,10 +5,13 @@
 // 预填」，真正创建仍在 `NewBotPage` 里由用户点「完成」。
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
+import '../../state/bots_state.dart' show DsBot, dsBotProvider;
 import '../bots/new_bot_page.dart';
 import '../common/app_sheet.dart';
+import '../common/list_page_row.dart';
 import '../common/sheet_title_bar.dart';
 import '../mascots/mascot_avatar.dart';
 import '../theme/app_icons.dart';
@@ -25,49 +28,87 @@ String categoryName(PartnerTemplate template) {
   return AppLocale.isEnglish ? category.en : category.zh;
 }
 
-/// 「+」和空态的入口：先选模板（含「自己做」），再按选择开新建页/模板页。
-Future<void> startPartnerFromTemplate(BuildContext context) async {
+/// 「+」和空态的入口：Miffan 那种高抽屉——自己捏一个 + 推荐模板 + 查看全部。
+///
+/// 「已添加」按团队里已有同名 Bot（中文名或英文名，忽略大小写）判断，不新增字段。
+Future<void> startPartnerFromTemplate(BuildContext context, WidgetRef ref) async {
   final choice = await showAppSheet<PartnerTemplateChoice>(
     context,
+    heightFactor: 0.86,
     builder: (sheet) => SafeArea(
       top: false,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SheetTitleBar(ImStrings.templateStart),
-          SheetGroup(
+      child: Consumer(
+        builder: (context, ref, _) {
+          final theme = Theme.of(context);
+          final colors = DshColors.of(context);
+          final bots = ref.watch(dsBotProvider).team?.bots ?? const <DsBot>[];
+          final names = {for (final bot in bots) bot.name.trim().toLowerCase()};
+          bool added(PartnerTemplate template) =>
+              names.contains(template.nameZh.toLowerCase()) ||
+              (template.nameEn.isNotEmpty && names.contains(template.nameEn.toLowerCase()));
+          return Column(
             children: [
-              ListTile(
-                leading: const Icon(AppIcons.add),
-                title: Text(ImStrings.templateBlank),
-                subtitle: Text(ImStrings.templateBlankHint),
-                onTap: () => Navigator.pop(sheet, const PartnerTemplateBlank()),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          SheetGroup(
-            children: [
-              for (final template in featuredPartnerTemplates)
-                ListTile(
-                  leading: SizedBox.square(
-                    dimension: 36,
-                    child: MascotAvatar(spec: template.mascot, size: 36),
-                  ),
-                  title: Text(templateName(template)),
-                  subtitle: Text(template.tagline, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  onTap: () => Navigator.pop(sheet, PartnerTemplateSelected(template)),
+              SheetTitleBar(ImStrings.addCompanion),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+                  children: [
+                    _BlankCard(onTap: () => Navigator.pop(sheet, const PartnerTemplateBlank())),
+                    const SizedBox(height: 18),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 4, bottom: 8),
+                      child: Text(
+                        ImStrings.templateStart,
+                        style: theme.textTheme.labelLarge?.copyWith(color: colors.textTertiary),
+                      ),
+                    ),
+                    SheetGroup(
+                      children: [
+                        for (final template in featuredPartnerTemplates)
+                          ListPageRow(
+                            key: ValueKey('template-add-${template.id}'),
+                            leading: MascotAvatar(spec: template.mascot, size: 40),
+                            leadingWidth: 48,
+                            title: templateName(template),
+                            subtitle: template.tagline,
+                            chevron: false,
+                            trailing: added(template)
+                                ? Text(
+                                    ImStrings.templateAdded,
+                                    style: theme.textTheme.bodySmall?.copyWith(color: colors.textTertiary),
+                                  )
+                                : FilledButton.tonal(
+                                    onPressed: () => Navigator.pop(sheet, PartnerTemplateSelected(template)),
+                                    style: FilledButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                                      minimumSize: const Size(0, 34),
+                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    child: Text(ImStrings.templateAdd, style: theme.textTheme.labelLarge),
+                                  ),
+                            onTap: added(template)
+                                ? null
+                                : () => Navigator.pop(sheet, PartnerTemplateSelected(template)),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    SheetGroup(
+                      children: [
+                        ListPageRow(
+                          key: const ValueKey('template-see-all'),
+                          icon: AppIcons.allFeatures,
+                          title: ImStrings.templateSeeAll,
+                          onTap: () => Navigator.pop(sheet, const PartnerTemplateBrowseAll()),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              ListTile(
-                leading: const Icon(AppIcons.allFeatures),
-                title: Text(ImStrings.templateAll),
-                onTap: () => Navigator.pop(sheet, const PartnerTemplateBrowseAll()),
               ),
             ],
-          ),
-          const SizedBox(height: 12),
-        ],
+          );
+        },
       ),
     ),
   );
@@ -79,6 +120,62 @@ Future<void> startPartnerFromTemplate(BuildContext context) async {
       await Navigator.of(context).push(NewBotPage.route(template: template));
     case PartnerTemplateBrowseAll():
       await Navigator.of(context).push(ImPartnerTemplatesPage.route());
+  }
+  if (context.mounted) await ref.read(dsBotProvider.notifier).refresh();
+}
+
+/// 抽屉顶部的主色大卡：「自己捏一个伙伴」。
+class _BlankCard extends StatelessWidget {
+  const _BlankCard({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final onPrimary = theme.colorScheme.onPrimary;
+    return Material(
+      color: theme.colorScheme.primary,
+      shape: RoundedSuperellipseBorder(borderRadius: AppShape.radiusLg),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 16, 12, 16),
+          child: Row(
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: theme.colorScheme.onPrimary.withValues(alpha: 0.18),
+                ),
+                child: Icon(AppIcons.add, color: onPrimary, size: 26),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      ImStrings.blankCompanion,
+                      style: theme.textTheme.titleMedium?.copyWith(color: onPrimary, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      ImStrings.blankCompanionHint,
+                      style: theme.textTheme.bodySmall?.copyWith(color: onPrimary.withValues(alpha: 0.85)),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(AppIcons.disclosure, color: onPrimary, size: 18),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -153,8 +250,8 @@ class _ImPartnerTemplatesPageState extends State<ImPartnerTemplatesPage> {
                 isDense: true,
                 filled: true,
                 fillColor: theme.colorScheme.onSurface.withValues(alpha: 0.05),
-                border: OutlineInputBorder(
-                  borderRadius: const BorderRadius.all(Radius.circular(24)),
+                border: const OutlineInputBorder(
+                  borderRadius: AppShape.radiusLg,
                   borderSide: BorderSide.none,
                 ),
               ),

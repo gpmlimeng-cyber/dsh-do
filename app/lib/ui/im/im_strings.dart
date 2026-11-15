@@ -43,6 +43,12 @@ abstract final class ImStrings {
   static String get templateHow => _zh ? '工作方式与边界' : 'How it works, and what it will not do';
   static String get templateSource => _zh ? '来源' : 'Source';
   static String get templateBlank => _zh ? '自己做' : 'Start from scratch';
+  static String get addCompanion => _zh ? '添加伙伴' : 'Add a buddy';
+  static String get blankCompanion => _zh ? '自己捏一个伙伴' : 'Make your own';
+  static String get blankCompanionHint => _zh ? '起个名字，挑几个性格词就好' : 'A name, a few personality words';
+  static String get templateAdded => _zh ? '已添加' : 'Added';
+  static String get templateAdd => _zh ? '添加' : 'Add';
+  static String get templateSeeAll => _zh ? '查看全部模板' : 'See all templates';
   static String get templateBlankHint => _zh ? '从空白伙伴开始' : 'A blank buddy';
   static String get companionWaiting => _zh ? '等你确认' : 'Needs you';
   static String get profileSend => _zh ? '发消息' : 'Message';

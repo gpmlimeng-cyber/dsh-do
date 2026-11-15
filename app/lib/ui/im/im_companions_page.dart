@@ -44,7 +44,7 @@ class ImCompanionsPage extends ConsumerWidget {
           size: 40,
           iconSize: 20,
           grouped: false,
-          onPressed: () => startPartnerFromTemplate(context),
+          onPressed: () => startPartnerFromTemplate(context, ref),
         ),
       ],
       child: team == null
@@ -67,7 +67,7 @@ class ImCompanionsPage extends ConsumerWidget {
           : team.bots.isEmpty
           ? _Empty(
               onCreate: () => Navigator.of(context).push(NewBotPage.route()),
-              onTemplates: () => startPartnerFromTemplate(context),
+              onTemplates: () => startPartnerFromTemplate(context, ref),
             )
           : _CompanionList(team: team, live: status.live, inbox: ref.watch(dsBotInboxProvider), onOpenBot: onOpenBot),
     );
@@ -309,7 +309,7 @@ class _CompanionRow extends StatelessWidget {
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                             constraints: const BoxConstraints(minWidth: 16),
-                            decoration: BoxDecoration(color: theme.colorScheme.primary, borderRadius: BorderRadius.circular(8)),
+                            decoration: ShapeDecoration(color: theme.colorScheme.primary, shape: const StadiumBorder()),
                             child: Text(
                               unread > 99 ? '99+' : '$unread',
                               textAlign: TextAlign.center,

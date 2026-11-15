@@ -197,7 +197,7 @@ class ImBotProfilePage extends ConsumerWidget {
                 },
                 child: Text(
                   ImStrings.profileDelete,
-                  style: TextStyle(color: colors.danger),
+                  style: theme.textTheme.bodyMedium?.copyWith(color: colors.danger),
                 ),
               ),
             ),

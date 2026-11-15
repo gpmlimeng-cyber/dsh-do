@@ -77,7 +77,6 @@ class ImFeatureCell extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
                 style: theme.textTheme.labelMedium?.copyWith(
-                  fontSize: 12.5,
                   height: 1.2,
                   color: enabled ? colors.textTertiary : theme.colorScheme.onSurface.withValues(alpha: 0.38),
                 ),
