@@ -630,7 +630,7 @@ class MascotPainter extends CustomPainter {
       MascotCharacter.ghost => _ghost(rect),
       MascotCharacter.jelly => _jelly(rect),
       MascotCharacter.orb => _orb(rect),
-      MascotCharacter.star => _star(rect),
+      MascotCharacter.star => _starBody(rect),
       MascotCharacter.triangle => _triangle(rect),
       MascotCharacter.onigiri => _onigiri(rect),
       MascotCharacter.potato => _potato(rect),
@@ -737,8 +737,25 @@ class MascotPainter extends CustomPainter {
   // 圆团：纯球，没有顶饰。
   Path _orb(Rect r) => Path()..addOval(Rect.fromLTWH(r.left, r.top, r.width, r.height));
 
+  /// 四角星：特效用的，和星团的海星形状无关。
+  void _sparkleStar(Canvas canvas, Offset center, double radius, Color color) {
+    final path = Path();
+    for (var i = 0; i < 8; i++) {
+      final r = i.isEven ? radius : radius * 0.38;
+      final a = -math.pi / 2 + i * math.pi / 4;
+      final p = center + Offset(math.cos(a) * r, math.sin(a) * r);
+      if (i == 0) {
+        path.moveTo(p.dx, p.dy);
+      } else {
+        path.lineTo(p.dx, p.dy);
+      }
+    }
+    path.close();
+    canvas.drawPath(path, Paint()..color = color..style = PaintingStyle.fill);
+  }
+
   // 星团：五角海星，角是圆的，中间略鼓。
-  Path _star(Rect r) {
+  Path _starBody(Rect r) {
     final c = r.center;
     final outer = r.width * 0.52;
     final inner = outer * 0.48;
@@ -1405,7 +1422,7 @@ class MascotPainter extends CustomPainter {
           final radius = s * (0.24 + 0.03 * math.sin(t * 2 + i));
           final center = head + Offset(math.cos(angle) * radius, math.sin(angle) * radius * 0.7);
           final twinkle = 0.55 + 0.45 * math.sin(t * 2 + i * 1.3).abs();
-          _star(canvas, center, s * 0.045 * twinkle, gold.withValues(alpha: 0.55 + 0.45 * twinkle));
+          _sparkleStar(canvas, center, s * 0.045 * twinkle, gold.withValues(alpha: 0.55 + 0.45 * twinkle));
         }
       case 'hearts':
         const pink = Color(0xFFFF7B9C);
