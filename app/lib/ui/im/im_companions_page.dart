@@ -11,6 +11,7 @@ import '../../l10n/l10n.dart';
 import '../../state/bots_state.dart';
 import '../bots/bot_avatar.dart';
 import '../bots/install_card.dart';
+import '../bots/new_bot_page.dart';
 import '../features/feature_widgets.dart';
 import '../mascots/mascot_avatar.dart';
 import '../shell/page_frame.dart' show GlassIconButton;
@@ -60,7 +61,10 @@ class ImCompanionsPage extends ConsumerWidget {
               ],
             )
           : team.bots.isEmpty
-          ? _Empty(onCreate: () => startPartnerFromTemplate(context))
+          ? _Empty(
+              onCreate: () => Navigator.of(context).push(NewBotPage.route()),
+              onTemplates: () => startPartnerFromTemplate(context),
+            )
           : _CompanionList(team: team, live: status.live, inbox: ref.watch(dsBotInboxProvider), onOpenBot: onOpenBot),
     );
   }
@@ -68,9 +72,12 @@ class ImCompanionsPage extends ConsumerWidget {
 
 /// 0 伙伴：给一个创建入口，而不是空白列表。
 class _Empty extends StatelessWidget {
-  const _Empty({this.onCreate});
+  const _Empty({this.onCreate, this.onTemplates});
 
   final VoidCallback? onCreate;
+
+  /// 模板入口：主按钮直接进空白新建页（P0 口径），模板单独一个文字按钮。
+  final VoidCallback? onTemplates;
 
   @override
   Widget build(BuildContext context) {
@@ -100,6 +107,13 @@ class _Empty extends StatelessWidget {
             onPressed: onCreate,
           ),
         ),
+        if (onTemplates != null)
+          Center(
+            child: TextButton(
+              onPressed: onTemplates,
+              child: Text(ImStrings.templateStart),
+            ),
+          ),
       ],
     );
   }

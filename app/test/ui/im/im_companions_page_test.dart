@@ -7,6 +7,7 @@ import 'package:dsh_app/ui/bots/new_bot_page.dart';
 import 'package:dsh_app/ui/im/im_bot_profile_page.dart';
 import 'package:dsh_app/ui/im/im_companions_page.dart';
 import 'package:dsh_app/ui/im/im_strings.dart';
+import 'package:dsh_client/dsh_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -33,6 +34,14 @@ void main() {
     ));
     await frames(tester);
   }
+
+  test('the waiting fixture really carries a question for b2', () {
+    final state = approvalAndWorkTransport().handlers['state']!(<String, Object?>{}) as Map<String, Object?>;
+    final team = DsBotTeam.fromJson(state);
+    final bot = team.bot('b2')!;
+    expect(team.questionOf(bot), isNotNull);
+    expect(team.questions, isNotEmpty);
+  });
 
   testWidgets('every Bot gets one contact row with a 56 avatar', (tester) async {
     await open(tester, FakeDsBotTransport());
@@ -68,17 +77,21 @@ void main() {
     expect(find.byType(ImBotProfilePage), findsNothing);
   });
 
-  testWidgets('busy, waiting and idle rows all render', (tester) async {
-    // Default fixture: one Bot is working.
+  // 三种状态各用一个 testWidgets：同一个测试里连续 pumpWidget 会复用
+  // ProviderScope，Riverpod 只在容器创建时捕获 override，第二次的 transport
+  // 读不到。
+  testWidgets('a working Bot row says it is busy', (tester) async {
     await open(tester, FakeDsBotTransport());
     expect(find.text(ImStrings.companionBusy), findsOneWidget);
+  });
 
-    // Waiting beats busy for the same Bot.
+  testWidgets('waiting beats busy for the same Bot', (tester) async {
     await open(tester, approvalAndWorkTransport());
     expect(find.text(ImStrings.companionWaiting), findsOneWidget);
     expect(find.text(ImStrings.companionBusy), findsNothing);
+  });
 
-    // Nothing running, nothing waiting: no status text at all.
+  testWidgets('an idle Bot shows no status text', (tester) async {
     await open(tester, FakeDsBotTransport(team: sampleTeam(working: false)));
     expect(find.text(ImStrings.companionWaiting), findsNothing);
     expect(find.text(ImStrings.companionBusy), findsNothing);

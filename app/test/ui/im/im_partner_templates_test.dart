@@ -38,11 +38,16 @@ void main() {
     usePhoneView(tester);
     await tester.pumpWidget(goldenApp(home: const ImPartnerTemplatesPage(), brightness: Brightness.light));
     await frames(tester);
-    expect(find.text(reviewer.nameZh), findsOneWidget);
+    // The search field itself carries the typed text, so match inside the list only.
+    Finder row() => find.descendant(
+      of: find.byType(ListView).first,
+      matching: find.text(reviewer.nameZh),
+    );
+    expect(row(), findsOneWidget);
 
     await tester.enterText(find.byKey(const ValueKey('template-search')), reviewer.nameZh);
     await frames(tester);
-    expect(find.text(reviewer.nameZh), findsOneWidget);
+    expect(row(), findsOneWidget);
   });
 
   testWidgets('a coming-soon template shows the disabled create key', (tester) async {
