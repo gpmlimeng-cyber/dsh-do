@@ -455,7 +455,7 @@ String? _choiceOf(Object? value, List<String> allowed) =>
 
 /// 三档动画等级各自展开成一组身体/眼/嘴（一键预设）。
 ({String body, String eyes, String mouth}) motionPreset(MascotMotion motion) => switch (motion) {
-  MascotMotion.lively => (body: 'bounce', eyes: 'happy', mouth: 'smile'),
+  MascotMotion.lively => (body: 'bounce', eyes: 'open', mouth: 'smile'),
   MascotMotion.quiet => (body: 'breathe', eyes: 'open', mouth: 'flat'),
   MascotMotion.curious => (body: 'work', eyes: 'wide', mouth: 'open'),
 };
@@ -1178,11 +1178,19 @@ class MascotPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
 
     void roundEye(double x, double radius, {double dx = 0, double dy = 0}) {
-      // 眼白 + 瞳孔 + 高光。2D 也画：不画的话「默认」在小尺寸缩略图上
-      // 和「圆点」几乎一样，用户分不出两档。
-      canvas.drawCircle(Offset(x, eyeY), radius * 1.35, white);
-      canvas.drawCircle(Offset(x, eyeY), radius, dark);
-      canvas.drawCircle(Offset(x - radius * 0.35 + dx, eyeY - radius * 0.35 + dy), radius * 0.36, white);
+      // 默认五官对齐 lively-mascot：白眼球 + 深色描边 + 大瞳孔 + 高光。
+      // 2D 也这么画，否则「默认」在小缩略图上和「圆点」分不出来。
+      final eye = Rect.fromCenter(center: Offset(x, eyeY), width: radius * 2.8, height: radius * 3.1);
+      canvas.drawOval(eye, white);
+      canvas.drawOval(
+        eye,
+        Paint()
+          ..color = ink
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = radius * 0.30,
+      );
+      canvas.drawCircle(Offset(x + radius * 0.12 + dx, eyeY + radius * 0.10 + dy), radius * 0.82, dark);
+      canvas.drawCircle(Offset(x - radius * 0.34 + dx, eyeY - radius * 0.42 + dy), radius * 0.30, white);
     }
 
     void closedEye(double x) {
