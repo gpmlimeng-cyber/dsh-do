@@ -375,8 +375,13 @@ class _ActivityStripState extends State<ActivityStrip> {
       child: GlassSurface(
         tier: GlassTier.chrome,
         stadium: true,
-        // One backdrop sample with the deck's other bars (chat page).
-        grouped: true,
+        clear: widget.flat,
+        // 胶囊要能看见边:浅色页面上 chrome 的发丝线只有 8%,和白底糊成一片。
+        style: DshSurfaces.of(context).glass(GlassTier.chrome).copyWith(
+          hairline: (a.waiting || a.kind == ActivityKind.retry ? dsh.warning : dsh.textTertiary)
+              .withValues(alpha: 0.22),
+          hairlineWidth: 0.8,
+        ),
         onTap: widget.onTap,
         onLongPress: _showStats,
         child: ConstrainedBox(

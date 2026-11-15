@@ -32,13 +32,20 @@ String toolVerb(String tool) => switch (tool) {
   _ => appL10n.botsToolWork,
 };
 
-/// The wall clock Bot timestamps read (tests freeze it).
-DateTime Function() botClock = DateTime.now;
+/// 引用 the way the web client sends it: the excerpt as a `>` block, then the
+/// message after two blank lines. Whitespace collapses to one space and the
+/// excerpt stops at 200 characters, as `composer.js` does.
+String withQuote(String text, String? quote) {
+  final excerpt = (quote ?? '').trim().replaceAll(RegExp(r'\s+'), ' ');
+  if (excerpt.isEmpty) return text;
+  final cut = excerpt.length > 200 ? '${excerpt.substring(0, 200)}…' : excerpt;
+  return '> $cut\n\n$text';
+}
 
 /// 「刚刚」「14:05」「昨天」「10月3日」.
 String shortTime(DateTime? time, {DateTime? now}) {
   if (time == null) return '';
-  final at = now ?? botClock();
+  final at = now ?? DateTime.now();
   final diff = at.difference(time);
   if (diff.inSeconds.abs() < 60) return appL10n.botsJustNow;
   final today = DateTime(at.year, at.month, at.day);

@@ -8,7 +8,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../state/bot_avatar_state.dart';
 import '../../state/bots_state.dart';
-import '../common/display_image.dart';
 import '../common/status_dot.dart';
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
@@ -41,21 +40,42 @@ class BotAvatar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final ref0 = bot.imageRef;
     final photo = ref0 == null ? null : ref.watch(dsBotPhotoProvider((botId: bot.id, ref: ref0))).value;
-    final face = photo == null
-        ? BotMonogram(name: bot.name, color: bot.ink, size: size)
-        : ClipOval(
-            child: Image(
-              image: imageForDisplay(
-                MemoryImage(photo),
+    // 本机头像覆盖（state/bot_avatar_state.dart）：吉祥物 / 表情；没配过就是原来的
+    // 照片或文字首字母。列表里默认静态（animate:false），不建 ticker。
+    final config = ref.watch(botAvatarProvider.select((byBot) => byBot[bot.id]));
+    // 旧 kind=text 存档仍画字团；没配置（也没照片）的 Bot 改成按 id 派生的吉祥物。
+    Widget letter() => MascotLetterAvatar(
+      spec: derivedMascotOf(config, bot.id),
+      letter: monogramOf(bot.name),
+      size: size,
+      animate: animate,
+      emotion: emotion,
+    );
+    Widget derived() => MascotAvatar(
+      spec: derivedMascotOf(config, bot.id),
+      size: size,
+      animate: animate,
+      emotion: emotion,
+    );
+    final face = switch (config) {
+      BotAvatarConfig(kind: BotAvatarKind.mascot, mascot: final mascot?) => MascotAvatar(spec: mascot, size: size, emotion: emotion, animate: animate),
+      BotAvatarConfig(kind: BotAvatarKind.emoji, emoji: final emoji) when emoji.isNotEmpty => _EmojiFace(
+        glyph: emoji,
+        color: bot.ink,
+        size: size,
+      ),
+      BotAvatarConfig(kind: BotAvatarKind.text) => letter(),
+      _ => photo == null
+          ? derived()
+          : ClipOval(
+              child: Image.memory(
+                photo,
                 width: size,
                 height: size,
-                pixelRatio: MediaQuery.devicePixelRatioOf(context),
+                fit: BoxFit.cover,
+                gaplessPlayback: true,
+                errorBuilder: (context, _, _) => derived(),
               ),
-              width: size,
-              height: size,
-              fit: BoxFit.cover,
-              gaplessPlayback: true,
-              errorBuilder: (context, _, _) => BotMonogram(name: bot.name, color: bot.ink, size: size),
             ),
     };
     if (!working) return ExcludeSemantics(child: face);

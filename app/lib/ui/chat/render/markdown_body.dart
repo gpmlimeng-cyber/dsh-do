@@ -42,21 +42,6 @@ final Map<String, HtmlTag?> _htmlTags = {
   'summary': const HtmlTag.block(),
 };
 
-/// Inline patterns a part of the app lays over every [MarkdownBody] below it
-/// (the tavern colours its story's dialogue). Keep [patterns] one list per
-/// look: its identity is part of the parse cache's key.
-class MarkdownPatterns extends InheritedWidget {
-  const MarkdownPatterns({super.key, required this.patterns, required super.child});
-
-  final List<InlinePattern> patterns;
-
-  static List<InlinePattern>? maybeOf(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<MarkdownPatterns>()?.patterns;
-
-  @override
-  bool updateShouldNotify(MarkdownPatterns old) => !identical(old.patterns, patterns);
-}
-
 /// 助手正文的 Markdown 渲染。
 ///
 /// - 正文样式与用户气泡同源([AppType.chatBody]),流式与完成态不跳字号;
@@ -248,8 +233,17 @@ class MarkdownBody extends StatefulWidget {
 
   static final _streamingPatterns = [_cursorPattern];
 
-  /// The cursor with a [MarkdownPatterns] list, one list per list.
-  static final _streamingWith = Expando<List<InlinePattern>>('streamingWith');
+  /// A marked mention ([markMentions]) → the member's own ink, the way the web
+  /// paints a called name. The colour is looked up under it, in [_MentionInk],
+  /// so this pattern is built once and never per message.
+  static final _mentionPattern = InlinePattern(
+    pattern: RegExp('$mentionMarkOpen([^$mentionMarkClose]*)$mentionMarkClose'),
+    builder: (context, match, style) {
+      final marked = match[1] ?? '';
+      final ink = _MentionInk.maybeOf(context)?[marked.toLowerCase()];
+      return TextSpan(text: marked, style: ink == null ? style : style.copyWith(color: ink));
+    },
+  );
 
   // Builders stay static. gpt_markdown 1.4.0's config.isSame ignores
   // onLinkTap identity; its cached spans may retain this context-only callback.
@@ -502,15 +496,8 @@ class MarkdownBody extends StatefulWidget {
   }
 
   /// 标题是读屏里能逐个跳转的 header 节点。
-  static Widget _headingBuilder(BuildContext context, int level, Widget content, HeadingStyle style) {
-    final theme = GptMarkdownTheme.of(context);
-    final heading = [theme.h1, theme.h2, theme.h3, theme.h4, theme.h5, theme.h6][level - 1];
-    final size = (heading ?? const TextStyle()).merge(style.textStyle).fontSize ?? MarkdownImageFont.of(context);
-    return MarkdownImageFont(
-      size: size,
-      child: Semantics(header: true, container: true, child: content),
-    );
-  }
+  static Widget _headingBuilder(BuildContext context, int level, Widget content, HeadingStyle style) =>
+      Semantics(header: true, container: true, child: content);
 
   /// 任务清单 `- [ ]` / `- [x]`:只读的方框图标。包里默认用 Material 的
   /// [Checkbox],它要求祖先里有 Material,聊天列表里没有,会报错并溢出。
@@ -685,13 +672,19 @@ class _MarkdownBodyState extends State<MarkdownBody> {
       blockAnimation: widget.reveal ? GptMarkdownBlockAnimation.fadeIn : GptMarkdownBlockAnimation.none,
       charactersPerSecond: MarkdownBody._revealPace,
       revealFadeSeconds: MarkdownBody._revealFade,
-      inlinePatterns: switch ((widget.streaming && !widget.reveal, MarkdownPatterns.maybeOf(context))) {
-        (true, null) => MarkdownBody._streamingPatterns,
-        (false, null) => null,
-        (true, final extra?) => MarkdownBody._streamingWith[extra] ??= [...MarkdownBody._streamingPatterns, ...extra],
-        (false, final extra?) => extra,
+      inlinePatterns: switch ((
+        widget.mentions.isNotEmpty,
+        widget.streaming && !widget.reveal,
+      )) {
+        (true, true) => [MarkdownBody._mentionPattern, ...MarkdownBody._streamingPatterns],
+        (true, false) => [MarkdownBody._mentionPattern],
+        (false, true) => MarkdownBody._streamingPatterns,
+        (false, false) => null,
       },
-      onLinkTap: (url, title) => MarkdownBody._onLinkTap(context, url, title),
+      onLinkTap: (url, title) {
+        if (widget.onLinkTap?.call(url) ?? false) return;
+        MarkdownBody._onLinkTap(context, url, title);
+      },
       codeBuilder: MarkdownBody._codeBuilder,
       inlineCodeBuilder: MarkdownBody._inlineCodeBuilder,
       checkboxBuilder: MarkdownBody._checkboxBuilder,
@@ -718,10 +711,7 @@ class _MarkdownBodyState extends State<MarkdownBody> {
     markdown = ScrollConfiguration(behavior: const EdgeFadeScrollBehavior(), child: markdown);
     if (widget.reveal) markdown = _RevealStreaming(streaming: widget.streaming, blocks: _blocks, child: markdown);
     if (widget.selectable) markdown = SelectionArea(child: markdown);
-    return MarkdownImageFont(
-      size: body.fontSize!,
-      child: MarkdownGalleryScope(child: markdown),
-    );
+    return MarkdownGalleryScope(child: markdown);
   }
 }
 

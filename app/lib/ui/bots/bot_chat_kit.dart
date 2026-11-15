@@ -72,8 +72,26 @@ class BotChatHeader extends StatelessWidget {
     this.leadingIcon,
     this.leadingTooltip,
     this.scrolledUnder,
+    this.chip,
+    this.onInfo,
+    this.onMenu,
+    this.menuController,
+    this.menuChildren,
     this.action,
-  });
+    this.onMessages,
+    this.messagesIcon,
+    this.messagesTooltip,
+    this.titleHint,
+    this.infoTooltip,
+    this.infoGreyed = false,
+    this.trailing,
+    this.titleCompact = false,
+    this.mergeTrailing = false,
+    this.endTrailing = false,
+  }) : assert(
+         (menuChildren == null) == (menuController == null),
+         'menuChildren 与 menuController 要成对给',
+       );
 
   final Widget face;
   final String title;
@@ -92,9 +110,74 @@ class BotChatHeader extends StatelessWidget {
   final String? leadingTooltip;
   final ValueNotifier<double>? scrolledUnder;
 
-  /// The round key on the right, in place of ⓘ (which repeats the title's
-  /// tap): its icon, label and what it does.
-  final (IconData, String, VoidCallback)? action;
+  /// The leading key (back, or the chats button). Off in a three-column
+  /// layout: the rail already has that button, and two of them read wrong.
+  final bool showLeading;
+
+  /// The model this Bot runs on, before the details key.
+  final Widget? chip;
+
+  /// The right key: 对话详情 (trajectory, files, progress). Without it the key
+  /// opens the same place as the title capsule.
+  final VoidCallback? onInfo;
+
+  /// When set, the last key is ⋯ and [onMenu] opens the page's menu instead of
+  /// going straight to details; a long press still runs [onInfo]. Null keeps
+  /// the details key.
+  final VoidCallback? onMenu;
+
+  /// 锚定下拉菜单的控制器：给了 [menuChildren] 时，⋯ 就是菜单的锚点，菜单
+  /// 从它下方展开，不再弹底部抽屉。页面持有它，是为了返回键与点外面都能收起。
+  final MenuController? menuController;
+
+  /// ⋯ 下拉菜单的内容。行由页面给（图标 + 文字），这里只管锚点、卡片与
+  /// 开合；每行自己负责点完关掉菜单。
+  final List<Widget> Function(BuildContext menuContext, MenuController controller)? menuChildren;
+
+  /// The page's own situation key, drawn after ⋯ (the row's last): stop while
+  /// something runs, a warning when offline or read-only. The most important
+  /// thing never hides inside a menu.
+  final ({IconData icon, String tooltip, VoidCallback? onTap, Color? color})? action;
+
+  /// 消息模式: only a group passes it, and the key sits left of the details one.
+  final VoidCallback? onMessages;
+
+  /// What the messages key draws instead of its default glyph: the conversation
+  /// it opens (the group's icon, or a member's face in a ring), so where you are
+  /// reads at a glance. Give it a key per target — the key swaps with a 120 ms
+  /// fade and 0.92 → 1 scale, no bounce.
+  final Widget? messagesIcon;
+
+  /// The messages key's words; the page names the mode in them.
+  final String? messagesTooltip;
+
+  /// What the title capsule does, for screen readers. The default says
+  /// 查看详情; a page whose capsule switches conversations says that instead.
+  final String? titleHint;
+
+  /// The right key's words; null keeps 「详情」. A disabled key also says why.
+  final String? infoTooltip;
+
+  /// Greys the right key's glyph when there is nothing it can open; the key
+  /// keeps its tap area and says why in [infoTooltip] when tapped.
+  final bool infoGreyed;
+
+  /// A widget between the title capsule and the right keys: a group's goal pill.
+  final Widget? trailing;
+
+  /// The title capsule shrinks to its face alone (圆形) so the goal pill beside
+  /// it can carry the group's name instead.
+  final bool titleCompact;
+
+  /// 目标段并进群名这颗胶囊：一颗外壳、两段分段点击（两段之间不画分隔线）。
+  /// [trailing] 这时必须是「裸」的那一段（自己不带玻璃底）。
+  final bool mergeTrailing;
+
+  /// 目标收成小球时，球挂在这颗胶囊的尾端，不是旁边另立一颗：左段群名
+  /// （头像可点）、右端一颗与胶囊同心的圆球。几何照标题胶囊尾端的时钟键
+  /// （[HeaderScheduleCap]）：直径 36、与文字间距 8、上下右按
+  /// `(pillHeight-36)/2` 内缩。 [trailing] 这时必须是「裸」的那颗球。
+  final bool endTrailing;
 
   static const barHeight = 56.0;
   static const key44 = 44.0;
@@ -353,17 +436,51 @@ class BotChatHeader extends StatelessWidget {
                       tooltip: messagesTooltip ?? l10n.botsMessageMode,
                       onTap: onMessages,
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  if (action case (final icon, final label, final onTap))
-                    _RoundKey(key: const ValueKey('bot-action'), icon: icon, tooltip: label, onTap: onTap)
-                  else
+                  ],
+                  if (chip case final chip?) ...[
+                    const SizedBox(width: 8),
+                    chip,
+                  ],
+                  // 警示键（离线 / 只读）排在 ⋯ 左边：⋯ 永远是最右那颗，
+                  // 位置不随状态变——「固定」就是这个意思。
+                  if (action case final action?) ...[
+                    const SizedBox(width: 8),
+                    _RoundKey(
+                      key: const ValueKey('bot-action-key'),
+                      icon: action.icon,
+                      tooltip: action.tooltip,
+                      onTap: action.onTap,
+                      iconColor: action.color,
+                    ),
+                  ],
+                  if (onMenu != null || menuChildren != null) ...[
+                    const SizedBox(width: 8),
+                    if (menuChildren case final menuChildren?)
+                      _AnchoredMenu(
+                        controller: menuController!,
+                        children: menuChildren,
+                        onLongPress: onInfo,
+                      )
+                    else
+                      _RoundKey(
+                        key: const ValueKey('bot-menu-key'),
+                        icon: AppIcons.more,
+                        tooltip: l10n.commonMore,
+                        onTap: onMenu,
+                        // One more way in, not a second menu: the details key is
+                        // still one long press away.
+                        onLongPress: onInfo,
+                      ),
+                  ] else if (action == null) ...[
+                    const SizedBox(width: 8),
                     _RoundKey(
                       key: const ValueKey('bot-details'),
                       icon: AppIcons.info,
-                      tooltip: l10n.commonDetails,
-                      onTap: onDetails,
+                      tooltip: infoTooltip ?? l10n.commonDetails,
+                      onTap: onInfo ?? onDetails,
+                      iconColor: infoGreyed ? DshColors.of(context).textTertiary : null,
                     ),
+                  ],
                 ],
               ),
             ),
@@ -518,27 +635,12 @@ class _AnchoredMenuState extends State<_AnchoredMenu> {
 
 /// The page: the transcript fills the space between the header (floating
 /// over it) and the bottom column (cards, error, composer).
-class BotChatFrame extends StatelessWidget {
-  const BotChatFrame({
-    super.key,
-    required this.header,
-    required this.body,
-    required this.bottom,
-    this.backdrop,
-    this.endDrawer,
-    this.scaffoldKey,
-  });
+class BotChatFrame extends StatefulWidget {
+  const BotChatFrame({super.key, required this.header, required this.body, required this.bottom});
 
   final Widget header;
   final Widget body;
   final List<Widget> bottom;
-
-  /// What the page stands on, around [child]; null: the usual gradient ([AppBackdrop]).
-  final Widget Function(Widget child)? backdrop;
-
-  /// A panel that slides in from the right edge (opened through [scaffoldKey]).
-  final Widget? endDrawer;
-  final GlobalKey<ScaffoldState>? scaffoldKey;
 
   @override
   State<BotChatFrame> createState() => _BotChatFrameState();
@@ -562,15 +664,14 @@ class _BotChatFrameState extends State<BotChatFrame> {
 
   @override
   Widget build(BuildContext context) {
-    final backdrop = this.backdrop ?? (child) => AppBackdrop(child: child);
-    return AnnotatedRegion<SystemUiOverlayStyle>(
+    final header = widget.header;
+    final body = widget.body;
+    final bottom = widget.bottom;
+    final frame = AnnotatedRegion<SystemUiOverlayStyle>(
       value: dshSystemOverlay(Theme.of(context).brightness),
-      child: backdrop(
-        Scaffold(
-          key: scaffoldKey,
+      child: Scaffold(
           backgroundColor: Colors.transparent,
           resizeToAvoidBottomInset: true,
-          endDrawer: endDrawer,
           // A phone on its side: clear of the cutout on both sides.
           body: SideSafeArea(
             child: Stack(
