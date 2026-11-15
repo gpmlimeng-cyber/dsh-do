@@ -15,6 +15,10 @@ abstract final class ImStrings {
   static String get tabDiscover => _zh ? '发现' : 'Discover';
   static String get tabMe => _zh ? '我' : 'Me';
 
+  // ── 模式面板里的轻松模式 ──
+  static String get modeLight => _zh ? '轻松' : 'Light';
+  static String get modeLightSubtitle => _zh ? '像发消息一样聊' : 'Chat like you text';
+
   // ── 消息 ──
   static String get messagesTitle => _zh ? '消息' : 'Messages';
   static String get newBot => _zh ? '新建 Bot' : 'New Bot';

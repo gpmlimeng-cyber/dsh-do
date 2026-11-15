@@ -12,6 +12,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
 import '../../state/app_mode_state.dart';
+import '../../state/im_mode_state.dart';
+import '../im/im_strings.dart';
 import '../common/app_sheet.dart';
 import '../common/sheet_title_bar.dart';
 import '../companion/companion_page.dart';
@@ -26,7 +28,8 @@ import '../theme/theme.dart';
 Widget appModePage(AppMode mode) => switch (mode) {
   AppMode.companion => const CompanionPage(),
   AppMode.tavern => const TavernHomePage(),
-  AppMode.work => throw ArgumentError.value(mode, 'mode', '工作 is the home, not a page'),
+  // 工作 and 轻松 are both homes: 工作 draws in 界面, 轻松 is the IM shell.
+  AppMode.work || AppMode.light => throw ArgumentError.value(mode, 'mode', '$mode is a home, not a page'),
 };
 
 const _modeRoutePrefix = 'mode:';
@@ -35,6 +38,17 @@ const _modeRoutePrefix = 'mode:';
 /// soft wave of the theme's colour (Libraries.dev Distortion waves).
 void openAppMode(BuildContext context, AppMode mode) {
   final navigator = Navigator.of(context);
+  final container = ProviderScope.containerOf(context, listen: false);
+  // 轻松 is a home, not a page: flip the 界面 axis and go back to the root.
+  if (mode == AppMode.light) {
+    unawaited(container.read(interfaceModeProvider.notifier).set(InterfaceMode.light));
+    navigator.popUntil((route) => route.isFirst);
+    return;
+  }
+  // Coming out of 轻松: back to the professional home first.
+  if (container.read(interfaceModeProvider).light) {
+    unawaited(container.read(interfaceModeProvider.notifier).set(InterfaceMode.pro));
+  }
   final closing = navigator.canPop();
   navigator.popUntil((route) => route.isFirst);
   if (mode == AppMode.work) return;
@@ -61,12 +75,14 @@ String appModeLabel(L10n l10n, AppMode mode) => switch (mode) {
   AppMode.work => l10n.modeWork,
   AppMode.companion => l10n.companionTitle,
   AppMode.tavern => l10n.tavernTitle,
+  AppMode.light => ImStrings.modeLight,
 };
 
 IconData appModeIcon(AppMode mode) => switch (mode) {
   AppMode.work => AppIcons.chat,
   AppMode.companion => AppIcons.pet,
   AppMode.tavern => AppIcons.tavern,
+  AppMode.light => AppIcons.chat,
 };
 
 /// 模式: the three modes, [current] marked, and which one a launch opens in.
@@ -91,6 +107,7 @@ class ModeSheet extends ConsumerWidget {
       AppMode.work => l10n.modeWorkSubtitle,
       AppMode.companion => l10n.companionEntrySubtitle,
       AppMode.tavern => l10n.modeTavernSubtitle,
+      AppMode.light => ImStrings.modeLightSubtitle,
     };
     return SafeArea(
       top: false,
@@ -145,6 +162,7 @@ String appModeShortLabel(L10n l10n, AppMode mode) => switch (mode) {
   AppMode.work => l10n.modeWork,
   AppMode.companion => l10n.modeCompanionShort,
   AppMode.tavern => l10n.tavernTitle,
+  AppMode.light => ImStrings.modeLight,
 };
 
 /// The drawer's key to 模式, beside 网页模式.

@@ -12,7 +12,9 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-enum AppMode { work, companion, tavern }
+import 'im_mode_state.dart';
+
+enum AppMode { work, companion, tavern, light }
 
 class AppModeState {
   const AppModeState({this.startup = AppMode.work, this.loaded = false});
@@ -35,9 +37,19 @@ class AppModeController extends Notifier<AppModeState> {
     var startup = AppMode.work;
     try {
       final prefs = await SharedPreferences.getInstance();
-      startup = AppMode.values.asNameMap()[prefs.getString(key)] ?? AppMode.work;
+      final stored = prefs.getString(key);
+      if (stored == null) {
+        // 旧版本只有「界面」里的专业/轻松：轻松平移到新模式里，别丢用户的设置。
+        if (prefs.getString('interface.mode') == 'light') startup = AppMode.light;
+      } else {
+        startup = AppMode.values.asNameMap()[stored] ?? AppMode.work;
+      }
     } catch (_) {
       // No preferences backend (tests) or an unreadable store: 工作.
+    }
+    // 轻松模式仍然是「界面」那一轴的实际开关；启动模式是它的入口。
+    if (startup == AppMode.light && ref.read(interfaceModeProvider).mode != InterfaceMode.light) {
+      unawaited(ref.read(interfaceModeProvider.notifier).set(InterfaceMode.light));
     }
     // A choice made while reading back wins over the stored value.
     if (!state.loaded) state = AppModeState(startup: startup, loaded: true);
