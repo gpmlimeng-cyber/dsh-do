@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
+import '../../state/app_mode_state.dart';
 import '../../state/im_mode_state.dart';
 import '../../state/sessions_state.dart';
 import '../../state/ui_mode_state.dart';
@@ -59,6 +60,10 @@ class _ModeHomeState extends ConsumerState<ModeHome> {
   @override
   Widget build(BuildContext context) {
     ref.listen(webModeRequestProvider, (_, _) => unawaited(_becomeWeb()));
+    // 模式先读：启动模式是「轻松」时，[app_mode_state] 会在读回时把旧的
+    // 「界面」也切成轻松。等它读完再读界面，第一帧就不会先画专业首页。
+    final appMode = ref.watch(appModeProvider);
+    if (!appMode.loaded) return const AppBackdrop(child: SizedBox.expand());
     // 轻松模式: its own home, before 界面 is even read. Read back like 界面, so
     // the first frame is not the other home's.
     final face = ref.watch(interfaceModeProvider);
