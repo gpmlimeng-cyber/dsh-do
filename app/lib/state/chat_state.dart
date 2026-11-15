@@ -467,12 +467,6 @@ class ChatController extends Notifier<ChatState> {
   StreamSubscription<DshConnectionState>? _states;
   Timer? _flush;
   Timer? _stopTimeout;
-
-  /// 等第一份快照的死线：`syncing` 只在应用了快照时才落；快照要是永远不来
-  /// （新会话只收到上一次 watch 的缓存快照、又被 follow epoch 挡掉），横幅就
-  /// 一直停在「正在同步对话」。到点自动重同步一次，它自己还有 10 秒上限，失败
-  /// 会明确说「同步中断」，不再是永远转圈。
-  Timer? _syncWatchdog;
   _ChatOperation? _stoppingOperation;
   bool _dirty = false;
   ModelSelection? _model;
@@ -608,7 +602,6 @@ class ChatController extends Notifier<ChatState> {
     final client = ref.watch(activeConnectionProvider.select((c) => c.value?.client));
     ref.onDispose(() {
       // Invalidation runs before a lazy rebuild replaces the still-mounted Ref.
-      _syncWatchdog?.cancel();
       _modelChange = null;
       _listenOwner = Object();
       _followEpoch?.retire();
@@ -792,7 +785,6 @@ class ChatController extends Notifier<ChatState> {
 
   void _listen(DshClient client, RunPulse pulse, {bool building = false}) {
     final owner = ref;
-    _syncWatchdog?.cancel();
     final listener = _listenOwner = Object();
     _watchEnded = false;
     bool current() => owner.mounted && identical(listener, _listenOwner) && identical(client, _client);
@@ -804,11 +796,6 @@ class ChatController extends Notifier<ChatState> {
     // cards forwarded only by the previous watch and settled while it was away.
     // Retire local cards before replay; consent and in-flight answers stay intact.
     _retireHostRequests();
-    _syncWatchdog = Timer(const Duration(seconds: 8), () {
-      if (!owner.mounted || !identical(listener, _listenOwner) || !identical(client, _client)) return;
-      if (_synchronized || _watchEnded) return;
-      unawaited(resync());
-    });
     _sub = client
         .watch(
           sessionId,
@@ -837,11 +824,7 @@ class ChatController extends Notifier<ChatState> {
               _markSyncing();
             }
             if (event is SessionSnapshotEvent) {
-              // 上一次 watch 留下的缓存快照：还没同步过就收下（下面还有 generation
-              // 核对）。否则新会话可能一份快照都收不到，一直「正在同步」。
-              final epoch = event.followEpoch;
-              final ours = identical(epoch, _followEpoch) && (epoch?.isCurrent ?? true);
-              if (!ours && _synchronized) return;
+              if (!identical(event.followEpoch, _followEpoch) || !(event.followEpoch?.isCurrent ?? true)) return;
               // Recheck at delivery, not only when watch() emitted the frame.
               // A queued old snapshot cannot adopt a newer (or null) mux.
               if (event.followEpoch case final epoch?) {
@@ -853,6 +836,7 @@ class ChatController extends Notifier<ChatState> {
             pulse.observe(event, skew: _sameClock ? Duration.zero : _skew);
             _trackModel(event);
             _trackCommands(event);
+            _countTokens(event);
             final reconcile =
                 (event is InboxSplicedEvent && event.seq > _transcript.cursor) ||
                 (event is SessionSnapshotEvent && event.isResync);
@@ -1376,8 +1360,15 @@ class ChatController extends Notifier<ChatState> {
           state = state.copyWith(pending: _placePending());
         }
       }
-      final notice = await _deliver(operation, body, attachments, receipts, requestId: requestId, mode: promptMode,
-        deliveryAllowed: deliveryAllowed);
+      final notice = await _deliver(
+        operation,
+        body,
+        attachments,
+        receipts,
+        requestId: requestId,
+        mode: promptMode,
+        deliveryAllowed: deliveryAllowed,
+      );
       _sent();
       if (!_currentOperation(operation)) return false;
       state = state.copyWith(error: stopFailed, notice: notice);
@@ -1443,6 +1434,20 @@ class ChatController extends Notifier<ChatState> {
   /// many).
   void _sent() {
     if (ref.mounted) ref.read(usageStatsProvider.notifier).count(UsageCount.turns);
+  }
+
+  /// A model call finished on the host: the tokens its provider reported go
+  /// to the usage statistics. Only a new log record (after the cursor, before
+  /// [Transcript.apply] moves it), never a snapshot's history, so a
+  /// reconnect replays nothing twice. A call that reported no usage adds
+  /// nothing.
+  void _countTokens(DshEvent event) {
+    if (event is! AssistantMessageEvent || event.seq <= _transcript.cursor || !ref.mounted) return;
+    final usage = event.usage;
+    if (usage == null) return;
+    ref
+        .read(usageStatsProvider.notifier)
+        .tokens(usage.inputTokens + (usage.cacheReadTokens ?? 0) + (usage.cacheWriteTokens ?? 0), usage.outputTokens);
   }
 
   /// Retry the same text and attachment selections. Picking again is a new

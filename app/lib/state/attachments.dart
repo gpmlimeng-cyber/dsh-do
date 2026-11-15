@@ -271,11 +271,7 @@ final attachmentPickerProvider = Provider<AttachmentPicker>((ref) => const Devic
 /// thumbnails of sent messages. Dropped once no bubble shows it.
 final sessionImageProvider = FutureProvider.autoDispose.family<Uint8List, (String, ImageAttachment)>((ref, key) async {
   final (sessionId, attachment) = key;
-  // The whole connection state, not just its client: an engine restart keeps
-  // the same client object while the link goes down and comes back, and a
-  // failure cached across that would leave the picture dead for good.
-  final connection = ref.watch(activeConnectionProvider);
-  final client = connection.value?.client;
+  final client = ref.watch(activeConnectionProvider.select((c) => c.value?.client));
   if (client == null) throw StateError(appL10n.commonNotConnected);
   // Scrolling a bubble out and back shouldn't refetch; let it go a bit later.
   final link = ref.keepAlive();
@@ -283,7 +279,5 @@ final sessionImageProvider = FutureProvider.autoDispose.family<Uint8List, (Strin
   ref.onCancel(() => release = Timer(const Duration(seconds: 30), link.close));
   ref.onResume(() => release?.cancel());
   ref.onDispose(() => release?.cancel());
-  // A fetch that never answers (a dropped link, a Host that went away) would
-  // otherwise keep the bubble loading for the rest of the session.
-  return (await client.attachment(sessionId, attachment).timeout(const Duration(seconds: 20))).bytes;
+  return (await client.attachment(sessionId, attachment)).bytes;
 });

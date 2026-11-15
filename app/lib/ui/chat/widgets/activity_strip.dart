@@ -11,13 +11,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../l10n/l10n.dart';
 import '../../../state/chat_state.dart';
 import '../../../state/run_pulse.dart';
-import '../../../state/step_eta.dart';
 import '../../pets/pet_perch.dart';
-import '../../common/typing_indicator.dart';
 import '../../theme/theme.dart';
 import '../activity_copy.dart';
 import '../run_info.dart';
-import '../dock/dock_pill.dart' show DockMetrics;
 import 'live_clock.dart';
 import 'whale_tail.dart';
 
@@ -33,28 +30,7 @@ import 'whale_tail.dart';
 /// 只订阅 [runActivityOf] 的结果(值相等不重建)和 [RunPulse](换档、压缩
 /// 开始结束时才通知);走秒和文案轮换只重建文字那一段。
 class ActivityStripSlot extends ConsumerStatefulWidget {
-  const ActivityStripSlot({
-    super.key,
-    required this.sessionId,
-    this.onTap,
-    this.todoProgress = true,
-    this.flat = false,
-    this.dock = false,
-    this.face,
-    this.name,
-  });
-
-  /// 底部那一层：模型阶段画打字行，工具阶段仍画 App 的胶囊活动行。
-  final bool dock;
-
-  /// 打字行左边的脸（群里是正在发言的成员）；没有就不画。
-  final Widget? face;
-
-  /// 打字行里「名字 · …」的名字。
-  final String? name;
-
-  /// 底部的活动行不要自己的卡片底(见 [ActivityStrip] 的 flat)。
-  final bool flat;
+  const ActivityStripSlot({super.key, required this.sessionId, this.onTap, this.todoProgress = true});
 
   final String sessionId;
   final VoidCallback? onTap;
@@ -142,10 +118,8 @@ class _ActivityStripSlotState extends ConsumerState<ActivityStripSlot> with Sing
         return AnimatedBuilder(
           animation: _height,
           builder: (context, child) => Align(alignment: Alignment.topCenter, heightFactor: _height.value, child: child),
-          // 这一条和胶囊行/插件条占同一条高度带（42 = 36 + 6）：活动开始、结束
-          // 时换的是内容，不是高度，下面那排键才不会上下挪。
           child: Padding(
-            padding: const EdgeInsets.only(bottom: DockMetrics.gap),
+            padding: const EdgeInsets.only(bottom: 6),
             child: PetPerch(
               kind: PerchKind.strip,
               active: shown != null,
@@ -153,16 +127,11 @@ class _ActivityStripSlotState extends ConsumerState<ActivityStripSlot> with Sing
                 valueListenable: perches?.occupied ?? _noPet,
                 builder: (context, occupied, _) => ActivityStrip(
                   activity: strip,
-                  // 模型还在想、还没动工具：底部画打字行；开始跑工具才换成活动行。
-                  typing: widget.dock && _modelPhase(strip),
-                  face: widget.face,
-                  name: widget.name,
                   speedLevel: _lastLevel,
                   tokensPerSecond: () => pulse.tokensPerSecond,
                   onTap: shown == null ? null : widget.onTap,
                   todoProgress: widget.todoProgress,
                   whale: occupied != PerchKind.strip,
-                  flat: widget.flat,
                 ),
               ),
             ),
@@ -172,12 +141,6 @@ class _ActivityStripSlotState extends ConsumerState<ActivityStripSlot> with Sing
     );
   }
 }
-
-/// 这一轮还在等模型（或正文在流）：还没有工具在跑，底部显示打字行。
-bool _modelPhase(RunActivity activity) => switch (activity.kind) {
-  ActivityKind.waiting || ActivityKind.thinking || ActivityKind.writing || ActivityKind.retry => true,
-  _ => false,
-};
 
 /// Outside a pet stage nothing ever stands on the strip.
 final _noPet = ValueNotifier<PerchKind?>(null);
@@ -192,21 +155,7 @@ class ActivityStrip extends StatefulWidget {
     this.whaleColor,
     this.todoProgress = true,
     this.whale = true,
-    this.flat = false,
-    this.typing = false,
-    this.face,
-    this.name,
   });
-
-  /// 打字行左边的脸与名字。
-  final Widget? face;
-  final String? name;
-
-  /// 画成打字行（三个跳动的点 + 一句话），而不是活动行：模型还在想的时候。
-  final bool typing;
-
-  /// 不要自己的玻璃底:底部那条直接站在页面的渐变上(见 [GlassSurface.clear])。
-  final bool flat;
 
   final RunActivity activity;
 
@@ -236,55 +185,6 @@ class ActivityStrip extends StatefulWidget {
 class _ActivityStripState extends State<ActivityStrip> {
   Timer? _statsTimer;
 
-  /// 上一步是什么:它被换下去的时候,记下这一步花了多久(见 [StepEta])。
-  RunActivity? _previous;
-
-  static String? _etaKey(RunActivity a) => a.kind == ActivityKind.tool ? (a.toolName ?? a.title) : null;
-
-  static String _short(Duration d) {
-    if (d.inSeconds < 60) return '${d.inSeconds} 秒';
-    final minutes = d.inMinutes;
-    final rest = d.inSeconds % 60;
-    return rest == 0 ? '$minutes 分' : '$minutes 分 $rest 秒';
-  }
-
-  /// 右侧那点空位：时间 · 步数（与消息脚注同一个函数、同一个顺序），必要时
-  /// 前面加「上一步失败」、后面加这类步骤通常多久。
-  String? _trailing(RunActivity a, Duration? elapsed) {
-    // 不足一秒不报时间：免得一上来就闪一个「0」。
-    final live = elapsed != null && elapsed.inSeconds >= 1 ? Duration(seconds: elapsed.inSeconds) : null;
-    final figures = runFigures(duration: live, steps: a.toolsDone);
-    final bits = <String>[
-      if (a.after?.failed == true) '上一步失败',
-      if (figures.isNotEmpty) figures,
-    ];
-    final key = _etaKey(a);
-    final since = a.since;
-    if (key != null && since != null) {
-      final ran = runClock().difference(since);
-      final estimate = ran > const Duration(seconds: 20) ? StepEta.estimate(key) : null;
-      if (estimate != null) bits.add('约 ${_short(estimate)}');
-    }
-    return bits.isEmpty ? null : bits.join(' · ');
-  }
-
-  void _noteFinished(RunActivity a) {
-    final previous = _previous;
-    if (identical(previous, a)) return;
-    if (previous != null && previous.kind == ActivityKind.tool) {
-      final key = _etaKey(previous);
-      final since = previous.since;
-      if (key != null && since != null) StepEta.record(key, runClock().difference(since));
-    }
-    _previous = a;
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    unawaited(StepEta.ensureLoaded());
-  }
-
   @override
   void dispose() {
     _statsTimer?.cancel();
@@ -308,63 +208,6 @@ class _ActivityStripState extends State<ActivityStrip> {
     final a = widget.activity;
     final whale = widget.whaleColor ?? (a.waiting ? dsh.warning : whaleColorFor(theme.brightness));
 
-    _noteFinished(a);
-
-    if (widget.typing) {
-      // 网页版那条:一张脸 + 「名字 · 短语…」 + 计时。短语用 App 自己的池子
-      // （思考/等待/写作/深夜/周末/节日都算在里面），不是干巴巴一句「思考中」。
-      final style = theme.textTheme.bodySmall?.copyWith(color: dsh.textTertiary);
-      final phrase = activityFlavor(a, runClock())?.text ?? a.title;
-      final name = widget.name;
-      final label = name == null ? '$phrase…' : '$name · $phrase…';
-      final face = widget.face;
-      return Semantics(
-        liveRegion: true,
-        label: label,
-        excludeSemantics: true,
-        // 和活动行同一颗胶囊：只有里面的内容在变（打字时说谁在写，干活时说在跑什么），
-        // 不会一会儿有边一会儿没边。
-        child: GlassSurface(
-          tier: GlassTier.chrome,
-          stadium: true,
-          clear: widget.flat,
-          style: DshSurfaces.of(context).glass(GlassTier.chrome).copyWith(
-            hairline: (a.waiting || a.kind == ActivityKind.retry ? dsh.warning : dsh.textTertiary)
-                .withValues(alpha: 0.22),
-            hairlineWidth: 0.8,
-          ),
-          child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 36),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(10, 6, 14, 6),
-            child: Row(
-              children: [
-                if (face != null) ...[face, const SizedBox(width: 8)],
-                // 中间这行用 Expanded 吃满余量并自己省略：原来写的是 Flexible +
-                // Spacer，Flexible 是松约束，自己那份没用完的宽度会落到行尾，
-                // 时间是跟着内容走的（不贴右）。
-                Expanded(
-                  child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: style),
-                ),
-                const SizedBox(width: 8),
-                SizedBox(height: 14, child: TypingIndicator(color: dsh.textTertiary)),
-                const SizedBox(width: 12),
-                LiveElapsed(
-                  since: a.turnStart ?? a.since,
-                  skew: a.skew,
-                  builder: (context, elapsed) => Text(
-                    elapsed == null ? '' : formatLiveSpan(elapsed),
-                    style: AppType.tabular(style!),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          ),
-        ),
-      );
-    }
-
     return Semantics(
       button: widget.onTap != null,
       label: '${a.title} ${a.detail}',
@@ -375,13 +218,8 @@ class _ActivityStripState extends State<ActivityStrip> {
       child: GlassSurface(
         tier: GlassTier.chrome,
         stadium: true,
-        clear: widget.flat,
-        // 胶囊要能看见边:浅色页面上 chrome 的发丝线只有 8%,和白底糊成一片。
-        style: DshSurfaces.of(context).glass(GlassTier.chrome).copyWith(
-          hairline: (a.waiting || a.kind == ActivityKind.retry ? dsh.warning : dsh.textTertiary)
-              .withValues(alpha: 0.22),
-          hairlineWidth: 0.8,
-        ),
+        // One backdrop sample with the deck's other bars (chat page).
+        grouped: true,
         onTap: widget.onTap,
         onLongPress: _showStats,
         child: ConstrainedBox(
@@ -422,8 +260,7 @@ class _ActivityStripState extends State<ActivityStrip> {
                       skew: a.skew,
                       builder: (context, elapsed) => _Line(
                         activity: a,
-                        // 时间并进右侧那串（时间 · 步数），这一行不再单独摆时钟。
-                        trailing: _trailing(a, elapsed),
+                        elapsed: elapsed,
                         stats: _statsTimer == null ? null : _stats(a, widget.tokensPerSecond?.call() ?? 0),
                       ),
                     ),
@@ -449,7 +286,7 @@ class _ActivityStripState extends State<ActivityStrip> {
   /// 长按的那几秒:这一步多久了 + 估算的出字速度。
   static String _stats(RunActivity a, double tps) {
     final since = a.since;
-    final step = since == null ? null : formatLiveSpan(LiveElapsed.elapsedSince(since, a.skew));
+    final step = since == null ? null : formatClock(LiveElapsed.elapsedSince(since, a.skew));
     final speed = tps >= 1 ? appL10n.chatTokensPerSecond(tps.round()) : appL10n.chatNoTokensStreaming;
     return [if (step != null) appL10n.chatCurrentStep(step), speed].join(' · ');
   }
@@ -457,12 +294,10 @@ class _ActivityStripState extends State<ActivityStrip> {
 
 /// 标题 + 第二段(工具目标 / 自述 / 文案 / 统计)+ 本轮用时。
 class _Line extends StatelessWidget {
-  const _Line({required this.activity, this.trailing, this.stats});
+  const _Line({required this.activity, required this.elapsed, this.stats});
 
   final RunActivity activity;
-
-  /// 计时左边那一小串:上一步失败、第几步、这类步骤通常多久。
-  final String? trailing;
+  final Duration? elapsed;
   final String? stats;
 
   @override
@@ -502,12 +337,14 @@ class _Line extends StatelessWidget {
     ];
     final second = spans.map((s) => s.text).join();
 
-    // 模型出错、正在退避重试:这一行马上就换成警示色,不等失败落成红行。
-    final alarming = a.waiting || a.kind == ActivityKind.retry;
     final titleStyle = theme.textTheme.labelMedium?.copyWith(
-      color: alarming ? dsh.warning : colors.onSurface,
+      color: a.waiting ? dsh.warning : colors.onSurface,
       height: 1.3,
     );
+    final clockStyle = AppType.tabular(
+      theme.textTheme.labelSmall!.copyWith(fontSize: 12, color: a.waiting ? dsh.warning : dsh.textTertiary),
+    );
+
     return Row(
       children: [
         Expanded(
@@ -534,18 +371,7 @@ class _Line extends StatelessWidget {
             ),
           ),
         ),
-        if (trailing case final trailing?) ...[
-          const SizedBox(width: 8),
-          Text(
-            trailing,
-            style: AppType.tabular(
-              theme.textTheme.labelSmall!.copyWith(
-                fontSize: 12,
-                color: a.after?.failed == true ? dsh.warning : dsh.textTertiary,
-              ),
-            ),
-          ),
-        ],
+        if (elapsed != null) ...[const SizedBox(width: 8), Text(formatClock(elapsed!), style: clockStyle)],
       ],
     );
   }

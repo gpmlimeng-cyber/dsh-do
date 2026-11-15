@@ -1,4 +1,6 @@
-// Structure derived from PiPilot (https://github.com/CikeSeven/pi_pilot), MIT, Copyright (c) 2026 CikeSeven. See THIRD_PARTY_NOTICES.md.
+// SPDX-FileCopyrightText: 2026 CikeSeven
+// SPDX-License-Identifier: MIT
+// See THIRD_PARTY_NOTICES.md.
 
 import 'dart:async';
 
@@ -13,6 +15,7 @@ import '../../l10n/l10n.dart';
 import '../../runtime/runtime_bridge.dart';
 import '../../runtime/runtime_state.dart';
 import '../../runtime/local_footprint.dart';
+import '../../state/bots_state.dart';
 import '../../state/connection_state.dart';
 import '../../state/engine_control.dart';
 import '../../state/hosts_state.dart';
@@ -22,8 +25,8 @@ import '../../state/session_deletion_state.dart';
 import '../../state/sessions_state.dart';
 import '../../state/read_list_identity.dart';
 import '../../state/workspaces_state.dart';
+import '../bots/bots_page.dart' show BotsPage, UnreadBadge;
 import '../chat/media/media_format.dart' show chatTitleShown;
-import '../common/app_dialog.dart';
 import '../common/app_sheet.dart';
 import '../common/empty_view.dart';
 import '../common/pressable.dart';
@@ -31,6 +34,7 @@ import '../common/smooth_size.dart';
 import '../common/read_list_status.dart';
 import '../common/status_dot.dart';
 import '../onboarding/local_install.dart';
+import '../modes/mode_switch.dart';
 import '../remote/host_status.dart';
 import '../remote/host_switcher.dart' show showHostSheet;
 import '../remote/network_details_sheet.dart' show showRemoteNetworkDetails;
@@ -40,6 +44,7 @@ import '../share/share_entry.dart';
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
 import '../web/mode_home.dart';
+import '../workspace/text_prompt.dart';
 import '../workspace/workspace_switcher.dart';
 import '../workspace/workspaces_page.dart';
 import 'adaptive/adaptive_layout.dart' show WindowClass;
@@ -49,8 +54,6 @@ import 'drawer/drawer_destination.dart';
 import 'drawer/archive_notice.dart';
 import 'drawer/drawer_filter_bar.dart';
 import 'drawer/drawer_list.dart';
-import '../update/update_row.dart';
-import 'new_panel.dart';
 import 'drawer/selection_bars.dart';
 import 'drawer/session_deletion.dart';
 import 'session_search_page.dart';
@@ -82,19 +85,12 @@ class SessionsDrawer extends ConsumerWidget {
     super.key,
     required this.onClose,
     required this.onOpen,
-    this.onChosen,
     this.now,
     this.identityBarHeight,
     this.drawerMotion,
   });
 
   final VoidCallback onClose;
-
-  /// A conversation or a new chat was chosen: the drawer is done with, and a
-  /// page that is not the shell (a Bot's or a group's chat) leaves for the
-  /// shell here. Closing the drawer without choosing ([onClose]) stays local.
-  final VoidCallback? onChosen;
-
   final ValueChanged<DrawerDestination> onOpen;
 
   /// Clock override for grouping (tests).
@@ -117,7 +113,10 @@ class SessionsDrawer extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    void newChat() => showNewPanel(context, onChosen: onChosen ?? onClose);
+    void newChat() {
+      ref.read(currentSessionProvider.notifier).select(null);
+      onClose();
+    }
 
     void manageWorkspaces() {
       Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const WorkspacesPage()));
@@ -157,23 +156,30 @@ class SessionsDrawer extends ConsumerWidget {
                 // button's edge with the search bar's and the rows'
                 // edges (10).
                 padding: const EdgeInsets.fromLTRB(20, 14, 10, 10),
-                child: Row(
-                  children: [
-                    // On a narrow drawer with large text the lockup gives
-                    // way a little rather than the keys.
-                    const Expanded(
-                      child: Align(
-                        alignment: AlignmentDirectional.centerStart,
-                        child: FittedBox(fit: BoxFit.scaleDown, child: BrandLockup(height: 19)),
+                child: LayoutBuilder(
+                  builder: (context, box) => Row(
+                    children: [
+                      // On a narrow drawer with large text the lockup gives
+                      // way a little rather than the keys.
+                      const Expanded(
+                        child: Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: FittedBox(fit: BoxFit.scaleDown, child: BrandLockup(height: 19)),
+                        ),
                       ),
-                    ),
-                    // 网页模式, quietly: the one solid element stays 新对话.
-                    WebModeKey(tier: GlassTier.pill, onSwitch: onClose),
-                    const SizedBox(width: 8),
-                    SessionSearchBar(onClose: onClose),
-                    const SizedBox(width: 8),
-                    NewChatButton(onTap: newChat),
-                  ],
+                      // 模式 and 网页模式, quietly: the one solid element stays 新对话.
+                      const ModeKey(),
+                      const SizedBox(width: 8),
+                      const WebModeKey(tier: GlassTier.pill),
+                      const SizedBox(width: 8),
+                      // When even the lockup's room is not enough, 新对话
+                      // keeps its glyph and lets its words go.
+                      NewChatButton(
+                        onTap: newChat,
+                        compact: NewChatButton.widthOf(context) > box.maxWidth - (36 + 8 + 36 + 8),
+                      ),
+                    ],
+                  ),
                 ),
               ),
       ),
@@ -181,6 +187,7 @@ class SessionsDrawer extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
         onDetails: () => onOpen(DrawerDestination.engine),
       ),
+      SessionSearchBar(onClose: onClose),
       // The workspace switcher (once the host's workspace list has
       // arrived) and the list's options, then the status filters.
       SmoothSize(
@@ -202,7 +209,7 @@ class SessionsDrawer extends ConsumerWidget {
       ),
     ];
     final list = _EdgeFade(
-      child: _SessionList(onClose: onClose, onChosen: onChosen, now: now),
+      child: _SessionList(onClose: onClose, now: now),
     );
 
     const radius = BorderRadius.only(topRight: Radius.circular(AppShape.xl), bottomRight: Radius.circular(AppShape.xl));
@@ -228,8 +235,6 @@ class SessionsDrawer extends ConsumerWidget {
               ...top,
               Expanded(child: list),
             ],
-            // 有更新才出现: above 本机引擎/设置, zero height otherwise.
-            if (!selecting) const DrawerUpdateRow(),
             // The action bar lies exactly over the identity bar, which
             // keeps its size while hidden: same height at any text size.
             _ReportHeight(
@@ -334,9 +339,25 @@ class _RenderReportHeight extends RenderProxyBox {
 
 /// "新对话": the drawer's one solid primary element, a 36dp pill.
 class NewChatButton extends StatelessWidget {
-  const NewChatButton({super.key, required this.onTap});
+  const NewChatButton({super.key, required this.onTap, this.compact = false});
 
   final VoidCallback onTap;
+
+  /// Only the glyph, in a 36dp circle: for a row too narrow for the words.
+  final bool compact;
+
+  /// How wide the pill with its words is, in [context]'s text size.
+  static double widthOf(BuildContext context) {
+    final label = TextPainter(
+      text: TextSpan(text: context.l10n.commonNewChat, style: Theme.of(context).textTheme.labelLarge),
+      textScaler: MediaQuery.textScalerOf(context),
+      textDirection: Directionality.of(context),
+      maxLines: 1,
+    )..layout();
+    final width = 12 + 20 + 4 + label.width + 15;
+    label.dispose();
+    return width;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -356,20 +377,29 @@ class NewChatButton extends StatelessWidget {
           child: InkWell(
             onTap: onTap,
             child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 36),
-              child: Padding(
-                // The glyph carries ~3dp of its own air on the left: 12 + 3
-                // reads as the 15 on the right.
-                padding: const EdgeInsets.fromLTRB(12, 0, 15, 0),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(AppIcons.newChat, size: 20, color: scheme.onPrimary),
-                    const SizedBox(width: 4),
-                    Text(l10n.commonNewChat, style: theme.textTheme.labelLarge?.copyWith(color: scheme.onPrimary)),
-                  ],
-                ),
-              ),
+              constraints: const BoxConstraints(minHeight: 36, minWidth: 36),
+              child: compact
+                  ? Center(
+                      widthFactor: 1,
+                      heightFactor: 1,
+                      child: Icon(AppIcons.newChat, size: 20, color: scheme.onPrimary),
+                    )
+                  : Padding(
+                      // The glyph carries ~3dp of its own air on the left: 12 + 3
+                      // reads as the 15 on the right.
+                      padding: const EdgeInsets.fromLTRB(12, 0, 15, 0),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(AppIcons.newChat, size: 20, color: scheme.onPrimary),
+                          const SizedBox(width: 4),
+                          Text(
+                            l10n.commonNewChat,
+                            style: theme.textTheme.labelLarge?.copyWith(color: scheme.onPrimary),
+                          ),
+                        ],
+                      ),
+                    ),
             ),
           ),
         ),
@@ -429,12 +459,9 @@ class _EdgeFade extends StatelessWidget {
 }
 
 class _SessionList extends ConsumerWidget {
-  const _SessionList({required this.onClose, this.onChosen, this.now});
+  const _SessionList({required this.onClose, this.now});
 
   final VoidCallback onClose;
-
-  /// Chosen, not just closed: a page that is not the shell leaves for it.
-  final VoidCallback? onChosen;
   final DateTime? now;
 
   @override
@@ -461,26 +488,35 @@ class _SessionList extends ConsumerWidget {
       }
       return const _SkeletonList();
     }
-    // Bots and groups are rows of their own now, so the list is empty only
-    // when no conversation and no Bot would show.
-    if (scope.sessions.isEmpty &&
-        ref.watch(drawerBotRowsProvider).isEmpty &&
-        ref.watch(drawerViewProvider).folders.isEmpty) {
+    // DS Bot's conversations (its Bots' chats, groups, members' sessions)
+    // fold into one row that opens the Bot pages.
+    final botReady = ref.watch(dsBotProvider.select((s) => s.ready));
+    final showBots = scope.bots.isNotEmpty || (workspace == null && botReady);
+    if (scope.sessions.isEmpty && !showBots && ref.watch(drawerViewProvider).folders.isEmpty) {
       if (scope.readOnly) return _Centered(child: Text(readListStatusText(scope.status)));
       return workspace == null ? const _EmptyState() : const _WorkspaceEmptyState();
     }
     return DrawerConversationList(
       now: now,
-      onNewChat: onChosen ?? onClose,
+      onNewChat: onClose,
       readOnly: scope.readOnly,
-      onClose: onClose,
+      leading: showBots
+          ? DsBotDrawerRow(
+              running: scope.bots.any((s) => s.running),
+              onTap: () {
+                Navigator.of(context).push(BotsPage.route());
+                // Close once the page covers us, so "back" lands on the chat.
+                Future<void>.delayed(AppMotion.slow, onClose);
+              },
+            )
+          : null,
       onOpen: (id) {
         if (ref.read(readListIdentityProvider) != identity ||
             ref.read(drawerScopeProvider)?.sessions.any((s) => s.sessionId == id) != true) {
           return;
         }
         ref.read(currentSessionProvider.notifier).select(id);
-        (onChosen ?? onClose)();
+        onClose();
       },
       onLongPress: (s) {
         final current = ref.read(drawerScopeProvider);
@@ -616,30 +652,81 @@ class _SessionList extends ConsumerWidget {
   }
 
   Future<String?> _askTitle(BuildContext context, String initial) {
-    final controller = TextEditingController(text: initial);
-    return showAppDialog<String>(
-      context: context,
-      builder: (dialog) => AlertDialog(
-        title: Text(context.l10n.shellRenameChat),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          maxLength: 80,
-          decoration: InputDecoration(hintText: context.l10n.shellChatTitle, counterText: ''),
-          onSubmitted: (v) => Navigator.pop(dialog, v.trim()),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialog), child: Text(context.l10n.commonCancel)),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialog, controller.text.trim()),
-            child: Text(context.l10n.commonSave),
-          ),
-        ],
-      ),
-    ).whenComplete(controller.dispose);
+    return showTextPrompt(
+      context,
+      title: context.l10n.shellRenameChat,
+      initial: initial,
+      hint: context.l10n.shellChatTitle,
+      maxLength: 80,
+    );
   }
 }
 
+/// DS Bot's conversations as one row above the list: the glyph on the 20
+/// text line, 「DS Bot」, then a breathing dot while a Bot works and the
+/// unread count. Opens the Bot pages.
+class DsBotDrawerRow extends ConsumerWidget {
+  const DsBotDrawerRow({super.key, required this.running, required this.onTap});
+
+  final bool running;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final unread = ref.watch(dsBotInboxProvider.select((i) => i.total));
+    final shape = Squircle.border(AppShape.md);
+    return Semantics(
+      button: true,
+      label: [
+        'DS Bot',
+        if (running) l10n.shellCurrentlyRunning,
+        if (unread > 0) l10n.shellUnreadCount(unread),
+      ].join(l10n.shellSemanticsSeparator),
+      onTap: onTap,
+      excludeSemantics: true,
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: onTap,
+          customBorder: shape,
+          child: SizedBox(
+            height: 44,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: Row(
+                children: [
+                  Icon(AppIcons.bot, size: 20, color: scheme.onSurfaceVariant),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'DS Bot',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        fontSize: 15,
+                        height: 1.4,
+                        color: scheme.onSurface,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  if (running) ...[const SizedBox(width: 10), const StatusDot(tone: StatusTone.busy, size: 7)],
+                  if (unread > 0) ...[const SizedBox(width: 10), UnreadBadge(unread)],
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Loading: a few quiet placeholder rows on the same grid as the real ones,
+/// breathing slowly (still under reduced motion).
 class _SkeletonList extends StatefulWidget {
   const _SkeletonList();
 

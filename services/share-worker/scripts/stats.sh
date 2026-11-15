@@ -15,7 +15,9 @@
 #   app (0.9.9 on)   daily active installs (hashed install ids), day-7 retention,
 #                    version / ABI / maker / engine / language, feature totals;
 #                    model and system (1.0.15 on), each one shown only once
-#                    MIN_GROUP installs share it;
+#                    MIN_GROUP installs share it; installs a day that used the
+#                    tavern, the companion room and calls, and the tokens model
+#                    replies reported, in total and per install (1.0.17 on);
 #                    a device's repeats on one day count once
 #
 # The token needs Account → Account Analytics → Read. It's only read from
@@ -39,12 +41,8 @@ cd "$(dirname "$0")/.."
 die() { echo "stats: $*" >&2; exit 1; }
 API=${CF_API_BASE:-https://api.cloudflare.com/client/v4}
 # The public tree's wrangler.jsonc has a placeholder account (tooling/oss-redact.txt).
-ACCOUNT=${CF_ACCOUNT_ID:-}
-ACCOUNT_FILE=${CF_ACCOUNT_ID_FILE:-$HOME/keys/dshgo-cloudflare-account-id}
-[[ -n "$ACCOUNT" || ! -r "$ACCOUNT_FILE" ]] || ACCOUNT=$(tr -d '[:space:]' <"$ACCOUNT_FILE")
-[[ -n "$ACCOUNT" ]] || ACCOUNT=$(sed -n 's/^ *"account_id": *"\([0-9a-f]*\)".*/\1/p' wrangler.jsonc)
-[[ "$ACCOUNT" =~ ^[0-9a-f]{32}$ && "$ACCOUNT" != 00000000000000000000000000000000 ]] ||
-  die "no Cloudflare account id: set CF_ACCOUNT_ID or write it to $ACCOUNT_FILE"
+source scripts/cloudflare.sh
+real_id "$ACCOUNT" || die "no Cloudflare account id: set CF_ACCOUNT_ID or write it to $ACCOUNT_FILE"
 if [[ $DRY == 0 ]]; then
   [[ -r "${CF_TOKEN_FILE:-}" && -s "${CF_TOKEN_FILE:-}" ]] || die "set CF_TOKEN_FILE to a token that can read Account Analytics"
   command -v curl >/dev/null && command -v python3 >/dev/null || die "needs curl and python3"
@@ -71,7 +69,9 @@ FORMAT JSON"
 SQL[usage]="SELECT blob1 AS day, blob2 AS device, blob3 AS app, blob4 AS abi, blob5 AS maker, blob6 AS lang, blob7 AS engine,
   blob8 AS model, blob9 AS rom,
   max(double1) AS build, max(double2) AS sdk, max(double3) AS turns, max(double4) AS voice, max(double5) AS phone,
-  max(double6) AS share, max(double7) AS gen, max(double8) AS plugins
+  max(double6) AS share, max(double7) AS gen, max(double8) AS plugins,
+  max(double9) AS v, max(double10) AS tavern, max(double11) AS room, max(double12) AS calls,
+  max(double13) AS tok_in, max(double14) AS tok_out
 FROM dshgo_usage
 WHERE timestamp > NOW() - INTERVAL '$USAGE_SPAN' DAY
 GROUP BY day, device, app, abi, maker, lang, engine, model, rom

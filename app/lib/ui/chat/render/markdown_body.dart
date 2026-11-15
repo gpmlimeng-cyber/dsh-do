@@ -1,9 +1,10 @@
-// Portions derived from PiPilot (https://github.com/CikeSeven/pi_pilot), MIT, Copyright (c) 2026 CikeSeven. See THIRD_PARTY_NOTICES.md.
+// SPDX-FileCopyrightText: 2026 CikeSeven
+// SPDX-License-Identifier: MIT
+// See THIRD_PARTY_NOTICES.md.
 
 import 'dart:async';
 
 import 'package:dsh_client/dsh_client.dart' show DshRemoteException;
-import 'package:flutter/foundation.dart' show listEquals, mapEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
@@ -26,7 +27,6 @@ import 'markdown_blocks.dart';
 import 'markdown_image.dart';
 import 'markdown_math.dart';
 import 'math_syntax.dart';
-import 'message_mentions.dart';
 import 'stream_repair.dart';
 import 'table_syntax.dart';
 
@@ -41,6 +41,21 @@ final Map<String, HtmlTag?> _htmlTags = {
   'details': const HtmlTag.block(MarkdownDisclosure.build),
   'summary': const HtmlTag.block(),
 };
+
+/// Inline patterns a part of the app lays over every [MarkdownBody] below it
+/// (the tavern colours its story's dialogue). Keep [patterns] one list per
+/// look: its identity is part of the parse cache's key.
+class MarkdownPatterns extends InheritedWidget {
+  const MarkdownPatterns({super.key, required this.patterns, required super.child});
+
+  final List<InlinePattern> patterns;
+
+  static List<InlinePattern>? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<MarkdownPatterns>()?.patterns;
+
+  @override
+  bool updateShouldNotify(MarkdownPatterns old) => !identical(old.patterns, patterns);
+}
 
 /// 助手正文的 Markdown 渲染。
 ///
@@ -61,8 +76,6 @@ class MarkdownBody extends StatefulWidget {
     this.selectable = true,
     this.secondary = false,
     this.repairBareViews = false,
-    this.mentions = const [],
-    this.onLinkTap,
   });
 
   final String text;
@@ -79,18 +92,9 @@ class MarkdownBody extends StatefulWidget {
   /// 次级排版(思考过程):小一号、次级文字色,标题也不抢眼。
   final bool secondary;
 
-  /// A caller that can open a link itself: return true when it handled the link,
-  /// false to run the default action. Null — every caller before this — leaves
-  /// links exactly as they were.
-  final bool Function(String href)? onLinkTap;
-
   /// 助手回复:模型把 `dsh-ui` 的 JSON 裸着写进正文时,也当成视图画
   /// (见 [fenceBareDshUiViews])。别的 Markdown(文档、说明页)不开。
   final bool repairBareViews;
-
-  /// 这一行里能叫到的成员:正文里的 `@名字` 用该成员自己的墨色画,像网页
-  /// 版那样(见 [markMentions])。空 —— 文档、说明页、私聊 —— 不做任何处理。
-  final List<InlineMention> mentions;
 
   /// 表格单列最宽多少;更长的单元格在列内换行,而不是把整表拉得很长。
   static const _maxColumnWidth = 260.0;
@@ -233,17 +237,8 @@ class MarkdownBody extends StatefulWidget {
 
   static final _streamingPatterns = [_cursorPattern];
 
-  /// A marked mention ([markMentions]) → the member's own ink, the way the web
-  /// paints a called name. The colour is looked up under it, in [_MentionInk],
-  /// so this pattern is built once and never per message.
-  static final _mentionPattern = InlinePattern(
-    pattern: RegExp('$mentionMarkOpen([^$mentionMarkClose]*)$mentionMarkClose'),
-    builder: (context, match, style) {
-      final marked = match[1] ?? '';
-      final ink = _MentionInk.maybeOf(context)?[marked.toLowerCase()];
-      return TextSpan(text: marked, style: ink == null ? style : style.copyWith(color: ink));
-    },
-  );
+  /// The cursor with a [MarkdownPatterns] list, one list per list.
+  static final _streamingWith = Expando<List<InlinePattern>>('streamingWith');
 
   // Builders stay static. gpt_markdown 1.4.0's config.isSame ignores
   // onLinkTap identity; its cached spans may retain this context-only callback.
@@ -456,8 +451,6 @@ class MarkdownBody extends StatefulWidget {
   static String? workspaceLinkPath(String url, {String? baseDir}) => resolveWorkspaceLink(url, baseDir: baseDir);
 
   static Widget _codeBuilder(BuildContext context, String name, String code, bool closed) {
-    // 围栏里的 `@` 不圈(见 [mentionSpans]),这里只是兜底:记号永远不进代码。
-    code = unmarkMentions(code);
     // A closed block won't change. Handing back the same widget lets Flutter skip it,
     // or every block of the reply would rebuild on every update.
     final reveal = closed ? context.getInheritedWidgetOfExactType<_RevealStreaming>() : null;
@@ -496,8 +489,15 @@ class MarkdownBody extends StatefulWidget {
   }
 
   /// 标题是读屏里能逐个跳转的 header 节点。
-  static Widget _headingBuilder(BuildContext context, int level, Widget content, HeadingStyle style) =>
-      Semantics(header: true, container: true, child: content);
+  static Widget _headingBuilder(BuildContext context, int level, Widget content, HeadingStyle style) {
+    final theme = GptMarkdownTheme.of(context);
+    final heading = [theme.h1, theme.h2, theme.h3, theme.h4, theme.h5, theme.h6][level - 1];
+    final size = (heading ?? const TextStyle()).merge(style.textStyle).fontSize ?? MarkdownImageFont.of(context);
+    return MarkdownImageFont(
+      size: size,
+      child: Semantics(header: true, container: true, child: content),
+    );
+  }
 
   /// 任务清单 `- [ ]` / `- [x]`:只读的方框图标。包里默认用 Material 的
   /// [Checkbox],它要求祖先里有 Material,聊天列表里没有,会报错并溢出。
@@ -588,7 +588,7 @@ class MarkdownBody extends StatefulWidget {
 
   static InlineSpan _inlineCodeBuilder(BuildContext context, String code, TextStyle style, InlineCodeStyle codeStyle) =>
       CodeTextSpan(
-        text: unmarkMentions(code).replaceAll(_cursorSentinel, ''),
+        text: code.replaceAll(_cursorSentinel, ''),
         codeStyle: codeStyle,
         style: style.copyWith(fontFeatures: AppType.monoFeatures),
       );
@@ -606,15 +606,12 @@ class _MarkdownBodyState extends State<MarkdownBody> {
   late String _source = _prepare();
 
   String _prepare() {
-    // `@成员` 先圈出来,再交给 Markdown —— 圈出来的只多了两个私用区字符,
-    // 记号之外一字不动,所以语法照旧。
-    final source = widget.mentions.isEmpty ? widget.text : markMentions(widget.text, widget.mentions);
     if (widget.reveal) {
-      return MarkdownBody._prepareRevealed(source, repairBareViews: widget.repairBareViews);
+      return MarkdownBody._prepareRevealed(widget.text, repairBareViews: widget.repairBareViews);
     }
     _repair = widget.streaming ? (_repair ?? StreamingMarkdownRepair()) : null;
     return MarkdownBody._prepareSource(
-      source,
+      widget.text,
       streaming: widget.streaming,
       repairBareViews: widget.repairBareViews,
       repair: _repair,
@@ -643,8 +640,7 @@ class _MarkdownBodyState extends State<MarkdownBody> {
     if (oldWidget.text != widget.text ||
         oldWidget.streaming != widget.streaming ||
         oldWidget.reveal != widget.reveal ||
-        oldWidget.repairBareViews != widget.repairBareViews ||
-        !listEquals(_mentionNames(oldWidget.mentions), _mentionNames(widget.mentions))) {
+        oldWidget.repairBareViews != widget.repairBareViews) {
       _source = _prepare();
     }
   }
@@ -672,19 +668,13 @@ class _MarkdownBodyState extends State<MarkdownBody> {
       blockAnimation: widget.reveal ? GptMarkdownBlockAnimation.fadeIn : GptMarkdownBlockAnimation.none,
       charactersPerSecond: MarkdownBody._revealPace,
       revealFadeSeconds: MarkdownBody._revealFade,
-      inlinePatterns: switch ((
-        widget.mentions.isNotEmpty,
-        widget.streaming && !widget.reveal,
-      )) {
-        (true, true) => [MarkdownBody._mentionPattern, ...MarkdownBody._streamingPatterns],
-        (true, false) => [MarkdownBody._mentionPattern],
-        (false, true) => MarkdownBody._streamingPatterns,
-        (false, false) => null,
+      inlinePatterns: switch ((widget.streaming && !widget.reveal, MarkdownPatterns.maybeOf(context))) {
+        (true, null) => MarkdownBody._streamingPatterns,
+        (false, null) => null,
+        (true, final extra?) => MarkdownBody._streamingWith[extra] ??= [...MarkdownBody._streamingPatterns, ...extra],
+        (false, final extra?) => extra,
       },
-      onLinkTap: (url, title) {
-        if (widget.onLinkTap?.call(url) ?? false) return;
-        MarkdownBody._onLinkTap(context, url, title);
-      },
+      onLinkTap: (url, title) => MarkdownBody._onLinkTap(context, url, title),
       codeBuilder: MarkdownBody._codeBuilder,
       inlineCodeBuilder: MarkdownBody._inlineCodeBuilder,
       checkboxBuilder: MarkdownBody._checkboxBuilder,
@@ -703,37 +693,15 @@ class _MarkdownBodyState extends State<MarkdownBody> {
     Widget markdown = _scoped
         ? Consumer(builder: (context, ref, _) => withTint(ref.watch(tableTintProvider)))
         : withTint(TableTint.follow);
-    // 正文里的 `@成员` 要按各人的墨色画;没有成员就不套这一层。
-    if (widget.mentions.isNotEmpty) {
-      markdown = _MentionInk(ink: _mentionInk(widget.mentions), child: markdown);
-    }
     // 表格、成块公式横向放不下时,两端淡出提示还能横滑。
     markdown = ScrollConfiguration(behavior: const EdgeFadeScrollBehavior(), child: markdown);
     if (widget.reveal) markdown = _RevealStreaming(streaming: widget.streaming, blocks: _blocks, child: markdown);
     if (widget.selectable) markdown = SelectionArea(child: markdown);
-    return MarkdownGalleryScope(child: markdown);
+    return MarkdownImageFont(
+      size: body.fontSize!,
+      child: MarkdownGalleryScope(child: markdown),
+    );
   }
-}
-
-/// 成员名(只这一点影响正文的准备,颜色不影响)。
-List<String> _mentionNames(List<InlineMention> mentions) => [for (final mention in mentions) mention.name];
-
-/// `@名字`(小写,`@` 保留)→ 该成员的墨色。
-Map<String, Color> _mentionInk(List<InlineMention> mentions) => {
-  for (final mention in mentions) '@${mention.name.toLowerCase()}': mention.color,
-};
-
-/// The ink of each called member, looked up by the body's mention pattern.
-class _MentionInk extends InheritedWidget {
-  const _MentionInk({required this.ink, required super.child});
-
-  final Map<String, Color> ink;
-
-  static Map<String, Color>? maybeOf(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<_MentionInk>()?.ink;
-
-  @override
-  bool updateShouldNotify(_MentionInk oldWidget) => !mapEquals(oldWidget.ink, ink);
 }
 
 /// 当前子树里有没有 ProviderScope;没有就按默认表格底色画。

@@ -11,7 +11,6 @@ import '../companion/companion_state.dart';
 import '../runtime/runtime_state.dart';
 import 'connection_state.dart';
 import 'hosts_state.dart';
-import 'last_conversation.dart';
 import 'read_list_cache.dart';
 import 'read_list_identity.dart';
 import 'settings_state.dart';
@@ -973,23 +972,16 @@ class CurrentSessionController extends Notifier<String?> {
     }
   }
 
-  /// Picks the conversation on screen, and remembers it for the next launch.
-  ///
-  /// What a cold start reopens is [LastConversation]: a native session here,
-  /// a Bot's chat or a group's from their own pages.
   void select(String? sessionId) {
     _selectionRevision++;
     _touched = true;
     final host = ref.read(activeHostProvider);
-    // Read here, not after the first await: this notifier can be disposed
-    // while the preferences write is still in flight.
-    final store = ref.read(lastConversationStoreProvider);
     ref.read(pendingSessionFolderProvider.notifier).select(null);
     state = sessionId;
-    unawaited(_persist(host, sessionId, store));
+    unawaited(_persist(host, sessionId));
   }
 
-  Future<void> _persist(HostRef host, String? sessionId, LastConversationStore store) async {
+  Future<void> _persist(HostRef host, String? sessionId) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       // One value owns both pieces, including an explicit new-chat choice.
@@ -997,9 +989,6 @@ class CurrentSessionController extends Notifier<String?> {
       await prefs.setString(_selectionKey, jsonEncode({'host': _hostKey(host), 'sessionId': sessionId}));
       await prefs.remove(_key);
     } catch (_) {}
-    // The launch restore reads one record for every kind of conversation: a
-    // native session chosen here is the same memory a Bot or group page writes.
-    unawaited(sessionId == null ? store.forget() : store.rememberSession(sessionId));
   }
 }
 
