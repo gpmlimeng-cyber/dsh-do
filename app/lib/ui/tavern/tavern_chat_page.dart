@@ -1744,11 +1744,15 @@ class _TavernChatPageState extends ConsumerState<TavernChatPage> {
                       // A tap on the story brings the header and the box back.
                       behavior: HitTestBehavior.translucent,
                       onTap: () => _immersive.value = false,
-                      child: ListView(
+                      child: Builder(builder: (context) {
+                        final composer = ComposerInsetScope.maybeOf(context);
+                        Widget list(double inset) => ListView(
                         key: const ValueKey('tavern-transcript'),
                         controller: _transcript,
                         reverse: true,
-                        padding: EdgeInsets.fromLTRB(16, 12, 16, topInset + 8),
+                        // Reversed list: the composer's measured height belongs
+                        // at the visual bottom, which is this padding's top.
+                        padding: EdgeInsets.fromLTRB(16, 12 + inset, 16, topInset + 8),
                         children: [
                           // Keyed by message: a new one below keeps each row's
                           // state with its message, not with its place.
@@ -1768,7 +1772,14 @@ class _TavernChatPageState extends ConsumerState<TavernChatPage> {
                               child: Center(child: QuietSpinner()),
                             ),
                         ],
-                      ),
+                        );
+                        return composer == null
+                            ? list(0)
+                            : ValueListenableBuilder<double>(
+                                valueListenable: composer,
+                                builder: (_, height, _) => list(height),
+                              );
+                      }),
                     ),
                   ),
           ),
