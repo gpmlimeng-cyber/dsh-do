@@ -11,6 +11,8 @@ import 'performance/refresh_rate.dart';
 import 'state/app_info.dart';
 import 'state/appearance_state.dart';
 import 'state/locale_state.dart';
+import 'state/mascot_clock.dart';
+import 'state/mascot_gaze.dart';
 import 'state/star_prompt.dart' show starPromptGateProvider, starPromptProvider;
 import 'state/tile_style_state.dart';
 import 'ui/chat/dsh_ui/dsh_ui_model.dart' show DshUiAppAccent;
@@ -187,15 +189,21 @@ class _DshAppState extends ConsumerState<DshApp> with WidgetsBindingObserver {
         final media = MediaQuery.of(context);
         return MediaQuery(
           data: media.copyWith(disableAnimations: media.disableAnimations || performance.reduceMotion),
-          child: AppMotionScope(
-            fluid: fluid,
-            child: ThemeRevealHost(
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  MirroredSideInsets(child: child!),
-                  const LaunchLayer(),
-                ],
+          // 吉祥物动画共用一个时钟、注视共用一个输入源；都放在 MediaQuery 里面，
+          // 头像读到的是合并后的 disableAnimations。
+          child: MascotClockScope(
+            child: MascotGazeScope(
+              child: AppMotionScope(
+                fluid: fluid,
+                child: ThemeRevealHost(
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      MirroredSideInsets(child: child!),
+                      const LaunchLayer(),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
