@@ -37,7 +37,15 @@ internal fun checkEngineCompatibility(
     if (previous.optString("abi") != abi || shipped.optString("abi") != abi ||
         osIdentity(rootfs) != (base?.osRelease ?: osIdentity(payloadTree))) throw RuntimeUpgradeBlocked("base")
     if (previous.has("upgrade")) {
-        if (parseUpgrade(previous).baseId != next.baseId) throw RuntimeUpgradeBlocked("base")
+        val prior = parseUpgrade(previous)
+        if (prior.baseId != next.baseId) {
+            // baseId 覆盖整个 Linux 系统，apt 装的额外包也算在内。一次日常安全更新就会改它，
+            // 却不碰这次升级保留的任何路径；所以不因为 baseId 变了就拦住升级，改为要求
+            // 「升级保留的系统部分一致」：ABI 与发行版上面已校验，这里再比 Python 和
+            // 引擎二进制链接的系统库（libc / libstdc++ / libgcc_s）。
+            if (prior.ubuntuVersion != next.ubuntuVersion || !samePython(rootfs, payloadTree) ||
+                !sameRuntimeLibraries(rootfs, payloadTree, abi)) throw RuntimeUpgradeBlocked("base")
+        }
     } else {
         // One-time adoption of old bundles. Do not infer compatibility just
         // from rNN or Node versions. Keep Python and all user pip packages.
@@ -132,4 +140,28 @@ private fun samePython(old: File, next: File): Boolean = try {
 private fun matchesPython(tree: File, expected: String?): Boolean = try {
     expected != null && pythonDigest(tree).joinToString("") { "%02x".format(it) } == expected
 } catch (_: Exception) { false }
+
+/// 引擎二进制直接链接的系统库；apt 刷新它们会改 baseId，但只要内容一致就不影响升级。
+private val runtimeLibraries = listOf("libc.so.6", "libstdc++.so.6", "libgcc_s.so.1")
+
+private fun sameRuntimeLibraries(old: File, next: File, abi: String): Boolean = try {
+    val triple = if (abi == "x86_64") "x86_64-linux-gnu" else "aarch64-linux-gnu"
+    runtimeLibraries.all { name ->
+        val relative = "usr/lib/$triple/$name"
+        fileDigest(File(old, relative)) == fileDigest(File(next, relative))
+    }
+} catch (_: Exception) { false }
+
+private fun fileDigest(file: File): List<Byte> {
+    val hash = MessageDigest.getInstance("SHA-256")
+    file.inputStream().use { input ->
+        val buffer = ByteArray(65536)
+        while (true) {
+            val count = input.read(buffer)
+            if (count < 0) break
+            hash.update(buffer, 0, count)
+        }
+    }
+    return hash.digest().toList()
+}
 

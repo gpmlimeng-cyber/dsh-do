@@ -9,8 +9,10 @@ on:
         required: false
         default: test
 
+# 发布 regenerated goldens 的 release asset 需要写权限（fork 之前的做法：手机下不了
+# Azure 上的 artifact，但能用同一个 token 下 release asset）。
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: goldens-${{ github.ref }}
@@ -125,3 +127,15 @@ jobs:
           path: ${{ runner.temp }}/golden-updates/
           if-no-files-found: error
           retention-days: 7
+
+      - name: Publish the bundle as a release asset
+        if: always() && steps.render.outcome != 'skipped'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        working-directory: ${{ runner.temp }}
+        run: |
+          tag="goldens-$(date -u +%Y%m%d-%H%M)-${GITHUB_SHA::7}"
+          tar czf goldens.tgz -C golden-updates .
+          gh release create "$tag" goldens.tgz --prerelease \
+            --title "Goldens ${GITHUB_SHA::7}" \
+            --notes "Regenerated golden screenshots from ${GITHUB_SHA}."
