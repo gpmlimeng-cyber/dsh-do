@@ -24,6 +24,39 @@ class MascotGalleryPage extends StatelessWidget {
       title: '表情墙',
       subtitle: Text('${MascotCharacter.values.length} 个角色 × ${ids.length} 个情绪，静态帧', style: theme.textTheme.bodySmall),
       children: [
+        // 按三档动作编排（空闲态）各渲一行，方便对照 demo 的「动作编排」。
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          child: Text(
+            '按动作编排（空闲态）',
+            style: theme.textTheme.labelMedium?.copyWith(color: colors.textTertiary),
+          ),
+        ),
+        for (final motion in MascotMotion.values)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 52,
+                  child: Text(
+                    motion.zh,
+                    style: theme.textTheme.labelSmall?.copyWith(color: colors.textTertiary),
+                  ),
+                ),
+                for (final character in MascotCharacter.values)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 10),
+                    child: MascotAvatar(
+                      spec: MascotSpec(character: character).withPresetMotion(motion),
+                      emotion: '02',
+                      size: 48,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        const SizedBox(height: 8),
         for (final character in MascotCharacter.values) ...[
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 18, 16, 8),

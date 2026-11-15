@@ -85,7 +85,7 @@ class _NewBotPageState extends ConsumerState<NewBotPage> {
   late final Listenable _edits = Listenable.merge([_name, _role, _instructions]);
   late String _clean;
 
-  String get _hostColor => _spec.color.hostName;
+  String get _hostColor => hostColorOf(_spec);
 
   String _signature() => jsonEncode([
     _name.text,

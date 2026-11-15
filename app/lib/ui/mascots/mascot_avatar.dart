@@ -17,6 +17,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../l10n/l10n.dart';
+
 /// 5 个角色，顺序即选择器里的顺序。
 enum MascotCharacter {
   sprout('芽团', 'Sprout'),
@@ -28,20 +30,62 @@ enum MascotCharacter {
   const MascotCharacter(this.zh, this.en);
   final String zh;
   final String en;
+
+  /// 角色默认配色（demo 每个角色自带 skin；「跟随默认」用它）。
+  MascotSkin get skin => switch (this) {
+    MascotCharacter.sprout => const MascotSkin(Color(0xFF48FF42), Color(0xFF080808), Color(0xFFFF9FB6)),
+    MascotCharacter.cat => const MascotSkin(Color(0xFF3D4852), Color(0xFF131A20), Color(0xFFEEB3C1)),
+    MascotCharacter.robot => const MascotSkin(Color(0xFF6F879B), Color(0xFF162332), Color(0xFF74E5FF)),
+    MascotCharacter.ghost => const MascotSkin(Color(0xFFBDEEF2), Color(0xFF23434D), Color(0xFFA9D9FF)),
+    MascotCharacter.jelly => const MascotSkin(Color(0xFFF29CC2), Color(0xFF5A243E), Color(0xFFFFE0A8)),
+  };
+
+  /// 写进宿主 `bot.color` 的色名（model 时按角色映射，架构给的对照表）。
+  String get hostColor => switch (this) {
+    MascotCharacter.sprout => 'green',
+    MascotCharacter.cat => 'charcoal',
+    MascotCharacter.robot => 'gray',
+    MascotCharacter.ghost => 'cyan',
+    MascotCharacter.jelly => 'rose',
+  };
 }
 
-/// 3 种五官。
-enum MascotFace {
-  gentle('温和', 'Gentle'),
-  curious('机灵', 'Curious'),
-  happy('呆萌', 'Happy');
+/// 一个角色/一次配置落到画面上的三种颜色。
+class MascotSkin {
+  const MascotSkin(this.body, this.ink, this.accent);
+  final Color body;
+  final Color ink;
+  final Color accent;
+}
 
-  const MascotFace(this.zh, this.en);
+/// 解析实际配色：model → 角色 skin；跟主题 → 主题色；其余用预设色。
+MascotSkin mascotSkinOf(MascotSpec spec, ColorScheme scheme) {
+  if (spec.followAppColor) {
+    final body = scheme.primary;
+    return MascotSkin(body, Color.lerp(body, Colors.black, 0.86)!, Color.lerp(body, const Color(0xFFFF6E8A), 0.62)!);
+  }
+  if (spec.color == MascotColor.model) return spec.character.skin;
+  return MascotSkin(spec.color.ink, spec.color.outlineInk, spec.color.accent);
+}
+
+/// `bot.color` 的色名：model 跟随角色，其余用预设映射。
+String hostColorOf(MascotSpec spec) =>
+    spec.color == MascotColor.model ? spec.character.hostColor : spec.color.hostName;
+
+/// 五官三档：默认（眼白+瞳孔+高光）/ 简约（竖胶囊）/ 圆点。
+/// `wire` 是存储用的名字，照 demo 的 default/minimal/dots。
+enum MascotFace {
+  standard('default', '默认', 'Default'),
+  simple('simple', '简约', 'Simple'),
+  dot('dot', '圆点', 'Dot');
+
+  const MascotFace(this.wire, this.zh, this.en);
+  final String wire;
   final String zh;
   final String en;
 }
 
-/// 3 档动作。
+/// 3 档动作（动画等级）。
 enum MascotMotion {
   lively('活泼', 'Lively', '轻快、有弹性'),
   quiet('安静', 'Quiet', '缓慢、克制'),
@@ -53,45 +97,81 @@ enum MascotMotion {
   final String hintZh;
 }
 
-/// 6 个预设色（名字与 Miffan 对齐：经典 / 抹茶 / 樱花 / 月光 / 海盐 / 墨玉）。
+/// demo 的 11 个预设配色（第 12 个「果冻默认色」按角色 skin 画，不存进 spec）。
 enum MascotColor {
-  classic('经典', 'Classic', Color(0xFFE8833A)),
-  matcha('抹茶', 'Matcha', Color(0xFF7BA05B)),
-  sakura('樱花', 'Sakura', Color(0xFFE48093)),
-  moonlight('月光', 'Moonlight', Color(0xFF5B5E8C)),
-  seasalt('海盐', 'Sea salt', Color(0xFF4A9E9E)),
-  inkJade('墨玉', 'Ink jade', Color(0xFF2F5D50));
+  mint('薄荷绿', 'Mint', Color(0xFF48FF42), Color(0xFF080808), Color(0xFFFF9FB6)),
+  sky('天空蓝', 'Sky blue', Color(0xFF6EC7FF), Color(0xFF0B1E3A), Color(0xFFFF9FB6)),
+  peach('蜜桃橙', 'Peach', Color(0xFFFFB37A), Color(0xFF5C2A12), Color(0xFFFF9FB6)),
+  lavender('薰衣草紫', 'Lavender', Color(0xFFC9A6FF), Color(0xFF2E1A4D), Color(0xFFFF9FB6)),
+  rose('玫瑰粉', 'Rose', Color(0xFFFF9FB6), Color(0xFF5C1F33), Color(0xFFFFE0A8)),
+  lemon('柠檬黄', 'Lemon', Color(0xFFFFE066), Color(0xFF4D3D00), Color(0xFFFF9FB6)),
+  charcoal('炭灰', 'Charcoal', Color(0xFF3D4852), Color(0xFF131A20), Color(0xFFEEB3C1)),
+  cream('奶油白', 'Cream', Color(0xFFF1E7D8), Color(0xFF463A2E), Color(0xFFFF9FB6)),
+  steel('钢蓝', 'Steel blue', Color(0xFF6F879B), Color(0xFF162332), Color(0xFF74E5FF)),
+  paleCyan('浅青', 'Pale cyan', Color(0xFFBDEEF2), Color(0xFF23434D), Color(0xFFA9D9FF)),
+  berry('莓果粉', 'Berry pink', Color(0xFFF29CC2), Color(0xFF5A243E), Color(0xFFFFE0A8)),
 
-  const MascotColor(this.zh, this.en, this.ink);
+  /// 第 12 项「跟随角色默认色」：能存能恢复；实际颜色按角色 skin 取
+  /// （`mascotSkinOf`），这里的 hex 只是占位。
+  model('跟随默认', 'Model default', Color(0xFF48FF42), Color(0xFF080808), Color(0xFFFF9FB6));
+
+  const MascotColor(this.zh, this.en, this.ink, this.outlineInk, this.accent);
   final String zh;
   final String en;
 
-  /// 身体的主色；渐变和高光都从这里推。
+  /// 身体主色；渐变和高光都从这里推。
   final Color ink;
 
-  /// 跟着 App 主题走时用它（`MascotSpec.followAppColor`）。
+  /// 这一色的深色（demo 每个预设带自己的 outline）。
+  final Color outlineInk;
+
+  /// 腮红/点缀色。
+  final Color accent;
+
+  /// 跟着 App 主题走（旧字段，界面不再给入口）。
   static Color fromTheme(ColorScheme scheme) => scheme.primary;
 
-  /// 写进宿主 `bot.color` 的名字：宿主只认色名白名单，不收 hex（架构核过
-  /// `ds-bot/src/host/constants.js`）。只影响文字头像底色和其他端，吉祥物自身
-  /// 用 [ink] 画。
+  /// 写进宿主 `bot.color` 的名字（宿主只认色名白名单，不收 hex）。
   String get hostName => switch (this) {
-    MascotColor.classic => 'orange',
-    MascotColor.matcha => 'green',
-    MascotColor.sakura => 'magenta',
-    MascotColor.moonlight => 'violet',
-    MascotColor.seasalt => 'cyan',
-    MascotColor.inkJade => 'deepseek',
+    MascotColor.mint => 'green',
+    MascotColor.sky => 'sky',
+    MascotColor.peach => 'tangerine',
+    MascotColor.lavender => 'violet',
+    MascotColor.rose => 'rose',
+    MascotColor.lemon => 'yellow',
+    MascotColor.charcoal => 'graphite',
+    MascotColor.cream => 'gray',
+    MascotColor.steel => 'cobalt',
+    MascotColor.paleCyan => 'cyan',
+    MascotColor.berry => 'magenta',
+    // model 要看角色，用 `hostColorOf(spec)`。
+    MascotColor.model => 'green',
   };
+}
+
+/// 视图：2D 扁平 / 3D 渐变 + 内阴影（demo 默认 3D）。
+enum MascotView {
+  flat('flat', '2D'),
+  three('three', '3D');
+
+  const MascotView(this.wire, this.label);
+  final String wire;
+  final String label;
 }
 
 /// 头像的全部可配置项。序列化用 [toJson]/[fromJson]（键名对应架构定的本地配置）。
 class MascotSpec {
   const MascotSpec({
     this.character = MascotCharacter.sprout,
-    this.face = MascotFace.gentle,
+    this.face = MascotFace.standard,
     this.motion = MascotMotion.lively,
-    this.color = MascotColor.classic,
+    this.color = MascotColor.mint,
+    this.view = MascotView.three,
+    this.outline = false,
+    this.body,
+    this.eyes,
+    this.mouth,
+    this.blink = true,
     this.followAppColor = false,
     this.seed = 0,
   });
@@ -101,7 +181,37 @@ class MascotSpec {
   final MascotMotion motion;
   final MascotColor color;
 
-  /// 跟着 App 主题色/深浅色变（Miffan 的「跟着 App 换颜色」）。
+  /// 2D / 3D：3D 有渐变高光与内阴影，2D 是扁平贴纸。
+  final MascotView view;
+
+  /// 描边 + 投影（demo 默认开；用户要求默认关，五官的线条始终保留）。
+  final bool outline;
+
+  /// 自定义动作编排（demo 那页的三组）：null = 跟随情绪。只在空闲态生效。
+  final String? body;
+  final String? eyes;
+  final String? mouth;
+
+  /// 快速眨眼（默认开）。
+  final bool blink;
+
+  /// 选三档预设：清掉自定义编排回到预设组合。
+  MascotSpec withPresetMotion(MascotMotion motion) => MascotSpec(
+    character: character,
+    face: face,
+    motion: motion,
+    color: color,
+    view: view,
+    outline: outline,
+    blink: blink,
+    followAppColor: followAppColor,
+    seed: seed,
+  );
+
+  /// 改过任一项动作编排 → 标签第三段显示「自定义」。
+  bool get motionCustom => body != null || eyes != null || mouth != null;
+
+  /// 跟着 App 主题色/深浅色变（旧字段，界面不再给入口）。
   final bool followAppColor;
 
   /// 「随机换一个」用的种子：存下来就能复现同一个随机样子。
@@ -112,6 +222,12 @@ class MascotSpec {
     MascotFace? face,
     MascotMotion? motion,
     MascotColor? color,
+    MascotView? view,
+    bool? outline,
+    String? body,
+    String? eyes,
+    String? mouth,
+    bool? blink,
     bool? followAppColor,
     int? seed,
   }) => MascotSpec(
@@ -119,18 +235,32 @@ class MascotSpec {
     face: face ?? this.face,
     motion: motion ?? this.motion,
     color: color ?? this.color,
+    view: view ?? this.view,
+    outline: outline ?? this.outline,
+    body: body ?? this.body,
+    eyes: eyes ?? this.eyes,
+    mouth: mouth ?? this.mouth,
+    blink: blink ?? this.blink,
     followAppColor: followAppColor ?? this.followAppColor,
     seed: seed ?? this.seed,
   );
 
   /// 「芽团 · 月光 · 好奇」。
-  String get caption => '${character.zh} · ${color.zh} · ${motion.zh}';
+  String get caption =>
+      '${character.zh} · ${color.zh} · ${motionCustom ? (AppLocale.isEnglish ? 'Custom' : '自定义') : motion.zh}';
 
   Map<String, Object?> toJson() => {
     'character': character.name,
-    'face': face.name,
+    'face': face.wire,
     'motion': motion.name,
     'color': color.name,
+    'view': view.wire,
+    'outline': outline,
+    // 只有自定义过才写；默认值不写进存档，旧样例断言不受影响。
+    if (body != null) 'body': body,
+    if (eyes != null) 'eyes': eyes,
+    if (mouth != null) 'mouth': mouth,
+    if (!blink) 'blink': false,
     'followAppColor': followAppColor,
     'seed': seed,
   };
@@ -139,9 +269,15 @@ class MascotSpec {
     if (json is! Map) return const MascotSpec();
     return MascotSpec(
       character: _byName(MascotCharacter.values, json['character'], MascotCharacter.sprout),
-      face: _byName(MascotFace.values, json['face'], MascotFace.gentle),
+      face: _faceOf(json['face']),
       motion: _byName(MascotMotion.values, json['motion'], MascotMotion.lively),
-      color: _byName(MascotColor.values, json['color'], MascotColor.classic),
+      color: _colorOf(json['color']),
+      view: _byName(MascotView.values, json['view'], MascotView.three, wire: true),
+      outline: json['outline'] == true,
+      body: _choiceOf(json['body'], mascotBodyActions),
+      eyes: _choiceOf(json['eyes'], mascotEyeStates),
+      mouth: _choiceOf(json['mouth'], mascotMouthStates),
+      blink: json['blink'] != false,
       followAppColor: json['followAppColor'] == true,
       seed: json['seed'] is int ? json['seed'] as int : 0,
     );
@@ -154,11 +290,18 @@ class MascotSpec {
       other.face == face &&
       other.motion == motion &&
       other.color == color &&
+      other.view == view &&
+      other.outline == outline &&
+      other.body == body &&
+      other.eyes == eyes &&
+      other.mouth == mouth &&
+      other.blink == blink &&
       other.followAppColor == followAppColor &&
       other.seed == seed;
 
   @override
-  int get hashCode => Object.hash(character, face, motion, color, followAppColor, seed);
+  int get hashCode => Object.hash(character, face, motion, color, view, outline,
+      body, eyes, mouth, blink, followAppColor, seed);
 
   /// Miffan 的「随机换一个」：角色和颜色都换掉，动作随机（五官不动），
   /// 种子存下来可以复现。与 `random` 的区别是「整组不同」不够——只换动作也算
@@ -168,13 +311,20 @@ class MascotSpec {
     final r = math.Random(seed);
     // 角色：从另外 4 只里挑。
     final others = [for (final c in MascotCharacter.values) if (c != avoid.character) c];
-    // 颜色：从另外 6 色里挑。
+    // 颜色：除当前外的 11 个（含 model）；角色和颜色必换。
     final colors = [for (final c in MascotColor.values) if (c != avoid.color) c];
     return MascotSpec(
       character: others[r.nextInt(others.length)],
       face: avoid.face,
       motion: MascotMotion.values[r.nextInt(MascotMotion.values.length)],
       color: colors[r.nextInt(colors.length)],
+      view: avoid.view,
+      outline: avoid.outline,
+      body: avoid.body,
+      eyes: avoid.eyes,
+      mouth: avoid.mouth,
+      blink: avoid.blink,
+      followAppColor: avoid.followAppColor,
       seed: seed,
     );
   }
@@ -249,11 +399,31 @@ const mascotExpressions = <String, MascotExpression>{
 };
 
 /// 用户的「五官三选」与情绪 id 的兜底：没有情绪时按 spec.face 画。
-MascotExpression expressionFor(MascotSpec spec) => switch (spec.face) {
-  MascotFace.gentle => const MascotExpression('open', 'smile', 'idle', 'idle'),
-  MascotFace.curious => const MascotExpression('wide', 'open', 'perk', 'breathe'),
-  MascotFace.happy => const MascotExpression('happy', 'smile', 'perk', 'bounce'),
+/// demo「动作编排」页的三组可选值（名字照原文）。
+const mascotBodyActions = ['idle', 'breathe', 'wake', 'rest', 'bounce', 'shake', 'pulse', 'work', 'dim', 'refresh'];
+const mascotEyeStates = ['open', 'closed', 'happy', 'wide', 'sad', 'angry', 'love', 'thinking', 'bored', 'cry'];
+const mascotMouthStates = ['neutral', 'smile', 'open', 'flat', 'frown', 'talk'];
+
+String? _choiceOf(Object? value, List<String> allowed) =>
+    value is String && allowed.contains(value) ? value : null;
+
+/// 三档动画等级各自展开成一组身体/眼/嘴（一键预设）。
+({String body, String eyes, String mouth}) motionPreset(MascotMotion motion) => switch (motion) {
+  MascotMotion.lively => (body: 'bounce', eyes: 'happy', mouth: 'smile'),
+  MascotMotion.quiet => (body: 'breathe', eyes: 'open', mouth: 'flat'),
+  MascotMotion.curious => (body: 'work', eyes: 'wide', mouth: 'open'),
 };
+
+/// 没有情绪时的默认表情：三档预设 + 自定义覆盖。情绪态永远压过这套。
+MascotExpression expressionFor(MascotSpec spec) {
+  final preset = motionPreset(spec.motion);
+  return MascotExpression(
+    spec.eyes ?? preset.eyes,
+    spec.mouth ?? preset.mouth,
+    'idle',
+    spec.body ?? preset.body,
+  );
+}
 
 /// 一个吉祥物头像。
 ///
@@ -320,16 +490,16 @@ class _MascotAvatarState extends State<MascotAvatar> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final body = widget.spec.followAppColor ? MascotColor.fromTheme(scheme) : widget.spec.color.ink;
+    final skin = mascotSkinOf(widget.spec, scheme);
     final dark = Theme.of(context).brightness == Brightness.dark;
     return SizedBox.square(
       dimension: widget.size,
       child: _controller == null
-          ? CustomPaint(painter: MascotPainter(spec: widget.spec, emotion: widget.emotion, body: body, phase: 0.35, dark: dark), size: Size.square(widget.size))
+          ? CustomPaint(painter: MascotPainter(spec: widget.spec, emotion: widget.emotion, body: skin.body, ink: skin.ink, accent: skin.accent, phase: 0.35, dark: dark), size: Size.square(widget.size))
           : AnimatedBuilder(
               animation: _controller!,
               builder: (context, _) => CustomPaint(
-                painter: MascotPainter(spec: widget.spec, emotion: widget.emotion, body: body, phase: _controller!.value, dark: dark),
+                painter: MascotPainter(spec: widget.spec, emotion: widget.emotion, body: skin.body, ink: skin.ink, accent: skin.accent, phase: _controller!.value, dark: dark),
                 size: Size.square(widget.size),
               ),
             ),
@@ -339,11 +509,21 @@ class _MascotAvatarState extends State<MascotAvatar> with SingleTickerProviderSt
 
 /// 画一帧。[phase] 0..1 是按 [MascotSpec.motion] 走的时间。
 class MascotPainter extends CustomPainter {
-  const MascotPainter({required this.spec, required this.body, required this.phase, this.dark = false, this.emotion});
+  const MascotPainter({
+    required this.spec,
+    required this.body,
+    required this.ink,
+    required this.accent,
+    required this.phase,
+    this.dark = false,
+    this.emotion,
+  });
 
   final MascotSpec spec;
   final String? emotion;
   final Color body;
+  final Color ink;
+  final Color accent;
   final double phase;
   final bool dark;
 
@@ -443,6 +623,7 @@ class MascotPainter extends CustomPainter {
     _face(canvas, rect, t, expression.eyes, expression.mouth);
 
     canvas.restore();
+    _drawEffect(canvas, size, expression.effect, t, head: Offset(size.width / 2, 0.10 * s));
   }
 
   // ── 身体形状 ──
@@ -729,8 +910,9 @@ class MascotPainter extends CustomPainter {
     final scale = s / contentH;
     final dx = (s - contentW * scale) / 2;
     Offset p(double x, double y) => Offset(dx + x * scale, y * scale);
-    final ink = _darken(body, 0.86);
-    final accent = Color.lerp(body, const Color(0xFFFF6E8A), 0.62)!;
+    // 视图固定 3D、边框固定关（用户定；字段留在存档里互认，这里不读）。
+    final three = true;
+    final showOutline = false;
 
     // 身体漂浮：绕 (50, 132) 呼吸，2D 下幅度很小。
     final origin = p(50, 132);
@@ -757,49 +939,76 @@ class MascotPainter extends CustomPainter {
       );
     }
 
-    // 身体底色 + 3D：径向高光（25%,18%）、145° 白、325° 暗。
-    canvas.drawRRect(
-      shape,
-      Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [_lighten(body, 0.06), body, _darken(body, 0.10)],
-          stops: const [0, 0.55, 1],
-        ).createShader(bodyRect),
-    );
-    canvas.save();
-    canvas.clipRRect(shape);
-    canvas.drawRect(
-      bodyRect,
-      Paint()
-        ..shader = RadialGradient(
-          center: const Alignment(-0.5, -0.64),
-          radius: 0.62,
-          colors: [Colors.white.withValues(alpha: 0.34), Colors.white.withValues(alpha: 0.17), Colors.white.withValues(alpha: 0)],
-          stops: const [0, 0.16, 0.43],
-        ).createShader(bodyRect),
-    );
-    canvas.drawRect(
-      bodyRect,
-      Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Colors.white.withValues(alpha: 0.13), Colors.white.withValues(alpha: 0), Colors.black.withValues(alpha: 0.20)],
-          stops: const [0, 0.43, 1],
-        ).createShader(bodyRect),
-    );
-    // 内阴影：底部/右下压暗一圈（CSS inset -12 -14 22 / 7 7 14 的近似）。
-    canvas.drawRRect(
-      shape.deflate(3 * scale),
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 14 * scale
-        ..color = _darken(body, 0.55).withValues(alpha: 0.30)
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, 8 * scale),
-    );
-    canvas.restore();
+    // 描边/投影（demo 默认开、用户默认关）：2D 硬投影，3D 柔和落影。
+    if (showOutline) {
+      if (three) {
+        canvas.drawRRect(
+          shape.shift(Offset(0, 4 * scale)),
+          Paint()
+            ..color = Colors.black.withValues(alpha: 0.18)
+            ..maskFilter = MaskFilter.blur(BlurStyle.normal, 6 * scale),
+        );
+      } else {
+        canvas.drawRRect(shape.shift(Offset(3 * scale, 3 * scale)), Paint()..color = ink.withValues(alpha: 0.55));
+      }
+    }
+
+    // 身体底色：3D 用渐变 + 三层高光 + 内阴影；2D 是扁平贴纸。
+    if (!three) {
+      canvas.drawRRect(shape, Paint()..color = body);
+    } else {
+      canvas.drawRRect(
+        shape,
+        Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_lighten(body, 0.06), body, _darken(body, 0.10)],
+            stops: const [0, 0.55, 1],
+          ).createShader(bodyRect),
+      );
+      canvas.save();
+      canvas.clipRRect(shape);
+      canvas.drawRect(
+        bodyRect,
+        Paint()
+          ..shader = RadialGradient(
+            center: const Alignment(-0.5, -0.64),
+            radius: 0.62,
+            colors: [Colors.white.withValues(alpha: 0.34), Colors.white.withValues(alpha: 0.17), Colors.white.withValues(alpha: 0)],
+            stops: const [0, 0.16, 0.43],
+          ).createShader(bodyRect),
+      );
+      canvas.drawRect(
+        bodyRect,
+        Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Colors.white.withValues(alpha: 0.13), Colors.white.withValues(alpha: 0), Colors.black.withValues(alpha: 0.20)],
+            stops: const [0, 0.43, 1],
+          ).createShader(bodyRect),
+      );
+      // 内阴影：底部/右下压暗一圈（CSS inset -12 -14 22 / 7 7 14 的近似）。
+      canvas.drawRRect(
+        shape.deflate(3 * scale),
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 14 * scale
+          ..color = _darken(body, 0.55).withValues(alpha: 0.30)
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, 8 * scale),
+      );
+      canvas.restore();
+    }
+    if (showOutline) {
+      canvas.drawRRect(
+        shape.deflate(1 * scale),
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2 * scale
+          ..color = ink,
+      );
+    }
 
     // 五官坐标：face wrap 是身体 inset 4、viewBox 100。
     const faceInset = 4.0;
@@ -815,14 +1024,15 @@ class MascotPainter extends CustomPainter {
       );
     }
 
-    _sproutEyes(canvas, f, u, expr.eyes, t);
+    _sproutEyes(canvas, f, u, expr.eyes, t, spec.face, spec.blink && math.sin(t) > 0.997);
     _sproutMouth(canvas, f, u, expr.mouth);
     _sproutLeaf(canvas, p, scale, expr.top, t);
     canvas.restore();
+    // 特效锚点在角色头上（engine 的 head 锚点 50,14；按身体比例折算）。
+    _drawEffect(canvas, size, expr.effect, t, head: Offset(size.width / 2, 0.16 * size.shortestSide));
   }
 
-  void _sproutEyes(Canvas canvas, Offset Function(double, double) f, double u, String style, double t) {
-    final ink = _darken(body, 0.86);
+  void _sproutEyes(Canvas canvas, Offset Function(double, double) f, double u, String style, double t, MascotFace face, bool blinking) {
     final white = Paint()..color = Colors.white;
     final line = Paint()
       ..color = ink
@@ -834,6 +1044,25 @@ class MascotPainter extends CustomPainter {
 
     for (final cx in [34.0, 66.0]) {
       final center = f(cx, 43);
+      if (blinking && face == MascotFace.standard && style != 'happy' && style != 'closed') {
+        canvas.drawLine(Offset(center.dx - 8 * u, center.dy), Offset(center.dx + 8 * u, center.dy), line);
+        continue;
+      }
+      // 简约 / 圆点：形状固定，情绪只做轻微姿势（开心变弧线）。
+      if (face == MascotFace.simple && style != 'happy') {
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromCenter(center: center, width: 9 * u, height: 24 * u),
+            Radius.circular(4.5 * u),
+          ),
+          Paint()..color = ink,
+        );
+        continue;
+      }
+      if (face == MascotFace.dot && style != 'happy') {
+        canvas.drawCircle(center, 5.5 * u, Paint()..color = ink);
+        continue;
+      }
       switch (style) {
         case 'happy':
           canvas.drawPath(
@@ -983,18 +1212,117 @@ class MascotPainter extends CustomPainter {
     canvas.restore();
   }
 
+  // ── 特效：星空/爱心/睡眠/加载环（锚点按引擎的 head/face/body） ─────────
+  void _drawEffect(Canvas canvas, Size size, String? effect, double t, {required Offset head}) {
+    final s = size.shortestSide;
+    switch (effect) {
+      case 'sparkles':
+        // 头顶一圈金色四角星，闪烁。
+        const gold = Color(0xFFFFD76A);
+        for (var i = 0; i < 4; i++) {
+          final angle = -math.pi / 2 + (i - 1.5) * 0.55 + math.sin(t + i) * 0.05;
+          final radius = s * (0.24 + 0.03 * math.sin(t * 2 + i));
+          final center = head + Offset(math.cos(angle) * radius, math.sin(angle) * radius * 0.7);
+          final twinkle = 0.55 + 0.45 * math.sin(t * 2 + i * 1.3).abs();
+          _star(canvas, center, s * 0.045 * twinkle, gold.withValues(alpha: 0.55 + 0.45 * twinkle));
+        }
+      case 'hearts':
+        const pink = Color(0xFFFF7B9C);
+        for (var i = 0; i < 3; i++) {
+          final rise = ((t / (2 * math.pi)) + i / 3) % 1;
+          final center = head + Offset((i - 1) * s * 0.10 + math.sin(t * 2 + i) * s * 0.01, -rise * s * 0.22);
+          _heart(canvas, center, s * 0.045, pink.withValues(alpha: (1 - rise).clamp(0.0, 1.0)));
+        }
+      case 'sleep':
+        const ink = Color(0xFF8FA6C2);
+        for (var i = 0; i < 2; i++) {
+          final rise = ((t / (2 * math.pi)) + i / 2) % 1;
+          final center = head + Offset(s * (0.10 + i * 0.05), -rise * s * 0.20 - s * 0.02);
+          _zed(canvas, center, s * (0.05 + i * 0.012), ink.withValues(alpha: (1 - rise).clamp(0.0, 1.0)));
+        }
+      case 'loading':
+        // 身体周围一圈转动的弧。
+        final rect = Rect.fromCircle(center: Offset(size.width / 2, size.height * 0.66), radius: s * 0.52);
+        final paint = Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = s * 0.035
+          ..strokeCap = StrokeCap.round
+          ..color = accent.withValues(alpha: 0.85);
+        canvas.drawArc(rect, t, math.pi * 0.5, false, paint);
+        canvas.drawArc(rect, t + math.pi, math.pi * 0.35, false, paint..color = accent.withValues(alpha: 0.35));
+    }
+  }
+
+  void _star(Canvas canvas, Offset center, double r, Color color) {
+    final path = Path();
+    for (var i = 0; i < 8; i++) {
+      final radius = i.isEven ? r : r * 0.38;
+      final angle = -math.pi / 2 + i * math.pi / 4;
+      final point = center + Offset(math.cos(angle) * radius, math.sin(angle) * radius);
+      i == 0 ? path.moveTo(point.dx, point.dy) : path.lineTo(point.dx, point.dy);
+    }
+    path.close();
+    canvas.drawPath(path, Paint()..color = color);
+  }
+
+  void _heart(Canvas canvas, Offset center, double r, Color color) {
+    final path = Path()
+      ..moveTo(center.dx, center.dy + r)
+      ..cubicTo(center.dx - r * 2, center.dy - r * 0.5, center.dx - r * 1.0, center.dy - r * 2.0, center.dx, center.dy - r * 0.6)
+      ..cubicTo(center.dx + r * 1.0, center.dy - r * 2.0, center.dx + r * 2, center.dy - r * 0.5, center.dx, center.dy + r)
+      ..close();
+    canvas.drawPath(path, Paint()..color = color);
+  }
+
+  void _zed(Canvas canvas, Offset center, double size, Color color) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = size * 0.22
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    canvas.drawPath(
+      Path()
+        ..moveTo(center.dx - size * 0.5, center.dy - size * 0.5)
+        ..lineTo(center.dx + size * 0.5, center.dy - size * 0.5)
+        ..lineTo(center.dx - size * 0.5, center.dy + size * 0.5)
+        ..lineTo(center.dx + size * 0.5, center.dy + size * 0.5),
+      paint,
+    );
+  }
+
   @override
   bool shouldRepaint(MascotPainter oldDelegate) =>
       oldDelegate.spec != spec || oldDelegate.emotion != emotion || oldDelegate.body != body || oldDelegate.phase != phase || oldDelegate.dark != dark;
 }
 
-/// 按 enum 的 `name` 取值；未知/缺失回落到 [fallback]。
-T _byName<T extends Enum>(List<T> values, Object? name, T fallback) {
+/// 按 enum 的 `name`（或 `wire`）取值；未知/缺失回落到 [fallback]。
+T _byName<T extends Enum>(List<T> values, Object? name, T fallback, {bool wire = false}) {
   for (final value in values) {
-    if (value.name == name) return value;
+    final key = wire && value is MascotView ? value.wire : value.name;
+    if (key == name) return value;
   }
   return fallback;
 }
+
+/// 五官：demo 的 default/minimal/dots；旧存档的 gentle/curious/happy 都算 default。
+MascotFace _faceOf(Object? value) {
+  for (final face in MascotFace.values) {
+    if (face.wire == value) return face;
+  }
+  return MascotFace.standard;
+}
+
+/// 颜色：新名；旧存档的六个名字按最近色映射，未知回落薄荷绿。
+MascotColor _colorOf(Object? value) => switch (value) {
+  'classic' => MascotColor.peach,
+  'matcha' => MascotColor.mint,
+  'sakura' => MascotColor.rose,
+  'moonlight' => MascotColor.lavender,
+  'seasalt' => MascotColor.paleCyan,
+  'inkJade' => MascotColor.charcoal,
+  _ => _byName(MascotColor.values, value, MascotColor.mint),
+};
 
 Color _lighten(Color color, double amount) => Color.lerp(color, Colors.white, amount)!;
 Color _darken(Color color, double amount) => Color.lerp(color, Colors.black, amount)!;
