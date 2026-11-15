@@ -548,7 +548,7 @@ class SessionHero extends ConsumerWidget {
         : running == null
         ? l10n.hubSessionTurns(turns.length)
         : l10n.hubSessionTurnsRunning(turns.length);
-    final subtitle = scopeLabel case final label? ? '$label · $rounds' : rounds;
+    final subtitle = scopeLabel == null ? rounds : '$scopeLabel · $rounds';
 
     Widget hero(Duration total) {
       final stats = [

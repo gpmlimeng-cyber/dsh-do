@@ -2978,8 +2978,6 @@ class TavernChapterBreak extends StatelessWidget {
           ),
           line,
         ],
-          ),
-        ),
       ),
     );
   }
