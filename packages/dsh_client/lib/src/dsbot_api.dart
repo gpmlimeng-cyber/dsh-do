@@ -1101,6 +1101,9 @@ class DsBotItem {
   final String? roomId;
   final int images;
 
+  /// The photos this line carries, when the host names them (API 2).
+  final List<DsBotImageRef> imageRefs;
+
   /// The attachments themselves, when the host names them.
   final List<DsBotAttachmentRef> files;
 
