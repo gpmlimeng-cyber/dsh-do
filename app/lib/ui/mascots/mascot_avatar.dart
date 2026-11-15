@@ -1234,7 +1234,8 @@ class MascotPainter extends CustomPainter {
 
     // 五官三档对每个角色都生效：简约＝竖条眼，圆点＝小圆眼；
     // 「开心」仍画弧线，免得情绪全被档位吃掉。芽团另有自己的实现。
-    final fixedFace = spec.face != MascotFace.standard && eyes != 'happy';
+    // 五官档位优先于情绪：选简约/圆点后眼睛形状固定，情绪只走嘴和特效。
+    final fixedFace = spec.face != MascotFace.standard;
     void simpleEye(double x) => canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromCenter(center: Offset(x, eyeY), width: r.width * 0.11, height: r.height * 0.20),
@@ -1492,7 +1493,7 @@ class MascotPainter extends CustomPainter {
         continue;
       }
       // 简约 / 圆点：形状固定，情绪只做轻微姿势（开心变弧线）。
-      if (face == MascotFace.simple && style != 'happy') {
+      if (face == MascotFace.simple) {
         canvas.drawRRect(
           RRect.fromRectAndRadius(
             Rect.fromCenter(center: center, width: 9 * u, height: 24 * u),
@@ -1502,7 +1503,7 @@ class MascotPainter extends CustomPainter {
         );
         continue;
       }
-      if (face == MascotFace.dot && style != 'happy') {
+      if (face == MascotFace.dot) {
         canvas.drawCircle(center, 5.5 * u, Paint()..color = ink);
         continue;
       }
