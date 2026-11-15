@@ -140,7 +140,11 @@ class _MascotCustomizerState extends State<MascotCustomizer> {
                               _spec = _spec.copyWith(color: c, followAppColor: false);
                             }),
                           ),
-                        _Tab.face => _FaceList(spec: _spec, onPick: (f) => setState(() => _spec = _spec.copyWith(face: f))),
+                        _Tab.face => _FaceList(
+                            spec: _spec,
+                            onPick: (f) => setState(() => _spec = _spec.copyWith(face: f)),
+                            onView: (v) => setState(() => _spec = _spec.copyWith(view: v)),
+                          ),
                       },
                     ],
                   ),
@@ -449,10 +453,11 @@ class _ColorCell extends StatelessWidget {
 }
 
 class _FaceList extends StatelessWidget {
-  const _FaceList({required this.spec, required this.onPick});
+  const _FaceList({required this.spec, required this.onPick, required this.onView});
 
   final MascotSpec spec;
   final ValueChanged<MascotFace> onPick;
+  final ValueChanged<MascotView> onView;
 
   static const _hints = {
     MascotFace.standard: '眼白 + 瞳孔 + 高光',
@@ -463,7 +468,12 @@ class _FaceList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _ViewToggle(view: spec.view, onPick: onView),
+        const SizedBox(height: 12),
+        Row(
       children: [
         for (final face in MascotFace.values) ...[
           Expanded(
@@ -503,6 +513,65 @@ class _FaceList extends StatelessWidget {
           ),
           if (face != MascotFace.values.last) const SizedBox(width: 8),
         ],
+      ],
+        ),
+      ],
+    );
+  }
+}
+
+/// 「视图」2D / 3D：默认 2D；切了预览立刻变。
+class _ViewToggle extends StatelessWidget {
+  const _ViewToggle({required this.view, required this.onPick});
+
+  final MascotView view;
+  final ValueChanged<MascotView> onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final muted = DshColors.of(context).textTertiary;
+    return Row(
+      children: [
+        Text(_t('视图', 'View'), style: theme.textTheme.labelMedium?.copyWith(color: muted)),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.all(3),
+            decoration: ShapeDecoration(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.05),
+              shape: const StadiumBorder(),
+            ),
+            child: Row(
+              children: [
+                for (final option in MascotView.values)
+                  Expanded(
+                    child: GestureDetector(
+                      key: ValueKey('mascot-view-${option.wire}'),
+                      onTap: () => onPick(option),
+                      behavior: HitTestBehavior.opaque,
+                      child: AnimatedContainer(
+                        duration: AppMotion.of(context, AppMotion.quick),
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        decoration: ShapeDecoration(
+                          color: view == option ? theme.colorScheme.surface : Colors.transparent,
+                          shape: const StadiumBorder(),
+                        ),
+                        child: Text(
+                          option.label,
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            fontWeight: view == option ? FontWeight.w600 : FontWeight.w400,
+                            color: view == option ? theme.colorScheme.onSurface : muted,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }

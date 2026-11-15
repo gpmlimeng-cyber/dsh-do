@@ -73,7 +73,7 @@ class ImChatRow extends StatelessWidget {
       preview = bot.role.isEmpty ? l10n.botsNoChats : bot.role;
     }
     return ImChatRowShell(
-      avatar: BotAvatar(bot: bot, size: avatarSize, working: work != null, emotion: emotion),
+      avatar: BotAvatar(bot: bot, size: avatarSize, working: work != null, emotion: emotion, animate: true),
       name: bot.name,
       preview: preview,
       previewColor: previewColor,
@@ -137,7 +137,7 @@ class ImRoomRow extends StatelessWidget {
       preview = l10n.botsMemberCount(room.members.length);
     }
     return ImChatRowShell(
-      avatar: RoomAvatar(room: room, team: team, size: ImChatRow.avatarSize, emotion: emotion),
+      avatar: RoomAvatar(room: room, team: team, size: ImChatRow.avatarSize, emotion: emotion, animate: true),
       name: room.name,
       preview: preview,
       previewColor: previewColor,

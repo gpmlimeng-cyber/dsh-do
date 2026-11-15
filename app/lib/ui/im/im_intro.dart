@@ -26,7 +26,7 @@ class ImIntro extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          BotAvatar(bot: bot, size: 72),
+          BotAvatar(bot: bot, size: 72, animate: true),
           const SizedBox(height: 14),
           Text(bot.name, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
           if (role.isNotEmpty) ...[

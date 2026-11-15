@@ -126,6 +126,17 @@ void main() {
     }
   });
 
+  testWidgets('every character draws in both the flat and the 3D view', (tester) async {
+    for (final character in MascotCharacter.values) {
+      for (final view in MascotView.values) {
+        await tester.pumpWidget(testApp(Center(
+          child: MascotAvatar(spec: MascotSpec(character: character, view: view), emotion: '02', size: 40),
+        )));
+        expect(tester.takeException(), isNull, reason: '${character.name}/${view.name}');
+      }
+    }
+  });
+
   testWidgets('every face, character and colour renders still', (tester) async {
     for (final character in MascotCharacter.values) {
       for (final face in MascotFace.values) {

@@ -283,7 +283,7 @@ class _CompanionRow extends StatelessWidget {
                   child: Stack(
                     clipBehavior: Clip.none,
                     children: [
-                      BotAvatar(bot: bot, size: 56),
+                      BotAvatar(bot: bot, size: 56, animate: true),
                       if (dotTone != null)
                         Positioned(
                           right: 1,

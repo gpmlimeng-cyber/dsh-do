@@ -71,6 +71,15 @@ void main() {
     await tester.pump();
     expect(previewSpec().face, MascotFace.values[1]);
 
+    // View: 2D by default, switching to 3D reaches the preview on this frame.
+    expect(previewSpec().view, MascotView.flat);
+    await tester.tap(find.byKey(const ValueKey('mascot-view-three')));
+    await tester.pump();
+    expect(previewSpec().view, MascotView.three);
+    await tester.tap(find.byKey(const ValueKey('mascot-view-flat')));
+    await tester.pump();
+    expect(previewSpec().view, MascotView.flat);
+
     // Motion preset: choosing it clears any custom action.
     await tester.tap(find.text('角色'));
     await tester.pump();

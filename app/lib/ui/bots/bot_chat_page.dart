@@ -875,7 +875,7 @@ class _Intro extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        BotAvatar(bot: bot, size: 64),
+        BotAvatar(bot: bot, size: 64, animate: true),
         const SizedBox(height: 12),
         Text(bot.name, style: theme.textTheme.titleLarge),
         if (bot.role.isNotEmpty) ...[

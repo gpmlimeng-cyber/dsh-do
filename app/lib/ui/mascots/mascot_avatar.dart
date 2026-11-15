@@ -18,6 +18,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../l10n/l10n.dart';
+import '../../state/mascot_clock.dart';
 
 /// 14 个角色，顺序即选择器里的顺序（新角色只能加在末尾：顺序是存档索引）。
 enum MascotCharacter {
@@ -214,7 +215,7 @@ class MascotSpec {
     this.face = MascotFace.standard,
     this.motion = MascotMotion.lively,
     this.color = MascotColor.mint,
-    this.view = MascotView.three,
+    this.view = MascotView.flat,
     this.outline = false,
     this.body,
     this.eyes,
@@ -320,8 +321,8 @@ class MascotSpec {
       face: _faceOf(json['face']),
       motion: _byName(MascotMotion.values, json['motion'], MascotMotion.lively),
       color: _colorOf(json['color']),
-      // 视图/边框固定：用户定死 3D、不显示外框，读到别的值也按这个跑。
-      view: MascotView.three,
+      // 视图：默认 2D；存过 three 的旧存档保持 3D。边框仍固定不显示。
+      view: _byName(MascotView.values, json['view'], MascotView.flat, wire: true),
       outline: false,
       body: _choiceOf(json['body'], mascotBodyActions),
       eyes: _choiceOf(json['eyes'], mascotEyeStates),
@@ -489,25 +490,68 @@ class MascotAvatar extends StatefulWidget {
 }
 
 class _MascotAvatarState extends State<MascotAvatar> with SingleTickerProviderStateMixin {
+  /// 共享时钟：有 scope 时用它，一屏多个头像共用一个 ticker。
+  MascotClock? _clock;
+  bool _holding = false;
+
+  /// 没有共享时钟时（单页测试/独立预览）退回本地控制器。
   AnimationController? _controller;
 
   @override
   void initState() {
     super.initState();
-    if (widget.animate) _start();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // clock / reduce-motion / TickerMode 都在这三个依赖里，变化时重跑。
+    _syncAnimation();
   }
 
   @override
   void didUpdateWidget(MascotAvatar oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.animate && _controller == null) _start();
-    if (!widget.animate && _controller != null) _stop();
-    if (widget.animate && _controller != null && oldWidget.spec.motion != widget.spec.motion) {
+    _syncAnimation();
+    if (_controller != null && oldWidget.spec.motion != widget.spec.motion) {
       _controller!.duration = _durationOf(widget.spec.motion);
       _controller!
         ..reset()
         ..repeat();
     }
+  }
+
+  /// 只决定「要不要动」：共享时钟 acquire/release，没有时钟才起本地控制器。
+  void _syncAnimation() {
+    final clock = MascotClockScope.maybeOf(context);
+    final reduced = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    final active = widget.animate && !reduced && TickerMode.of(context);
+
+    if (!identical(clock, _clock)) {
+      if (_holding) {
+        _clock?.release();
+        _holding = false;
+      }
+      _clock = clock;
+    }
+    if (clock != null) {
+      // 共享时钟：只在翻转时 acquire / release，别每帧调。
+      _stop();
+      if (active && !_holding) {
+        clock.acquire();
+        _holding = true;
+      } else if (!active && _holding) {
+        clock.release();
+        _holding = false;
+      }
+      return;
+    }
+    if (!active && _holding) {
+      _clock?.release();
+      _holding = false;
+    }
+    if (active && _controller == null) _start();
+    if (!active && _controller != null) _stop();
   }
 
   void _start() {
@@ -527,6 +571,10 @@ class _MascotAvatarState extends State<MascotAvatar> with SingleTickerProviderSt
 
   @override
   void dispose() {
+    if (_holding) {
+      _clock?.release();
+      _holding = false;
+    }
     _controller?.dispose();
     super.dispose();
   }
@@ -536,17 +584,42 @@ class _MascotAvatarState extends State<MascotAvatar> with SingleTickerProviderSt
     final scheme = Theme.of(context).colorScheme;
     final skin = mascotSkinOf(widget.spec, scheme);
     final dark = Theme.of(context).brightness == Brightness.dark;
+    final active = widget.animate && !(MediaQuery.maybeDisableAnimationsOf(context) ?? false) && TickerMode.of(context);
+    final clock = active ? _clock : null;
+
+    MascotPainter frame({double phase = 0.35, MascotClock? clock, Duration? period}) => MascotPainter(
+      spec: widget.spec,
+      emotion: widget.emotion,
+      letter: widget.letter,
+      body: skin.body,
+      ink: skin.ink,
+      accent: skin.accent,
+      phase: phase,
+      dark: dark,
+      clock: clock,
+      period: period ?? _durationOf(widget.spec.motion),
+    );
+
+    // 共享时钟：把时钟当 repaint 交给画笔，一帧只重画、不重建 widget。
+    if (clock != null) {
+      return SizedBox.square(
+        dimension: widget.size,
+        child: CustomPaint(painter: frame(clock: clock), size: Size.square(widget.size)),
+      );
+    }
+    // 没有共享时钟（单页测试 / 独立预览）：本地控制器兜底。
+    if (active && _controller != null) {
+      return SizedBox.square(
+        dimension: widget.size,
+        child: AnimatedBuilder(
+          animation: _controller!,
+          builder: (context, _) => CustomPaint(painter: frame(phase: _controller!.value), size: Size.square(widget.size)),
+        ),
+      );
+    }
     return SizedBox.square(
       dimension: widget.size,
-      child: _controller == null
-          ? CustomPaint(painter: MascotPainter(spec: widget.spec, emotion: widget.emotion, letter: widget.letter, body: skin.body, ink: skin.ink, accent: skin.accent, phase: 0.35, dark: dark), size: Size.square(widget.size))
-          : AnimatedBuilder(
-              animation: _controller!,
-              builder: (context, _) => CustomPaint(
-                painter: MascotPainter(spec: widget.spec, emotion: widget.emotion, letter: widget.letter, body: skin.body, ink: skin.ink, accent: skin.accent, phase: _controller!.value, dark: dark),
-                size: Size.square(widget.size),
-              ),
-            ),
+      child: CustomPaint(painter: frame(), size: Size.square(widget.size)),
     );
   }
 }
@@ -562,10 +635,18 @@ class MascotPainter extends CustomPainter {
     this.dark = false,
     this.emotion,
     this.letter,
-  });
+    this.clock,
+    this.period = const Duration(milliseconds: 1100),
+  }) : super(repaint: clock);
 
   final MascotSpec spec;
   final String? emotion;
+
+  /// 共享时钟：非空时每帧从它算相位（`repaint` 也挂在它上面）。
+  final MascotClock? clock;
+
+  /// 这一档动作的周期；共享时钟按它取模。
+  final Duration period;
 
   /// 字团用：非空时在五官位置画这个字，不画眼睛/嘴/腮红。
   final String? letter;
@@ -578,6 +659,7 @@ class MascotPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final s = size.shortestSide;
+    final phase = clock?.phaseOf(period) ?? this.phase;
     final t = phase * 2 * math.pi;
     final expression = emotion == null ? expressionFor(spec) : (mascotExpressions[emotion] ?? expressionFor(spec));
     if (spec.character == MascotCharacter.sprout) {
@@ -626,17 +708,20 @@ class MascotPainter extends CustomPainter {
     // 其余角色按原矩形画，不动。
     final lift = spec.character == MascotCharacter.triangle ? s * 0.08 : 0.0;
     final rect = Rect.fromLTWH(s * 0.10, s * 0.20 - lift, s * 0.80, s * 0.70);
+    final three = spec.view == MascotView.three;
     final top = _lighten(body, 0.34);
     final bottom = _darken(body, 0.30);
 
-    // 身体底色：径向渐变（光从左上）。
-    final bodyPaint = Paint()
-      ..shader = RadialGradient(
-        center: const Alignment(-0.45, -0.6),
-        radius: 1.1,
-        colors: [top, body, bottom],
-        stops: const [0, 0.55, 1],
-      ).createShader(rect);
+    // 身体底色：3D 用径向渐变（光从左上），2D 是纯色贴纸。
+    final bodyPaint = three
+        ? (Paint()
+            ..shader = RadialGradient(
+              center: const Alignment(-0.45, -0.6),
+              radius: 1.1,
+              colors: [top, body, bottom],
+              stops: const [0, 0.55, 1],
+            ).createShader(rect))
+        : (Paint()..color = body);
 
     final path = switch (spec.character) {
       MascotCharacter.sprout => _bowl(rect),
@@ -656,25 +741,26 @@ class MascotPainter extends CustomPainter {
     };
     canvas.drawPath(path, bodyPaint);
 
-    // 底部内阴影：让身体看上去是立体的。
-    canvas.save();
-    canvas.clipPath(path);
-    canvas.drawRect(
-      rect,
-      Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Colors.transparent, Colors.transparent, _darken(body, 0.38).withValues(alpha: 0.55)],
-          stops: const [0, 0.62, 1],
-        ).createShader(rect),
-    );
-    // 高光：左上角一小块弧形。
-    canvas.drawOval(
-      Rect.fromCenter(center: Offset(rect.left + rect.width * 0.30, rect.top + rect.height * 0.22), width: rect.width * 0.34, height: rect.height * 0.20),
-      Paint()..color = Colors.white.withValues(alpha: dark ? 0.22 : 0.38),
-    );
-    canvas.restore();
+    // 3D 才有底部内阴影和左上高光；2D 保持纯色。
+    if (three) {
+      canvas.save();
+      canvas.clipPath(path);
+      canvas.drawRect(
+        rect,
+        Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.transparent, Colors.transparent, _darken(body, 0.38).withValues(alpha: 0.55)],
+            stops: const [0, 0.62, 1],
+          ).createShader(rect),
+      );
+      canvas.drawOval(
+        Rect.fromCenter(center: Offset(rect.left + rect.width * 0.30, rect.top + rect.height * 0.22), width: rect.width * 0.34, height: rect.height * 0.20),
+        Paint()..color = Colors.white.withValues(alpha: dark ? 0.22 : 0.38),
+      );
+      canvas.restore();
+    }
 
     // 角色专属零件（叶子/耳朵/天线/呆毛）。
     _charParts(canvas, size, rect, t, expression.top);
@@ -683,7 +769,7 @@ class MascotPainter extends CustomPainter {
     if (letter case final glyph?) {
       _glyph(canvas, rect, glyph);
     } else {
-      _face(canvas, rect, t, expression.eyes, expression.mouth);
+      _face(canvas, rect, t, expression.eyes, expression.mouth, three: three);
     }
 
     canvas.restore();
@@ -1077,7 +1163,7 @@ class MascotPainter extends CustomPainter {
     painter.paint(canvas, center);
   }
 
-  void _face(Canvas canvas, Rect r, double t, String eyes, String mouth) {
+  void _face(Canvas canvas, Rect r, double t, String eyes, String mouth, {required bool three}) {
     final gaze = spec.motion == MascotMotion.curious ? math.sin(t) * r.width * 0.035 : 0.0;
     final eyeY = r.top + r.height * 0.44;
     final lx = r.center.dx - r.width * 0.18 + gaze;
@@ -1093,7 +1179,10 @@ class MascotPainter extends CustomPainter {
 
     void roundEye(double x, double radius, {double dx = 0, double dy = 0}) {
       canvas.drawCircle(Offset(x, eyeY), radius, dark);
-      canvas.drawCircle(Offset(x - radius * 0.35 + dx, eyeY - radius * 0.35 + dy), radius * 0.34, white);
+      // 2D 是扁平贴纸，不留眼白高光点。
+      if (three) {
+        canvas.drawCircle(Offset(x - radius * 0.35 + dx, eyeY - radius * 0.35 + dy), radius * 0.34, white);
+      }
     }
 
     void closedEye(double x) {
@@ -1246,8 +1335,8 @@ class MascotPainter extends CustomPainter {
     final scale = s / contentH;
     final dx = (s - contentW * scale) / 2;
     Offset p(double x, double y) => Offset(dx + x * scale, y * scale);
-    // 视图固定 3D、边框固定关（用户定；字段留在存档里互认，这里不读）。
-    final three = true;
+    // 视图跟随 spec（默认 2D）；边框固定关。
+    final three = spec.view == MascotView.three;
     final showOutline = false;
 
     // 身体漂浮：绕 (50, 132) 呼吸，2D 下幅度很小。
@@ -1364,7 +1453,7 @@ class MascotPainter extends CustomPainter {
           Paint()..color = accent.withValues(alpha: 0.75),
         );
       }
-      _sproutEyes(canvas, f, u, expr.eyes, t, spec.face, math.sin(t) > 0.997);
+      _sproutEyes(canvas, f, u, expr.eyes, t, spec.face, math.sin(t) > 0.997, three: three);
       _sproutMouth(canvas, f, u, expr.mouth);
     }
     canvas.restore();
@@ -1386,7 +1475,7 @@ class MascotPainter extends CustomPainter {
     painter.paint(canvas, Offset(center.dx - painter.width / 2, center.dy - painter.height / 2));
   }
 
-  void _sproutEyes(Canvas canvas, Offset Function(double, double) f, double u, String style, double t, MascotFace face, bool blinking) {
+  void _sproutEyes(Canvas canvas, Offset Function(double, double) f, double u, String style, double t, MascotFace face, bool blinking, {required bool three}) {
     final white = Paint()..color = Colors.white;
     final line = Paint()
       ..color = ink
@@ -1457,15 +1546,20 @@ class MascotPainter extends CustomPainter {
           canvas.drawOval(Rect.fromCenter(center: center, width: 22 * u, height: 25 * u), white);
           canvas.drawOval(Rect.fromCenter(center: center, width: 22 * u, height: 25 * u), line);
           canvas.drawCircle(center + pupilOffset, 6.8 * u, Paint()..color = ink);
-          canvas.drawCircle(center + pupilOffset + Offset(2.2 * u, -2.4 * u), 2.1 * u, Paint()..color = Colors.white);
+          if (three) {
+            canvas.drawCircle(center + pupilOffset + Offset(2.2 * u, -2.4 * u), 2.1 * u, Paint()..color = Colors.white);
+          }
         default:
           // open / thinking：眼白 + 瞳孔 + 两处高光（官方 face SVG 同款）。
           canvas.drawOval(Rect.fromCenter(center: center, width: 20 * u, height: 23 * u), white);
           canvas.drawOval(Rect.fromCenter(center: center, width: 20 * u, height: 23 * u), line);
           final pupil = center + pupilOffset;
           canvas.drawCircle(pupil, 6.2 * u, Paint()..color = ink);
-          canvas.drawCircle(pupil + Offset(2.2 * u, -2.4 * u), 2.1 * u, Paint()..color = Colors.white);
-          canvas.drawCircle(pupil + Offset(-2.2 * u, 2.1 * u), 1.0 * u, Paint()..color = Colors.white.withValues(alpha: 0.82));
+          // 2D 不留高光点，瞳孔是纯色。
+          if (three) {
+            canvas.drawCircle(pupil + Offset(2.2 * u, -2.4 * u), 2.1 * u, Paint()..color = Colors.white);
+            canvas.drawCircle(pupil + Offset(-2.2 * u, 2.1 * u), 1.0 * u, Paint()..color = Colors.white.withValues(alpha: 0.82));
+          }
       }
     }
   }
@@ -1647,7 +1741,14 @@ class MascotPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(MascotPainter oldDelegate) =>
-      oldDelegate.spec != spec || oldDelegate.emotion != emotion || oldDelegate.letter != letter || oldDelegate.body != body || oldDelegate.phase != phase || oldDelegate.dark != dark;
+      oldDelegate.spec != spec ||
+      oldDelegate.emotion != emotion ||
+      oldDelegate.letter != letter ||
+      oldDelegate.clock != clock ||
+      oldDelegate.period != period ||
+      oldDelegate.body != body ||
+      oldDelegate.phase != phase ||
+      oldDelegate.dark != dark;
 }
 
 /// 按 enum 的 `name`（或 `wire`）取值；未知/缺失回落到 [fallback]。

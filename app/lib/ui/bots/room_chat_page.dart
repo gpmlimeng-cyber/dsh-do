@@ -1076,7 +1076,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBinding
         showLeading: widget.light ? true : !layout.isExpanded,
         // The group is what the page is about, in either conversation: its face
         // and its title stay, and the member is named on the line below.
-        face: RoomAvatar(room: room, team: team, size: BotChatHeader.faceSize),
+        face: RoomAvatar(room: room, team: team, size: BotChatHeader.faceSize, animate: true),
         title: room.name,
         titleHint: targetBot == null ? null : l10n.botsRoomBackToGroupChat(room.name),
         // One member's conversation says whose it is and which group it belongs
@@ -1601,7 +1601,7 @@ class _Members extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        RoomAvatar(room: room, team: team, size: 64),
+        RoomAvatar(room: room, team: team, size: 64, animate: true),
         const SizedBox(height: 12),
         Text(room.name, style: theme.textTheme.titleLarge),
         const SizedBox(height: 4),

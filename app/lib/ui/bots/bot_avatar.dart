@@ -171,7 +171,7 @@ class BotMonogram extends StatelessWidget {
 
 /// A group: its first two members, the second over the first's lower right.
 class RoomAvatar extends StatelessWidget {
-  const RoomAvatar({super.key, required this.room, required this.team, this.size = 40, this.emotion});
+  const RoomAvatar({super.key, required this.room, required this.team, this.size = 40, this.emotion, this.animate = false});
 
   final DsBotRoom room;
   final DsBotTeam team;
@@ -179,6 +179,9 @@ class RoomAvatar extends StatelessWidget {
 
   /// 群的整体状态（等你确认/跑工具），只画在首位成员的头像上。
   final String? emotion;
+
+  /// 成员头像要不要动（列表/瓦片/聊天头按可见性各自决定）。
+  final bool animate;
 
   @override
   Widget build(BuildContext context) {
@@ -198,7 +201,7 @@ class RoomAvatar extends StatelessWidget {
         ),
       );
     }
-    if (members.length == 1) return BotAvatar(bot: members.first, size: size, emotion: emotion);
+    if (members.length == 1) return BotAvatar(bot: members.first, size: size, emotion: emotion, animate: animate);
     final small = size * 0.6;
     final gap = (size * 0.05).clamp(1.5, 3.0);
     return ExcludeSemantics(
@@ -211,13 +214,13 @@ class RoomAvatar extends StatelessWidget {
               top: 0,
               child: ClipPath(
                 clipper: _RearClipper(offset: size - small, gap: gap),
-                child: BotAvatar(bot: members[0], size: small),
+                child: BotAvatar(bot: members[0], size: small, animate: animate),
               ),
             ),
             Positioned(
               right: 0,
               bottom: 0,
-              child: BotAvatar(bot: members[1], size: small),
+              child: BotAvatar(bot: members[1], size: small, animate: animate),
             ),
           ],
         ),

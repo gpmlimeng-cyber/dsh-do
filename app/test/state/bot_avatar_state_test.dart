@@ -87,18 +87,30 @@ void main() {
       expect(config.mascot!.face, MascotFace.standard);
       expect(config.mascot!.motion, MascotMotion.lively);
       expect(config.mascot!.color, MascotColor.mint);
-      expect(config.mascot!.view, MascotView.three);
+      expect(config.mascot!.view, MascotView.flat);
       expect(config.mascot!.outline, isFalse);
       expect(config.mascot!.seed, 0);
     });
 
-    test('missing view and outline read as 3D without the outline', () {
+    test('missing view and outline read as 2D without the outline', () {
       final config = BotAvatarConfig.fromJson({
         'kind': 'mascot',
         'mascot': {'character': 'cat', 'face': 'default', 'color': 'mint'},
       });
-      expect(config.mascot!.view, MascotView.three);
+      expect(config.mascot!.view, MascotView.flat);
       expect(config.mascot!.outline, isFalse);
+    });
+
+    test('a new look is 2D by default', () {
+      expect(const MascotSpec().view, MascotView.flat);
+    });
+
+    test('an old save that stored 3D stays 3D', () {
+      final config = BotAvatarConfig.fromJson({
+        'kind': 'mascot',
+        'mascot': {'view': 'three'},
+      });
+      expect(config.mascot!.view, MascotView.three);
     });
 
     test('a mascot whose whole payload is not a map falls back to the defaults', () {

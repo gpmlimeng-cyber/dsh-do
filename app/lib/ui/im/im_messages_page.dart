@@ -371,8 +371,8 @@ class _PinnedTile extends StatelessWidget {
     final room = entry.room;
     final unread = bot != null ? inbox.unreadOf(bot.id) : inbox.unreadOf(room!.id);
     final avatar = bot != null
-        ? BotAvatar(bot: bot, size: avatarSize)
-        : RoomAvatar(room: room!, team: team, size: avatarSize);
+        ? BotAvatar(bot: bot, size: avatarSize, animate: true)
+        : RoomAvatar(room: room!, team: team, size: avatarSize, animate: true);
     return Semantics(
       button: true,
       label: entry.name,
