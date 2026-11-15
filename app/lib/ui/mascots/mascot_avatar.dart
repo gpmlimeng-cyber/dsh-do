@@ -1365,7 +1365,6 @@ class MascotPainter extends CustomPainter {
     Offset p(double x, double y) => Offset(dx + x * scale, y * scale);
     // 视图跟随 spec（默认 2D）；边框固定关。
     final three = spec.view == MascotView.three;
-    final showOutline = false;
 
     // 身体漂浮：绕 (50, 132) 呼吸，2D 下幅度很小。
     final origin = p(50, 132);
@@ -1393,19 +1392,6 @@ class MascotPainter extends CustomPainter {
     }
 
     // 描边/投影（demo 默认开、用户默认关）：2D 硬投影，3D 柔和落影。
-    if (showOutline) {
-      if (three) {
-        canvas.drawRRect(
-          shape.shift(Offset(0, 4 * scale)),
-          Paint()
-            ..color = Colors.black.withValues(alpha: 0.18)
-            ..maskFilter = MaskFilter.blur(BlurStyle.normal, 6 * scale),
-        );
-      } else {
-        canvas.drawRRect(shape.shift(Offset(3 * scale, 3 * scale)), Paint()..color = ink.withValues(alpha: 0.55));
-      }
-    }
-
     // 身体底色：3D 用渐变 + 三层高光 + 内阴影；2D 是扁平贴纸。
     if (!three) {
       canvas.drawRRect(shape, Paint()..color = body);
@@ -1453,16 +1439,6 @@ class MascotPainter extends CustomPainter {
       );
       canvas.restore();
     }
-    if (showOutline) {
-      canvas.drawRRect(
-        shape.deflate(1 * scale),
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2 * scale
-          ..color = ink,
-      );
-    }
-
     // 五官坐标：face wrap 是身体 inset 4、viewBox 100。
     const faceInset = 4.0;
     const faceScale = 0.92;
@@ -1737,17 +1713,6 @@ class MascotPainter extends CustomPainter {
     }
   }
 
-  void _star(Canvas canvas, Offset center, double r, Color color) {
-    final path = Path();
-    for (var i = 0; i < 8; i++) {
-      final radius = i.isEven ? r : r * 0.38;
-      final angle = -math.pi / 2 + i * math.pi / 4;
-      final point = center + Offset(math.cos(angle) * radius, math.sin(angle) * radius);
-      i == 0 ? path.moveTo(point.dx, point.dy) : path.lineTo(point.dx, point.dy);
-    }
-    path.close();
-    canvas.drawPath(path, Paint()..color = color);
-  }
 
   void _heart(Canvas canvas, Offset center, double r, Color color) {
     final path = Path()

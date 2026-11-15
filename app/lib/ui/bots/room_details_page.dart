@@ -33,7 +33,6 @@ import 'bots_page.dart' show BotTag;
 import 'memory_card.dart';
 import 'working_folder_sheet.dart';
 import 'room_activity_sheet.dart';
-import 'room_session_sheet.dart';
 import 'room_relay_limit_sheet.dart';
 
 /// 群详情画在哪：整页（窄屏），或者宽屏的第三栏。

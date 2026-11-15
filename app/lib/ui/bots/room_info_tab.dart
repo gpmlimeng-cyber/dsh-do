@@ -3,7 +3,6 @@
 // 能改的东西一律留在 ⋯「成员」那份群详情里——两处都能改必然漂移。这里不放任何
 // 编辑动作、不列成员名单、不重复 hero 已有的群名与成员总数（那是群聚合页的事）。
 
-import 'package:dsh_client/dsh_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

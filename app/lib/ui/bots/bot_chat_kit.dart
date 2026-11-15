@@ -2522,22 +2522,6 @@ bool _validViewChoice(Map node) {
   return values.contains(node['value'] ?? _viewChoiceValue(options.first as Map));
 }
 
-List<Map<String, Object?>> _viewChoices(Map<String, Object?> view) {
-  final choices = <Map<String, Object?>>[];
-  void walk(Object? node) {
-    if (node is! Map) return;
-    if (node['type'] == 'choice' && _validViewChoice(node)) choices.add(node.cast<String, Object?>());
-    final children = node['children'];
-    if (children is List) {
-      for (final child in children) {
-        walk(child);
-      }
-    }
-  }
-
-  walk(view);
-  return choices;
-}
 
 /// 卡片上那些「一句话」的内容：给不画控件的场合（预览、通知）用。
 ({List<String> lines, Map<String, Object?>? control}) readView(Map<String, Object?> view) {
@@ -2951,7 +2935,6 @@ class _BotViewCardState extends State<BotViewCard> {
   /// 可提交那四种：永远原生画出来的控件。
   Widget _control(Map<String, Object?> control) {
     final l10n = context.l10n;
-    final theme = Theme.of(context);
     final id = control['id'] as String? ?? '';
     switch (control['type']) {
       case 'submit':

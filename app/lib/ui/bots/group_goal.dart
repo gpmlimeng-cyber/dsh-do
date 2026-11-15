@@ -19,7 +19,6 @@ import '../theme/web_goal_icon.dart';
 import '../theme/theme.dart';
 import '../chat/chat_header.dart' show ChatHeader;
 import '../chat/header_schedule.dart' show HeaderScheduleCap;
-import '../chat/dock/dock_pill.dart';
 import 'bot_avatar.dart';
 import 'bot_chat_kit.dart';
 
@@ -1713,7 +1712,7 @@ class _GoalHeaderActionsState extends ConsumerState<_GoalHeaderActions> {
   /// 都能让界面在这一次操作里就对齐。
   Future<void> _reload() async {
     try {
-      await ref.refresh(groupGoalProvider(widget.roomId).future);
+      final _ = await ref.refresh(groupGoalProvider(widget.roomId).future);
     } catch (_) {
       // 拉失败就留着本地那次的状态；下一次失效还会再拉。
       return;

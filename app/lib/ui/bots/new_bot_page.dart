@@ -30,7 +30,6 @@ import '../settings/settings_widgets.dart' show SettingsSection;
 import '../shell/page_frame.dart';
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
-import 'bot_avatar.dart';
 import 'bot_chat_page.dart';
 import 'bot_details_page.dart' show effortName, shortModel;
 import 'bot_format.dart';
