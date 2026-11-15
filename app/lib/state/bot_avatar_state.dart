@@ -16,7 +16,7 @@ import 'dart:math';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../ui/mascots/mascot_avatar.dart' show MascotSpec;
+import '../ui/mascots/mascot_avatar.dart' show MascotCharacter, MascotColor, MascotMotion, MascotSpec;
 import 'hosts_state.dart';
 
 /// How a Bot's avatar is drawn.
@@ -25,9 +25,11 @@ enum BotAvatarKind { text, photo, mascot, emoji }
 /// A Bot's local avatar choice. `null` for a Bot means 「as it always was」:
 /// the Host photo when there is one, else the initial.
 class BotAvatarConfig {
-  const BotAvatarConfig.text()
+  /// 字团: the letter sits where the mascot's face would be, on the mascot's
+  /// body. [mascot] is the body kept when the person switches 字团 ↔ 吉祥物;
+  /// null means 「derive one from the Bot id」 (see [letterMascotOf]).
+  const BotAvatarConfig.text([this.mascot])
     : kind = BotAvatarKind.text,
-      mascot = null,
       emoji = '';
 
   const BotAvatarConfig.photo()
@@ -63,6 +65,8 @@ class BotAvatarConfig {
   }
 
   factory BotAvatarConfig.fromJson(Object? json) => switch (json) {
+    {'kind': 'text', 'mascot': final Object? look} => BotAvatarConfig.text(MascotSpec.fromJson(look)),
+    {'kind': 'text'} => const BotAvatarConfig.text(),
     {'kind': 'mascot', 'mascot': final Object? look} => BotAvatarConfig.mascot(MascotSpec.fromJson(look)),
     {'kind': 'emoji', 'emoji': final Object? glyph} => BotAvatarConfig.emoji('${glyph ?? ''}'),
     {'kind': 'photo'} => const BotAvatarConfig.photo(),
@@ -171,6 +175,32 @@ class BotAvatarStore extends Notifier<Map<String, BotAvatarConfig>> {
       // No preferences backend (tests): the look still holds for this run.
     }
   }
+}
+
+/// 字团用哪套「身体 / 颜色 / 动作」：有配置过的 mascot 就用它（在字团和吉祥物
+/// 之间切换时保留同一副身体），没配过就按 botId 稳定派生——同一个 Bot 每次冷启动
+/// 都长一样，不同 Bot 大概率不同。不新增存档字段。
+MascotSpec letterMascotOf(BotAvatarConfig? config, String botId) {
+  final configured = config?.mascot;
+  if (configured != null) return configured;
+  final seed = stableSeedOf(botId);
+  // 派生不用 model：那是「跟随角色默认」，两个同角色 Bot 会撞脸。
+  final colors = [for (final color in MascotColor.values) if (color != MascotColor.model) color];
+  return MascotSpec(
+    character: MascotCharacter.values[seed % MascotCharacter.values.length],
+    color: colors[(seed ~/ 7) % colors.length],
+    motion: MascotMotion.values[(seed ~/ 13) % MascotMotion.values.length],
+  );
+}
+
+/// FNV-1a over UTF-8: 稳定、跨进程一致（`String.hashCode` 不保证这一点）。
+int stableSeedOf(String value) {
+  var hash = 0x811c9dc5;
+  for (final unit in utf8.encode(value)) {
+    hash ^= unit;
+    hash = (hash * 0x01000193) & 0xffffffff;
+  }
+  return hash;
 }
 
 final botAvatarProvider = NotifierProvider<BotAvatarStore, Map<String, BotAvatarConfig>>(BotAvatarStore.new);

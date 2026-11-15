@@ -12,6 +12,7 @@ import '../common/status_dot.dart';
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
 import '../mascots/mascot_avatar.dart';
+import '../mascots/mascot_letter_avatar.dart';
 import 'bot_format.dart';
 
 /// The Bot's color for the current theme.
@@ -42,6 +43,14 @@ class BotAvatar extends ConsumerWidget {
     // 本机头像覆盖（state/bot_avatar_state.dart）：吉祥物 / 表情；没配过就是原来的
     // 照片或文字首字母。列表里默认静态（animate:false），不建 ticker。
     final config = ref.watch(botAvatarProvider.select((byBot) => byBot[bot.id]));
+    // 文字头像＝字团：身体/颜色/动作沿用吉祥物那套，脸换成名字首字。
+    Widget letter() => MascotLetterAvatar(
+      spec: letterMascotOf(config, bot.id),
+      letter: monogramOf(bot.name),
+      size: size,
+      animate: animate,
+      emotion: emotion,
+    );
     final face = switch (config) {
       BotAvatarConfig(kind: BotAvatarKind.mascot, mascot: final mascot?) => MascotAvatar(spec: mascot, size: size, emotion: emotion, animate: animate),
       BotAvatarConfig(kind: BotAvatarKind.emoji, emoji: final emoji) when emoji.isNotEmpty => _EmojiFace(
@@ -49,8 +58,9 @@ class BotAvatar extends ConsumerWidget {
         color: bot.ink,
         size: size,
       ),
+      BotAvatarConfig(kind: BotAvatarKind.text) => letter(),
       _ => photo == null
-          ? BotMonogram(name: bot.name, color: bot.ink, size: size)
+          ? letter()
           : ClipOval(
               child: Image.memory(
                 photo,
@@ -58,7 +68,7 @@ class BotAvatar extends ConsumerWidget {
                 height: size,
                 fit: BoxFit.cover,
                 gaplessPlayback: true,
-                errorBuilder: (context, _, _) => BotMonogram(name: bot.name, color: bot.ink, size: size),
+                errorBuilder: (context, _, _) => letter(),
               ),
             ),
     };

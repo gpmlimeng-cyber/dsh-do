@@ -19,13 +19,18 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/l10n.dart';
 
-/// 5 个角色，顺序即选择器里的顺序。
+/// 10 个角色，顺序即选择器里的顺序（新角色只能加在末尾：顺序是存档索引）。
 enum MascotCharacter {
   sprout('芽团', 'Sprout'),
   cat('猫团', 'Cat'),
   robot('机团', 'Robot'),
   ghost('幽团', 'Ghost'),
-  jelly('果冻', 'Jelly');
+  jelly('果冻', 'Jelly'),
+  orb('圆团', 'Orb'),
+  star('星团', 'Star'),
+  triangle('角团', 'Triangle'),
+  onigiri('饭团', 'Rice ball'),
+  potato('芋团', 'Potato');
 
   const MascotCharacter(this.zh, this.en);
   final String zh;
@@ -39,6 +44,11 @@ enum MascotCharacter {
     MascotCharacter.robot => const MascotSkin(Color(0xFF6F879B), Color(0xFF162332), Color(0xFF74E5FF)),
     MascotCharacter.ghost => const MascotSkin(Color(0xFFBDEEF2), Color(0xFF23434D), Color(0xFFA9D9FF)),
     MascotCharacter.jelly => const MascotSkin(Color(0xFFF29CC2), Color(0xFF5A243E), Color(0xFFFFE0A8)),
+    MascotCharacter.orb => const MascotSkin(Color(0xFFFFD66B), Color(0xFF6B4E00), Color(0xFFFF9FB6)),
+    MascotCharacter.star => const MascotSkin(Color(0xFFFFC93C), Color(0xFF5C4300), Color(0xFFFFE9A8)),
+    MascotCharacter.triangle => const MascotSkin(Color(0xFF8FE3C8), Color(0xFF1F4A3F), Color(0xFFFFB7C5)),
+    MascotCharacter.onigiri => const MascotSkin(Color(0xFFF7F1E3), Color(0xFF3A342A), Color(0xFFF19CA0)),
+    MascotCharacter.potato => const MascotSkin(Color(0xFFC8A165), Color(0xFF4A3A1C), Color(0xFFE8C98F)),
   };
 
   /// 写进宿主 `bot.color` 的色名（model 时按角色映射，架构给的对照表）。
@@ -48,6 +58,11 @@ enum MascotCharacter {
     MascotCharacter.robot => 'gray',
     MascotCharacter.ghost => 'cyan',
     MascotCharacter.jelly => 'rose',
+    MascotCharacter.orb => 'tangerine',
+    MascotCharacter.star => 'yellow',
+    MascotCharacter.triangle => 'cyan',
+    MascotCharacter.onigiri => 'gray',
+    MascotCharacter.potato => 'brown',
   };
 }
 
@@ -214,8 +229,9 @@ class MascotSpec {
     seed: seed,
   );
 
-  /// 改过任一项动作编排 → 标签第三段显示「自定义」。
-  bool get motionCustom => body != null || eyes != null || mouth != null;
+  /// 动作编排细项已取消：`body/eyes/mouth` 只留着读旧存档，
+  /// 渲染和标签都按三档预设走，所以这里恒为 false。
+  bool get motionCustom => false;
 
   /// 跟着 App 主题色/深浅色变（旧字段，界面不再给入口）。
   final bool followAppColor;
@@ -251,13 +267,8 @@ class MascotSpec {
     seed: seed ?? this.seed,
   );
 
-  /// 「芽团 · 月光 · 好奇」。
-  String get caption {
-    final third = motionCustom
-        ? (AppLocale.isEnglish ? 'Custom' : '自定义')
-        : motion.label;
-    return '${character.label} · ${color.label} · $third';
-  }
+  /// 三段＝角色 · 颜色 · 表情（五官 · 动作预设）。
+  String get caption => '${character.label} · ${color.label} · ${face.label}·${motion.label}';
 
   Map<String, Object?> toJson() => {
     'character': character.name,
@@ -331,10 +342,6 @@ class MascotSpec {
       color: colors[r.nextInt(colors.length)],
       view: avoid.view,
       outline: avoid.outline,
-      body: avoid.body,
-      eyes: avoid.eyes,
-      mouth: avoid.mouth,
-      blink: avoid.blink,
       followAppColor: avoid.followAppColor,
       seed: seed,
     );
@@ -425,15 +432,11 @@ String? _choiceOf(Object? value, List<String> allowed) =>
   MascotMotion.curious => (body: 'work', eyes: 'wide', mouth: 'open'),
 };
 
-/// 没有情绪时的默认表情：三档预设 + 自定义覆盖。情绪态永远压过这套。
+/// 没有情绪时的默认表情：只看三档预设（动作编排细项已取消，旧存档里的值不再生效）。
+/// 情绪态永远压过这套。
 MascotExpression expressionFor(MascotSpec spec) {
   final preset = motionPreset(spec.motion);
-  return MascotExpression(
-    spec.eyes ?? preset.eyes,
-    spec.mouth ?? preset.mouth,
-    'idle',
-    spec.body ?? preset.body,
-  );
+  return MascotExpression(preset.eyes, preset.mouth, 'idle', preset.body);
 }
 
 /// 一个吉祥物头像。
@@ -441,7 +444,7 @@ MascotExpression expressionFor(MascotSpec spec) {
 /// [animate] 为 false 时是纯静态一帧（列表、消息行用），不创建 ticker；
 /// 预览区和自定义页才传 true。
 class MascotAvatar extends StatefulWidget {
-  const MascotAvatar({super.key, required this.spec, this.emotion, this.size = 48, this.animate = false});
+  const MascotAvatar({super.key, required this.spec, this.emotion, this.size = 48, this.animate = false, this.letter});
 
   final MascotSpec spec;
 
@@ -450,6 +453,9 @@ class MascotAvatar extends StatefulWidget {
   final String? emotion;
   final double size;
   final bool animate;
+
+  /// 字团：给了字就把五官位置换成这个字（[emotion] 不再影响脸）。
+  final String? letter;
 
   @override
   State<MascotAvatar> createState() => _MascotAvatarState();
@@ -506,11 +512,11 @@ class _MascotAvatarState extends State<MascotAvatar> with SingleTickerProviderSt
     return SizedBox.square(
       dimension: widget.size,
       child: _controller == null
-          ? CustomPaint(painter: MascotPainter(spec: widget.spec, emotion: widget.emotion, body: skin.body, ink: skin.ink, accent: skin.accent, phase: 0.35, dark: dark), size: Size.square(widget.size))
+          ? CustomPaint(painter: MascotPainter(spec: widget.spec, emotion: widget.emotion, letter: widget.letter, body: skin.body, ink: skin.ink, accent: skin.accent, phase: 0.35, dark: dark), size: Size.square(widget.size))
           : AnimatedBuilder(
               animation: _controller!,
               builder: (context, _) => CustomPaint(
-                painter: MascotPainter(spec: widget.spec, emotion: widget.emotion, body: skin.body, ink: skin.ink, accent: skin.accent, phase: _controller!.value, dark: dark),
+                painter: MascotPainter(spec: widget.spec, emotion: widget.emotion, letter: widget.letter, body: skin.body, ink: skin.ink, accent: skin.accent, phase: _controller!.value, dark: dark),
                 size: Size.square(widget.size),
               ),
             ),
@@ -528,10 +534,14 @@ class MascotPainter extends CustomPainter {
     required this.phase,
     this.dark = false,
     this.emotion,
+    this.letter,
   });
 
   final MascotSpec spec;
   final String? emotion;
+
+  /// 字团用：非空时在五官位置画这个字，不画眼睛/嘴/腮红。
+  final String? letter;
   final Color body;
   final Color ink;
   final Color accent;
@@ -544,7 +554,7 @@ class MascotPainter extends CustomPainter {
     final t = phase * 2 * math.pi;
     final expression = emotion == null ? expressionFor(spec) : (mascotExpressions[emotion] ?? expressionFor(spec));
     if (spec.character == MascotCharacter.sprout) {
-      _paintSprout(canvas, size, expression, t);
+      _paintSprout(canvas, size, expression, t, letter);
       return;
     }
 
@@ -604,6 +614,11 @@ class MascotPainter extends CustomPainter {
       MascotCharacter.robot => _robot(rect),
       MascotCharacter.ghost => _ghost(rect),
       MascotCharacter.jelly => _jelly(rect),
+      MascotCharacter.orb => _orb(rect),
+      MascotCharacter.star => _star(rect),
+      MascotCharacter.triangle => _triangle(rect),
+      MascotCharacter.onigiri => _onigiri(rect),
+      MascotCharacter.potato => _potato(rect),
     };
     canvas.drawPath(path, bodyPaint);
 
@@ -630,8 +645,12 @@ class MascotPainter extends CustomPainter {
     // 角色专属零件（叶子/耳朵/天线/呆毛）。
     _charParts(canvas, size, rect, t, expression.top);
 
-    // 五官。
-    _face(canvas, rect, t, expression.eyes, expression.mouth);
+    // 五官；字团时把五官位置换成名字的首字。
+    if (letter case final glyph?) {
+      _glyph(canvas, rect, glyph);
+    } else {
+      _face(canvas, rect, t, expression.eyes, expression.mouth);
+    }
 
     canvas.restore();
     _drawEffect(canvas, size, expression.effect, t, head: Offset(size.width / 2, 0.10 * s));
@@ -700,6 +719,74 @@ class MascotPainter extends CustomPainter {
     return path;
   }
 
+  // 圆团：纯球，没有顶饰。
+  Path _orb(Rect r) => Path()..addOval(Rect.fromLTWH(r.left, r.top, r.width, r.height));
+
+  // 星团：五角海星，角是圆的，中间略鼓。
+  Path _star(Rect r) {
+    final c = r.center;
+    final outer = r.width * 0.52;
+    final inner = outer * 0.48;
+    final points = <Offset>[];
+    for (var i = 0; i < 10; i++) {
+      final angle = -math.pi / 2 + i * math.pi / 5;
+      final radius = i.isEven ? outer : inner;
+      final squash = i.isEven ? 1.0 : 1.06;
+      points.add(Offset(c.dx + math.cos(angle) * radius, c.dy + math.sin(angle) * radius * squash));
+    }
+    return _roundedPolygon(points);
+  }
+
+  // 三角：软糖那种圆润三角，顶点不尖。
+  Path _triangle(Rect r) {
+    final points = [
+      Offset(r.center.dx, r.top - r.height * 0.04),
+      Offset(r.right + r.width * 0.04, r.bottom - r.height * 0.02),
+      Offset(r.left - r.width * 0.04, r.bottom - r.height * 0.02),
+    ];
+    return _roundedPolygon(points);
+  }
+
+  // 饭团：圆顶、平底的奶白饭团（海苔在 _charParts 里画）。
+  Path _onigiri(Rect r) => Path()
+    ..addRRect(
+      RRect.fromRectAndCorners(
+        Rect.fromLTWH(r.left + r.width * 0.02, r.top, r.width * 0.96, r.height),
+        topLeft: Radius.circular(r.width * 0.46),
+        topRight: Radius.circular(r.width * 0.46),
+        bottomLeft: Radius.circular(r.width * 0.18),
+        bottomRight: Radius.circular(r.width * 0.18),
+      ),
+    );
+
+  // 土豆：不规则扁椭圆，轮廓带几处起伏。
+  Path _potato(Rect r) {
+    final c = r.center;
+    final w = r.width;
+    final h = r.height;
+    final path = Path()..moveTo(c.dx - w * 0.46, c.dy + h * 0.06);
+    path.cubicTo(c.dx - w * 0.50, c.dy - h * 0.30, c.dx - w * 0.16, c.dy - h * 0.52, c.dx + w * 0.16, c.dy - h * 0.48);
+    path.cubicTo(c.dx + w * 0.48, c.dy - h * 0.44, c.dx + w * 0.52, c.dy - h * 0.06, c.dx + w * 0.44, c.dy + h * 0.22);
+    path.cubicTo(c.dx + w * 0.36, c.dy + h * 0.50, c.dx - w * 0.10, c.dy + h * 0.54, c.dx - w * 0.34, c.dy + h * 0.44);
+    path.cubicTo(c.dx - w * 0.46, c.dy + h * 0.34, c.dx - w * 0.46, c.dy + h * 0.20, c.dx - w * 0.46, c.dy + h * 0.06);
+    return path..close();
+  }
+
+  /// 顶点之间用二次贝塞尔过点，得到「圆角多边形」。
+  Path _roundedPolygon(List<Offset> points) {
+    final path = Path();
+    final n = points.length;
+    Offset mid(Offset a, Offset b) => Offset((a.dx + b.dx) / 2, (a.dy + b.dy) / 2);
+    final start = mid(points[n - 1], points[0]);
+    path.moveTo(start.dx, start.dy);
+    for (var i = 0; i < n; i++) {
+      final current = points[i];
+      final next = mid(current, points[(i + 1) % n]);
+      path.quadraticBezierTo(current.dx, current.dy, next.dx, next.dy);
+    }
+    return path..close();
+  }
+
   // ── 角色专属零件 ──
 
   void _charParts(Canvas canvas, Size size, Rect r, double t, String top) {
@@ -765,6 +852,36 @@ class MascotPainter extends CustomPainter {
         // 果冻的亮点。
         canvas.drawCircle(Offset(r.left + r.width * 0.26, r.top + r.height * 0.26), size.width * 0.030, Paint()..color = Colors.white.withValues(alpha: 0.55));
         canvas.drawCircle(Offset(r.left + r.width * 0.38, r.top + r.height * 0.18), size.width * 0.016, Paint()..color = Colors.white.withValues(alpha: 0.45));
+      case MascotCharacter.onigiri:
+        // 底部一条海苔（Miffan 的饭团）；顶角一点米粒高光。
+        final nori = RRect.fromRectAndCorners(
+          Rect.fromLTWH(r.center.dx - r.width * 0.19, r.top + r.height * 0.66, r.width * 0.38, r.height * 0.34),
+          topLeft: Radius.circular(r.width * 0.03),
+          topRight: Radius.circular(r.width * 0.03),
+          bottomLeft: Radius.circular(r.width * 0.14),
+          bottomRight: Radius.circular(r.width * 0.14),
+        );
+        canvas.drawRRect(nori, Paint()..color = const Color(0xFF2F3B2F));
+        canvas.drawCircle(Offset(r.left + r.width * 0.30, r.top + r.height * 0.20), size.width * 0.014, Paint()..color = Colors.white.withValues(alpha: 0.55));
+        // 腮红（Miffan 的饭团有）。
+        for (final left in [true, false]) {
+          final x = left ? r.left + r.width * 0.24 : r.right - r.width * 0.24;
+          canvas.drawOval(
+            Rect.fromCenter(center: Offset(x, r.top + r.height * 0.57), width: r.width * 0.13, height: r.height * 0.055),
+            Paint()..color = accent.withValues(alpha: 0.75),
+          );
+        }
+      case MascotCharacter.potato:
+        // 土豆斑点：outline 降透明度点几颗。
+        final spot = Paint()..color = _darken(body, 0.52).withValues(alpha: 0.45);
+        canvas.drawOval(Rect.fromCenter(center: Offset(r.left + r.width * 0.26, r.top + r.height * 0.30), width: size.width * 0.050, height: size.width * 0.034), spot);
+        canvas.drawOval(Rect.fromCenter(center: Offset(r.right - r.width * 0.24, r.center.dy + r.height * 0.06), width: size.width * 0.040, height: size.width * 0.028), spot);
+        canvas.drawOval(Rect.fromCenter(center: Offset(r.center.dx - r.width * 0.06, r.bottom - r.height * 0.16), width: size.width * 0.030, height: size.width * 0.022), spot);
+      case MascotCharacter.orb:
+      case MascotCharacter.star:
+      case MascotCharacter.triangle:
+        // 圆团/星团/三角没有额外顶饰。
+        break;
     }
   }
 
@@ -772,6 +889,26 @@ class MascotPainter extends CustomPainter {
 
   /// [eyes]/[mouth] 是情绪配方里的词（open/closed/wide/happy/sad/thinking/
   /// angry/love/cry/bored；neutral/smile/open/flat/frown/talk）。
+  /// 字团的脸：身体中间一个字；深底白字、浅底深字，按身体明度挑。
+  void _glyph(Canvas canvas, Rect r, String glyph) {
+    final glyphInk = body.computeLuminance() < 0.42 ? Colors.white.withValues(alpha: 0.94) : _darken(body, 0.62);
+    final painter = TextPainter(
+      text: TextSpan(
+        text: glyph,
+        style: TextStyle(
+          color: glyphInk,
+          fontSize: r.width * 0.46,
+          fontWeight: FontWeight.w700,
+          height: 1,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+      maxLines: 1,
+    )..layout();
+    final center = Offset(r.center.dx - painter.width / 2, r.top + r.height * 0.46 - painter.height / 2);
+    painter.paint(canvas, center);
+  }
+
   void _face(Canvas canvas, Rect r, double t, String eyes, String mouth) {
     final gaze = spec.motion == MascotMotion.curious ? math.sin(t) * r.width * 0.035 : 0.0;
     final eyeY = r.top + r.height * 0.44;
@@ -913,7 +1050,7 @@ class MascotPainter extends CustomPainter {
   // 眼坐标 34,43 与 66,43、眼白 rx10 ry11.5、瞳孔 r6.2、腮红 20/80,57）、
   // src/characters/sprout.model.css|js（border-radius 50% 50% 46% 49%、叶子
   // 37×40 在 top -34、脚的 22×16 椭圆）。
-  void _paintSprout(Canvas canvas, Size size, MascotExpression expr, double t) {
+  void _paintSprout(Canvas canvas, Size size, MascotExpression expr, double t, String? letter) {
     const contentW = 100.0;
     const bodyTop = 40.0;
     const contentH = 148.0;
@@ -1027,20 +1164,38 @@ class MascotPainter extends CustomPainter {
     Offset f(double x, double y) => p(faceInset + x * faceScale, bodyTop + faceInset + y * faceScale);
     final u = scale * faceScale;
 
-    // 腮红。
-    for (final cx in [20.0, 80.0]) {
-      canvas.drawOval(
-        Rect.fromCenter(center: f(cx, 57), width: 14 * u, height: 8 * u),
-        Paint()..color = accent.withValues(alpha: 0.75),
-      );
-    }
-
-    _sproutEyes(canvas, f, u, expr.eyes, t, spec.face, spec.blink && math.sin(t) > 0.997);
-    _sproutMouth(canvas, f, u, expr.mouth);
     _sproutLeaf(canvas, p, scale, expr.top, t);
+    if (letter case final glyph?) {
+      // 字团：五官位置换成名字首字，不画眼/嘴/腮红。
+      _sproutGlyph(canvas, f, u, glyph);
+    } else {
+      // 腮红。
+      for (final cx in [20.0, 80.0]) {
+        canvas.drawOval(
+          Rect.fromCenter(center: f(cx, 57), width: 14 * u, height: 8 * u),
+          Paint()..color = accent.withValues(alpha: 0.75),
+        );
+      }
+      _sproutEyes(canvas, f, u, expr.eyes, t, spec.face, math.sin(t) > 0.997);
+      _sproutMouth(canvas, f, u, expr.mouth);
+    }
     canvas.restore();
     // 特效锚点在角色头上（engine 的 head 锚点 50,14；按身体比例折算）。
     _drawEffect(canvas, size, expr.effect, t, head: Offset(size.width / 2, 0.16 * size.shortestSide));
+  }
+
+  void _sproutGlyph(Canvas canvas, Offset Function(double, double) f, double u, String glyph) {
+    final glyphInk = body.computeLuminance() < 0.42 ? Colors.white.withValues(alpha: 0.94) : _darken(body, 0.62);
+    final painter = TextPainter(
+      text: TextSpan(
+        text: glyph,
+        style: TextStyle(color: glyphInk, fontSize: 46 * u, fontWeight: FontWeight.w700, height: 1),
+      ),
+      textDirection: TextDirection.ltr,
+      maxLines: 1,
+    )..layout();
+    final center = f(50, 50);
+    painter.paint(canvas, Offset(center.dx - painter.width / 2, center.dy - painter.height / 2));
   }
 
   void _sproutEyes(Canvas canvas, Offset Function(double, double) f, double u, String style, double t, MascotFace face, bool blinking) {
@@ -1304,7 +1459,7 @@ class MascotPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(MascotPainter oldDelegate) =>
-      oldDelegate.spec != spec || oldDelegate.emotion != emotion || oldDelegate.body != body || oldDelegate.phase != phase || oldDelegate.dark != dark;
+      oldDelegate.spec != spec || oldDelegate.emotion != emotion || oldDelegate.letter != letter || oldDelegate.body != body || oldDelegate.phase != phase || oldDelegate.dark != dark;
 }
 
 /// 按 enum 的 `name`（或 `wire`）取值；未知/缺失回落到 [fallback]。

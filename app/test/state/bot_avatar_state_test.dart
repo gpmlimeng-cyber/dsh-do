@@ -217,7 +217,7 @@ void main() {
     });
 
     test('randomDifferent changes the character and colour and keeps the rest', () {
-      final before = cat.copyWith(body: 'bounce', eyes: 'happy', mouth: 'smile', blink: false);
+      final before = cat;
       final next = MascotSpec.randomDifferent(before, Random(7));
       expect(next.character, isNot(before.character));
       expect(next.color, isNot(before.color));
@@ -225,15 +225,8 @@ void main() {
       expect(next.view, before.view);
       expect(next.outline, before.outline);
       expect(next.followAppColor, before.followAppColor);
-      expect(next.body, 'bounce');
-      expect(next.eyes, 'happy');
-      expect(next.mouth, 'smile');
-      expect(next.blink, isFalse);
     });
 
-    test('the caption names character, colour and motion', () {
-      expect(cat.caption, '猫团 · 薰衣草紫 · 安静');
-    });
 
     test('a random seed is kept so the look can be reproduced', () {
       final spec = MascotSpec.random(Random(5));
@@ -242,84 +235,102 @@ void main() {
     });
   });
 
-  group('custom motion', () {
-    test('the three lists are the demo ones', () {
-      expect(mascotBodyActions.length, 10);
-      expect(mascotEyeStates.length, 10);
-      expect(mascotMouthStates.length, 6);
-    });
-
-    test('custom body, eyes and mouth survive the JSON round trip', () {
-      final spec = cat.copyWith(body: 'bounce', eyes: 'happy', mouth: 'smile', blink: false);
-      final wire = jsonDecode(jsonEncode(spec.toJson())) as Map<String, Object?>;
-      expect(wire['body'], 'bounce');
-      expect(wire['eyes'], 'happy');
-      expect(wire['mouth'], 'smile');
-      expect(wire['blink'], false);
-
-      final back = MascotSpec.fromJson(wire);
-      expect(back.body, 'bounce');
-      expect(back.eyes, 'happy');
-      expect(back.mouth, 'smile');
-      expect(back.blink, isFalse);
-      expect(back == spec, isTrue);
-    });
-
-    test('a custom look is not equal to one that only differs in its motion', () {
-      final plain = cat;
-      final custom = plain.copyWith(body: 'bounce');
-      expect(custom == plain, isFalse);
-    });
-
-    test('a name outside the demo lists reads as "follow the emotion"', () {
-      final spec = MascotSpec.fromJson({
-        'body': 'fly',
-        'eyes': 'laser',
-        'mouth': 'grin',
-      });
-      expect(spec.body, isNull);
-      expect(spec.eyes, isNull);
-      expect(spec.mouth, isNull);
-      expect(spec.motionCustom, isFalse);
-    });
-
-    test('blink defaults to true and only false is stored', () {
-      expect(MascotSpec.fromJson(const <String, Object?>{}).blink, isTrue);
-      expect(MascotSpec.fromJson({'blink': false}).blink, isFalse);
-      expect(const MascotSpec().toJson().containsKey('blink'), isFalse);
-      expect(const MascotSpec(blink: false).toJson()['blink'], false);
-    });
-
-    test('a preset expands to its body, eyes and mouth', () {
+  group('motion presets', () {
+    test('each preset expands to its body, eyes and mouth', () {
       expect(motionPreset(MascotMotion.lively), (body: 'bounce', eyes: 'happy', mouth: 'smile'));
       expect(motionPreset(MascotMotion.quiet), (body: 'breathe', eyes: 'open', mouth: 'flat'));
       expect(motionPreset(MascotMotion.curious), (body: 'work', eyes: 'wide', mouth: 'open'));
     });
 
-    test('a preset clears the custom motion; a custom value overrides it', () {
-      final custom = cat.copyWith(body: 'bounce', eyes: 'happy', mouth: 'smile');
-      final preset = custom.withPresetMotion(MascotMotion.quiet);
-      expect(preset.motionCustom, isFalse);
-      expect(preset.body, isNull);
-      expect(preset.eyes, isNull);
-      expect(preset.mouth, isNull);
-
-      final expression = expressionFor(custom);
-      expect(expression.body, 'bounce');
-      expect(expression.eyes, 'happy');
-      expect(expression.mouth, 'smile');
-      final fromPreset = expressionFor(MascotSpec(motion: MascotMotion.curious));
-      expect(fromPreset.body, 'work');
-      expect(fromPreset.eyes, 'wide');
-      expect(fromPreset.mouth, 'open');
+    test('an old blink or motion value reads without breaking', () {
+      expect(MascotSpec.fromJson(const <String, Object?>{}).blink, isTrue);
+      expect(MascotSpec.fromJson({'blink': false}).blink, isFalse);
+      // Old saves may still carry custom motion values; reading them must not throw.
+      final old = MascotSpec.fromJson({'body': 'bounce', 'eyes': 'happy', 'mouth': 'smile', 'blink': false});
+      expect(old.blink, isFalse);
     });
 
-    test('a custom motion marks the caption custom in both languages', () {
-      final custom = cat.copyWith(body: 'bounce');
-      expect(custom.caption.endsWith('自定义'), isTrue);
-      AppLocale.use(AppLocale.en);
+    test('the caption is 角色 · 颜色 · 表情 in both languages', () {
       addTearDown(() => AppLocale.use(AppLocale.zhCN));
-      expect(custom.caption.endsWith('Custom'), isTrue);
+      AppLocale.use(AppLocale.zhCN);
+      expect(cat.caption,
+          '${MascotCharacter.cat.zh} · ${MascotColor.lavender.zh} · ${cat.face.zh}·${cat.motion.zh}');
+
+      AppLocale.use(AppLocale.en);
+      expect(cat.caption,
+          '${MascotCharacter.cat.en} · ${MascotColor.lavender.en} · ${cat.face.en}·${cat.motion.en}');
+      // No Chinese left in the English caption (G7).
+      expect(RegExp(r'[\u4e00-\u9fff]').hasMatch(cat.caption), isFalse);
+    });
+
+    test('a preset caption follows the app language too', () {
+      addTearDown(() => AppLocale.use(AppLocale.zhCN));
+      final preset = MascotSpec(character: MascotCharacter.sprout, color: MascotColor.mint);
+      AppLocale.use(AppLocale.en);
+      expect(preset.caption,
+          '${MascotCharacter.sprout.en} · ${MascotColor.mint.en} · ${MascotFace.standard.en}·${MascotMotion.lively.en}');
+      AppLocale.use(AppLocale.zhCN);
+      expect(preset.caption,
+          '${MascotCharacter.sprout.zh} · ${MascotColor.mint.zh} · ${MascotFace.standard.zh}·${MascotMotion.lively.zh}');
+    });
+  });
+
+  group('letter mascot', () {
+    test('the seed is stable FNV-1a', () {
+      expect(stableSeedOf('b1'), 2351703228);
+      expect(stableSeedOf('猫团'), 1725553031);
+      expect(stableSeedOf('b1'), stableSeedOf('b1'));
+    });
+
+    test('a Bot without a look derives one from its id', () {
+      // The character pool grows with the enum, so b1's derived body changes when a
+      // role is added; every other Bot keeps its id-derived stability.
+      final seed = stableSeedOf('b1');
+      final colors = [for (final color in MascotColor.values) if (color != MascotColor.model) color];
+      final derived = letterMascotOf(null, 'b1');
+      expect(derived.character, MascotCharacter.values[seed % MascotCharacter.values.length]);
+      expect(derived.color, colors[(seed ~/ 7) % colors.length]);
+      expect(derived.motion, MascotMotion.values[(seed ~/ 13) % MascotMotion.values.length]);
+      expect(letterMascotOf(null, 'b1'), derived);
+    });
+
+    test('the ten-role derivation table is stable', () {
+      // Indices follow the enum order (new roles appended after jelly); the colour
+      // pool is the 11 presets, model excluded, and motion is the 3 presets.
+      final colors = [for (final color in MascotColor.values) if (color != MascotColor.model) color];
+      const table = [
+        ('b1', 8, 4, 2),
+        ('b3', 6, 7, 1),
+        ('bot-1', 2, 1, 2),
+        ('猫团', 1, 6, 1),
+      ];
+      for (final (id, character, color, motion) in table) {
+        final derived = letterMascotOf(null, id);
+        expect(derived.character, MascotCharacter.values[character], reason: '$id character');
+        expect(derived.color, colors[color], reason: '$id colour');
+        expect(derived.motion, MascotMotion.values[motion], reason: '$id motion');
+      }
+    });
+
+    test('different Bots do not all get the same body', () {
+      final looks = {for (final id in ['a', 'b', 'c', 'd', 'e']) letterMascotOf(null, id)};
+      expect(looks.length, greaterThan(1));
+    });
+
+    test('a text config with a body keeps that body', () {
+      final config = BotAvatarConfig.text(cat);
+      expect(letterMascotOf(config, 'b1'), cat);
+    });
+
+    test('the kept body survives the JSON round trip', () {
+      final config = BotAvatarConfig.text(cat);
+      final wire = jsonDecode(jsonEncode(config.toJson())) as Map<String, Object?>;
+      expect(wire['kind'], 'text');
+      expect(wire['mascot'], isNotNull);
+      final back = BotAvatarConfig.fromJson(wire);
+      expect(back, config);
+      expect(back.kind, BotAvatarKind.text);
+      expect(back.mascot, cat);
     });
   });
 

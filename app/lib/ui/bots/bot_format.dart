@@ -75,11 +75,12 @@ String modelLabel(String? ref, List<DsBotModel> models) {
 }
 
 /// The first character of a name, upper-cased for Latin letters.
+///
+/// Takes one grapheme (`characters`), so an emoji counts as a single letter.
 String monogramOf(String name) {
   final trimmed = name.trim();
   if (trimmed.isEmpty) return '?';
-  final first = String.fromCharCodes(trimmed.runes.take(1));
-  return first.toUpperCase();
+  return trimmed.characters.first.toUpperCase();
 }
 
 /// A group's last line: 「Writer：……」, the user's own as 「你：……」.

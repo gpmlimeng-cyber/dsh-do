@@ -6,8 +6,10 @@
 import 'package:flutter/material.dart';
 
 import '../../l10n/l10n.dart';
+import '../bots/bot_format.dart' show monogramOf;
 import '../theme/theme.dart';
 import 'mascot_avatar.dart';
+import 'mascot_letter_avatar.dart';
 
 String _t(String zh, String en) => AppLocale.current.languageCode == 'zh' ? zh : en;
 
@@ -24,13 +26,17 @@ Future<MascotChoice?> openMascotCustomizer(
   BuildContext context, {
   required MascotSpec initial,
   bool text = false,
+  String name = '',
 }) => Navigator.of(context).push<MascotChoice>(
-  MaterialPageRoute(builder: (_) => MascotCustomizer(initial: initial, text: text)),
+  MaterialPageRoute(builder: (_) => MascotCustomizer(initial: initial, text: text, name: name)),
 );
 
 /// 预览圆：浅色圆底 + 会动的吉祥物。
+///
+/// [emotion] 留空＝按当前配置画：五官、动作预设、自定义编排都直接反映，
+/// 这就是用户说的「实时看到当前配置」。
 class MascotPreview extends StatelessWidget {
-  const MascotPreview({super.key, required this.spec, this.emotion = '02', this.size = 132});
+  const MascotPreview({super.key, required this.spec, this.emotion, this.size = 132});
 
   final MascotSpec spec;
   final String? emotion;
@@ -49,9 +55,12 @@ class MascotPreview extends StatelessWidget {
 }
 
 class MascotCustomizer extends StatefulWidget {
-  const MascotCustomizer({super.key, required this.initial, this.text = false});
+  const MascotCustomizer({super.key, required this.initial, this.text = false, this.name = ''});
 
   final MascotSpec initial;
+
+  /// 新建伙伴时已经打的名字：字团预览用它的首字素（没名字就先一个问号）。
+  final String name;
 
   /// 进来时是「文字头像」。
   final bool text;
@@ -112,6 +121,7 @@ class _MascotCustomizerState extends State<MascotCustomizer> {
                             children: [
                               _CharacterGrid(
                                 spec: _spec,
+                                name: widget.name,
                                 text: _text,
                                 onText: () => setState(() => _text = true),
                                 onPick: (c) => setState(() {
@@ -121,11 +131,6 @@ class _MascotCustomizerState extends State<MascotCustomizer> {
                               ),
                               const SizedBox(height: 16),
                               _MotionList(spec: _spec, onPick: (m) => setState(() => _spec = _spec.withPresetMotion(m))),
-                              const SizedBox(height: 12),
-                              _ActionComposer(
-                                spec: _spec,
-                                onChanged: (next) => setState(() => _spec = next),
-                              ),
                             ],
                           ),
                         _Tab.color => _ColorGrid(
@@ -159,7 +164,7 @@ class _PreviewCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final caption = text
-        ? '${_t('文字头像', 'Text')} · ${spec.color.label} · ${spec.motion.label}'
+        ? '${_t('字团', 'Letter')} · ${spec.color.label} · ${spec.face.label}·${spec.motion.label}'
         : spec.caption;
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
@@ -169,7 +174,7 @@ class _PreviewCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          MascotPreview(spec: spec, emotion: '02'),
+          MascotPreview(spec: spec),
           const SizedBox(height: 10),
           Text(caption, style: theme.textTheme.bodySmall?.copyWith(color: DshColors.of(context).textTertiary)),
         ],
@@ -223,9 +228,10 @@ class _TabBar extends StatelessWidget {
 }
 
 class _CharacterGrid extends StatelessWidget {
-  const _CharacterGrid({required this.spec, required this.text, required this.onText, required this.onPick});
+  const _CharacterGrid({required this.spec, required this.name, required this.text, required this.onText, required this.onPick});
 
   final MascotSpec spec;
+  final String name;
   final bool text;
   final VoidCallback onText;
   final ValueChanged<MascotCharacter> onPick;
@@ -236,6 +242,11 @@ class _CharacterGrid extends StatelessWidget {
     MascotCharacter.robot: '天线轻闪 · 圆角铁壳',
     MascotCharacter.ghost: '漂浮无声 · 波浪尾巴',
     MascotCharacter.jelly: '轻晃光泽 · 弹性半球',
+    MascotCharacter.orb: '纯圆小球 · 没有顶饰',
+    MascotCharacter.star: '五角圆润 · 中间略鼓',
+    MascotCharacter.triangle: '软糖角团 · 圆角',
+    MascotCharacter.onigiri: '奶白圆身 · 底部海苔',
+    MascotCharacter.potato: '不规则椭圆 · 带斑点',
   };
 
   @override
@@ -244,16 +255,16 @@ class _CharacterGrid extends StatelessWidget {
       crossAxisCount: 3,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 10,
-      crossAxisSpacing: 10,
+      mainAxisSpacing: 12,
+      crossAxisSpacing: 8,
       childAspectRatio: 0.92,
       children: [
         _CharacterCell(
-          label: _t('文字头像', 'Text'),
+          label: _t('字团', 'Letter'),
           hint: _t('名字的首字', 'First letter'),
           selected: text,
           onTap: onText,
-          avatar: _TextFace(spec: spec, size: 44),
+          avatar: MascotLetterAvatar(spec: spec, letter: monogramOf(name), size: 44),
         ),
         for (final character in MascotCharacter.values)
           _CharacterCell(
@@ -323,36 +334,6 @@ class _CharacterCell extends StatelessWidget {
   }
 }
 
-/// 文字头像的预览：名字首字占位 + 当前颜色。
-class _TextFace extends StatelessWidget {
-  const _TextFace({required this.spec, required this.size});
-
-  final MascotSpec spec;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final dark = theme.brightness == Brightness.dark;
-    final skin = mascotSkinOf(spec, theme.colorScheme);
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(shape: BoxShape.circle, color: skin.body.withValues(alpha: dark ? 0.30 : 0.18)),
-      child: Center(
-        child: Text(
-          _t('字', 'A'),
-          style: theme.textTheme.titleMedium?.copyWith(
-            color: skin.body,
-            fontWeight: FontWeight.w600,
-            fontSize: size * 0.38,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _ColorGrid extends StatelessWidget {
   const _ColorGrid({required this.spec, required this.onPick});
 
@@ -361,48 +342,104 @@ class _ColorGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 紧凑网格：4 列、12 格预设（「跟随默认」是第 12 格），一屏看全。
+    // 格子高度按内容算（头像 58 + 标签 + 内边距），换屏幕宽度也不会溢出。
+    const columns = 4;
+    const gap = 8.0;
+    const cellHeight = 98.0;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cellWidth = (constraints.maxWidth - gap * (columns - 1)) / columns;
+        return GridView.count(
+          crossAxisCount: columns,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 12,
+          crossAxisSpacing: gap,
+          childAspectRatio: cellWidth / cellHeight,
+          children: [
+            for (final color in MascotColor.values)
+              _ColorCell(
+                spec: spec,
+                color: color,
+                selected: spec.color == color && !spec.followAppColor,
+                onTap: () => onPick(color),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _ColorCell extends StatelessWidget {
+  const _ColorCell({required this.spec, required this.color, required this.selected, required this.onTap});
+
+  final MascotSpec spec;
+  final MascotColor color;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return GridView.count(
-      crossAxisCount: 3,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
-      childAspectRatio: 1.05,
-      children: [
-        for (final color in MascotColor.values)
-          GestureDetector(
-            onTap: () => onPick(color),
-            behavior: HitTestBehavior.opaque,
-            child: Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(3),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: spec.color == color && !spec.followAppColor
-                          ? theme.colorScheme.primary
-                          : Colors.transparent,
-                      width: 1.6,
-                    ),
-                  ),
-                  child: MascotAvatar(
-                    spec: spec.copyWith(color: color, followAppColor: false),
-                    emotion: '02',
-                    size: 56,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  color == MascotColor.model ? _t('默认色', 'Model') : color.label,
-                  maxLines: 1,
-                  style: theme.textTheme.labelMedium,
-                ),
-              ],
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: AppMotion.of(context, AppMotion.quick),
+        padding: const EdgeInsets.fromLTRB(4, 10, 4, 6),
+        decoration: ShapeDecoration(
+          color: selected ? theme.colorScheme.primary.withValues(alpha: 0.08) : Colors.transparent,
+          shape: RoundedSuperellipseBorder(
+            borderRadius: const BorderRadius.all(Radius.circular(AppShape.md)),
+            side: BorderSide(
+              color: selected ? theme.colorScheme.primary : Colors.transparent,
+              width: 1.4,
             ),
           ),
-      ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 58,
+              height: 58,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  MascotAvatar(
+                    spec: spec.copyWith(color: color, followAppColor: false),
+                    emotion: '02',
+                    size: 58,
+                  ),
+                  if (selected)
+                    Positioned(
+                      right: -2,
+                      top: -2,
+                      child: Container(
+                        width: 18,
+                        height: 18,
+                        decoration: BoxDecoration(shape: BoxShape.circle, color: theme.colorScheme.primary),
+                        child: Icon(Icons.check, size: 13, color: theme.colorScheme.onPrimary),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              color == MascotColor.model ? _t('默认色', 'Model') : color.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.labelSmall?.copyWith(
+                fontSize: 12,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -532,143 +569,3 @@ class _MotionList extends StatelessWidget {
   }
 }
 // l10n:keep-end
-
-/// 「动作编排」：demo 那页的三组 + 快速眨眼；改任一项就成「自定义」，只在空闲态生效。
-class _ActionComposer extends StatelessWidget {
-  const _ActionComposer({required this.spec, required this.onChanged});
-
-  final MascotSpec spec;
-  final ValueChanged<MascotSpec> onChanged;
-
-  MascotSpec _set({String? body, String? eyes, String? mouth, bool? blink, bool clearBody = false, bool clearEyes = false, bool clearMouth = false}) => MascotSpec(
-    character: spec.character,
-    face: spec.face,
-    motion: spec.motion,
-    color: spec.color,
-    view: spec.view,
-    outline: spec.outline,
-    body: clearBody ? null : (body ?? spec.body),
-    eyes: clearEyes ? null : (eyes ?? spec.eyes),
-    mouth: clearMouth ? null : (mouth ?? spec.mouth),
-    blink: blink ?? spec.blink,
-    followAppColor: spec.followAppColor,
-    seed: spec.seed,
-  );
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final muted = DshColors.of(context).textTertiary;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-      decoration: ShapeDecoration(
-        color: theme.colorScheme.onSurface.withValues(alpha: 0.04),
-        shape: const RoundedSuperellipseBorder(borderRadius: BorderRadius.all(Radius.circular(AppShape.lg))),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(_t('动作编排', 'Choreography'), style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600)),
-              const SizedBox(width: 8),
-              if (spec.motionCustom)
-                Text(
-                  _t('自定义', 'Custom'),
-                  style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary),
-                ),
-              const Spacer(),
-              Text(_t('只在空闲时生效', 'Idle only'), style: theme.textTheme.labelSmall?.copyWith(color: muted)),
-            ],
-          ),
-          const SizedBox(height: 10),
-          _Group(
-            title: _t('身体动作', 'Body'),
-            values: mascotBodyActions,
-            current: spec.body,
-            onPick: (v) => onChanged(v == null ? _set(clearBody: true) : _set(body: v)),
-          ),
-          const SizedBox(height: 8),
-          _Group(
-            title: _t('眼睛状态', 'Eyes'),
-            values: mascotEyeStates,
-            current: spec.eyes,
-            onPick: (v) => onChanged(v == null ? _set(clearEyes: true) : _set(eyes: v)),
-          ),
-          const SizedBox(height: 8),
-          _Group(
-            title: _t('嘴巴状态', 'Mouth'),
-            values: mascotMouthStates,
-            current: spec.mouth,
-            onPick: (v) => onChanged(v == null ? _set(clearMouth: true) : _set(mouth: v)),
-          ),
-          const SizedBox(height: 6),
-          SwitchListTile(
-            value: spec.blink,
-            onChanged: (on) => onChanged(_set(blink: on)),
-            contentPadding: EdgeInsets.zero,
-            dense: true,
-            title: Text(_t('快速眨眼', 'Quick blink'), style: theme.textTheme.bodyMedium),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Group extends StatelessWidget {
-  const _Group({required this.title, required this.values, required this.current, required this.onPick});
-
-  final String title;
-  final List<String> values;
-  final String? current;
-  final ValueChanged<String?> onPick;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: theme.textTheme.labelSmall?.copyWith(color: DshColors.of(context).textTertiary)),
-        const SizedBox(height: 6),
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: [
-            _chip(context, _t('跟随情绪', 'Auto'), current == null, () => onPick(null)),
-            for (final value in values) _chip(context, value, current == value, () => onPick(value)),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _chip(BuildContext context, String label, bool selected, VoidCallback onTap) {
-    final theme = Theme.of(context);
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: AppMotion.of(context, AppMotion.quick),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: ShapeDecoration(
-          color: selected ? theme.colorScheme.primary.withValues(alpha: 0.12) : theme.colorScheme.surface,
-          shape: RoundedSuperellipseBorder(
-            borderRadius: BorderRadius.all(Radius.circular(AppShape.sm)),
-            side: BorderSide(
-              color: selected ? theme.colorScheme.primary : theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
-              width: selected ? 1.4 : 0.8,
-            ),
-          ),
-        ),
-        child: Text(
-          label,
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: selected ? theme.colorScheme.primary : DshColors.of(context).textTertiary,
-          ),
-        ),
-      ),
-    );
-  }
-}

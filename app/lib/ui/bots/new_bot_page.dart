@@ -24,6 +24,7 @@ import '../common/discard_guard.dart';
 import '../common/list_page_row.dart';
 import '../mascots/mascot_avatar.dart';
 import '../mascots/mascot_customizer.dart' show openMascotCustomizer;
+import '../mascots/mascot_letter_avatar.dart';
 import '../providers/provider_widgets.dart' show FormBottomBar, FormFieldBlock, FormFieldGroup;
 import '../settings/settings_widgets.dart' show SettingsSection;
 import '../shell/page_frame.dart';
@@ -138,7 +139,7 @@ class _NewBotPageState extends ConsumerState<NewBotPage> {
   }
 
   Future<void> _customize() async {
-    final choice = await openMascotCustomizer(context, initial: _spec, text: _textAvatar);
+    final choice = await openMascotCustomizer(context, initial: _spec, text: _textAvatar, name: _name.text);
     if (choice == null || !mounted) return;
     setState(() {
       _spec = choice.spec;
@@ -175,7 +176,7 @@ class _NewBotPageState extends ConsumerState<NewBotPage> {
       // 头像只存本机：创建成功拿到 id 再写。
       await ref
           .read(botAvatarProvider.notifier)
-          .set(bot.id, _textAvatar ? const BotAvatarConfig.text() : BotAvatarConfig.mascot(_spec));
+          .set(bot.id, _textAvatar ? BotAvatarConfig.text(_spec) : BotAvatarConfig.mascot(_spec));
       if (!mounted || !scope.connected(ref)) return;
       await hub.refresh();
       if (!mounted || !scope.connected(ref)) return;
@@ -215,13 +216,13 @@ class _NewBotPageState extends ConsumerState<NewBotPage> {
                     key: const ValueKey('bot-avatar-preview'),
                     onTap: _customize,
                     child: _textAvatar
-                        ? BotMonogram(name: name.isEmpty ? '?' : name, color: _hostColor, size: 112)
-                        : MascotAvatar(spec: _spec, emotion: '02', size: 112, animate: true),
+                        ? MascotLetterAvatar(spec: _spec, letter: monogramOf(name), size: 112, animate: true)
+                        : MascotAvatar(spec: _spec, size: 112, animate: true),
                   ),
                   const SizedBox(height: 10),
                   Text(
                     _textAvatar
-                        ? '${_t('文字头像', 'Text')} · ${_spec.color.label} · ${_spec.motion.label}'
+                        ? '${_t('字团', 'Letter')} · ${_spec.color.label} · ${_spec.face.label}·${_spec.motion.label}'
                         : _spec.caption,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(color: DshColors.of(context).textTertiary),
                   ),
