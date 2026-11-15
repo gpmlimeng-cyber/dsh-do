@@ -84,6 +84,23 @@ abstract final class ImStrings {
   static String get remote => _zh ? '主机与远程' : 'Host & remote';
   static String get needsConversation => _zh ? '先在时间线里和 Bot 聊一句' : 'Chat with a Bot first';
 
+  // ── 发现页卡片的一句话 ──
+  static String get discoverBotsSub => _zh ? 'Bot 团队与群聊' : 'Bot teams and group chats';
+  static String get discoverJobsSub => _zh ? '长任务现在跑到哪' : 'Where long jobs stand';
+  static String get discoverWorkspacesSub => _zh ? '添加与切换目录' : 'Add and switch folders';
+  static String get discoverShareSub => _zh ? '分享给同事' : 'Share with a colleague';
+  static String get discoverTerminalSub => _zh ? '命令行' : 'A command line';
+  static String get discoverPhoneSub => _zh ? '看屏幕、帮你点按' : 'See the screen, tap for you';
+  static String get discoverVoiceSub => _zh ? '输入框里的麦克风' : 'The mic in the composer';
+  static String get discoverPetsSub => _zh ? '桌面上的小家伙' : 'The little one on the desktop';
+  static String get discoverPluginsSub => _zh ? '已安装与插件市场' : 'Installed and the market';
+  static String get discoverSkillsSub => _zh ? '技能的开关' : 'Turn skills on and off';
+  static String get discoverCommunitySub => _zh ? '精选与交流群' : 'Picks and chat groups';
+  static String get discoverRemoteSub => _zh ? '连接电脑或服务器' : 'Connect a computer or server';
+  static String get discoverEngineSub => _zh ? '运行时与版本' : 'Runtime and version';
+  static String get discoverModelsSub => _zh ? '订阅与自定义渠道' : 'Subscriptions and channels';
+  static String get discoverAllSettingsSub => _zh ? '所有设置项' : 'Every setting';
+
   // ── 我 ──
   static String get meTitle => _zh ? '我' : 'Me';
   static String get meAboutAi => _zh ? 'AI 对我的了解' : 'What the AI knows about me';
