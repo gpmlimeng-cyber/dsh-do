@@ -165,7 +165,8 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBinding
   /// ⋯ 下拉菜单的开合：菜单锚在这颗键上，页面拿它管「返回先收菜单」。
   final MenuController _roomMenu = MenuController();
 
-  late final DraftStore _draftStore = ref.read(draftStoreProvider.notifier);
+  /// 在这里就取好：dispose 里也要用它存草稿，而那时不能再碰 `ref`。
+  late final DraftStore _draftStore;
 
   /// A draft per conversation: the group's, and each member's own.
   late String _draftKey = _draftKeyFor(_target);
@@ -406,6 +407,7 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBinding
   void initState() {
     super.initState();
     _stopGuard = BotStopGuard(ref);
+    _draftStore = ref.read(draftStoreProvider.notifier);
     _voice = createBotVoice(ref, _input, alive: () => mounted);
     // Other surfaces read this flag to keep dictation and speech apart.
     _voiceFlag = ref.read(voiceInputActiveProvider.notifier);
