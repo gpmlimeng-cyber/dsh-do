@@ -83,16 +83,18 @@ void main() {
     await open(tester, clock: clock);
     expect(find.byType(BotAvatar), findsNWidgets(3));
 
+    // Chief and Writer are mascots; Coder carries a host photo, so it draws a
+    // picture instead of a painter. Two mascots, one clock.
     final painters = mascotPainters(tester);
-    expect(painters.length, 3);
+    expect(painters.length, 2);
     expect(painters.every((painter) => identical(painter.clock, clock)), isTrue);
-    expect(clock.holders, 3);
+    expect(clock.holders, painters.length);
 
     // Half of the lively period: every avatar reads the same phase from the clock.
     clock.advanceTo(const Duration(milliseconds: 550));
     await tester.pump();
     final after = mascotPainters(tester);
-    expect(after.length, 3);
+    expect(after.length, 2);
     expect(after.map((painter) => painter.period).toSet().length, 1);
     for (final painter in after) {
       expect(clock.phaseOf(painter.period), closeTo(0.5, 0.001));
@@ -109,7 +111,7 @@ void main() {
   testWidgets('a covered page releases the clock', (tester) async {
     final clock = MascotClock();
     await open(tester, clock: clock);
-    expect(clock.holders, 3);
+    expect(clock.holders, 2, reason: 'two mascots; the third Bot shows a photo');
 
     final navigator = tester.state<NavigatorState>(find.byType(Navigator).first);
     navigator.push(MaterialPageRoute<void>(builder: (_) => const Scaffold(body: SizedBox.expand())));
