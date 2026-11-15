@@ -1,4 +1,5 @@
 // 思考一行：同一回合只留最后一条，正文/工具出现或回合结束后收掉。
+import 'package:dsh_app/state/sessions_state.dart' show sessionsProvider;
 import 'package:dsh_app/ui/bots/bot_chat_kit.dart';
 import 'package:dsh_app/ui/bots/bot_chat_page.dart';
 import 'package:dsh_client/dsh_client.dart';
@@ -7,7 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../chat/support/harness.dart' show loadTestFonts, usePhoneView;
-import '../shell/golden_harness.dart' show goldenApp;
+import '../shell/golden_harness.dart' show FakeSessions, goldenApp;
 import 'support.dart';
 
 DsBotItem _thinking(int minute) =>
@@ -77,7 +78,7 @@ void main() {
       goldenApp(
         home: const BotChatPage(botId: 'm1'),
         brightness: Brightness.light,
-        overrides: dsBotOverrides(fake),
+        overrides: [...dsBotOverrides(fake), sessionsProvider.overrideWith(() => FakeSessions(const [])),],
       ),
     );
     await _frames(tester);
@@ -96,7 +97,7 @@ void main() {
       goldenApp(
         home: const BotChatPage(botId: 'm1'),
         brightness: Brightness.light,
-        overrides: dsBotOverrides(fake),
+        overrides: [...dsBotOverrides(fake), sessionsProvider.overrideWith(() => FakeSessions(const [])),],
       ),
     );
     await _frames(tester);
