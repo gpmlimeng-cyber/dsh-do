@@ -28,9 +28,7 @@ void goldenBots(
   Future<void> Function(WidgetTester tester, FakeDsBotTransport transport)? before,
   double height = 844,
   List<Override> extra = const [],
-  // 这些是纯渲染 golden：默认不接引擎连接，否则 approvals 那条链
-  // 会去起 mux 的 WebSocket，而测试的 HTTP mock 不支持升级。
-  bool engine = false,
+  bool engine = true,
 }) {
   for (final brightness in Brightness.values) {
     final mode = brightness == Brightness.dark ? 'dark' : 'light';
@@ -126,7 +124,6 @@ void main() {
   goldenBots(
     'room_chat_mention',
     () => const RoomChatPage(roomId: 'r1'),
-    engine: false,
     transport: () => FakeDsBotTransport()
       ..roomRunning = true
       ..roomSpeaking = 'b3',
