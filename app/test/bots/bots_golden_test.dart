@@ -4,7 +4,6 @@
 // group sheet. Regenerate with
 // `flutter test --update-goldens test/bots/bots_golden_test.dart`.
 
-import 'package:dsh_app/state/connection_state.dart';
 import 'package:dsh_app/ui/bots/bot_chat_page.dart';
 import 'package:dsh_app/ui/bots/bot_details_page.dart';
 import 'package:dsh_app/ui/bots/bots_page.dart';
@@ -14,7 +13,6 @@ import 'package:dsh_app/ui/bots/room_chat_page.dart';
 import 'package:dsh_app/ui/bots/room_details_page.dart';
 import 'package:dsh_client/dsh_client.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart' show AsyncData;
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -30,6 +28,7 @@ void goldenBots(
   Future<void> Function(WidgetTester tester, FakeDsBotTransport transport)? before,
   double height = 844,
   List<Override> extra = const [],
+  bool engine = true,
 }) {
   for (final brightness in Brightness.values) {
     final mode = brightness == Brightness.dark ? 'dark' : 'light';
@@ -43,7 +42,11 @@ void goldenBots(
       addTearDown(tester.view.reset);
       final fake = transport();
       await tester.pumpWidget(
-        goldenApp(home: home(), brightness: brightness, overrides: [...dsBotOverrides(fake), ...extra]),
+        goldenApp(
+          home: home(),
+          brightness: brightness,
+          overrides: [...dsBotOverrides(fake, noEngine: !engine), if (engine) ...extra],
+        ),
       );
       for (var i = 0; i < 6; i++) {
         await tester.pump(const Duration(milliseconds: 100));
@@ -100,7 +103,7 @@ void main() {
     () => const BotChatPage(botId: 'm1'),
     // 这张图不需要真的引擎客户端：有客户端时 approve 通道会去起 mux 的
     // WebSocket，而测试里的 HTTP mock 不支持升级（Unsupported operation）。
-    extra: [activeConnectionProvider.overrideWithValue(const AsyncData<HostConnection?>(null))],
+    engine: false,
     transport: () => FakeDsBotTransport(
       team: sampleTeam(
         working: false,
@@ -121,6 +124,7 @@ void main() {
   goldenBots(
     'room_chat_mention',
     () => const RoomChatPage(roomId: 'r1'),
+    engine: false,
     transport: () => FakeDsBotTransport()
       ..roomRunning = true
       ..roomSpeaking = 'b3',

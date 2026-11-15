@@ -138,8 +138,10 @@ List<Override> dsBotOverrides(
   NotifyChannel? notify,
   HostConnection? connection,
   ModelCatalog? catalog,
+  /// 页面不该碰引擎 mux（golden 里的 HTTP mock 不支持 WebSocket 升级）。
+  bool noEngine = false,
 }) => [
-  activeConnectionProvider.overrideWithValue(AsyncData(connection ?? fakeConnection)),
+  activeConnectionProvider.overrideWithValue(noEngine ? const AsyncData<HostConnection?>(null) : AsyncData(connection ?? fakeConnection)),
   dsBotApiFactoryProvider.overrideWithValue((_) => DsBotApi(transport)),
   localSafeModeProvider.overrideWithValue(false),
   // The safe-mode banner reads the engine's status.
