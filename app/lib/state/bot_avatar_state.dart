@@ -49,20 +49,18 @@ class BotAvatarConfig {
 
   bool get isMascot => kind == BotAvatarKind.mascot && mascot != null;
 
-  /// A random mascot, never the same combination as [avoid]: 「随机换一个」
-  /// that returns the current look reads as a broken button. The seed is kept
-  /// (inside the spec), so the same re-roll can be reproduced.
+  /// A random mascot. With [avoid] it follows the product rule (角色和颜色必换、
+  /// 动作随机、五官保持) by delegating to [MascotSpec.randomDifferent], so the
+  /// rule lives in one place; without it, just a fresh look.
+  ///
+  /// [seed] seeds the generator, so a re-roll made with the same seed and the
+  /// same [avoid] is reproducible. The returned spec carries its own seed; the
+  /// look itself is reproduced by keeping the spec, not by re-seeding.
   factory BotAvatarConfig.randomMascot({Random? random, MascotSpec? avoid, int? seed}) {
-    final rng = random ?? Random();
-    var spec = MascotSpec.random(rng, seed: seed);
-    for (var tries = 0; tries < 8 && avoid != null && _sameLook(spec, avoid); tries++) {
-      spec = MascotSpec.random(rng);
-    }
+    final rng = seed != null ? Random(seed) : random ?? Random();
+    final spec = avoid == null ? MascotSpec.random(rng, seed: seed) : MascotSpec.randomDifferent(avoid, rng);
     return BotAvatarConfig.mascot(spec);
   }
-
-  static bool _sameLook(MascotSpec a, MascotSpec b) =>
-      a.character == b.character && a.face == b.face && a.motion == b.motion && a.color == b.color;
 
   factory BotAvatarConfig.fromJson(Object? json) => switch (json) {
     {'kind': 'mascot', 'mascot': final Object? look} => BotAvatarConfig.mascot(MascotSpec.fromJson(look)),
