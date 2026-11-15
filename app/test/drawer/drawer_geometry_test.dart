@@ -275,7 +275,7 @@ void main() {
         loaded: true,
         folders: [DrawerFolder(id: 'f1', name: '工作', sessionIds: ['m1'])],
       ),
-      extra: dsBotOverrides(FakeDsBotTransport()),
+      extra: dsBotOverrides(FakeDsBotTransport(), sessions: false),
     );
     final drawer = _rect(tester, find.byType(SessionsDrawer));
     final row = find.ancestor(of: find.text('Chief'), matching: find.byType(SessionTile));

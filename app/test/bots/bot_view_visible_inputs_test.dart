@@ -54,7 +54,7 @@ void main() {
           goldenApp(
             brightness: Brightness.light,
             home: const BotChatPage(botId: 'writer'),
-            overrides: [...dsBotOverrides(fake), sessionsProvider.overrideWith(() => shell.FakeSessions(const [])),],
+            overrides: dsBotOverrides(fake),
           ),
         );
         await frames(t);
