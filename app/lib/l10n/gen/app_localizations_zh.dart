@@ -25170,4 +25170,429 @@ class L10nZh extends L10n {
 
   @override
   String get workspaceRecoveryFailed => '操作未完成，请查看本机引擎状态和日志。已切换的模式可在本页确认。';
+  @override
+  String get aboutPitch => 'Coka，Your AI Coworker';
+
+  @override
+  String get botsABot => '某个 Bot';
+
+  @override
+  String get botsAlreadySpoke => '已说';
+
+  @override
+  String get botsGoalBackToCurrent => '回到当前阶段';
+
+  @override
+  String get botsMemoryAlready => '已经保存过了';
+
+  @override
+  String get botsMemoryFailed => '没能保存到记忆';
+
+  @override
+  String get botsMemoryReasonEmpty => '没有内容可保存';
+
+  @override
+  String get botsMemoryReasonNoMatch => '没有匹配的条目';
+
+  @override
+  String get botsMemoryReasonOther => '记忆没能改动';
+
+  @override
+  String get botsMemoryReasonRefused => '记忆拒绝了这次改动';
+
+  @override
+  String get botsMemoryUnchanged => '记忆没有变化';
+
+  @override
+  String get botsMemoryUpdated => '记忆已更新';
+
+  @override
+  String get botsMessageMode => '消息模式';
+
+  @override
+  String get botsMessageModeEmpty => '该成员在本群还没有发言';
+
+  @override
+  String get botsMessageModeEmptyStretch => '这一段里没有他的发言';
+
+  @override
+  String botsMessageModeWith(String mode) {
+    return '消息模式：$mode';
+  }
+
+  @override
+  String get botsMessageScope => '消息范围';
+
+  @override
+  String botsNamedDone(String name) {
+    return '$name 已完成';
+  }
+
+  @override
+  String botsOthersRunning(int count) {
+    return '另外还有 $count 位在跑';
+  }
+
+  @override
+  String get botsPermissionGroupWide => '本群统一权限';
+
+  @override
+  String get botsPermissionGroupWideOff => '每个成员用它自己的权限预设';
+
+  @override
+  String get botsPermissionGroupWideOn => '对本群所有成员的会话生效，切换会立刻改掉现有会话';
+
+  @override
+  String get botsReadOnlyNote => '这个群现在是只读的';
+
+  @override
+  String botsRoomBackToGroupChat(String room) {
+    return '回到群聊 $room';
+  }
+
+  @override
+  String get botsRoomFilter => '群聊过滤';
+
+  @override
+  String get botsRoomFilterGroupOnly => '只在群聊里生效';
+
+  @override
+  String get botsRoomMemberChat => '本群会话';
+
+  @override
+  String botsRoomMemberChatLine(String room) {
+    return '本群会话 · $room';
+  }
+
+  @override
+  String get botsRoomMemberChats => '成员会话';
+
+  @override
+  String botsRoomMemberDetails(String name) {
+    return '$name 的对话详情';
+  }
+
+  @override
+  String get botsRoomMemberLeft => '该成员已不在群里，已回到群聊';
+
+  @override
+  String botsRoomMemberScope(String name) {
+    return '只看 $name · 本群';
+  }
+
+  @override
+  String get botsRoomMemberSessionMissing => '该成员还没在本群开始会话';
+
+  @override
+  String get botsRoomNeverSpoke => '还没在本群说过话';
+
+  @override
+  String botsRoomOnly(String name) {
+    return '只看 $name';
+  }
+
+  @override
+  String get botsRoomOnlyThisMember => '只看此成员';
+
+  @override
+  String get botsRoomOnlyWhose => '只看谁的发言';
+
+  @override
+  String get botsRoomScopeAll => '全部消息';
+
+  @override
+  String get botsRoomSearchMembers => '搜索成员';
+
+  @override
+  String get botsRoomSendsToGroup => '发送到群聊，群里都看得见';
+
+  @override
+  String get botsRoomSwitchChat => '切换会话';
+
+  @override
+  String botsRoomSwitchTo(String target) {
+    return '切换会话：$target';
+  }
+
+  @override
+  String get botsRoomWatching => '正在看';
+
+  @override
+  String get botsSendFailed => '没能发送';
+
+  @override
+  String get botsSendStillWaiting => '还在等服务器确认';
+
+  @override
+  String get botsStopAll => '停全部';
+
+  @override
+  String get botsStopAllBody => '正在工作的成员会立刻停下，可以再继续';
+
+  @override
+  String get botsStopAllTitle => '停止所有成员的本轮工作？';
+
+  @override
+  String get chatAttachmentNoPreview => '这类文件不能直接预览';
+
+  @override
+  String get chatGeneratingQueueHint => '生成中 · 可排队';
+
+  String get chatGoalAcceptance => '目标与验收';
+
+  String get chatGoalAcceptanceDone => '验收方法';
+
+  @override
+  String get chatGoalAligning => '正在和你对齐目标';
+
+  @override
+  String chatGoalChecking(String title) {
+    return '验收中 · $title';
+  }
+
+  @override
+  String get chatGoalCollapseToBallHint => '收起成小球，群名将完整显示';
+
+  @override
+  String get chatGoalConfirmStop => '确认终止？';
+
+  @override
+  String chatGoalDoneWhen(String text) {
+    return '完成标准：$text';
+  }
+
+  @override
+  String get chatGoalDrafting => '起草中，等管理员开始';
+
+  @override
+  String get chatGoalEvidence => '证据';
+
+  @override
+  String get chatGoalFinalCheck => '总验收';
+
+  @override
+  String get chatGoalIdleWord => '等你处理';
+
+  String get chatGoalNone => '还没有目标';
+
+  String get chatGoalPanel => '目标与验收';
+
+  String get chatGoalPaused => '已暂停';
+
+  @override
+  String get chatGoalReached => '已达成';
+
+  @override
+  String chatGoalRework(int count) {
+    return '已打回 $count 次';
+  }
+
+  @override
+  String chatGoalReworkBy(String admin, String feedback) {
+    return '被 $admin 打回：$feedback';
+  }
+
+  @override
+  String chatGoalReworkByTimes(int count, String admin, String feedback) {
+    return '被 $admin 打回 $count 次。上次：$feedback';
+  }
+
+  String get chatGoalRule => '约束';
+
+  @override
+  String get chatGoalRunning => '进行中';
+
+  String get chatGoalStageCurrent => '当前阶段';
+
+  String get chatGoalStageDone => '验收方法';
+
+  String get chatGoalStopped => '已停止';
+
+  String get chatGoalTaskDone => '已完成';
+
+  String get chatGoalTaskPending => '待办';
+
+  String get chatGoalTaskReported => '已交';
+
+  String get chatGoalTaskWorking => '在做';
+
+  String get chatGoalTasks => '成员任务';
+
+  @override
+  String chatNewContentCount(int count) {
+    return '$count 条新内容';
+  }
+
+  @override
+  String get chatQueueGone => '这条已经不在队列里了';
+
+  @override
+  String get chatStopWorkToo => '同时停止当前工作';
+
+  @override
+  String get companionMenuInvite => '主动邀请';
+
+  @override
+  String get companionMenuInviteHint => '你安静陪着她时，她偶尔会邀你一起歇一会儿';
+
+  @override
+  String get companionNeedsAttention => '有件事要你确认，点这里去看';
+
+  @override
+  String companionTaskApproval(String title) {
+    return '「$title」在等你批准。';
+  }
+
+  @override
+  String get companionTaskApprovalUntitled => '你那边有件事在等你批准。';
+
+  @override
+  String companionTaskDone(String title) {
+    return '「$title」那边跑完啦。';
+  }
+
+  @override
+  String companionTaskFailed(String title) {
+    return '「$title」好像出错了，要去看看吗？';
+  }
+
+  @override
+  String companionTaskQuestion(String title) {
+    return '「$title」有事想问你。';
+  }
+
+  @override
+  String get companionTaskQuestionUntitled => '你那边有个问题在等你回答。';
+
+  @override
+  String get engineModelInputTextAudio => "文本和音频";
+
+  @override
+  String get hubBotThinking => '显示思考过程';
+
+  @override
+  String get hubBubbleWidth => '气泡宽度';
+
+  @override
+  String get hubFlatBubbles => '消息平铺（不用气泡）';
+
+  @override
+  String get hubGroupBot => 'Bot';
+
+  @override
+  String get lastConversationMissingObject => '上次的 Bot 或群已不存在';
+
+  @override
+  String get lastConversationMissingSession => '上次的会话已不存在';
+
+  @override
+  String get launchAnimation => "启动动画";
+
+  @override
+  String shellFolderSessions(int count) => '$count 个会话';
+
+  @override
+  String get shellGroups => '分组';
+
+  @override
+  String get shellNewFolderName => '分组名称';
+
+  @override
+  String get shellNewFolderTaken => '已经有叫这个名字的分组了';
+
+  @override
+  String shellNewNamedBot(String name) => '新建 Bot「$name」';
+
+  @override
+  String get shellNewPanelBots => 'Bot';
+
+  @override
+  String get shellNewPanelGroups => '群';
+
+  @override
+  String get shellNewPanelNew => '新建';
+
+  @override
+  String get shellNewPanelRecent => '最近 3 个';
+
+  @override
+  String get shellNewPanelSearch => '搜索 Bot、群、分组，或直接写名字';
+
+  @override
+  String get shellNewPanelStart => '开始对话';
+
+  @override
+  String get shellNewPanelTitle => '新建';
+
+  @override
+  String updateBasedOn(String version) {
+    return '基于上游 $version';
+  }
+
+  @override
+  String get updateIncludePreviews => '检查更新时包含预览版';
+
+  @override
+  String get viewHtmlCantOpen => '这个页面打不开';
+
+  @override
+  String get viewHtmlCantOpenBody => '用手机应用打开还能看内容';
+
+  @override
+  String get viewHtmlLinkBlocked => '已拦截不安全的链接';
+
+  @override
+  String get viewHtmlPartialResources => '部分资源未能加载';
+
+  @override
+  String get viewPreviewBadge => '预览';
+
+  @override
+  String get voiceCloudConfigure => "去配置云端语音模型";
+
+  @override
+  String get voiceCloudEmpty => "还没有配置云端语音模型";
+
+  @override
+  String get voiceCloudFooter => "列表来自引擎里已配置的、支持语音的服务商；换一个就选中它。";
+
+  @override
+  String get voiceCloudNeedPick => "先在设置里选一个云端语音模型";
+
+  @override
+  String get voiceCloudSection => "云端语音模型";
+
+  @override
+  String get voiceEngineBusy => '引擎正忙或响应超时，语音模型暂时用不了，稍后再点一次';
+
+  @override
+  String get voiceEngineModelMissing => '语音模型已下载，但引擎没有加载它；请重启 App，或在语音设置里检查插件';
+
+  @override
+  String get voiceEnginePreparing => '正在准备语音模型…';
+
+  @override
+  String get voiceEnginePreparingTimeout => '语音模型还在准备，稍后再点一次';
+
+  @override
+  String get voiceModeCloud => "云端";
+
+  @override
+  String get voiceModeCloudHint => "用云端识别服务，在下方选一个已配置的模型";
+
+  @override
+  String get voiceModelEngineMissing => '引擎没加载语音插件';
+
+  @override
+  String get voiceModelEngineMissingNote => '语音插件没在引擎里，重启引擎后再试';
+
+  @override
+  String get voiceModelFailLost => '语音模型文件不在了，请重新下载';
+
+  @override
+  String get voiceModelLostNote => '本地模型已丢失，重新下载后可用';
+
+  @override
+  String get voiceModelRestartEngine => '重启引擎';
+
 }

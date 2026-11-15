@@ -8,8 +8,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../chat/support/harness.dart' show fakeConnection;
+import '../chat/support/harness.dart' show fakeConnection, FakeChatController;
 import 'support.dart';
+import 'package:dsh_app/state/chat_state.dart' show chatProvider, ChatState;
 
 class _Host extends ActiveHostController {
   @override
@@ -34,6 +35,7 @@ void main() {
   Future<ProviderContainer> start(FakeDsBotTransport local, FakeDsBotTransport remote) async {
     final container = ProviderContainer(
       overrides: [
+              chatProvider.overrideWith2((id) => FakeChatController(id, const ChatState(loading: false))),
         activeHostProvider.overrideWith(_Host.new),
         activeConnectionProvider.overrideWith((ref) {
           final host = ref.watch(activeHostProvider);

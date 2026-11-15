@@ -37,7 +37,18 @@ internal fun checkEngineCompatibility(
     if (previous.optString("abi") != abi || shipped.optString("abi") != abi ||
         osIdentity(rootfs) != (base?.osRelease ?: osIdentity(payloadTree))) throw RuntimeUpgradeBlocked("base")
     if (previous.has("upgrade")) {
-        if (parseUpgrade(previous).baseId != next.baseId) throw RuntimeUpgradeBlocked("base")
+        val prior = parseUpgrade(previous)
+        if (prior.baseId != next.baseId) {
+            // baseId covers the whole Linux system, extra Ubuntu packages included. A
+            // routine security refresh of those packages changes it without touching
+            // anything this upgrade replaces, so require the system the upgrade keeps to
+            // be identical instead of blocking every release: ABI and release are checked
+            // above; Python and the C runtime the engine binaries link against are here.
+            if (prior.ubuntuVersion != next.ubuntuVersion || !samePython(rootfs, staging) ||
+                !sameRuntimeLibraries(rootfs, staging, abi)) throw RuntimeUpgradeBlocked("base")
+            onLog("[dsh-app] base identity changed outside the engine paths; " +
+                "release, Python and system libraries match, upgrading engine")
+        }
     } else {
         // One-time adoption of old bundles. Do not infer compatibility just
         // from rNN or Node versions. Keep Python and all user pip packages.

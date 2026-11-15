@@ -8,13 +8,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
 import '../../l10n/l10n.dart';
-import '../../state/app_info.dart';
 import '../chat/render/code_block.dart' show highlightCode;
 import '../chat/render/markdown_body.dart';
 import '../common/tool_glyph.dart' show ToolGlyphs;
 import '../plugins/plugin_detail_sheet.dart' show PluginHero, PluginStats;
 import '../plugins/plugin_widgets.dart' show PluginAvatar;
-import '../shell/brand_mark.dart';
+import '../shell/brand_wordmark.dart';
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
 import 'qr_code.dart';
@@ -964,9 +963,9 @@ class _Plugin extends StatelessWidget {
   }
 }
 
-/// The brand line: the 「DSH Go」 lockup with one short line under its word,
-/// the QR code at the right edge, the two centred on each other. A link too
-/// long to scan at the card's size ([ShareCard.qrFor]) leaves the lockup alone.
+/// The brand line: the wordmark with one short line under its edge, the QR code at
+/// the right edge, the two centred on each other. A link too long to scan at the
+/// card's size ([ShareCard.qrFor]) leaves the wordmark alone.
 class _Footer extends StatelessWidget {
   const _Footer({required this.link, required this.template, this.qrBackground});
 
@@ -975,9 +974,6 @@ class _Footer extends StatelessWidget {
 
   /// Paper prints the code straight on the page: its ground is the paper.
   final Color? qrBackground;
-
-  /// The wordmark's size.
-  static const word = 17.0;
 
   /// The QR tile's corner radius (inside the code's three-module margin).
   static const qrRadius = 10.0;
@@ -998,17 +994,15 @@ class _Footer extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        BrandLockup(fontSize: word, label: AppInfo.name, color: ink, glyphColor: onField ? Colors.white : null),
+        // The wordmark as vector, the inline tier: 18 tall, the line under it left
+        // aligned with the mark's edge.
+        BrandWordmark(height: 18, color: ink),
         const SizedBox(height: 3),
-        Padding(
-          // Under the word, not the glyph.
-          padding: EdgeInsets.only(left: BrandLockup.wordInset(word)),
-          child: Text(
-            code == null ? l10n.viewShareBrandLineNoQr : l10n.viewShareBrandLine,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.bodySmall?.copyWith(color: muted, height: 1.35, letterSpacing: 0.2),
-          ),
+        Text(
+          code == null ? l10n.viewShareBrandLineNoQr : l10n.viewShareBrandLine,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.bodySmall?.copyWith(color: muted, height: 1.35, letterSpacing: 0.2),
         ),
       ],
     );

@@ -13,7 +13,6 @@ import '../../l10n/l10n.dart';
 import '../../runtime/runtime_bridge.dart';
 import '../../runtime/runtime_state.dart';
 import '../../runtime/local_footprint.dart';
-import '../../state/bots_state.dart';
 import '../../state/connection_state.dart';
 import '../../state/engine_control.dart';
 import '../../state/hosts_state.dart';
@@ -23,7 +22,6 @@ import '../../state/session_deletion_state.dart';
 import '../../state/sessions_state.dart';
 import '../../state/read_list_identity.dart';
 import '../../state/workspaces_state.dart';
-import '../bots/bots_page.dart' show BotsPage, UnreadBadge;
 import '../chat/media/media_format.dart' show chatTitleShown;
 import '../common/app_sheet.dart';
 import '../common/empty_view.dart';
@@ -52,6 +50,8 @@ import 'drawer/drawer_destination.dart';
 import 'drawer/archive_notice.dart';
 import 'drawer/drawer_filter_bar.dart';
 import 'drawer/drawer_list.dart';
+import '../update/update_row.dart';
+import 'new_panel.dart';
 import 'drawer/selection_bars.dart';
 import 'drawer/session_deletion.dart';
 import 'session_search_page.dart';
@@ -83,12 +83,19 @@ class SessionsDrawer extends ConsumerWidget {
     super.key,
     required this.onClose,
     required this.onOpen,
+    this.onChosen,
     this.now,
     this.identityBarHeight,
     this.drawerMotion,
   });
 
   final VoidCallback onClose;
+
+  /// A conversation or a new chat was chosen: the drawer is done with, and a
+  /// page that is not the shell (a Bot's or a group's chat) leaves for the
+  /// shell here. Closing the drawer without choosing ([onClose]) stays local.
+  final VoidCallback? onChosen;
+
   final ValueChanged<DrawerDestination> onOpen;
 
   /// Clock override for grouping (tests).
@@ -111,10 +118,7 @@ class SessionsDrawer extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    void newChat() {
-      ref.read(currentSessionProvider.notifier).select(null);
-      onClose();
-    }
+    void newChat() => showNewPanel(context, onChosen: onChosen ?? onClose);
 
     void manageWorkspaces() {
       Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const WorkspacesPage()));
@@ -185,7 +189,6 @@ class SessionsDrawer extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
         onDetails: () => onOpen(DrawerDestination.engine),
       ),
-      SessionSearchBar(onClose: onClose),
       // The workspace switcher (once the host's workspace list has
       // arrived) and the list's options, then the status filters.
       SmoothSize(
@@ -207,7 +210,7 @@ class SessionsDrawer extends ConsumerWidget {
       ),
     ];
     final list = _EdgeFade(
-      child: _SessionList(onClose: onClose, now: now),
+      child: _SessionList(onClose: onClose, onChosen: onChosen, now: now),
     );
 
     const radius = BorderRadius.only(topRight: Radius.circular(AppShape.xl), bottomRight: Radius.circular(AppShape.xl));
@@ -233,6 +236,8 @@ class SessionsDrawer extends ConsumerWidget {
               ...top,
               Expanded(child: list),
             ],
+            // 有更新才出现: above 本机引擎/设置, zero height otherwise.
+            if (!selecting) const DrawerUpdateRow(),
             // The action bar lies exactly over the identity bar, which
             // keeps its size while hidden: same height at any text size.
             _ReportHeight(
@@ -457,9 +462,12 @@ class _EdgeFade extends StatelessWidget {
 }
 
 class _SessionList extends ConsumerWidget {
-  const _SessionList({required this.onClose, this.now});
+  const _SessionList({required this.onClose, this.onChosen, this.now});
 
   final VoidCallback onClose;
+
+  /// Chosen, not just closed: a page that is not the shell leaves for it.
+  final VoidCallback? onChosen;
   final DateTime? now;
 
   @override
@@ -486,35 +494,26 @@ class _SessionList extends ConsumerWidget {
       }
       return const _SkeletonList();
     }
-    // DS Bot's conversations (its Bots' chats, groups, members' sessions)
-    // fold into one row that opens the Bot pages.
-    final botReady = ref.watch(dsBotProvider.select((s) => s.ready));
-    final showBots = scope.bots.isNotEmpty || (workspace == null && botReady);
-    if (scope.sessions.isEmpty && !showBots && ref.watch(drawerViewProvider).folders.isEmpty) {
+    // Bots and groups are rows of their own now, so the list is empty only
+    // when no conversation and no Bot would show.
+    if (scope.sessions.isEmpty &&
+        ref.watch(drawerBotRowsProvider).isEmpty &&
+        ref.watch(drawerViewProvider).folders.isEmpty) {
       if (scope.readOnly) return _Centered(child: Text(readListStatusText(scope.status)));
       return workspace == null ? const _EmptyState() : const _WorkspaceEmptyState();
     }
     return DrawerConversationList(
       now: now,
-      onNewChat: onClose,
+      onNewChat: onChosen ?? onClose,
       readOnly: scope.readOnly,
-      leading: showBots
-          ? DsBotDrawerRow(
-              running: scope.bots.any((s) => s.running),
-              onTap: () {
-                Navigator.of(context).push(BotsPage.route());
-                // Close once the page covers us, so "back" lands on the chat.
-                Future<void>.delayed(AppMotion.slow, onClose);
-              },
-            )
-          : null,
+      onClose: onClose,
       onOpen: (id) {
         if (ref.read(readListIdentityProvider) != identity ||
             ref.read(drawerScopeProvider)?.sessions.any((s) => s.sessionId == id) != true) {
           return;
         }
         ref.read(currentSessionProvider.notifier).select(id);
-        onClose();
+        (onChosen ?? onClose)();
       },
       onLongPress: (s) {
         final current = ref.read(drawerScopeProvider);
@@ -660,71 +659,6 @@ class _SessionList extends ConsumerWidget {
   }
 }
 
-/// DS Bot's conversations as one row above the list: the glyph on the 20
-/// text line, 「DS Bot」, then a breathing dot while a Bot works and the
-/// unread count. Opens the Bot pages.
-class DsBotDrawerRow extends ConsumerWidget {
-  const DsBotDrawerRow({super.key, required this.running, required this.onTap});
-
-  final bool running;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = context.l10n;
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final unread = ref.watch(dsBotInboxProvider.select((i) => i.total));
-    final shape = Squircle.border(AppShape.md);
-    return Semantics(
-      button: true,
-      label: [
-        'DS Bot',
-        if (running) l10n.shellCurrentlyRunning,
-        if (unread > 0) l10n.shellUnreadCount(unread),
-      ].join(l10n.shellSemanticsSeparator),
-      onTap: onTap,
-      excludeSemantics: true,
-      child: Material(
-        type: MaterialType.transparency,
-        child: InkWell(
-          onTap: onTap,
-          customBorder: shape,
-          child: SizedBox(
-            height: 44,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: Row(
-                children: [
-                  Icon(AppIcons.bot, size: 20, color: scheme.onSurfaceVariant),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'DS Bot',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        fontSize: 15,
-                        height: 1.4,
-                        color: scheme.onSurface,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  if (running) ...[const SizedBox(width: 10), const StatusDot(tone: StatusTone.busy, size: 7)],
-                  if (unread > 0) ...[const SizedBox(width: 10), UnreadBadge(unread)],
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Loading: a few quiet placeholder rows on the same grid as the real ones,
-/// breathing slowly (still under reduced motion).
 class _SkeletonList extends StatefulWidget {
   const _SkeletonList();
 

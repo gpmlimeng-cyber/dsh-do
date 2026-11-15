@@ -106,7 +106,12 @@ enum DrawerSort {
 
 /// The drawer's view of one host: folders in display order and the sort.
 class DrawerView {
-  const DrawerView({this.loaded = false, this.folders = const [], this.sort = DrawerSort.activity});
+  const DrawerView({
+    this.loaded = false,
+    this.folders = const [],
+    this.sort = DrawerSort.activity,
+    this.pinnedBots = const [],
+  });
 
   factory DrawerView.fromJson(Object? json) {
     final map = json is Map ? json : const {};
@@ -120,6 +125,11 @@ class DrawerView {
             if (DrawerFolder.fromJson(raw) case final f? when seen.add(f.id)) f,
       ],
       sort: map['sort'] == 'created' ? DrawerSort.created : DrawerSort.activity,
+      pinnedBots: [
+        if (map['pinnedBots'] case final List<Object?> keys)
+          for (final key in keys)
+            if (key is String && key.isNotEmpty) key,
+      ].toSet().toList(),
     );
   }
 
@@ -127,9 +137,15 @@ class DrawerView {
   final List<DrawerFolder> folders;
   final DrawerSort sort;
 
+  /// Pinned Bot and group rows, newest pin first: `bot:<id>` / `room:<id>`.
+  /// Local only — the Host's pin table takes session ids — and kept apart from
+  /// the conversations' pins so the two can never be confused for each other.
+  final List<String> pinnedBots;
+
   Map<String, Object?> toJson() => {
     'folders': [for (final f in folders) f.toJson()],
     'sort': sort.name,
+    if (pinnedBots.isNotEmpty) 'pinnedBots': pinnedBots,
   };
 
   DrawerFolder? byId(String? id) {
@@ -146,8 +162,12 @@ class DrawerView {
       for (final id in f.sessionIds) id: f.id,
   };
 
-  DrawerView copyWith({List<DrawerFolder>? folders, DrawerSort? sort}) =>
-      DrawerView(loaded: loaded, folders: folders ?? this.folders, sort: sort ?? this.sort);
+  DrawerView copyWith({List<DrawerFolder>? folders, DrawerSort? sort, List<String>? pinnedBots}) => DrawerView(
+    loaded: loaded,
+    folders: folders ?? this.folders,
+    sort: sort ?? this.sort,
+    pinnedBots: pinnedBots ?? this.pinnedBots,
+  );
 }
 
 /// [DrawerView] of the active host, in shared preferences.
@@ -289,6 +309,16 @@ class DrawerViewController extends Notifier<DrawerView> {
     final folder = state.byId(id);
     if (folder != null) await setCollapsed(id, !folder.collapsed);
   }
+
+  /// Pins or unpins a Bot/group row, newest first. Local only: the Host's pin
+  /// table takes session ids, so these keys (`bot:` / `room:`) never go there.
+  Future<void> setBotPinned(String key, bool pinned) => _update(
+    (view) => view.copyWith(
+      pinnedBots: pinned
+          ? [key, ...view.pinnedBots.where((k) => k != key)]
+          : [for (final k in view.pinnedBots) if (k != key) k],
+    ),
+  );
 
   /// Moves [ids] into [folderId] (null: out of any folder). Returns where
   /// each one was before, for [restoreAssignments].
@@ -628,11 +658,92 @@ final drawerScopeProvider = Provider<DrawerScope?>((ref) {
   return result;
 });
 
+/// One row of the drawer list: a conversation, or a Bot's own chat / a group
+/// chat that lives beside conversations.
+///
+/// Bot rows are a type of their own on purpose. 全选 walks the blocks for
+/// `sessionId`s, and a Bot row taken for a conversation would put a Bot's own
+/// Session into a batch delete.
+sealed class DrawerRow {
+  const DrawerRow();
+
+  /// The list key, and the id folders are keyed by.
+  String get id;
+
+  /// What this row sorts by under [sort].
+  DateTime sortKeyOf(DrawerSort sort);
+}
+
+final class SessionRow extends DrawerRow {
+  const SessionRow(this.session, {this.createdAt});
+
+  final SessionSummary session;
+
+  /// The Session's real creation time, when it is known.
+  final DateTime? createdAt;
+
+  @override
+  String get id => session.sessionId;
+
+  @override
+  DateTime sortKeyOf(DrawerSort sort) =>
+      sort == DrawerSort.created ? (createdAt ?? session.updatedAt) : session.updatedAt;
+}
+
+/// A Bot's own chat, or a group chat. Team-level: it shows whatever workspace
+/// is selected, and it is never pinned, dragged or multi-selected.
+final class BotDrawerRow extends DrawerRow {
+  const BotDrawerRow({
+    required this.id,
+    required this.title,
+    required this.updatedAt,
+    required this.createdAt,
+    this.running = false,
+    this.pending,
+    this.unread = false,
+    this.activity = false,
+    this.badge,
+    this.bot,
+    this.room,
+  });
+
+  @override
+  final String id;
+  final String title;
+  final DateTime updatedAt;
+  final DateTime createdAt;
+  final bool running;
+  final PendingKind? pending;
+  final bool unread;
+
+  /// Something happened here (a message, a reminder): the row may show when.
+  /// A Bot that has never done anything stays bare.
+  final bool activity;
+
+  /// 「主」 on a Main Bot; null otherwise. Never the pin marker.
+  final String? badge;
+
+  /// The Bot this row is, for its face; null on a group row.
+  final DsBot? bot;
+
+  /// The group this row is, for its face; null on a Bot row.
+  final DsBotRoom? room;
+
+  bool get isRoom => room != null;
+
+  @override
+  DateTime sortKeyOf(DrawerSort sort) => sort == DrawerSort.created ? createdAt : updatedAt;
+}
+
+/// A Bot or group row's pin key: `bot:<botId>` / `room:<roomId>`. The prefix
+/// keeps it from ever colliding with a session id.
+String botPinKey(BotDrawerRow row) => '${row.isRoom ? 'room' : 'bot'}:${row.id}';
+
 /// One block of the drawer list.
 sealed class DrawerBlock {
   const DrawerBlock(this.items);
 
-  final List<SessionSummary> items;
+  final List<DrawerRow> items;
 }
 
 /// Pinned conversations that are in no folder.
@@ -662,9 +773,11 @@ final class FilteredBlock extends DrawerBlock {
 }
 
 /// The drawer list as blocks. Every conversation shows once: in its folder
-/// if it has one, else under 置顶 if pinned, else under its day.
+/// if it has one, else under 置顶 if pinned, else under its day. A Bot or a
+/// group shows by its own day, or inside the folder it was moved to.
 List<DrawerBlock> drawerBlocks({
   required List<SessionSummary> sessions,
+  required List<BotDrawerRow> bots,
   required List<String> pinnedIds,
   required DrawerView view,
   required DrawerFilter filter,
@@ -674,57 +787,78 @@ List<DrawerBlock> drawerBlocks({
   required DateTime now,
   bool scoped = false,
 }) {
-  DateTime keyOf(SessionSummary s) =>
-      view.sort == DrawerSort.created ? (createdAt[s.sessionId] ?? s.updatedAt) : s.updatedAt;
-  final sorted = [...sessions]
+  final rows = <DrawerRow>[
+    for (final s in sessions) SessionRow(s, createdAt: createdAt[s.sessionId]),
+    ...bots,
+  ];
+  // A Bot's state comes with its own row; a conversation's from the host lists.
+  bool isRunning(DrawerRow row) => row is BotDrawerRow ? row.running : (row as SessionRow).session.running;
+  bool isPending(DrawerRow row) => row is BotDrawerRow ? row.pending != null : pending.containsKey(row.id);
+  bool isUnread(DrawerRow row) => row is BotDrawerRow ? row.unread : unread.contains(row.id);
+
+  final sorted = [...rows]
     ..sort((a, b) {
-      final byKey = keyOf(b).compareTo(keyOf(a));
-      return byKey != 0 ? byKey : a.sessionId.compareTo(b.sessionId);
+      final byKey = b.sortKeyOf(view.sort).compareTo(a.sortKeyOf(view.sort));
+      return byKey != 0 ? byKey : a.id.compareTo(b.id);
     });
   if (filter != DrawerFilter.all) {
-    bool matches(SessionSummary s) => switch (filter) {
-      DrawerFilter.running => s.running,
-      DrawerFilter.pending => pending.containsKey(s.sessionId),
-      DrawerFilter.unread => unread.contains(s.sessionId),
+    bool matches(DrawerRow row) => switch (filter) {
+      DrawerFilter.running => isRunning(row),
+      DrawerFilter.pending => isPending(row),
+      DrawerFilter.unread => isUnread(row),
       DrawerFilter.all => true,
     };
     return [
       FilteredBlock(filter, [
-        for (final s in sorted)
-          if (matches(s)) s,
+        for (final row in sorted)
+          if (matches(row)) row,
       ]),
     ];
   }
   final folderOf = view.folderOf;
   final pinnedSet = pinnedIds.toSet();
-  final byId = {for (final s in sorted) s.sessionId: s};
+  final pinnedBots = view.pinnedBots.toSet();
+  final byId = {for (final row in sorted) row.id: row};
+  final botByKey = {for (final row in sorted.whereType<BotDrawerRow>()) botPinKey(row): row};
   final blocks = <DrawerBlock>[];
   final pinned = [
     for (final id in pinnedIds)
-      if (byId[id] case final s? when !folderOf.containsKey(id)) s,
+      if (byId[id] case final row? when row is SessionRow && !folderOf.containsKey(id)) row,
+    // Then the Bot/group rows, newest pin first: the Host's pins keep their own
+    // order, and mixing the two sources would mean guessing pin times.
+    for (final key in view.pinnedBots)
+      if (botByKey[key] case final row? when !folderOf.containsKey(row.id)) row,
   ];
   if (pinned.isNotEmpty) blocks.add(PinnedBlock(pinned));
-  final membersByFolder = <String, List<SessionSummary>>{};
-  for (final s in sorted) {
-    final folderId = folderOf[s.sessionId];
-    if (folderId != null) membersByFolder.putIfAbsent(folderId, () => []).add(s);
+  final membersByFolder = <String, List<DrawerRow>>{};
+  for (final row in sorted) {
+    // A folder id left behind by a deleted Bot has no row to collect it, so it
+    // simply does not show.
+    final folderId = folderOf[row.id];
+    if (folderId != null) membersByFolder.putIfAbsent(folderId, () => []).add(row);
   }
   for (final folder in view.folders) {
-    final members = membersByFolder[folder.id] ?? const <SessionSummary>[];
+    final members = membersByFolder[folder.id] ?? const <DrawerRow>[];
     if (members.isEmpty && scoped) continue;
+    bool pinnedInFolder(DrawerRow row) => row is SessionRow
+        ? pinnedSet.contains(row.id)
+        : row is BotDrawerRow && pinnedBots.contains(botPinKey(row));
     blocks.add(
       FolderBlock(folder, [
-        for (final s in members)
-          if (pinnedSet.contains(s.sessionId)) s,
-        for (final s in members)
-          if (!pinnedSet.contains(s.sessionId)) s,
+        for (final row in members) if (pinnedInFolder(row)) row,
+        for (final row in members) if (!pinnedInFolder(row)) row,
       ]),
     );
   }
-  final days = <SessionDay, List<SessionSummary>>{};
-  for (final s in sorted) {
-    if (folderOf.containsKey(s.sessionId) || pinnedSet.contains(s.sessionId)) continue;
-    days.putIfAbsent(sessionDayOf(keyOf(s), now), () => []).add(s);
+  final days = <SessionDay, List<DrawerRow>>{};
+  for (final row in sorted) {
+    if (folderOf.containsKey(row.id)) continue;
+    if (row is SessionRow
+        ? pinnedSet.contains(row.id)
+        : row is BotDrawerRow && pinnedBots.contains(botPinKey(row))) {
+      continue;
+    }
+    days.putIfAbsent(sessionDayOf(row.sortKeyOf(view.sort), now), () => []).add(row);
   }
   for (final day in SessionDay.values) {
     if (days[day] case final items?) blocks.add(DayBlock(day, items));
@@ -733,12 +867,72 @@ List<DrawerBlock> drawerBlocks({
 }
 
 /// What 全选 picks: every conversation on screen (members of a collapsed
-/// folder are not).
+/// folder are not). A Bot row is never selectable.
 List<String> drawerSelectableIds(List<DrawerBlock> blocks) => [
   for (final block in blocks)
     if (block is! FolderBlock || !block.folder.collapsed)
-      for (final s in block.items) s.sessionId,
+      for (final row in block.items)
+        if (row is SessionRow) row.id,
 ];
+
+/// Before any real time: a Bot without a creation time sorts last, not first.
+final _earliest = DateTime.fromMillisecondsSinceEpoch(0);
+
+/// The Bot and group rows the drawer shows beside conversations.
+///
+/// Derived from the team rather than cached with the Session list: a rename, a
+/// new Bot or a deletion has to show at once, and none of them changes the
+/// Session registry that cache is keyed by.
+final drawerBotRowsProvider = Provider<List<BotDrawerRow>>((ref) {
+  final status = ref.watch(dsBotProvider);
+  final team = status.team;
+  if (team == null) return const [];
+  final inbox = ref.watch(dsBotInboxProvider);
+  final live = status.live;
+  // When the conversation last moved. The inbox only knows what arrived while
+  // this app run was listening, so a Bot talked to yesterday would sort by its
+  // creation otherwise; the Session behind it keeps the real time.
+  final sessions = ref.watch(sessionsProvider).value ?? const <SessionSummary>[];
+  final sessionAt = {for (final session in sessions) session.sessionId: session.updatedAt};
+  DateTime latest(String id, String? sessionId, DateTime? created) {
+    final seen = [
+      inbox.latest[id]?.time,
+      if (sessionId != null) sessionAt[sessionId],
+      created,
+    ].whereType<DateTime>();
+    return seen.isEmpty ? _earliest : seen.reduce((a, b) => a.isAfter(b) ? a : b);
+  }
+  return [
+    for (final bot in team.bots)
+      BotDrawerRow(
+        id: bot.id,
+        title: bot.name,
+        updatedAt: latest(bot.id, bot.sessionId, bot.createdAt),
+        createdAt: bot.createdAt ?? _earliest,
+        running: live.bots.containsKey(bot.id),
+        pending: team.questionOf(bot) != null
+            ? PendingKind.question
+            : team.viewOf(bot) != null
+            ? PendingKind.approval
+            : null,
+        unread: inbox.unreadOf(bot.id) > 0,
+        activity: inbox.latest[bot.id] != null,
+        badge: team.isMain(bot.id) ? appL10n.botsMainTag : null,
+        bot: bot,
+      ),
+    for (final room in team.rooms)
+      BotDrawerRow(
+        id: room.id,
+        title: room.name,
+        updatedAt: latest(room.id, room.sessionId, room.createdAt),
+        createdAt: room.createdAt ?? _earliest,
+        running: live.rooms.containsKey(room.id),
+        unread: inbox.unreadOf(room.id) > 0,
+        activity: inbox.latest[room.id] != null,
+        room: room,
+      ),
+  ];
+});
 
 /// Clock for day grouping (tests override it).
 final drawerClockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
@@ -750,6 +944,7 @@ List<DrawerBlock>? watchDrawerBlocks(WidgetRef ref, {DateTime? now}) {
   final view = ref.watch(drawerViewProvider);
   return drawerBlocks(
     sessions: scope.sessions,
+    bots: ref.watch(drawerBotRowsProvider),
     pinnedIds: ref.watch(workspacesProvider.select((s) => s.pinnedSessionIds)),
     view: view,
     filter: ref.watch(drawerFilterProvider),

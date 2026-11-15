@@ -159,7 +159,13 @@
   "botsDuplicateHint": "Same settings, fresh chat and memory",
   "botsDuplicateNamed": "Duplicate {name}?",
   "botsDuplicateBody": "The new Bot keeps its job, instructions and model settings, starts with a fresh chat and personal memory, and gets its name from the host. When a model is available, it opens with a greeting.",
-  "@botsDuplicateNamed": {"placeholders": {"name": {"type": "String"}}},
+  "@botsDuplicateNamed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "botsChooseModelStart": "Choose a model to start",
   "botsNoChats": "No chats yet",
   "botsUnreadCount": "{count, plural, =1{1 unread} other{{count} unread}}",
@@ -180,6 +186,14 @@
   "botsAddMemory": "Add memory",
   "botsMemoryReplyExample": "For example: Keep replies short",
   "botsMemoryDraftExample": "For example: First draft by Friday",
+  "botsMemoryUpdated": "Memory updated",
+  "botsMemoryAlready": "Already saved",
+  "botsMemoryFailed": "Couldn't save to memory",
+  "botsMemoryUnchanged": "Memory not changed",
+  "botsMemoryReasonEmpty": "Write something to save",
+  "botsMemoryReasonNoMatch": "No saved entry matched",
+  "botsMemoryReasonRefused": "The memory refused this change",
+  "botsMemoryReasonOther": "The memory could not be changed",
   "botsMemoryCount": "{count, plural, =1{Memory · 1} other{Memory · {count}}}",
   "botsMemoryReadFailed": "Couldn’t load memories",
   "botsSummary": "Summary",
@@ -442,5 +456,87 @@
   "botsMobileUnsupportedTitle": "DS Bot isn't on mobile yet",
   "botsMobileApiRequired": "Use it in DSH Web for now",
   "botsMobileApiMissing": "Not on mobile yet. Use it in DSH Web for now",
-  "botsCreationConnectionChanged": "The connection changed. Reopen this form to create on the current host."
+  "botsCreationConnectionChanged": "The connection changed. Reopen this form to create on the current host.",
+  "botsPermissionGroupWide": "One permission preset for this group",
+  "botsPermissionGroupWideOn": "Applies to every member’s sessions here; switching changes the ones already open",
+  "botsPermissionGroupWideOff": "Each member uses their own permission preset",
+  "botsStopAll": "Stop all",
+  "botsStopAllTitle": "Stop what every member is doing this round?",
+  "botsStopAllBody": "Members at work stop at once; you can continue again",
+  "botsAlreadySpoke": "Spoke",
+  "botsMessageMode": "Message mode",
+  "botsMessageModeWith": "Message mode: {mode}",
+  "botsMessageModeEmpty": "This member has not spoken in this group yet",
+  "botsNamedDone": "{name} is done",
+  "@botsNamedDone": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "botsRoomSwitchChat": "Switch conversation",
+  "botsRoomSwitchTo": "Switch to {target}",
+  "@botsRoomSwitchTo": {
+    "placeholders": {
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "botsRoomMemberChats": "Member conversations",
+  "botsRoomOnlyWhose": "Whose messages only",
+  "botsRoomFilter": "Group chat filters",
+  "botsMessageScope": "Message range",
+  "botsRoomFilterGroupOnly": "Works in the group chat only",
+  "botsRoomWatching": "Viewing",
+  "botsRoomNeverSpoke": "Has not spoken in this group yet",
+  "botsRoomMemberChatLine": "Group conversation · {room}",
+  "@botsRoomMemberChatLine": {
+    "placeholders": {
+      "room": {
+        "type": "String"
+      }
+    }
+  },
+  "botsRoomSearchMembers": "Search members",
+  "botsRoomMemberLeft": "That member is no longer in this group; back to the group chat",
+  "botsRoomMemberChat": "Group conversation",
+  "botsRoomSendsToGroup": "Sends to the group chat; everyone there sees it",
+  "botsRoomOnlyThisMember": "Only this member",
+  "botsRoomOnly": "Only {name}",
+  "botsRoomBackToGroupChat": "Back to {room}",
+  "@botsRoomBackToGroupChat": {
+    "placeholders": {
+      "room": {
+        "type": "String"
+      }
+    }
+  },
+  "botsRoomMemberDetails": "{name}'s conversation details",
+  "@botsRoomMemberDetails": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "botsRoomMemberSessionMissing": "This member has not started a conversation in this group yet",
+  "botsRoomMemberScope": "Only {name} · this group",
+  "@botsRoomMemberScope": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "botsOthersRunning": "{count} more running",
+  "botsSendFailed": "Could not send",
+  "botsSendStillWaiting": "Still waiting for the server",
+   "chatGoalDrafting": "Drafting — waiting for the admin to start",
+   "botsMessageModeEmptyStretch": "Nothing from them in this stretch",
+   "botsRoomScopeAll": "All messages",
+  "botsGoalBackToCurrent": "Back to current stage",
+  "botsABot": "a Bot",
+  "botsReadOnlyNote": "This group is read-only now"
 }

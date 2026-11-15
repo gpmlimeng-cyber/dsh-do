@@ -8,6 +8,8 @@ import '../performance/performance_state.dart';
 import 'provider_keys.dart';
 import 'read_list_epoch.dart';
 
+/// 群目标在顶栏怎么摆：简单模式加一颗圆形进度环，完整模式把群名收成
+/// 圆形头像、旁边排一颗完整的胶囊。
 /// User settings: the DeepSeek API key (and custom-provider keys, see
 /// [ProviderKeyVault]) live in the Android Keystore-backed secure storage;
 /// plain preferences go to SharedPreferences.
@@ -24,6 +26,9 @@ class AppSettings {
     this.hardwareEnterSends = false,
     this.chatTextScale = 1.0,
     this.foldCompletedTurns = true,
+    this.showThinking = true,
+    this.flatBubbles = false,
+    this.bubbleWidth = 0.82,
     this.visualReplies = true,
     this.customProviderIds = const {},
     this.loaded = false,
@@ -63,10 +68,23 @@ class AppSettings {
   /// messages into one summary line above the answer (DSH Web's default).
   final bool foldCompletedTurns;
 
+  /// 显示思考过程: off hides a turn's thinking everywhere, finished or running.
+  final bool showThinking;
+
+  /// 消息布局: true draws the person's message as plain text at full width,
+  /// false as a bubble (the default).
+  final bool flatBubbles;
+
+  /// 气泡宽度, as the share of the reading column a bubble may take.
+  final double bubbleWidth;
+
   /// Tell the local DSH it may answer with ```dsh-ui views (charts, cards,
   /// options): a section of the managed AGENTS.md, written at engine start.
   /// Off only drops the instructions; views that arrive are still drawn.
   final bool visualReplies;
+
+  /// 群目标显示: the top bar's goal capsule, simple (a ring beside the name) or
+  /// full (the name shrinks to an avatar, the goal takes the bar).
 
   /// Custom providers created on the local engine whose key is kept on the
   /// phone ([ProviderKeyVault]). Known at launch, before the engine runs, so
@@ -91,6 +109,9 @@ class AppSettings {
     bool? hardwareEnterSends,
     double? chatTextScale,
     bool? foldCompletedTurns,
+    bool? showThinking,
+    bool? flatBubbles,
+    double? bubbleWidth,
     bool? visualReplies,
     Set<String>? customProviderIds,
     bool? loaded,
@@ -106,6 +127,9 @@ class AppSettings {
     hardwareEnterSends: hardwareEnterSends ?? this.hardwareEnterSends,
     chatTextScale: chatTextScale ?? this.chatTextScale,
     foldCompletedTurns: foldCompletedTurns ?? this.foldCompletedTurns,
+    showThinking: showThinking ?? this.showThinking,
+    flatBubbles: flatBubbles ?? this.flatBubbles,
+    bubbleWidth: bubbleWidth ?? this.bubbleWidth,
     visualReplies: visualReplies ?? this.visualReplies,
     customProviderIds: customProviderIds ?? this.customProviderIds,
     loaded: loaded ?? this.loaded,
@@ -131,6 +155,9 @@ class SettingsController extends Notifier<AppSettings> {
   static const _hardwareEnterKey = 'hardware_enter_sends';
   static const _chatTextScaleKey = 'chat_text_scale';
   static const _foldTurnsKey = 'fold_completed_turns';
+  static const _showThinkingKey = 'show_thinking';
+  static const _flatBubblesKey = 'flat_bubbles';
+  static const _bubbleWidthKey = 'bubble_width';
   static const _visualRepliesKey = 'visual_replies';
   static const _secure = FlutterSecureStorage();
   late Future<void> _loaded;
@@ -178,6 +205,9 @@ class SettingsController extends Notifier<AppSettings> {
       hardwareEnterSends: prefs.getBool(_hardwareEnterKey) ?? false,
       chatTextScale: _knownScale(prefs.getDouble(_chatTextScaleKey)),
       foldCompletedTurns: prefs.getBool(_foldTurnsKey) ?? true,
+      showThinking: prefs.getBool(_showThinkingKey) ?? true,
+      flatBubbles: prefs.getBool(_flatBubblesKey) ?? false,
+      bubbleWidth: prefs.getDouble(_bubbleWidthKey) ?? 0.82,
       visualReplies: prefs.getBool(_visualRepliesKey) ?? true,
       customProviderIds: providerIds,
       loaded: true,
@@ -233,6 +263,25 @@ class SettingsController extends Notifier<AppSettings> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setDouble(_chatTextScaleKey, value);
     state = state.copyWith(chatTextScale: value);
+  }
+
+  Future<void> setShowThinking(bool value) async {
+    state = state.copyWith(showThinking: value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_showThinkingKey, value);
+  }
+
+
+  Future<void> setFlatBubbles(bool value) async {
+    state = state.copyWith(flatBubbles: value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_flatBubblesKey, value);
+  }
+
+  Future<void> setBubbleWidth(double value) async {
+    state = state.copyWith(bubbleWidth: value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_bubbleWidthKey, value);
   }
 
   Future<void> setFoldCompletedTurns(bool value) async {

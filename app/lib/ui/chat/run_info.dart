@@ -9,6 +9,7 @@ import '../../l10n/l10n.dart';
 import '../../state/chat_state.dart';
 import '../../state/usage_state.dart';
 import '../common/tool_glyph.dart';
+import 'usage_sheet.dart' show formatTokens;
 import 'activity_copy.dart';
 import 'tool_view.dart';
 import 'turn_summary.dart';
@@ -33,6 +34,18 @@ String formatSpan(Duration d) {
   final minutes = seconds ~/ 60;
   return appL10n.activitySpanHoursMinutes(minutes ~/ 60, (minutes % 60).toString().padLeft(2, '0'));
 }
+
+/// 运行中的用时也写「29 秒」这种整数秒：脚注、输入框上方的活动行、长按那几秒
+/// 的提示都用这一份，不再出现 `0:29` 的时钟写法。
+String formatLiveSpan(Duration d) => formatSpan(Duration(seconds: d.isNegative ? 0 : d.inSeconds));
+
+/// 一轮的数字，一句话：`29 秒 · 4 步 · 138K tokens`。消息脚注与输入框上方的
+/// 活动行共用这一份顺序与写法，两边不许再各拼一套。
+String runFigures({Duration? duration, int steps = 0, int tokens = 0}) => [
+  if (duration != null) formatSpan(duration),
+  if (steps > 0) appL10n.chatTurnSteps(steps),
+  if (tokens > 0) '${formatTokens(tokens)} tokens',
+].join(' · ');
 
 /// 走动的计时:`0:07`、`12:45`、`1:02:05`。
 String formatClock(Duration d) {
@@ -441,7 +454,13 @@ RunActivity? runActivityOf(ChatState s) {
         return make(
           ActivityKind.tool,
           toolVerb(item, view),
-          detail: [view.summary, more].where((p) => p.isNotEmpty).join('  '),
+          // 命令原文不往活动行上摆：翻成一句在干什么（见 [commandPhrase]），
+          // MCP 工具也一样，只有那句人话。
+          detail: toolKindOf(item) == ToolKind.command
+              ? ''
+              : item.name.startsWith('mcp__')
+              ? ''
+              : [view.summary, more].where((p) => p.isNotEmpty).join('  '),
           code: view.summaryIsCode,
           toolName: item.name,
           since: openSince((sp) => sp.callId == item.callId) ?? openSince((sp) => sp.kind == TraceKind.model),
@@ -529,9 +548,75 @@ AfterTool? _afterTool(List<TraceSpan> spans, List<ChatItem> items) {
 }
 
 /// 活动条用的短动词:跑 / 读 / 改 / 写 / 搜 / 找……
+/// 工具的「人话」:模型能调到的工具越来越多,名字是给程序用的。手机操控、MCP
+/// 这类在活动行上翻成一句正在做什么,原文(command 之类)就不往上摆了。
+const _otherVerbs = <String, String>{
+  'screen': '看一眼手机屏幕',
+  'collect': '翻手机上的列表',
+  'tap': '点手机上的按钮',
+  'tap_xy': '点手机屏幕',
+  'scroll': '滑手机屏幕',
+  'type': '在手机上打字',
+  'open': '打开手机上的应用',
+  'key': '按手机的系统键',
+  'intent': '调用手机功能',
+  'notify': '发一条手机通知',
+  'clipboard': '看手机剪贴板',
+  'handoff': '把手机交给你操作',
+};
+
+String otherToolVerb(String name) {
+  if (name.startsWith('mcp__')) {
+    final parts = name.split('__');
+    final tool = parts.length > 2 ? parts.sublist(2).join('__') : name;
+    final server = parts.length > 1 ? parts[1] : '外部';
+    return _otherVerbs[tool] ?? '用「$server」做点事';
+  }
+  return _otherVerbs[name] ?? '';
+}
+
+/// 一条 shell 命令「在干什么」的一句话。用户不需要读命令本身,只需要知道这一下
+/// 是在装依赖、跑测试、还是在推代码。
+final _commandPhrases = <(RegExp, String)>[
+  (RegExp(r'\bgit\s+push'), '推送代码'),
+  (RegExp(r'\bgit\s+(commit|add|switch|checkout|merge|rebase|stash)'), '提交或整理改动'),
+  (RegExp(r'\bgit\s'), '看仓库状态'),
+  (RegExp(r'\b(pnpm|npm|yarn)\s+(install|add|i)\b'), '安装依赖'),
+  (RegExp(r'\b(pnpm|npm|yarn)\s+(run\s+)?test|pytest|flutter\s+test|dart\s+test'), '跑测试'),
+  (RegExp(r'flutter\s+analyze|dart\s+analyze|eslint|\btsc\b'), '检查代码'),
+  (RegExp(r'flutter\s+build|gradle|\bmake\b|cargo\s+build'), '打包构建'),
+  (RegExp(r'\b(rg|grep|ag)\b'), '在文件里搜内容'),
+  (RegExp(r'\b(find|fd|glob)\b'), '找文件'),
+  (RegExp(r'\b(cat|sed|head|tail|less|awk|wc)\b'), '看文件内容'),
+  (RegExp(r'\b(ls|tree|du|df)\b'), '看目录和空间'),
+  (RegExp(r'\b(curl|wget|http)\b'), '访问网络'),
+  (RegExp(r'\bsleep\b'), '等一会儿'),
+  (RegExp(r'\b(rm|mv|cp|mkdir|rmdir|touch|ln)\b'), '整理文件'),
+  (RegExp(r'\b(chmod|chown)\b'), '改文件权限'),
+  (RegExp(r'\b(python3?|node|bash|sh|zsh)\b'), '跑一段脚本'),
+  (RegExp(r'\b(ps|top|pgrep|kill|pkill|lsof)\b'), '看进程'),
+  (RegExp(r'\b(ssh|scp|rsync)\b'), '连远程机器'),
+  (RegExp(r'\bdsh\b'), '操作本机引擎'),
+  (RegExp(r'\b(unzip|tar|zip|gzip)\b'), '解压或打包文件'),
+  (RegExp(r'\b(echo|printf)\b'), '写一行输出'),
+];
+
+String commandPhrase(String command) {
+  final text = command.trim();
+  if (text.isEmpty) return '';
+  for (final (pattern, phrase) in _commandPhrases) {
+    if (pattern.hasMatch(text)) return phrase;
+  }
+  return '运行一条命令';
+}
+
 String toolVerb(ToolChatItem tool, ToolView view) {
   return switch (toolKindOf(tool)) {
-    ToolKind.command => appL10n.activityVerbRun,
+    // 命令本身用户读不懂：直接说在干什么（推送代码 / 跑测试 / 安装依赖）。
+    ToolKind.command =>
+      commandPhrase(view.arg('command') ?? view.summary).isEmpty
+          ? appL10n.activityVerbRun
+          : commandPhrase(view.arg('command') ?? view.summary),
     ToolKind.edit =>
       tool.name == 'write' || view.arg('command') == 'create' ? appL10n.activityVerbWrite : appL10n.activityVerbEdit,
     ToolKind.read => tool.name == 'read_image' ? appL10n.activityVerbImage : appL10n.activityVerbRead,
@@ -539,6 +624,6 @@ String toolVerb(ToolChatItem tool, ToolView view) {
     ToolKind.web => tool.name == 'web_search' ? appL10n.activityVerbWebSearch : appL10n.activityVerbWebView,
     ToolKind.agent => tool.name == 'subagent' ? appL10n.activityVerbSubagent : view.verb,
     ToolKind.todo => appL10n.activityVerbTodo,
-    ToolKind.other => view.verb,
+    ToolKind.other => otherToolVerb(tool.name).isEmpty ? view.verb : otherToolVerb(tool.name),
   };
 }

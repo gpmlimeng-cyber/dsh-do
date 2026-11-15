@@ -11,17 +11,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
 import '../../state/adaptive_layout_state.dart';
+import '../../state/bots_state.dart' show dsBotProvider;
 import '../../state/agents_state.dart';
 import '../../state/chat_state.dart';
 import '../../state/session_detail_state.dart';
 import '../../state/usage_state.dart';
 import '../agents/agent_widgets.dart';
+import '../bots/bot_details_page.dart' show BotDetailsPage, botForSession;
+import '../bots/room_details_page.dart' show roomForSession;
+import '../bots/room_info_tab.dart' show RoomInfoTab;
 import '../chat/chat_header.dart';
 import '../chat/diff_page.dart';
 import '../chat/run_info.dart';
 import '../chat/step_detail_page.dart';
 import '../chat/trajectory_sheet.dart';
 import '../chat/turn_summary.dart';
+import '../chat/turn_usage.dart';
 import '../chat/usage_sheet.dart';
 import '../chat/widgets/activity_strip.dart' show TodoProgress;
 import '../chat/widgets/change_card.dart' show DiffCounts;
@@ -94,14 +99,26 @@ bool dispatchedSubagents(Iterable<ChatItem> items) =>
 /// through [open]. 子代理 shows once the conversation has dispatched subagents,
 /// or when opened from a subagent entry.
 class SessionDetailPage extends ConsumerStatefulWidget {
-  const SessionDetailPage({super.key, required this.sessionId, this.initialTab, this.mode = SessionDetailMode.page});
+  const SessionDetailPage({
+    super.key,
+    required this.sessionId,
+    this.initialTab,
+    this.mode = SessionDetailMode.page,
+    this.scopeLabel,
+  });
 
   /// 对话详情 beside the chat.
   const SessionDetailPage.panel({super.key, required this.sessionId})
     : initialTab = null,
-      mode = SessionDetailMode.panel;
+      mode = SessionDetailMode.panel,
+      scopeLabel = null;
 
   final String sessionId;
+
+  /// What this page's figures are scoped to, under the hero's title: a
+  /// member's conversation in a group reads 「只看 X · 本群」. Null everywhere
+  /// else — the single conversation keeps its page untouched.
+  final String? scopeLabel;
 
   /// Null: 轨迹 on a page; the shared tab in the sheet and the panel.
   final SessionTab? initialTab;
@@ -115,25 +132,37 @@ class SessionDetailPage extends ConsumerStatefulWidget {
   /// Opens 对话详情 in the window's form: the panel beside the chat (shown,
   /// or folded when [toggle] and it already shows), the wide sheet, or a
   /// page. [tab] picks the tab.
-  static void open(BuildContext context, String sessionId, {SessionTab? tab, bool toggle = false}) =>
-      openAdaptiveDetail(
-        context,
-        sessionId: sessionId,
-        tab: tab,
-        toggle: toggle,
-        page: (_) => SessionDetailPage(sessionId: sessionId, initialTab: tab),
-        sheet: (_) => SessionDetailPage(sessionId: sessionId, initialTab: tab, mode: SessionDetailMode.sheet),
-      );
+  static void open(
+    BuildContext context,
+    String sessionId, {
+    SessionTab? tab,
+    bool toggle = false,
+    String? scopeLabel,
+  }) => openAdaptiveDetail(
+    context,
+    sessionId: sessionId,
+    tab: tab,
+    toggle: toggle,
+    page: (_) => SessionDetailPage(sessionId: sessionId, initialTab: tab, scopeLabel: scopeLabel),
+    sheet: (_) =>
+        SessionDetailPage(sessionId: sessionId, initialTab: tab, mode: SessionDetailMode.sheet, scopeLabel: scopeLabel),
+  );
 
   @override
   ConsumerState<SessionDetailPage> createState() => _SessionDetailPageState();
 }
 
 class _SessionDetailPageState extends ConsumerState<SessionDetailPage> with TickerProviderStateMixin {
-  static const _pageBarHeight = 56.0;
-  static const _tabsHeight = 52.0;
+  static const _pageBarHeight = AppPage.barHeight;
+  static const _tabsHeight = AppPage.tabsHeight;
 
   /// The tabs but 插件, decided when the page opens.
+  /// 这个会话归哪个 Bot（自己的对话，或它在群里的那份）。有 Bot 才有「信息」
+  /// 页签：它装的是 Bot 的资料，不是这一轮对话的统计。
+  String? _botId;
+
+  /// 群自己的会话：「信息」页签装群的只读概览 + 一个跳转（能改的留在群详情）。
+  String? _roomId;
   late final List<SessionTab> _baseTabs;
   late List<SessionTab> _tabs;
   late TabController _controller;
@@ -151,12 +180,24 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> with Tick
     super.initState();
     final items = ref.read(chatProvider(widget.sessionId)).items;
     final delegated = dispatchedSubagents(items) || ref.read(subagentLineageProvider(widget.sessionId)).isNotEmpty;
+    final team = ref.read(dsBotProvider).team;
+    final bot = botForSession(team, widget.sessionId);
+    final room = bot == null ? roomForSession(team, widget.sessionId) : null;
+    _botId = bot?.id;
+    _roomId = room?.id;
     final SessionTab initial =
         widget.initialTab ??
-        (_mode == SessionDetailMode.page ? SessionTab.trajectory : ref.read(sessionDetailTabProvider));
+        (_mode == SessionDetailMode.page
+            // Bot 会话先落在「信息」：那一页是这个 Bot 的资料，会话的统计在后面的
+            // 页签里。别的会话照旧从轨迹起。
+            ? (bot != null || room != null ? SessionTab.details : SessionTab.trajectory)
+            : ref.read(sessionDetailTabProvider));
     _baseTabs = [
+      if (bot != null || room != null) SessionTab.details,
       for (final tab in SessionTab.values)
-        if (tab != SessionTab.plugins && (tab != SessionTab.subagents || delegated || initial == SessionTab.subagents))
+        if (tab != SessionTab.plugins &&
+            tab != SessionTab.details &&
+            (tab != SessionTab.subagents || delegated || initial == SessionTab.subagents))
           tab,
     ];
     final plugins = !ref.read(sessionPluginPlanProvider(widget.sessionId)).isEmpty;
@@ -336,7 +377,7 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> with Tick
         if (bar != null)
           SliverPersistentHeader(
             pinned: true,
-            delegate: _PinnedBox(
+            delegate: PinnedBox(
               extent: barTop,
               child: Stack(
                 children: [
@@ -345,7 +386,7 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> with Tick
                       valueListenable: _offset,
                       builder: (context, offset, child) =>
                           Opacity(opacity: (offset / 24).clamp(0.0, 1.0), child: child),
-                      child: _SolidTop(height: barTop, color: band),
+                      child: SolidTopFill(height: barTop, color: band),
                     ),
                   ),
                   Positioned(left: 0, right: 0, top: padding.top, child: bar),
@@ -367,6 +408,7 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> with Tick
                 padding: EdgeInsets.symmetric(horizontal: column),
                 child: SessionHero(
                   sessionId: id,
+                  scopeLabel: widget.scopeLabel,
                   // The panel and the sheet are named in their bar; the hero
                   // keeps the figures.
                   title: _mode == SessionDetailMode.page ? shownTitle : null,
@@ -378,30 +420,11 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> with Tick
         ),
         SliverPersistentHeader(
           pinned: true,
-          delegate: _PinnedBox(
+          delegate: PinnedBox(
             extent: _tabsHeight,
-            child: ValueListenableBuilder<double>(
-              valueListenable: _offset,
-              builder: (context, offset, child) {
-                // Continues the bar's band, then feathers out so
-                // the strip has no hard bottom edge.
-                final a = 0.96 * (offset / 24).clamp(0.0, 1.0);
-                return DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        band.withValues(alpha: band.a * a),
-                        band.withValues(alpha: band.a * a),
-                        band.withValues(alpha: 0),
-                      ],
-                      stops: const [0, 0.7, 1],
-                    ),
-                  ),
-                  child: child,
-                );
-              },
+            child: DetailsTabBand(
+              offset: _offset,
+              color: band,
               child: Padding(
                 padding: EdgeInsets.fromLTRB(gutter + column, 4, gutter + column, 12),
                 child: GlassSegments(controller: _controller, labels: [for (final tab in _tabs) tab.label]),
@@ -417,7 +440,18 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> with Tick
           child: TabBarView(
             controller: _controller,
             children: [
-              for (final tab in _tabs) ConversationPane.ofTab(tab).build(id),
+              for (final tab in _tabs)
+                if (tab == SessionTab.details)
+                  switch ((_botId, _roomId)) {
+                    (final botId?, _) => BotDetailsPage.embedded(
+                      key: ValueKey('bot-info-$botId'),
+                      botId: botId,
+                    ),
+                    (_, final roomId?) => RoomInfoTab(key: ValueKey('room-info-$roomId'), roomId: roomId),
+                    _ => const SizedBox.shrink(),
+                  }
+                else
+                  ConversationPane.ofTab(tab).build(id),
             ],
           ),
         ),
@@ -455,43 +489,8 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> with Tick
   }
 }
 
-/// A fixed-height pinned header.
-class _PinnedBox extends SliverPersistentHeaderDelegate {
-  _PinnedBox({required this.extent, required this.child});
-
-  final double extent;
-  final Widget child;
-
-  @override
-  double get minExtent => extent;
-
-  @override
-  double get maxExtent => extent;
-
-  @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlaps) => SizedBox.expand(child: child);
-
-  @override
-  bool shouldRebuild(_PinnedBox old) => old.extent != extent || old.child != child;
-}
-
 /// The page colour behind the bar once the hero slides under it: solid
 /// enough to read the bar over, and continuous with the tabs strip below.
-class _SolidTop extends StatelessWidget {
-  const _SolidTop({required this.height, required this.color});
-
-  final double height;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) => IgnorePointer(
-    child: ColoredBox(
-      color: color.withValues(alpha: color.a * 0.96),
-      child: SizedBox(height: height),
-    ),
-  );
-}
-
 /// Content fades out over its top 12dp instead of being cut by the tabs.
 class _FadeTop extends StatelessWidget {
   const _FadeTop({required this.child});
@@ -515,10 +514,19 @@ class _FadeTop extends StatelessWidget {
 /// rounds and whether one runs, then 用时 / 步骤 / 改动文件. Without a [title]
 /// (the panel and the sheet, named in their bar) the rounds line leads.
 class SessionHero extends ConsumerWidget {
-  const SessionHero({super.key, required this.sessionId, required this.title, this.gutter = 24});
+  const SessionHero({
+    super.key,
+    required this.sessionId,
+    required this.title,
+    this.scopeLabel,
+    this.gutter = 24,
+  });
 
   final String sessionId;
   final String? title;
+
+  /// 「只看 X · 本群」 for a member's conversation in a group; null elsewhere.
+  final String? scopeLabel;
 
   /// Where the text starts.
   final double gutter;
@@ -540,6 +548,17 @@ class SessionHero extends ConsumerWidget {
         : running == null
         ? l10n.hubSessionTurns(turns.length)
         : l10n.hubSessionTurnsRunning(turns.length);
+    final theme = Theme.of(context);
+    // A member's conversation in a group says what the figures below are
+    // scoped to; the single conversation passes null and draws none.
+    Widget? scope() => scopeLabel == null
+        ? null
+        : Text(
+            scopeLabel!,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.labelSmall?.copyWith(color: DshColors.of(context).textTertiary),
+          );
 
     Widget hero(Duration total) {
       final stats = [
@@ -550,18 +569,25 @@ class SessionHero extends ConsumerWidget {
       if (title case final title?) {
         return PageHero(
           title: title,
-          subtitle: Text(subtitle),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (scope() case final scope?) ...[scope, const SizedBox(height: 2)],
+              Text(subtitle),
+            ],
+          ),
           stats: stats,
           padding: EdgeInsets.fromLTRB(gutter, 4, gutter, 20),
         );
       }
-      final theme = Theme.of(context);
       return Padding(
         padding: EdgeInsets.fromLTRB(gutter, 0, gutter, 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (scope() case final scope?) ...[scope, const SizedBox(height: 4)],
             Text(
               subtitle,
               maxLines: 1,
@@ -596,18 +622,74 @@ class SessionHero extends ConsumerWidget {
 
 /// Capsule tabs with the [SegmentedPill] look (track, thumb, labels), but the
 /// thumb follows the [TabController]'s swipe progress, moving with the pages.
-class GlassSegments extends StatelessWidget {
+/// 页签条：段宽固定（约 64–72），页签多了就横向滚动——均分到第八个时每段只有
+/// 三十几，两个汉字会被挤扁。首段（Bot 会话的「信息」）就在最前，滚动不会把它
+/// 挪走，选中的那段自动滚进视野。
+class GlassSegments extends StatefulWidget {
   const GlassSegments({super.key, required this.controller, required this.labels});
 
   final TabController controller;
   final List<String> labels;
+
+  /// 一段的宽：放得下两个字，又不至于把 320 的栏撑成三段。
+  static const segment = 72.0;
+
+  /// 再窄也不要缩到 64 以下（那时宁可滚动）。
+  static const minSegment = 64.0;
+
+  @override
+  State<GlassSegments> createState() => _GlassSegmentsState();
+}
+
+class _GlassSegmentsState extends State<GlassSegments> {
+  final _scroll = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_reveal);
+  }
+
+  @override
+  void didUpdateWidget(GlassSegments oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 插件页签来来去去会换一个 TabController，监听要跟着搬过去。
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_reveal);
+      widget.controller.addListener(_reveal);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_reveal);
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  /// 选中的那段滚进视野（贴着两边就停）。
+  void _reveal() {
+    if (!_scroll.hasClients) return;
+    final seg = _segment;
+    final start = widget.controller.index * seg;
+    final end = start + seg;
+    final at = _scroll.offset;
+    final viewport = _scroll.position.viewportDimension;
+    if (start < at) {
+      _scroll.animateTo(start, duration: AppMotion.quick, curve: AppMotion.std);
+    } else if (end > at + viewport) {
+      _scroll.animateTo(end - viewport, duration: AppMotion.quick, curve: AppMotion.std);
+    }
+  }
+
+  double _segment = GlassSegments.segment;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final dark = theme.brightness == Brightness.dark;
-    final animation = controller.animation!;
+    final animation = widget.controller.animation!;
     const inset = SegmentedPill.inset;
     final track = dark ? Colors.white.withValues(alpha: 0.07) : colors.onSurface.withValues(alpha: 0.06);
     final thumb = dark ? Colors.white.withValues(alpha: 0.2) : Colors.white;
@@ -618,69 +700,86 @@ class GlassSegments extends StatelessWidget {
         height: 36,
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final segment = (constraints.maxWidth - 2 * inset) / labels.length;
-            return AnimatedBuilder(
-              animation: animation,
-              builder: (context, _) {
-                final at = animation.value;
-                return Stack(
-                  children: [
-                    Positioned(
-                      left: inset + at * segment,
-                      top: inset,
-                      bottom: inset,
-                      width: segment,
-                      child: DecoratedBox(
-                        decoration: ShapeDecoration(
-                          color: thumb,
-                          shape: const StadiumBorder(),
-                          shadows: dark
-                              ? null
-                              : [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.08),
-                                    blurRadius: 6,
-                                    offset: const Offset(0, 1),
-                                  ),
-                                ],
+            final avail = constraints.maxWidth - 2 * inset;
+            final n = widget.labels.length;
+            // 先按均分试，能放进 72 就用均分（几段的时候铺满更好看）；均分
+            // 小于 64 就不平分了，按 72 定宽、横向滚动。
+            final even = n == 0 ? GlassSegments.segment : avail / n;
+            _segment = even >= GlassSegments.minSegment ? even.clamp(GlassSegments.minSegment, GlassSegments.segment) : GlassSegments.segment;
+            final total = _segment * n;
+            return SingleChildScrollView(
+              controller: _scroll,
+              scrollDirection: Axis.horizontal,
+              // 滚不动的时候不要让内容居中：首段永远从左边起。
+              child: SizedBox(
+                width: total + 2 * inset,
+                child: AnimatedBuilder(
+                  animation: animation,
+                  builder: (context, _) {
+                    final at = animation.value;
+                    return Stack(
+                      children: [
+                        Positioned(
+                          left: inset + at * _segment,
+                          top: inset,
+                          bottom: inset,
+                          width: _segment,
+                          child: DecoratedBox(
+                            decoration: ShapeDecoration(
+                              color: thumb,
+                              shape: const StadiumBorder(),
+                              shadows: dark
+                                  ? null
+                                  : [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.08),
+                                        blurRadius: 6,
+                                        offset: const Offset(0, 1),
+                                      ),
+                                    ],
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: inset),
-                      child: Row(
-                        children: [
-                          for (final (i, label) in labels.indexed)
-                            Expanded(
-                              child: Semantics(
-                                button: true,
-                                selected: (at - i).abs() < 0.5,
-                                inMutuallyExclusiveGroup: true,
-                                label: label,
-                                excludeSemantics: true,
-                                child: GestureDetector(
-                                  behavior: HitTestBehavior.opaque,
-                                  onTap: () {
-                                    if (controller.index != i) {
-                                      HapticFeedback.selectionClick();
-                                    }
-                                    controller.animateTo(i);
-                                  },
-                                  child: Center(
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                                      child: FittedBox(
-                                        fit: BoxFit.scaleDown,
-                                        child: Text(
-                                          label,
-                                          maxLines: 1,
-                                          softWrap: false,
-                                          style: style.copyWith(
-                                            fontWeight: (at - i).abs() < 0.5 ? FontWeight.w600 : FontWeight.w500,
-                                            color: Color.lerp(
-                                              colors.onSurface,
-                                              colors.onSurfaceVariant,
-                                              (at - i).abs().clamp(0.0, 1.0),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: inset),
+                          child: Row(
+                            children: [
+                              for (final (i, label) in widget.labels.indexed)
+                                SizedBox(
+                                  width: _segment,
+                                  child: Semantics(
+                                    button: true,
+                                    selected: (at - i).abs() < 0.5,
+                                    inMutuallyExclusiveGroup: true,
+                                    label: label,
+                                    excludeSemantics: true,
+                                    child: GestureDetector(
+                                      behavior: HitTestBehavior.opaque,
+                                      onTap: () {
+                                        if (widget.controller.index != i) {
+                                          HapticFeedback.selectionClick();
+                                        }
+                                        widget.controller.animateTo(i);
+                                      },
+                                      child: Center(
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                                          child: FittedBox(
+                                            fit: BoxFit.scaleDown,
+                                            child: Text(
+                                              label,
+                                              maxLines: 1,
+                                              softWrap: false,
+                                              style: style.copyWith(
+                                                fontWeight: (at - i).abs() < 0.5
+                                                    ? FontWeight.w600
+                                                    : FontWeight.w500,
+                                                color: Color.lerp(
+                                                  colors.onSurface,
+                                                  colors.onSurfaceVariant,
+                                                  (at - i).abs().clamp(0.0, 1.0),
+                                                ),
+                                              ),
                                             ),
                                           ),
                                         ),
@@ -688,14 +787,14 @@ class GlassSegments extends StatelessWidget {
                                     ),
                                   ),
                                 ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
-                );
-              },
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
             );
           },
         ),
@@ -1251,75 +1350,15 @@ class ContextTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = context.l10n;
-    final theme = Theme.of(context);
-    final dsh = DshColors.of(context);
     final usage = ref.watch(sessionUsageProvider(sessionId));
     final model = ref.watch(chatProvider(sessionId).select((s) => s.model));
     final turns = ref.watch(chatProvider(sessionId).select((s) => s.turns));
     final pricing = model == null ? null : knownPricing['${model.provider}/${model.model}'];
-    final recent = [
-      for (final trace in turns.reversed)
-        if (!trace.usage.isEmpty) trace,
-    ].take(12).toList();
-    final peak = recent.fold(0, (m, t) => t.usage.total > m ? t.usage.total : m);
     return ListView(
       padding: _listPadding(context),
       children: [
         SessionUsageSections(usage: usage, pricing: pricing),
-        if (recent.isNotEmpty)
-          ListPageCard(
-            title: l10n.hubSessionTurnUsage,
-            // Same rhythm as the usage groups above (SheetGroup: 6 + 6).
-            margin: const EdgeInsets.fromLTRB(16, 6, 16, 6),
-            children: [
-              for (final trace in recent)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 9, 16, 9),
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: 52,
-                        child: Text(
-                          l10n.hubSessionTurn(trace.turn),
-                          style: AppType.tabular(theme.textTheme.bodySmall!.copyWith(color: dsh.textTertiary)),
-                        ),
-                      ),
-                      Expanded(
-                        child: TimelineBar(
-                          start: Duration.zero,
-                          duration: Duration(milliseconds: trace.usage.total),
-                          total: Duration(milliseconds: peak <= 0 ? 1 : peak),
-                          color: theme.colorScheme.primary.withValues(alpha: 0.75),
-                          height: 6,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      SizedBox(
-                        width: 52,
-                        child: Text(
-                          formatTokens(trace.usage.total),
-                          textAlign: TextAlign.right,
-                          style: AppType.tabular(
-                            theme.textTheme.bodySmall!.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                          ),
-                        ),
-                      ),
-                      SizedBox(
-                        width: 64,
-                        child: Text(
-                          trace.usage.cacheHitRate == null
-                              ? ''
-                              : l10n.hubSessionCacheHit(formatPercent(trace.usage.cacheHitRate!)),
-                          textAlign: TextAlign.right,
-                          style: AppType.tabular(theme.textTheme.bodySmall!.copyWith(color: dsh.textTertiary)),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
+        TurnUsageCard(turns: turns),
       ],
     );
   }

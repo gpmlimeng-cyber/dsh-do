@@ -8,78 +8,416 @@ import 'package:dsh_client/dsh_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../common/route_observer.dart';
 import '../../l10n/l10n.dart';
 import '../../state/settings_state.dart';
+import '../../state/attachments.dart';
+import '../../state/adaptive_layout_state.dart';
 import '../../state/bots_state.dart';
+import '../../state/last_conversation.dart';
+import '../common/brief_notice.dart';
+import 'bot_adaptive_frame.dart';
+import '../../runtime/runtime_bridge.dart' show RuntimePhase;
+import '../../runtime/runtime_state.dart' show localRuntimeProvider;
 import '../../state/connection_state.dart';
+import '../../state/artifacts.dart' show sessionArtifactsProvider;
+import '../chat/chat_text_scale.dart';
 import '../chat/composer.dart';
+import '../chat/widgets/artifact_card.dart';
+import '../../state/voice_model_state.dart';
+import '../../state/voice_state.dart';
+import '../../state/chat_state.dart' show SendMode, chatProvider;
+import '../../state/room_message_mode.dart' show withoutDoneEchoes;
+import '../chat/voice/voice_controller.dart';
+import '../chat/widgets/attachments.dart';
+import '../chat/widgets/quote_chip.dart' show ComposerTrayStack, QuoteChip;
 import '../chat/model_sheet.dart';
+import '../chat/trajectory_sheet.dart' show showTrajectorySheet;
+import '../chat/usage_sheet.dart' show showUsageSheet;
 import '../chat/widgets/approval_card.dart';
 import '../common/status_dot.dart';
+import '../session/session_detail_page.dart';
 import '../common/typing_indicator.dart';
 import '../features/feature_kit.dart';
 import '../shell/page_frame.dart';
 import 'bot_stop_guard.dart';
 import 'bot_action_scope.dart';
+import '../shell/drawer/drawer_destination.dart';
+import '../shell/session_drawer_host.dart';
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
+import 'bot_attachment_open.dart';
+import 'bot_attachments.dart';
+import 'bot_composer_deck.dart';
 import 'bot_draft_send.dart';
 import 'bot_avatar.dart';
 import 'unavailable_message.dart';
 import 'bot_chat_kit.dart';
+import 'bot_links.dart' show openLinkedFile;
 import 'bot_details_page.dart';
+import 'bot_memory_notice.dart';
+import 'bot_memory_page.dart';
 import 'bot_format.dart';
+import 'mascot_mood.dart';
 import 'bot_pending_card.dart';
+import '../im/im_bot_profile_page.dart';
+import '../im/im_intro.dart';
+import '../im/im_strings.dart';
 
 class BotChatPage extends ConsumerStatefulWidget {
-  const BotChatPage({super.key, required this.botId});
+  const BotChatPage({super.key, required this.botId, this.look = BotChatLook.pro});
 
   final String botId;
 
-  static Route<void> route(String botId) => MaterialPageRoute<void>(builder: (_) => BotChatPage(botId: botId));
+  /// 专业（默认）还是轻松；只改外观，不改发送/队列/流式/审批/分页的行为。
+  final BotChatLook look;
+
+  static Route<void> route(String botId, {BotChatLook look = BotChatLook.pro}) =>
+      MaterialPageRoute<void>(builder: (_) => BotChatPage(botId: botId, look: look));
 
   @override
   ConsumerState<BotChatPage> createState() => _BotChatPageState();
 }
 
-class _BotChatPageState extends ConsumerState<BotChatPage> {
+class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingObserver, RouteAware, TickerProviderStateMixin {
   late final BotStopGuard _stopGuard;
   final _input = TextEditingController();
   final _focus = FocusNode();
   final _scrolled = ValueNotifier(0.0);
   late final DsBotViewingController _viewing;
+  /// This page's own drawer: it opens over the chat instead of leaving it.
+  late final SessionDrawerController _drawer = SessionDrawerController(vsync: this);
+  /// Picked but unsent: shown above the composer, cleared when the send lands.
+  List<DraftAttachment> _drafts = const [];
+  /// 引用 for the next message only; the host builds the quoted body.
+  String? _quote;
+  late final VoiceInputController _voice;
+  late final VoiceInputActiveController _voiceFlag;
+
+  /// The app is in front. The artifacts watch (which opens the Session's chat)
+  /// waits for both this and a visible route.
+  bool _resumed = true;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final resumed = state == AppLifecycleState.resumed;
+    if (resumed != _resumed && mounted) setState(() => _resumed = resumed);
+    // 退到后台、锁屏、切走：把输入框的焦点收掉，回来时不会自动弹键盘。
+    if (!resumed) _focus.unfocus();
+  }
+
+  ModalRoute<dynamic>? _route;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route != null && route != _route) {
+      _route = route;
+      appRouteObserver.subscribe(this, route);
+    }
+  }
+
+  /// 被别的页面（详情、图片、各种 sheet）盖住：收掉焦点。pop 回来时 Flutter
+  /// 会把焦点还给输入框，Android 便又把键盘弹起来——这一句就是防它的。
+  @override
+  void didPushNext() => _focus.unfocus();
+
+  /// 活动行点开的是这一轮（还在跑就是它，跑完了是最后一轮）；一轮都没有时
+  /// 打开用量面板。
+  void _openRunningTrajectory(String sessionId) {
+    final chat = ref.read(chatProvider(sessionId));
+    final turn = chat.runningTurn?.turn ?? (chat.turns.isEmpty ? null : chat.turns.last.turn);
+    if (turn == null) {
+      unawaited(showUsageSheet(context, sessionId: sessionId));
+      return;
+    }
+    unawaited(showTrajectorySheet(context, sessionId: sessionId, turn: turn));
+  }
 
   @override
   void initState() {
     super.initState();
     _stopGuard = BotStopGuard(ref);
+    _voice = createBotVoice(ref, _input, alive: () => mounted);
+    // Other surfaces read this flag to keep dictation and speech apart.
+    _voiceFlag = ref.read(voiceInputActiveProvider.notifier);
+    _voice.addListener(_reportVoice);
+    // A download or deletion changes capabilities without replacing the host.
+    ref.listenManual(voiceModelProvider.select((s) => s.status == VoiceModelStatus.ready), (_, _) {
+      if (mounted && (ref.read(activeConnectionProvider).value?.isLocal ?? false)) {
+        unawaited(_voice.refreshAfterModelChange());
+      }
+    });
+    WidgetsBinding.instance.addObserver(this);
     _viewing = ref.read(dsBotViewingProvider.notifier);
+    // The next cold start comes back here, not to the session behind it.
+    unawaited(ref.read(lastConversationStoreProvider).rememberBot(widget.botId));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _viewing.set(widget.botId);
     });
   }
 
+  void _reportVoice() => _voiceFlag.set(_voice.active);
+
   @override
   void dispose() {
+    appRouteObserver.unsubscribe(this);
+    WidgetsBinding.instance.removeObserver(this);
+    _voice.removeListener(_reportVoice);
+    _voice.dispose();
+    // The page is gone, and its dictation with it.
+    final flag = _voiceFlag;
+    scheduleMicrotask(() => flag.set(false));
     _stopGuard.dispose();
     _viewing.leave(widget.botId);
+    _drawer.dispose();
     _input.dispose();
     _focus.dispose();
     _scrolled.dispose();
     super.dispose();
   }
 
-  Future<void> _send(BotActionScope target, String part) async {
+  /// A settings-like destination opens above this page: the chat stays under it
+  /// and "back" lands here again. The drawer closes once the page covers it.
+  void _openDestination(DrawerDestination destination) {
+    openDrawerDestination(context, destination);
+    Future<void>.delayed(AppMotion.slow, () {
+      if (mounted) _drawer.close(context);
+    });
+  }
+
+  /// A conversation (or a new chat) was picked in the drawer: it is already
+  /// selected, so close the drawer and step back to the shell showing it.
+  void _chosen() {
+    _drawer.close(context);
+    Navigator.of(context).popUntil((route) => route.isFirst);
+  }
+
+  SessionDrawerConfig get _drawerConfig => SessionDrawerConfig(
+    controller: _drawer,
+    onDestination: _openDestination,
+    onChosen: _chosen,
+  );
+
+  /// One send bubble: the Host's queue words and actions when its inbox holds
+  /// this message, otherwise the local 发送中 / 没能发送 note.
+  Widget _pendingBubble(DsBotPending pending, DsBotQueue? inbox, {bool running = false}) {
+    // The inbox answers first; before it arrives the send's own itemId/slot do.
+    final item =
+        inbox?.byRpc(pending.requestId) ??
+        (pending.itemId == null
+            ? null
+            : DsBotQueueItem(
+                itemId: pending.itemId!,
+                rpcId: pending.requestId,
+                text: pending.text,
+                canSteer: pending.slot == 'next-turn' && running,
+              ));
+    final queueInbox = item == null
+        ? null
+        : (inbox ?? DsBotQueue(sessionId: ref.read(botChatProvider(widget.botId)).sessionId ?? ''));
+    final inStep =
+        item != null &&
+        ((inbox != null && inbox.nextStep.any((e) => e.itemId == item.itemId)) || pending.slot == 'next-step');
+    final queue = item == null
+        ? null
+        : (
+            label: inStep ? context.l10n.chatSteerNextStep : context.l10n.chatQueuedAfterTurn,
+            icon: inStep ? AppIcons.steer : AppIcons.queued,
+          );
+    return BotUserMessage(
+      text: pending.text,
+      pending: true,
+      pendingSince: pending.at,
+      pendingStatus: pending.status,
+      onRetry: () => _retryPending(pending),
+      onWithdraw: () => _withdrawPending(pending),
+      queueLabel: queue?.label,
+      queueIcon: queue?.icon,
+      queueActions: [
+        if (item != null)
+          (
+            running ? context.l10n.chatSendNow : context.l10n.commonSend,
+            () => _sendNow(pending, queueInbox!, item, running),
+          ),
+        if (item != null && !inStep && item.canSteer)
+          (context.l10n.chatSwitchToSteer, () => _queueAction(pending, queueInbox!, item)),
+        if (item != null)
+          (context.l10n.chatWithdraw, () => _queueAction(pending, queueInbox!, item, remove: true)),
+      ],
+    );
+  }
+
+  /// 「立即发送」: out of the inbox, stop the turn, send it again under the
+  /// same request id, then the ones queued behind it — in their order.
+  Future<void> _sendNow(DsBotPending pending, DsBotQueue inbox, DsBotQueueItem item, bool running) async {
+    final client = ref.read(activeConnectionProvider).value?.client;
+    final api = ref.read(dsBotProvider.notifier).api;
+    if (client == null || api == null) return;
+    final behind = _behind(inbox, item);
+    final controller = ref.read(botChatProvider(widget.botId).notifier);
+    try {
+      await client.updateQueue(inbox.sessionId, item.itemId, remove: true);
+      for (final b in behind) {
+        await client.updateQueue(inbox.sessionId, b.itemId, remove: true);
+      }
+      if (running) await client.cancel(inbox.sessionId);
+      final staged = await stageBotAttachments(client, inbox.sessionId, pending.drafts, api: api);
+      await api.send(
+        widget.botId,
+        pending.text,
+        imageIds: staged.images,
+        fileReceiptIds: staged.receipts,
+        mode: 'queue',
+        requestId: pending.requestId,
+      );
+      for (final b in behind) {
+        await api.send(widget.botId, b.text, mode: 'queue', requestId: b.rpcId);
+      }
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.maybeOf(context)?.showBriefNotice(context.l10n.chatQueueGone);
+    }
+    if (mounted) unawaited(controller.reload());
+  }
+
+  /// The next-turn entries waiting behind [item], in inbox order.
+  List<DsBotQueueItem> _behind(DsBotQueue inbox, DsBotQueueItem item) {
+    final at = inbox.nextTurn.indexWhere((e) => e.itemId == item.itemId);
+    return at < 0 ? const [] : inbox.nextTurn.skip(at + 1).toList();
+  }
+
+  /// 改为插话 / 撤回 on a message the Host still holds: `session/updateQueue`.
+  Future<void> _queueAction(
+    DsBotPending pending,
+    DsBotQueue inbox,
+    DsBotQueueItem item, {
+    bool remove = false,
+  }) async {
+    final client = ref.read(activeConnectionProvider).value?.client;
+    if (client == null) return;
+    try {
+      await client.updateQueue(inbox.sessionId, item.itemId, steer: !remove, remove: remove);
+      if (remove) ref.read(botChatProvider(widget.botId).notifier).dropPending(pending);
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.maybeOf(context)?.showBriefNotice(context.l10n.chatQueueGone);
+    }
+  }
+
+  /// 重试 a failed send: the same request id, the staged attachments again.
+  Future<void> _retryPending(DsBotPending pending) async {
+    final client = ref.read(activeConnectionProvider).value?.client;
+    final api = ref.read(dsBotProvider.notifier).api;
+    final bot = ref.read(dsBotProvider).team?.bot(widget.botId);
+    if (client == null || api == null || bot == null) return;
+    try {
+      final staged = await stageBotAttachments(client, bot.sessionId, pending.drafts, api: api);
+      await ref.read(botChatProvider(widget.botId).notifier).send(
+        pending.text,
+        imageIds: staged.images,
+        fileReceiptIds: staged.receipts,
+        pending: pending,
+      );
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.maybeOf(context)?.showBriefNotice(describeDsBotError(error));
+    }
+  }
+
+  /// 撤回 a failed send: the bubble goes, its words come back to be edited.
+  void _withdrawPending(DsBotPending pending) {
+    ref.read(botChatProvider(widget.botId).notifier).dropPending(pending);
+    _input.text = pending.text;
+    ScaffoldMessenger.maybeOf(context)?.showBriefNotice(context.l10n.chatWithdrawnEditable);
+  }
+
+  Future<void> _send(BotActionScope target, String part, {SendMode mode = SendMode.queue}) async {
     if (!mounted || target.botId != widget.botId || !target.current(context, ref)) return;
     final status = ref.read(dsBotProvider);
     if (!status.ready || status.team?.bot(widget.botId)?.sessionId != part) return;
+    final attachments = _drafts;
+    final quote = _quote;
+    final messenger = ScaffoldMessenger.maybeOf(context);
     await sendBotDraft(
       context,
       ref,
       _input,
       botId: widget.botId,
-      send: (text) => ref.read(botChatProvider(widget.botId).notifier).send(text),
+      hasAttachments: attachments.isNotEmpty,
+      send: (text) async {
+        final controller = ref.read(botChatProvider(widget.botId).notifier);
+        if (attachments.isEmpty) {
+          final sent = await controller.send(withQuote(text, quote), mode: botSendMode(mode));
+          if (sent && mounted) setState(() => _quote = null);
+          return sent;
+        }
+        final client = ref.read(activeConnectionProvider).value?.client;
+        final api = ref.read(dsBotProvider.notifier).api;
+        if (client == null || api == null) return false;
+        try {
+          final staged = await stageBotAttachments(client, part, attachments, api: api);
+          final sent = await controller.send(
+            withQuote(text, quote),
+            imageIds: staged.images,
+            fileReceiptIds: staged.receipts,
+            mode: botSendMode(mode),
+          );
+          if (sent && mounted) {
+            setState(() {
+              _drafts = const [];
+              _quote = null;
+            });
+          }
+          return sent;
+        } catch (error) {
+          if (mounted) messenger?.showSnackBar(SnackBar(content: Text(describeDsBotError(error))));
+          return false;
+        }
+      },
     );
+  }
+
+  /// 长按发送键: while a turn runs, choose how the message reaches it; otherwise
+  /// send at once.
+  Future<void> _sendOptions(BotActionScope target, DsBot bot, {required bool running}) async {
+    if (!running) return _send(target, bot.sessionId);
+    final mode = await showBotSendOptions(context);
+    if (!mounted || mode == null) return;
+    await runBotSend(
+      mode,
+      stop: () => _stopGuard.action(botId: bot.id)(),
+      send: (mode) => _send(target, bot.sessionId, mode: mode),
+    );
+  }
+
+  void _setQuote(String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return;
+    setState(() => _quote = trimmed.length > 2000 ? trimmed.substring(0, 2000) : trimmed);
+  }
+
+  /// Opens the ＋ panel; the pick joins the tray above the composer.
+  Future<void> _attach() async {
+    final sessionId = ref.read(dsBotProvider).team?.bot(widget.botId)?.sessionId;
+    if (sessionId == null) return;
+    final room = maxAttachments - _drafts.length;
+    if (room <= 0) {
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        SnackBar(content: Text(context.l10n.chatAttachmentLimit(maxAttachments))),
+      );
+      return;
+    }
+    final client = ref.read(activeConnectionProvider).value?.client;
+    final picked = await pickBotAttachments(
+      context,
+      ref,
+      files: client?.supportsEndpoint('fileUploads/upload') ?? true,
+      limit: room,
+      // 本对话 (permissions, plan mode) acts on the session behind this Bot.
+      // 轻松模式不看权限/计划模式，传 null 让面板只剩相册/拍照/文件。
+      sessionId: widget.look == BotChatLook.light ? null : sessionId,
+    );
+    if (!mounted || picked == null || picked.isEmpty) return;
+    setState(() => _drafts = [..._drafts, ...picked]);
   }
 
   Future<void> _pickModel(DsBot bot, BotActionScope scope) => pickBotModel(context, ref, bot, scope: scope);
@@ -106,8 +444,9 @@ class _BotChatPageState extends ConsumerState<BotChatPage> {
     final question = team.questionOf(bot);
     final view = team.viewOf(bot);
     final api = ref.read(dsBotProvider.notifier).api;
+    // 等你回答 already shows on the pending card and in the composer's hint;
+    // the header keeps the Bot's own state instead of saying it a third time.
     final (String label, StatusTone tone) = switch (()) {
-      _ when question != null || view != null => (l10n.commonWaitingAnswer, StatusTone.warn),
       _ when bot.waiting => (l10n.botsWaitingModel, StatusTone.warn),
       _ when work != null => (
         [
@@ -118,57 +457,247 @@ class _BotChatPageState extends ConsumerState<BotChatPage> {
       ),
       _ => (bot.role.isEmpty ? (team.isMain(bot.id) ? l10n.botsMainBot : l10n.botsIdle) : bot.role, StatusTone.ok),
     };
-    final rows = transcriptRows(chat.items, pending: chat.pending, streaming: ownTurn ? chat.streaming : null);
+    // Consecutive tool calls fold into one row, so a busy turn does not fill
+    // the transcript with them; a turn's thinking is one line, and only while
+    // it is the newest thing.
+    // What the newest turn delivered, under its last row. A page read from
+    // history never matches, because turn numbers restart per part.
+    //
+    // Watched only while this page is on top and the engine is connected: the
+    // provider builds that Session's chat, and its connection, on first watch,
+    // and a Bot page that only reads DS Bot's transcript must not open one.
+    // 「引擎在线」is the local engine actually running, not merely a connection
+    // object existing; 「页面可见」is this route on top *and* the app resumed.
+    // 引擎在线 is per host: the local engine runs here, a remote host is up
+    // while its connection is. Judging a remote Bot by the local engine would
+    // hide every delivered card there.
+    final engineUp = status.isLocal
+        ? ref.watch(localRuntimeProvider.select((s) => s.status.phase == RuntimePhase.running))
+        : ref.watch(activeConnectionProvider.select((c) => c.value != null));
+    final visible = _resumed && (ModalRoute.of(context)?.isCurrent ?? true);
+    // Watched on every build: the first watch builds this Session's chat and its
+    // connection, and a delivered card is derived from that chat. The gate decides
+    // only what is drawn, so a card that lands after the first frame is not lost by
+    // a rebuild that happens to fall on an invisible moment.
+    final artifacts = ref.watch(sessionArtifactsProvider(bot.sessionId));
+    // Only the newest finished turn's own deliverables: a card from an earlier
+    // turn must not reappear under a later one (turn numbers restart per part,
+    // so "the last group" is not the same question as "this turn's group").
+    final botTurns = ref.watch(chatProvider(bot.sessionId).select((s) => s.turns));
+    final finished = [for (final trace in botTurns) if (!trace.running && trace.endSeq != null) trace];
+    final newestEnd = finished.isEmpty ? null : finished.last.endSeq;
+    final newest = artifacts.isEmpty ? null : artifacts.last;
+    final delivered = !(visible && engineUp) || newest == null || newest.endSeq != newestEnd ? null : newest;
+    // What its memory tools changed, one quiet line under the turn that did it.
+    // 完成后收起过程: off leaves every step's thinking and every tool row out.
+    final fold = ref.watch(settingsProvider.select((s) => s.foldCompletedTurns));
+    final showThinking = ref.watch(settingsProvider.select((s) => s.showThinking));
+    final memoryNotices = visible && engineUp
+        ? ref.watch(sessionMemoryNoticesProvider(bot.sessionId))
+        : const <int, MemoryNotice>{};
+    final rows = attachMemoryNotices(attachArtifacts(
+      groupToolRows(
+        fold: fold,
+        transcriptRows(
+          // 「{name} 完成了工作」 after every turn says what the reply already
+          // said. The group chat has dropped that echo since it was written;
+          // a Bot's own chat keeps the line only when it is the only trace.
+          botTranscriptItems(
+            // 显示思考过程 off: the turn's thinking is dropped before it is drawn.
+            showThinking ? withoutDoneEchoes(chat.items) : withoutDoneEchoes(chat.items).where((i) => i.kind != DsBotItemKind.thinking).toList(),
+            running: ownTurn,
+            fold: fold,
+          ),
+          pending: chat.pending,
+          streaming: ownTurn ? chat.streaming : null,
+        ),
+      ),
+      delivered,
+      // A page that can still load older entries is a history page: the turn
+      // numbers there restart per part, so a card must not be placed by sheer
+      // "newest row" guessing.
+      atOldestEnd: !chat.hasEarlier,
+    ), memoryNotices, botId: bot.id);
     final topInset = BotChatHeader.heightOf(context);
     final rooms = {for (final room in team.rooms) room.id: room.name};
     final readOnly = status.readOnly != null;
     final modelScope = BotActionScope(ref, botId: bot.id);
     final sendTarget = BotActionScope(ref, botId: bot.id);
 
-    return BotChatFrame(
+    final light = widget.look == BotChatLook.light;
+    return BotAdaptiveFrame(
+      // 轻松模式没有会话列表：抽屉、侧栏和详情列一起关掉。
+      drawer: light ? null : _drawerConfig,
+      // The column beside the chat on a wide window; the key folds it away.
+      panel: light
+          ? null
+          : SessionDetailPage.panel(key: ValueKey('bot-detail-${bot.sessionId}'), sessionId: bot.sessionId),
+      builder: (context, layout) => BotChatFrame(
       header: BotChatHeader(
-        face: BotAvatar(bot: bot, size: BotChatHeader.faceSize),
+        // Three columns: the rail owns the chats key, the header drops its own.
+        // 轻松模式的左键固定是「返回消息」。
+        showLeading: light ? true : !layout.isExpanded,
+        face: BotAvatar(
+          bot: bot,
+          size: BotChatHeader.faceSize,
+          // 聊天页是「可见页面」：按状态播动画；错误态只有这里拿得到（chat.error）。
+          emotion: mascotMoodOf(
+            status: status,
+            live: status.live,
+            inbox: ref.watch(dsBotInboxProvider),
+            bot: bot,
+            team: team,
+            error: chat.error != null,
+          ).emotion.id,
+          animate: true,
+        ),
         title: bot.name,
         status: label,
         tone: tone,
         scrolledUnder: _scrolled,
-        onDetails: () => Navigator.of(context).push(BotDetailsPage.route(bot.id)),
+        onLeading: light
+            ? () => Navigator.of(context).pop()
+            : () => onBotMenu(context, ref, layout, () => _drawer.toggle(context)),
+        leadingIcon: light ? AppIcons.back : null,
+        leadingTooltip: light ? ImStrings.backToMessages : botMenuTooltip(context, layout),
+        // The title capsule opens the Bot's own details; the key on the right
+        // opens the conversation's (trajectory, files, progress).
+        // 轻松模式：资料卡换成不露 token/原始记录的轻量页，右侧详情键去掉。
+        onDetails: () => Navigator.of(context).push(
+          widget.look == BotChatLook.light ? ImBotProfilePage.route(bot.id) : BotDetailsPage.route(bot.id),
+        ),
+        onInfo: widget.look == BotChatLook.light
+            ? null
+            : () => openBotDetail(context, ref, layout: layout, sessionId: bot.sessionId),
+        infoTooltip: layout.isExpanded && layout.panelAvailable
+            ? (ref.watch(layoutPrefsProvider).panelOpen ? l10n.shellCollapseDetails : l10n.shellChatDetails)
+            : null,
       ),
       body: chat.loading && chat.items.isEmpty
           ? Padding(
               padding: EdgeInsets.only(top: topInset),
               child: const QuietSpinner(),
             )
-          : BotTranscript(
+          // 对话字号 applies here too; the header and the composer keep the
+          // system size, as they do in the native chat.
+          : ChatTextScale(
+              child: BotTranscript(
               rows: rows,
               topInset: topInset,
               scrolledUnder: _scrolled,
               hasEarlier: chat.hasEarlier,
               loadingEarlier: chat.loadingEarlier,
               onEarlier: () => ref.read(botChatProvider(widget.botId).notifier).loadEarlier(),
-              empty: _Intro(bot: bot),
+              empty: widget.look == BotChatLook.light
+                  ? ImIntro(
+                      bot: bot,
+                      onSay: (line) {
+                        _input.text = line;
+                        unawaited(_send(sendTarget, bot.sessionId));
+                      },
+                    )
+                  : _Intro(bot: bot),
               rowBuilder: (context, row) => Padding(
                 padding: rowPadding(row),
                 child: switch (row) {
                   BotTimeRow(:final time) => BotTimeLine(time),
-                  BotPendingRow(:final pending) => BotUserMessage(text: pending.text, pending: true),
+                  BotPendingRow(:final pending) => _pendingBubble(pending, chat.inbox, running: ownTurn),
                   BotStreamingRow(:final text) =>
                     text.isEmpty
                         ? const Align(alignment: Alignment.centerLeft, child: _Thinking())
                         : BotReplyText(text: text, streaming: true),
                   BotTypingRow() => const SizedBox.shrink(),
+                  BotArtifactsRow(:final group, :final sessionId) =>
+                    ArtifactCard(sessionId: sessionId ?? bot.sessionId, group: group),
+                  BotMemoryNoticeRow(:final notice) => BotMemoryLine(
+                    notice: notice,
+                    onTap: () => Navigator.of(context).push(BotMemoryPage.route(botId: bot.id)),
+                  ),
+                  BotToolGroupRow(:final items) => BotToolGroup(
+                    // A stable key: paging in older rows must not hand this
+                    // group's open state to the one that lands on its index.
+                    key: ValueKey('tool-group-${items.first.callId ?? items.first.toolName}'),
+                    items: items,
+                  ),
                   BotItemRow(:final item) => switch (item.kind) {
-                    DsBotItemKind.user => BotUserMessage(text: item.text, images: item.images),
-                    DsBotItemKind.bot => BotReplyText(text: item.text),
+                    // The host names the pictures this line was sent with; without
+                    // them the row swaps in when the round settles and the image
+                    // the person just sent vanishes.
+                    DsBotItemKind.user => BotUserMessage(
+                      text: botLineText(item),
+                      images: item.images,
+                      attachments: botItemAttachments(
+                        context,
+                        ref,
+                        item,
+                        bot.sessionId,
+                        onOpenFile: (file) => openBotAttachmentFile(
+                          context,
+                          ref,
+                          file: file,
+                          botId: bot.id,
+                        ),
+                      ),
+                      onQuote: _setQuote,
+                    ),
+                    DsBotItemKind.bot => Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // A Bot's own attachments draw like the person's do;
+                        // the pictures among them open full screen already.
+                        if (botItemAttachments(
+                        context,
+                        ref,
+                        item,
+                        chat.sessionId,
+                        onOpenFile: (file) => openBotAttachmentFile(
+                          context,
+                          ref,
+                          file: file,
+                          botId: bot.id,
+                        ),
+                      ) case final shown?) ...[
+                          shown,
+                          const SizedBox(height: 6),
+                        ],
+                        BotTextBubble(
+                          ink: botInk(context, bot.ink),
+                          flat: ref.watch(settingsProvider.select((s) => s.flatBubbles)),
+                          child: BotReplyText(
+                            text: botLineText(item),
+                            onQuote: _setQuote,
+                            // A path in the reply is a file in this Bot's Session.
+                            onLinkTap: (href) => openLinkedFile(context, sessionId: bot.sessionId, href: href),
+                          ),
+                        ),
+                      ],
+                    ),
                     DsBotItemKind.event => BotEventLine(
                       text: chatEventText(item, roomName: rooms[item.roomId]),
                       icon: AppIcons.swap,
                     ),
                     DsBotItemKind.answer => BotEventLine(text: l10n.botsAnsweredQuestion, icon: AppIcons.done),
-                    DsBotItemKind.divider => BotEventLine(text: l10n.botsEarlierMessages, icon: AppIcons.history),
+                    DsBotItemKind.divider => BotEventLine(
+                      text: widget.look == BotChatLook.light ? ImStrings.segmentDivider : l10n.botsEarlierMessages,
+                      icon: AppIcons.history,
+                    ),
+                    DsBotItemKind.tool => BotToolRow(name: item.toolName ?? '', status: item.toolStatus),
+                    // A step's thinking is the conversation's own row: the
+                    // same collapsible pill the native chat draws, in place,
+                    // and it stays while the reply streams under it.
+                    DsBotItemKind.thinking =>
+                      item.text.trim().isEmpty
+                          ? const SizedBox.shrink()
+                          : BotThinkingLine(
+                              text: item.text,
+                              // Still thinking only while nothing else has arrived.
+                              active: ownTurn && item == chat.items.last,
+                              streaming: ownTurn,
+                            ),
                     DsBotItemKind.unknown => const SizedBox.shrink(),
                   },
                 },
+              ),
               ),
             ),
       bottom: [
@@ -201,18 +730,65 @@ class _BotChatPageState extends ConsumerState<BotChatPage> {
         BotErrorSlot(
           error: chat.error,
           onDismiss: () => ref.read(botChatProvider(widget.botId).notifier).dismissError(),
+          action: widget.look == BotChatLook.light
+              ? (label: ImStrings.retry, onPressed: () => unawaited(ref.read(botChatProvider(widget.botId).notifier).reload()))
+              : null,
+        ),
+        BotComposerDeck(
+          // 轻松模式不显示目标/待办/权限条和活动条。
+          showSessionBars: widget.look == BotChatLook.pro,
+          showActivity: widget.look == BotChatLook.pro,
+          sessionId: bot.sessionId,
+          running: ownTurn,
+          activityBot: bot,
+          // 活动行点开本轮轨迹，和普通会话一致。
+          onRoomActivityTap: () => _openRunningTrajectory(bot.sessionId),
         ),
         Composer(
           hardwareEnterSends: ref.watch(settingsProvider.select((s) => s.hardwareEnterSends)),
+          // The native chat's own line count for the same screen and text
+          // size, so the field grows the same way here.
+          maxLines: Composer.linesFor(context),
+          busy: chat.loading,
           controller: _input,
           focusNode: _focus,
           connected: api != null && !readOnly,
+          voice: _voice,
+          accessory: widget.look == BotChatLook.light ? null : BotContextRing(sessionId: bot.sessionId, model: botModelSelection(bot)),
+          waiting: question != null || view != null,
+          waitHint: question != null ? l10n.commonWaitingAnswer : null,
+          // The ＋ stays beside send on every host. `hello.api` names the answer shapes
+          // the host knows, not whether the composer may offer attachments; hiding the
+          // key there looked like the feature had been removed. `send` ignores what a
+          // host does not know, so the key is offered whenever the host is reachable.
+          leading: AttachButton(key: const ValueKey('attach-key'), onPressed: api == null || readOnly ? null : _attach),
+          tray: ComposerTrayStack.maybe(
+            quote: _quote == null ? null : QuoteChip(quote: _quote!, onRemove: () => setState(() => _quote = null)),
+            attachments: _drafts.isEmpty
+                ? null
+                : ComposerTray(
+                    items: _drafts,
+                    onRemove: (gone) => setState(() => _drafts = [for (final draft in _drafts) if (draft != gone) draft]),
+                  ),
+          ),
+          hasAttachments: _drafts.isNotEmpty,
+          // As in the chat: the model this Bot answers with sits inside the open
+          // composer, beside the keys, and opens the same sheet the header's chip does.
+          // 模型名不露给轻松模式。
+          footer: widget.look == BotChatLook.light
+              ? null
+              : ComposerModelPill(
+                  selection: botModelSelection(bot),
+                  onSelected: (selection) => unawaited(applyBotModel(context, ref, bot, selection)),
+                ),
           running: ownTurn,
           onSend: () => _send(sendTarget, bot.sessionId),
+          onSendOptions: () => _sendOptions(sendTarget, bot, running: ownTurn),
           onStop: _stopGuard.action(botId: bot.id),
           placeholder: l10n.botsComposerHint(bot.name),
         ),
       ],
+      ),
     );
   }
 }
@@ -221,33 +797,47 @@ class _BotChatPageState extends ConsumerState<BotChatPage> {
 Future<void> pickBotModel(BuildContext context, WidgetRef ref, DsBot bot, {BotActionScope? scope}) {
   final target = scope ?? BotActionScope(ref, botId: bot.id);
   if (!target.current(context, ref)) return Future.value();
-  final hub = ref.read(dsBotProvider.notifier);
-  final api = target.api;
   bool current() => target.current(context, ref);
 
   if (!current()) return Future.value();
-  final messenger = ScaffoldMessenger.maybeOf(context);
   return showModelSheet(
     context,
     current: botModelSelection(bot),
-    onSelected: (selection) async {
-      // A modal can outlive a host switch, reconnect, or removal of this Bot.
-      // Check before any write; never redirect an old choice through hub.api.
-      if (!current()) return;
-      try {
-        await api!.updateBot(
-          bot.id,
-          model: '${selection.provider}/${selection.model}',
-          // A model without levels clears the previous Bot override.
-          // Omission means "keep" to DS Bot, not "use the default".
-          effort: selection.reasoningEffort ?? '',
-        );
-        if (current()) await hub.refresh();
-      } catch (error) {
-        if (current()) messenger?.showSnackBar(SnackBar(content: Text(describeDsBotError(error))));
-      }
-    },
+    onSelected: (selection) => applyBotModel(context, ref, bot, selection, scope: scope),
   );
+}
+
+/// Saves [selection] on [bot]. The header's model chip opens the same sheet
+/// itself, so the write lives here rather than inside the sheet's callback.
+Future<void> applyBotModel(
+  BuildContext context,
+  WidgetRef ref,
+  DsBot bot,
+  ModelSelection selection, {
+  BotActionScope? scope,
+}) async {
+  final target = scope ?? BotActionScope(ref, botId: bot.id);
+  if (!target.current(context, ref)) return;
+  final hub = ref.read(dsBotProvider.notifier);
+  final api = target.api;
+  final messenger = ScaffoldMessenger.maybeOf(context);
+  // A sheet can outlive a host switch, reconnect, or removal of this Bot.
+  // Check before any write; never redirect an old choice through hub.api.
+  if (!target.current(context, ref)) return;
+  try {
+    await api!.updateBot(
+      bot.id,
+      model: '${selection.provider}/${selection.model}',
+      // A model without levels clears the previous Bot override.
+      // Omission means "keep" to DS Bot, not "use the default".
+      effort: selection.reasoningEffort ?? '',
+    );
+    if (context.mounted && target.current(context, ref)) await hub.refresh();
+  } catch (error) {
+    if (context.mounted && target.current(context, ref)) {
+      messenger?.showSnackBar(SnackBar(content: Text(describeDsBotError(error))));
+    }
+  }
 }
 
 /// A Bot's model as the model sheet names it.
@@ -285,7 +875,7 @@ class _Intro extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        BotAvatar(bot: bot, size: 64),
+        BotAvatar(bot: bot, size: 64, animate: true),
         const SizedBox(height: 12),
         Text(bot.name, style: theme.textTheme.titleLarge),
         if (bot.role.isNotEmpty) ...[

@@ -129,6 +129,10 @@ abstract final class LaunchMotion {
   static const wordmarkSize = 26.0;
   static const wordmarkLine = 1.2;
 
+  /// The wordmark as vector: 18 tall, the `inline` tier. The 26pt word's ink measured
+  /// about this, so the launch screen keeps its weight.
+  static const wordmarkMarkSize = 18.0;
+
   /// The wordmark starts this far below its place.
   static const wordmarkRiseBy = 10.0;
 

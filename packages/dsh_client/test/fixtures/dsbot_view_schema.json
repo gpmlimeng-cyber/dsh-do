@@ -386,7 +386,7 @@
     },
     {
       "name": "slider",
-      "native": false,
+      "native": true,
       "valid": true,
       "view": {
         "type": "stack",
@@ -433,7 +433,7 @@
     },
     {
       "name": "number",
-      "native": false,
+      "native": true,
       "valid": true,
       "view": {
         "type": "stack",
@@ -476,7 +476,7 @@
     },
     {
       "name": "toggle",
-      "native": false,
+      "native": true,
       "valid": true,
       "view": {
         "type": "stack",
@@ -639,7 +639,7 @@
     },
     {
       "name": "metric-caption",
-      "native": false,
+      "native": true,
       "valid": true,
       "view": {
         "type": "stack",
@@ -682,7 +682,7 @@
     },
     {
       "name": "progress-ratio",
-      "native": false,
+      "native": true,
       "valid": true,
       "view": {
         "type": "stack",
@@ -723,7 +723,7 @@
     },
     {
       "name": "chart",
-      "native": false,
+      "native": true,
       "valid": true,
       "view": {
         "type": "stack",
@@ -780,7 +780,7 @@
     },
     {
       "name": "callout",
-      "native": false,
+      "native": true,
       "valid": true,
       "view": {
         "type": "stack",
@@ -819,7 +819,7 @@
     },
     {
       "name": "table",
-      "native": false,
+      "native": true,
       "valid": true,
       "view": {
         "type": "stack",
@@ -878,7 +878,7 @@
     },
     {
       "name": "sources",
-      "native": false,
+      "native": true,
       "valid": true,
       "view": {
         "type": "stack",
@@ -927,7 +927,7 @@
     },
     {
       "name": "html",
-      "native": false,
+      "native": true,
       "valid": true,
       "view": {
         "type": "stack",

@@ -6,7 +6,9 @@ import 'dart:convert';
 
 import 'package:dsh_client/dsh_client.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../l10n/l10n.dart';
 import '../../share_code/conversation_redact.dart' show redactText;
@@ -21,6 +23,15 @@ import '../replay/replay_scope.dart';
 import '../session/workspace_files.dart' show formatBytes;
 import 'share_content.dart';
 import 'share_panel.dart';
+
+/// 「分享」 on a line that has no conversation behind it: a Bot's reply, a
+/// group's message. Those are not chat items, so the panel (which reads the
+/// session it belongs to) has nothing to show; the system sheet takes the text.
+Future<void> shareText(BuildContext context, String text) async {
+  if (text.trim().isEmpty) return;
+  HapticFeedback.selectionClick();
+  await SharePlus.instance.share(ShareParams(text: text));
+}
 
 /// 「分享」 on a reply: the panel at 「这条回复」. A reply in a replayed
 /// conversation shares from the replay, not from the chat that happens to be

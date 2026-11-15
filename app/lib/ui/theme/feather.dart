@@ -28,19 +28,32 @@ LinearGradient featherFade({
 /// Page-coloured fade under the status bar and floating top buttons.
 ///
 /// Shared by every top bar (secondary pages, chat) so they read the same: no
-/// slab, no divider; the page's own backdrop, solid behind the buttons and
-/// feathered out over the last 16dp.
+/// slab, no divider, no line. The plate is the page's own backdrop, solid only
+/// under the status bar and then eased out over most of its height, so the bar
+/// and the conversation behind it meet in a ramp instead of at an edge — the
+/// way GrokBot's header sits on its content.
 /// Callers fade it in only once content has scrolled under the bar, so at rest
 /// the page is one uninterrupted surface.
 class TopFade extends StatelessWidget {
-  const TopFade({super.key, required this.height});
+  const TopFade({super.key, required this.height, this.opacity = 0.86});
 
   final double height;
 
+  /// Below 1 the conversation behind the bar stays faintly visible, the same
+  /// way it does under the composer's plate.
+  final double opacity;
+
+  /// The solid cap: high enough to keep the keys and the title legible while the
+  /// status bar sits on it, low enough that nobody sees where the ramp starts.
+  static const _solidShare = 0.2;
+
   @override
-  Widget build(BuildContext context) => SizedBox(
-    height: height,
-    width: double.infinity,
-    child: BackdropVeil.top(height: height - 16, feather: 16),
-  );
+  Widget build(BuildContext context) {
+    final solid = height * _solidShare;
+    return SizedBox(
+      height: height,
+      width: double.infinity,
+      child: BackdropVeil.top(height: solid, feather: height - solid, opacity: opacity),
+    );
+  }
 }

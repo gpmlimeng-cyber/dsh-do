@@ -17,8 +17,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../chat/support/harness.dart' show fakeConnection;
+import '../chat/support/harness.dart' show fakeConnection, FakeChatController;
 import 'support.dart';
+import 'package:dsh_app/state/chat_state.dart' show chatProvider, ChatState;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -61,6 +62,7 @@ void main() {
     test('the relay cannot reach plugin routes', () async {
       final container = ProviderContainer(
         overrides: [
+              chatProvider.overrideWith2((id) => FakeChatController(id, const ChatState(loading: false))),
           activeConnectionProvider.overrideWithValue(AsyncData(fakeConnection)),
           dsBotApiFactoryProvider.overrideWithValue((_) => null),
         ],
@@ -311,6 +313,22 @@ void main() {
       expect(state.streaming, isNull);
     });
 
+    test('a send carries its mode; without one the payload stays as it was', () async {
+      final transport = FakeDsBotTransport();
+      final container = await start(transport);
+      final sub = container.listen(botChatProvider('b2'), (_, _) {});
+      addTearDown(sub.close);
+      await settle();
+      await container.read(botChatProvider('b2').notifier).send('插一句', mode: 'steer');
+      expect(transport.calls.last.$2, {
+        'sessionId': 'b2',
+        'text': '插一句',
+        'mode': 'steer',
+      });
+      await container.read(botChatProvider('b2').notifier).send('排着');
+      expect(transport.calls.last.$2, {'sessionId': 'b2', 'text': '排着'});
+    });
+
     test('a failed send goes back to the draft side and says why', () async {
       final transport = FakeDsBotTransport();
       transport.handlers['send'] = (_) => throw const DshRemoteException('bot/read-only', 'held');
@@ -370,11 +388,41 @@ void main() {
       expect(mergeNewestPage(shown, [item('x')]).items.map((i) => i.id), ['x']);
     });
 
-    test('settlePending drops each echoed message once', () {
+    test('an echo that names the bubble removes it, whatever its text', () {
       final at = DateTime(2026);
-      final pending = [DsBotPending('hi', at), DsBotPending('hi', at), DsBotPending('other', at)];
-      final left = settlePending(pending, [const DsBotItem(kind: DsBotItemKind.user, text: 'hi ')]);
-      expect(left.map((p) => p.text), ['hi', 'other']);
+      final pending = [DsBotPending('hi', at, requestId: 'r1')];
+      final left = settlePending(pending, const [
+        DsBotItem(kind: DsBotItemKind.user, text: 'something else entirely', rpcId: 'r1'),
+      ]);
+      expect(left, isEmpty);
+    });
+
+    test('without a request id the echo is the next user line, not an older one', () {
+      final at = DateTime(2026);
+      final pending = [DsBotPending('', at), DsBotPending('', at, afterSeq: 10)];
+      final left = settlePending(pending, const [
+        DsBotItem(kind: DsBotItemKind.user, seq: 9),
+        DsBotItem(kind: DsBotItemKind.user, seq: 11),
+      ]);
+      expect(left, isEmpty);
+    });
+
+    test('the group shape finds the sequence in the item id', () {
+      final at = DateTime(2026);
+      final pending = [DsBotPending('', at, afterSeq: 100)];
+      final left = settlePending(pending, const [
+        DsBotItem(kind: DsBotItemKind.user, id: '101', text: '[Image "x.jpg", read by a model:] words'),
+      ]);
+      expect(left, isEmpty);
+    });
+
+    test('a bubble nobody echoes keeps sending, then fails', () {
+      final at = DateTime(2026, 1, 1);
+      final pending = [DsBotPending('', at)];
+      expect(settlePending(pending, const [], now: at.add(const Duration(seconds: 5))).single.failed, isFalse);
+      final later = settlePending(pending, const [], now: at.add(pendingTimeout + const Duration(seconds: 1)));
+      expect(later.single.failed, isTrue);
+      expect(later, hasLength(1));
     });
 
     test('transcriptRows marks one speaker\'s runs and puts a time between distant messages', () {

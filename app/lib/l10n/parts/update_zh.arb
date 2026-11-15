@@ -2,6 +2,15 @@
   "updateCheck": "检查更新",
   "updateAutoCheck": "自动检查更新",
   "updateAutoCheckDaily": "每天检查一次",
+  "updateIncludePreviews": "检查更新时包含预览版",
+  "updateBasedOn": "基于上游 {version}",
+  "@updateBasedOn": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
   "updateTileDownloading": "下载中",
   "updateTileDownloadingPercent": "下载中 {percent}%",
   "@updateTileDownloadingPercent": {

@@ -417,7 +417,7 @@ class _ComposerState extends State<Composer> with SingleTickerProviderStateMixin
                     ? l10n.stateChatSynchronizing
                     : widget.waitHint ??
                           (widget.running && !waiting
-                              ? l10n.chatGeneratingSteerHint
+                              ? (widget.runningHint ?? l10n.chatGeneratingSteerHint)
                               : widget.placeholder ?? l10n.chatComposerHint),
             };
             final leading = dictating

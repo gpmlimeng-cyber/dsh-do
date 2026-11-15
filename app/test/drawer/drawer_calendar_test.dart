@@ -71,6 +71,7 @@ void main() {
             'agentAvailable': false,
           }),
         ],
+        bots: const [],
         pinnedIds: const [],
         view: DrawerView(loaded: true, sort: sort),
         filter: DrawerFilter.all,
@@ -82,7 +83,7 @@ void main() {
       expect(blocks, hasLength(1));
       final day = blocks.single as DayBlock;
       expect(day.day, SessionDay.yesterday);
-      expect(day.items.single.sessionId, 'yesterday');
+      expect((day.items.single as SessionRow).session.sessionId, 'yesterday');
     });
   }
 }

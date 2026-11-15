@@ -319,5 +319,53 @@
   "chatGoalStateSemantics": "Goal, {objective}, {state}",
   "chatTodoItemSemantics": "{content}, {state}",
   "chatMentionSemantics": "{kind}: {label}",
-  "chatArtifactSemantics": "{name}, {description}"
+  "chatArtifactSemantics": "{name}, {description}",
+  "chatNewContentCount": "{count} new",
+  "@chatNewContentCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "chatGeneratingQueueHint": "Working · queued sends wait",
+  "chatAttachmentNoPreview": "This kind of file can’t be previewed here",
+  "chatQueueGone": "That message is no longer in the queue",
+  "lastConversationMissingObject": "That Bot or group is gone",
+  "lastConversationMissingSession": "The conversation you left is gone",
+  "chatGoalRunning": "Running",
+  "chatGoalPaused": "Paused",
+  "chatGoalStopped": "Stopped",
+  "chatGoalAligning": "Aligning the goal with you",
+  "chatGoalReached": "Goal reached",
+  "chatGoalFinalCheck": "Final check",
+  "chatGoalChecking": "Checking · {title}",
+  "@chatGoalChecking": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "chatGoalIdleWord": "Waiting for you",
+  "chatGoalNone": "No goal yet",
+  "chatGoalPanel": "Goal and checks",
+  "chatGoalStageCurrent": "Current stage",
+  "chatGoalStageDone": "Done when",
+  "chatGoalTasks": "Members' tasks",
+  "chatGoalTaskPending": "To do",
+  "chatGoalTaskWorking": "Working",
+  "chatGoalTaskReported": "Reported",
+  "chatGoalTaskDone": "Done",
+  "chatGoalAcceptance": "Checks",
+  "chatGoalAcceptanceDone": "Done when",
+  "chatGoalRule": "Rule",
+  "chatGoalRework": "Sent back {count}×",
+  "chatGoalCollapseToBallHint": "Collapse to a ball — the group name shows in full",
+  "chatGoalDoneWhen": "Done when: {text}",
+  "chatGoalConfirmStop": "Stop the goal?",
+  "chatGoalEvidence": "Evidence",
+  "chatGoalReworkBy": "Sent back by {admin}: {feedback}",
+  "chatGoalReworkByTimes": "Sent back {count} times by {admin}. Last time: {feedback}",
+  "chatStopWorkToo": "Stop current work too"
 }

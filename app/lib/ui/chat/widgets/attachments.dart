@@ -178,15 +178,28 @@ class _Removable extends StatelessWidget {
 /// Attachments of one user message, right-aligned above its bubble: local
 /// bytes while the message is in flight, then the session's stored copies.
 class SentAttachments extends StatelessWidget {
-  const SentAttachments.pending(this.drafts, {super.key}) : sessionId = null, images = const [], files = const [];
+  const SentAttachments.pending(this.drafts, {super.key})
+    : sessionId = null,
+      images = const [],
+      files = const [],
+      onOpenFile = null;
 
-  const SentAttachments.echoed({super.key, required String this.sessionId, required this.images, required this.files})
-    : drafts = const [];
+  const SentAttachments.echoed({
+    super.key,
+    required String this.sessionId,
+    required this.images,
+    required this.files,
+    this.onOpenFile,
+  }) : drafts = const [];
 
   final List<DraftAttachment> drafts;
   final String? sessionId;
   final List<ImageAttachment> images;
   final List<FileAttachment> files;
+
+  /// A file card's tap: open the file in place. Null leaves the cards inert
+  /// (the composer's own pending cards, and every page that cannot read text).
+  final void Function(FileAttachment file)? onOpenFile;
 
   bool get isEmpty => drafts.isEmpty && images.isEmpty && files.isEmpty;
 
@@ -209,7 +222,12 @@ class SentAttachments extends StatelessWidget {
         _SessionImage(sessionId: sessionId!, images: images, index: i, single: single),
       for (final d in drafts)
         if (!d.isImage) FileCard(name: d.name, bytes: d.size),
-      for (final f in files) FileCard(name: f.name ?? l10n.chatFile, bytes: f.bytes),
+      for (final f in files)
+        FileCard(
+          name: f.name ?? l10n.chatFile,
+          bytes: f.bytes,
+          onTap: onOpenFile == null ? null : () => onOpenFile!(f),
+        ),
     ];
     return Wrap(alignment: WrapAlignment.end, spacing: 4, runSpacing: 4, children: children);
   }
@@ -319,6 +337,16 @@ class _SessionImage extends ConsumerWidget {
         onLongPress: () =>
             showImageActions(context, image: MemoryImage(value), load: () async => value, name: attachment.name),
       ),
+      // A fetch that failed once stays failed inside the provider; tapping
+      // says why it failed and asks it again, instead of leaving an empty box
+      // until the app restarts.
+      AsyncError(:final error) => GestureDetector(
+        onTap: () {
+          ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text('$error')));
+          ref.invalidate(sessionImageProvider((sessionId, attachment)));
+        },
+        child: _ImagePlaceholder(size: box, aspect: aspect, failed: true),
+      ),
       _ => Semantics(
         image: true,
         button: true,
@@ -356,7 +384,7 @@ class _ImagePlaceholder extends StatelessWidget {
 
 /// A file attachment: type badge, name, "PDF · 1.2 MB".
 class FileCard extends StatelessWidget {
-  const FileCard({super.key, required this.name, this.bytes, this.height = 56, this.tinted = false});
+  const FileCard({super.key, required this.name, this.bytes, this.height = 56, this.tinted = false, this.onTap});
 
   final String name;
   final int? bytes;
@@ -364,6 +392,9 @@ class FileCard extends StatelessWidget {
 
   /// On the composer's glass (a faint fill) rather than a bubble-coloured card.
   final bool tinted;
+
+  /// Opens the file in place, when the page can read it.
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -376,7 +407,10 @@ class FileCard extends StatelessWidget {
     final onBadge = dsh.onIdentity[tint % dsh.onIdentity.length];
     final meta = [if (ext != null) ext.toUpperCase(), if (bytes != null) formatBytes(bytes!)].join(' · ');
     // 外圆角 16、内边距 8、类型块圆角 8:内外同心(16 − 8)。
-    return Container(
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Container(
       height: height,
       constraints: const BoxConstraints(minWidth: 140, maxWidth: 220),
       padding: const EdgeInsets.fromLTRB(8, 8, 16, 8),
@@ -412,6 +446,7 @@ class FileCard extends StatelessWidget {
             ),
           ),
         ],
+        ),
       ),
     );
   }

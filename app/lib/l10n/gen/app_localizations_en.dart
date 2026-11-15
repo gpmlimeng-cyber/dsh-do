@@ -26535,4 +26535,432 @@ class L10nEn extends L10n {
   @override
   String get workspaceRecoveryFailed =>
       'The operation did not finish. Check the local engine status and logs. This page shows whether the index mode changed.';
+  @override
+  String get aboutPitch => 'Coka, Your AI Coworker';
+
+  @override
+  String get botsABot => 'a Bot';
+
+  @override
+  String get botsAlreadySpoke => 'Spoke';
+
+  @override
+  String get botsGoalBackToCurrent => 'Back to current stage';
+
+  @override
+  String get botsMemoryAlready => 'Already saved';
+
+  @override
+  String get botsMemoryFailed => 'Couldn\'t save to memory';
+
+  @override
+  String get botsMemoryReasonEmpty => 'Write something to save';
+
+  @override
+  String get botsMemoryReasonNoMatch => 'No saved entry matched';
+
+  @override
+  String get botsMemoryReasonOther => 'The memory could not be changed';
+
+  @override
+  String get botsMemoryReasonRefused => 'The memory refused this change';
+
+  @override
+  String get botsMemoryUnchanged => 'Memory not changed';
+
+  @override
+  String get botsMemoryUpdated => 'Memory updated';
+
+  @override
+  String get botsMessageMode => 'Message mode';
+
+  @override
+  String get botsMessageModeEmpty => 'This member has not spoken in this group yet';
+
+  @override
+  String get botsMessageModeEmptyStretch => 'Nothing from them in this stretch';
+
+  @override
+  String botsMessageModeWith(String mode) {
+    return 'Message mode: $mode';
+  }
+
+  @override
+  String get botsMessageScope => 'Message range';
+
+  @override
+  String botsNamedDone(String name) {
+    return '$name is done';
+  }
+
+  @override
+  String botsOthersRunning(int count) {
+    return '$count more running';
+  }
+
+  @override
+  String get botsPermissionGroupWide => 'One permission preset for this group';
+
+  @override
+  String get botsPermissionGroupWideOff => 'Each member uses their own permission preset';
+
+  @override
+  String get botsPermissionGroupWideOn =>
+      'Applies to every member’s sessions here; switching changes the ones already open';
+
+  @override
+  String get botsReadOnlyNote => 'This group is read-only now';
+
+  @override
+  String botsRoomBackToGroupChat(String room) {
+    return 'Back to $room';
+  }
+
+  @override
+  String get botsRoomFilter => 'Group chat filters';
+
+  @override
+  String get botsRoomFilterGroupOnly => 'Works in the group chat only';
+
+  @override
+  String get botsRoomMemberChat => 'Group conversation';
+
+  @override
+  String botsRoomMemberChatLine(String room) {
+    return 'Group conversation · $room';
+  }
+
+  @override
+  String get botsRoomMemberChats => 'Member conversations';
+
+  @override
+  String botsRoomMemberDetails(String name) {
+    return '$name\'s conversation details';
+  }
+
+  @override
+  String get botsRoomMemberLeft => 'That member is no longer in this group; back to the group chat';
+
+  @override
+  String botsRoomMemberScope(String name) {
+    return 'Only $name · this group';
+  }
+
+  @override
+  String get botsRoomMemberSessionMissing => 'This member has not started a conversation in this group yet';
+
+  @override
+  String get botsRoomNeverSpoke => 'Has not spoken in this group yet';
+
+  @override
+  String botsRoomOnly(String name) {
+    return 'Only $name';
+  }
+
+  @override
+  String get botsRoomOnlyThisMember => 'Only this member';
+
+  @override
+  String get botsRoomOnlyWhose => 'Whose messages only';
+
+  @override
+  String get botsRoomScopeAll => 'All messages';
+
+  @override
+  String get botsRoomSearchMembers => 'Search members';
+
+  @override
+  String get botsRoomSendsToGroup => 'Sends to the group chat; everyone there sees it';
+
+  @override
+  String get botsRoomSwitchChat => 'Switch conversation';
+
+  @override
+  String botsRoomSwitchTo(String target) {
+    return 'Switch to $target';
+  }
+
+  @override
+  String get botsRoomWatching => 'Viewing';
+
+  @override
+  String get botsSendFailed => 'Could not send';
+
+  @override
+  String get botsSendStillWaiting => 'Still waiting for the server';
+
+  @override
+  String get botsStopAll => 'Stop all';
+
+  @override
+  String get botsStopAllBody => 'Members at work stop at once; you can continue again';
+
+  @override
+  String get botsStopAllTitle => 'Stop what every member is doing this round?';
+
+  @override
+  String get chatAttachmentNoPreview => 'This kind of file can’t be previewed here';
+
+  @override
+  String get chatGeneratingQueueHint => 'Working · queued sends wait';
+
+  String get chatGoalAcceptance => 'Goal and checks';
+
+  String get chatGoalAcceptanceDone => 'Done when';
+
+  @override
+  String get chatGoalAligning => 'Aligning the goal with you';
+
+  @override
+  String chatGoalChecking(String title) {
+    return 'Checking · $title';
+  }
+
+  @override
+  String get chatGoalCollapseToBallHint => 'Collapse to a ball — the group name shows in full';
+
+  @override
+  String get chatGoalConfirmStop => 'Stop the goal?';
+
+  @override
+  String chatGoalDoneWhen(String text) {
+    return 'Done when: $text';
+  }
+
+  @override
+  String get chatGoalDrafting => 'Drafting — waiting for the admin to start';
+
+  @override
+  String get chatGoalEvidence => 'Evidence';
+
+  @override
+  String get chatGoalFinalCheck => 'Final check';
+
+  @override
+  String get chatGoalIdleWord => 'Waiting for you';
+
+  String get chatGoalNone => 'No goal yet';
+
+  String get chatGoalPanel => 'Goal and checks';
+
+  String get chatGoalPaused => 'Paused';
+
+  @override
+  String get chatGoalReached => 'Goal reached';
+
+  @override
+  String chatGoalRework(int count) {
+    return 'Sent back $count×';
+  }
+
+  @override
+  String chatGoalReworkBy(String admin, String feedback) {
+    return 'Sent back by $admin: $feedback';
+  }
+
+  @override
+  String chatGoalReworkByTimes(int count, String admin, String feedback) {
+    return 'Sent back $count times by $admin. Last: $feedback';
+  }
+
+  String get chatGoalRule => 'Rule';
+
+  @override
+  String get chatGoalRunning => 'Running';
+
+  String get chatGoalStageCurrent => 'Current stage';
+
+  String get chatGoalStageDone => 'Done when';
+
+  String get chatGoalStopped => 'Stopped';
+
+  String get chatGoalTaskDone => 'Done';
+
+  String get chatGoalTaskPending => 'To do';
+
+  String get chatGoalTaskReported => 'Reported';
+
+  String get chatGoalTaskWorking => 'Working';
+
+  String get chatGoalTasks => 'Members\' tasks';
+
+  @override
+  String chatNewContentCount(int count) {
+    return '$count new';
+  }
+
+  @override
+  String get chatQueueGone => 'That message is no longer in the queue';
+
+  @override
+  String get chatStopWorkToo => 'Stop current work too';
+
+  @override
+  String get companionMenuInvite => 'Invitations';
+
+  @override
+  String get companionMenuInviteHint => 'When you sit quietly with her, she may now and then ask you to rest together';
+
+  @override
+  String get companionNeedsAttention => 'Something needs your confirmation. Tap to see it';
+
+  @override
+  String companionTaskApproval(String title) {
+    return '\"$title\" is waiting for your approval.';
+  }
+
+  @override
+  String get companionTaskApprovalUntitled => 'Something over there is waiting for your approval.';
+
+  @override
+  String companionTaskDone(String title) {
+    return '\"$title\" is done over there.';
+  }
+
+  @override
+  String companionTaskFailed(String title) {
+    return '\"$title\" seems to have hit an error. Take a look?';
+  }
+
+  @override
+  String companionTaskQuestion(String title) {
+    return '\"$title\" has a question for you.';
+  }
+
+  @override
+  String get companionTaskQuestionUntitled => 'There\'s a question waiting for you over there.';
+
+  @override
+  String get engineModelInputTextAudio => "Text and audio";
+
+  @override
+  String get hubBotThinking => 'Show the thinking';
+
+  @override
+  String get hubBubbleWidth => 'Bubble width';
+
+  @override
+  String get hubFlatBubbles => 'Flat messages (no bubbles)';
+
+  @override
+  String get hubGroupBot => 'Bots';
+
+  @override
+  String get lastConversationMissingObject => 'That Bot or group is gone';
+
+  @override
+  String get lastConversationMissingSession => 'The conversation you left is gone';
+
+  @override
+  String get launchAnimation => "Launch animation";
+
+  @override
+  String shellFolderSessions(int count) => count == 1 ? '1 conversation' : '$count conversations';
+
+  @override
+  String get shellGroups => 'Folders';
+
+  @override
+  String get shellNewFolderName => 'Folder name';
+
+  @override
+  String get shellNewFolderTaken => 'A folder with that name already exists';
+
+  @override
+  String shellNewNamedBot(String name) => 'New Bot “$name”';
+
+  @override
+  String get shellNewPanelBots => 'Bots';
+
+  @override
+  String get shellNewPanelGroups => 'Groups';
+
+  @override
+  String get shellNewPanelNew => 'New';
+
+  @override
+  String get shellNewPanelRecent => 'Recent 3';
+
+  @override
+  String get shellNewPanelSearch => 'Search Bots, groups and folders, or type a name';
+
+  @override
+  String get shellNewPanelStart => 'Start a conversation';
+
+  @override
+  String get shellNewPanelTitle => 'New';
+
+  @override
+  String updateBasedOn(String version) {
+    return 'Based on upstream $version';
+  }
+
+  @override
+  String get updateIncludePreviews => 'Include preview builds when checking';
+
+  @override
+  String get viewHtmlCantOpen => 'This page won\'t open';
+
+  @override
+  String get viewHtmlCantOpenBody => 'Open it in another app to read it';
+
+  @override
+  String get viewHtmlLinkBlocked => 'Blocked an unsafe link';
+
+  @override
+  String get viewHtmlPartialResources => 'Some resources did not load';
+
+  @override
+  String get viewPreviewBadge => 'Preview';
+
+  @override
+  String get voiceCloudConfigure => "Configure a cloud speech model";
+
+  @override
+  String get voiceCloudEmpty => "No cloud speech model is configured";
+
+  @override
+  String get voiceCloudFooter => "The list is the speech-capable providers configured in the engine; pick one to use it.";
+
+  @override
+  String get voiceCloudNeedPick => "Pick a cloud speech model in Settings first";
+
+  @override
+  String get voiceCloudSection => "Cloud speech models";
+
+  @override
+  String get voiceEngineBusy =>
+      'The engine is busy or did not answer in time, so the voice model is not ready yet. Try again in a moment.';
+
+  @override
+  String get voiceEngineModelMissing =>
+      'The voice model is downloaded, but the engine has not loaded it. Restart the app, or check the voice plugin in settings.';
+
+  @override
+  String get voiceEnginePreparing => 'Preparing the voice model…';
+
+  @override
+  String get voiceEnginePreparingTimeout => 'The voice model is still preparing. Try again in a moment.';
+
+  @override
+  String get voiceModeCloud => "Cloud";
+
+  @override
+  String get voiceModeCloudHint => "Use a cloud recognizer: pick a configured one below";
+
+  @override
+  String get voiceModelEngineMissing => 'The engine has not loaded the voice plugin';
+
+  @override
+  String get voiceModelEngineMissingNote => 'The voice plugin is not in the engine. Restart the engine and try again.';
+
+  @override
+  String get voiceModelFailLost => 'The voice model’s files are gone. Download it again.';
+
+  @override
+  String get voiceModelLostNote => 'The local model is gone. Download it again to use it.';
+
+  @override
+  String get voiceModelRestartEngine => 'Restart engine';
+
 }

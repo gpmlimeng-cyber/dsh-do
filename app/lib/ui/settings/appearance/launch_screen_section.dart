@@ -23,6 +23,7 @@ import '../../../launch/custom_launch.dart';
 import '../../../launch/launch_import.dart';
 import '../../../launch/launch_media.dart';
 import '../../../launch/launch_motion.dart';
+import '../../../state/splash_choice.dart';
 import '../../../state/app_icon_state.dart';
 import '../../../state/app_info.dart';
 import '../../../state/launch_screen_state.dart';
@@ -113,6 +114,13 @@ class _LaunchScreenSectionState extends ConsumerState<LaunchScreenSection> {
               SettingsTile(title: l10n.launchReplace, onTap: _busy ? null : () => unawaited(_choose())),
             ],
           ),
+        ),
+        // The built-in animations the UI drew, next to 默认 / 自定义 above.
+        SettingsSegmentTile<SplashChoice>(
+          title: l10n.launchAnimation,
+          segments: [for (final choice in SplashChoice.values) PillSegment(choice, choice.label)],
+          selected: ref.watch(splashChoiceProvider),
+          onChanged: (choice) => unawaited(ref.read(splashChoiceProvider.notifier).set(choice)),
         ),
         SettingsTile(
           title: l10n.launchPreview,

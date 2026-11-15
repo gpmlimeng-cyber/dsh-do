@@ -42,7 +42,8 @@ void main() {
     await pump(tester, const RoomChatPage(roomId: 'r1'));
     final screen = tester.getSize(find.byType(Scaffold).first);
     final back = tester.getRect(find.byKey(const ValueKey('bot-back')));
-    final details = tester.getRect(find.byKey(const ValueKey('bot-details')));
+    // The group's last key is the ⋯ menu now; it keeps the same 44 dp target.
+    final details = tester.getRect(find.byKey(const ValueKey('bot-menu-key')));
     final pill = tester.getRect(find.byKey(const ValueKey('bot-title')));
     final face = tester.getRect(find.byKey(const ValueKey('bot-face')));
     expect(back.size, const Size(44, 44));
@@ -159,20 +160,18 @@ void main() {
     near(tester.getRect(find.byType(TextField)).left - left.right, 8, 'text after the left key');
   }
 
-  testWidgets('in a group the @ key mirrors send, and opens the member list', (tester) async {
+  testWidgets('in a group the ＋ key mirrors send, and a typed @ opens the member list', (tester) async {
     await pump(tester, const RoomChatPage(roomId: 'r1'));
-    expectEndCaps(tester, tester.getRect(find.byKey(const ValueKey('mention-key'))));
-    await tester.tap(find.byKey(const ValueKey('mention-key')));
+    expectEndCaps(tester, tester.getRect(find.byKey(const ValueKey('attach-key'))));
+    await tester.enterText(find.byType(TextField), '@');
     await tester.pump(const Duration(milliseconds: 300));
-    expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, '@');
     expect(find.byType(BotMentionPicker), findsOneWidget);
   });
 
-  testWidgets('Bot composer starts at the text inset and keeps the send end cap', (tester) async {
+  testWidgets('Bot composer starts after its ＋ key and keeps the send end cap', (tester) async {
     await pump(tester, const BotChatPage(botId: 'b2'));
     final capsule = tester.getRect(find.byType(Composer));
-    final field = tester.getRect(find.byType(TextField));
-    near(field.left - capsule.left, 18, 'text starts without an empty key');
+    expectEndCaps(tester, tester.getRect(find.byKey(const ValueKey('attach-key'))));
     expect(tester.widget<TextField>(find.byType(TextField)).decoration!.hintText, '给 Writer 发消息…');
     final send = tester.getRect(
       find.ancestor(of: find.byIcon(AppIcons.send), matching: find.byType(AnimatedContainer)).first,
@@ -181,6 +180,30 @@ void main() {
     near(capsule.right - send.right, 6, 'send right');
     near(send.top - capsule.top, 6, 'send top');
     near(capsule.bottom - send.bottom, 6, 'send bottom');
+  });
+
+  testWidgets('a Bot host that only advertises API 1 still gets the ＋ key', (tester) async {
+    final transport = FakeDsBotTransport();
+    transport.handlers['hello'] = (_) {
+      final answer = transport.helloAnswer();
+      answer['api'] = 1;
+      answer['apiMax'] = 1;
+      return answer;
+    };
+    await pump(tester, const BotChatPage(botId: 'b2'), transport: transport);
+    expect(find.byKey(const ValueKey('attach-key')), findsOneWidget);
+  });
+
+  testWidgets('a group host that only advertises API 1 still gets the ＋ key', (tester) async {
+    final transport = FakeDsBotTransport();
+    transport.handlers['hello'] = (_) {
+      final answer = transport.helloAnswer();
+      answer['api'] = 1;
+      answer['apiMax'] = 1;
+      return answer;
+    };
+    await pump(tester, const RoomChatPage(roomId: 'r1'), transport: transport);
+    expect(find.byKey(const ValueKey('attach-key')), findsOneWidget);
   });
 
   testWidgets('new rows align with the avatar rows', (tester) async {

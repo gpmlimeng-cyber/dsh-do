@@ -19,6 +19,7 @@ import '../theme/theme.dart';
 import 'bot_avatar.dart';
 import 'bot_chat_page.dart';
 import 'bot_format.dart';
+import 'dsbot_plugin_card.dart';
 import 'install_card.dart';
 import 'new_bot_page.dart';
 import 'new_room_sheet.dart';
@@ -131,6 +132,10 @@ class _Team extends ConsumerWidget {
             ),
           ],
         ),
+        if (!readOnly) ...[
+          const SizedBox(height: 24),
+          const DsBotPluginCard(),
+        ],
         if (readOnly) FeatureNote('${status.readOnly}'),
       ],
     );

@@ -770,5 +770,63 @@
         "type": "String"
       }
     }
-  }
+  },
+  "chatNewContentCount": "{count} 条新内容",
+  "@chatNewContentCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "chatGeneratingQueueHint": "生成中 · 可排队",
+  "chatAttachmentNoPreview": "这类文件不能直接预览",
+  "chatQueueGone": "这条已经不在队列里了",
+  "lastConversationMissingObject": "上次的 Bot 或群已不存在",
+  "lastConversationMissingSession": "上次的会话已不存在",
+  "chatGoalRunning": "进行中",
+  "chatGoalPaused": "已暂停",
+  "chatGoalStopped": "已停止",
+  "chatGoalAligning": "正在和你对齐目标",
+  "chatGoalReached": "已达成",
+  "chatGoalFinalCheck": "总验收",
+  "chatGoalChecking": "验收中 · {title}",
+  "@chatGoalChecking": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "chatGoalIdleWord": "等你处理",
+  "chatGoalNone": "还没有目标",
+  "chatGoalPanel": "目标与验收",
+  "chatGoalStageCurrent": "当前阶段",
+  "chatGoalStageDone": "完成标准",
+  "chatGoalTasks": "成员任务",
+  "chatGoalTaskPending": "待办",
+  "chatGoalTaskWorking": "在做",
+  "chatGoalTaskReported": "已交",
+  "chatGoalTaskDone": "已完成",
+  "chatGoalAcceptance": "验收",
+  "chatGoalAcceptanceDone": "达成条件",
+  "chatGoalRule": "约束",
+  "chatGoalRework": "已打回 {count} 次",
+  "@chatGoalRework": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "chatGoalCollapseToBallHint": "收起成小球，群名将完整显示",
+  "chatGoalDoneWhen": "完成标准：{text}",
+  "@chatGoalDoneWhen": {"placeholders":{"text":{"type":"String"}}},
+  "chatGoalConfirmStop": "确认终止？",
+  "chatGoalEvidence": "证据",
+  "chatGoalReworkBy": "{admin} 打回重做：{feedback}",
+  "@chatGoalReworkBy": {"placeholders":{"admin":{"type":"String"},"feedback":{"type":"String"}}},
+  "chatGoalReworkByTimes": "{admin} 已打回 {count} 次，最近一次：{feedback}",
+  "@chatGoalReworkByTimes": {"placeholders":{"count":{"type":"int"},"admin":{"type":"String"},"feedback":{"type":"String"}}},
+  "chatStopWorkToo": "同时停止当前工作"
 }

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -36,7 +37,34 @@ class AppPage extends StatefulWidget {
     this.showLargeTitle = true,
     this.padBottom = true,
     this.solidBar = true,
-  });
+  }) : tabs = null,
+       body = null,
+       nested = false;
+
+  /// A details page: the bar and a tab strip pin over a [body] whose own lists
+  /// drive the page scroll — the structure the single conversation's details
+  /// page has. The hero still scrolls away between the two.
+  ///
+  /// Additive on purpose: the default page keeps its `CustomScrollView`, so the
+  /// pages that already use it are untouched.
+  const AppPage.nested({
+    super.key,
+    required this.title,
+    this.subtitle,
+    this.hero,
+    required this.tabs,
+    required this.body,
+    this.actions = const [],
+    this.solidBar = true,
+  }) : slivers = const [],
+       showLargeTitle = true,
+       padBottom = true,
+       nested = true;
+
+  /// The two heights a details page pins: the bar (under the status bar) and
+  /// the tab strip under it.
+  static const barHeight = 56.0;
+  static const tabsHeight = 52.0;
 
   final String title;
 
@@ -56,6 +84,12 @@ class AppPage extends StatefulWidget {
 
   final bool showLargeTitle;
   final bool padBottom;
+
+  /// The pinned tab strip and the body under it. Only [AppPage.nested] uses
+  /// them; the default page is all [slivers].
+  final Widget? tabs;
+  final Widget? body;
+  final bool nested;
 
   /// Once content scrolls under the bar, the page's own backdrop is opaque
   /// behind it ([BackdropVeil.top], feathered below) so nothing reads through
@@ -146,7 +180,7 @@ class _AppPageState extends State<AppPage> {
     });
     final theme = Theme.of(context);
     final padding = MediaQuery.paddingOf(context);
-    const barHeight = 56.0;
+    const barHeight = AppPage.barHeight;
     final top = padding.top + barHeight;
     // Wide windows: one centred column (zero on phones). A phone on its side
     // keeps the column and the bar's keys clear of the cutout or navigation
@@ -174,6 +208,74 @@ class _AppPageState extends State<AppPage> {
         ),
       );
     }
+    final bar = BackdropGroup(
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 12 + inset),
+        child: NavigationToolbar(
+          centerMiddle: true,
+          middleSpacing: 8,
+          leading: Center(
+            widthFactor: 1,
+            child: GlassIconButton(
+              icon: AppIcons.back,
+              tooltip: l10n.commonBack,
+              onPressed: () => Navigator.of(context).maybePop(),
+            ),
+          ),
+          middle: ValueListenableBuilder<double>(
+            valueListenable: _offset,
+            builder: (context, offset, child) {
+              final t = _barTitle(offset);
+              return Opacity(
+                opacity: t,
+                child: Transform.translate(offset: Offset(0, 6 * (1 - t)), child: child),
+              );
+            },
+            child: Semantics(
+              header: !_hasHeader,
+              child: Text(
+                widget.title,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleMedium,
+              ),
+            ),
+          ),
+          trailing: widget.actions.isEmpty
+              ? const SizedBox(width: 44)
+              : Row(mainAxisSize: MainAxisSize.min, spacing: 8, children: widget.actions),
+        ),
+      ),
+    );
+    // Only once content is under the bar: at rest it would just tint the glow.
+    Widget veil() => ValueListenableBuilder<double>(
+      valueListenable: _offset,
+      builder: (context, offset, child) => Opacity(opacity: (offset / 24).clamp(0.0, 1.0), child: child),
+      child: widget.solidBar ? BackdropVeil.top(height: top, feather: 12) : TopFade(height: top + 12),
+    );
+    Widget? headerSliver() => header == null
+        ? null
+        : SliverPadding(
+            padding: side,
+            sliver: SliverToBoxAdapter(
+              child: ValueListenableBuilder<double>(
+                valueListenable: _offset,
+                // Pulled past the top (only the fluid tier's lists go there), the
+                // headline swells a little with the pull.
+                builder: (context, offset, child) => Opacity(
+                  opacity: _headerOpacity(offset),
+                  alwaysIncludeSemantics: true,
+                  child: Transform.scale(
+                    scale: 1 + (-offset / 900).clamp(0.0, 1.0) / 10,
+                    alignment: AlignmentDirectional.topStart,
+                    child: child,
+                  ),
+                ),
+                child: KeyedSubtree(key: _headerKey, child: header),
+              ),
+            ),
+          );
     final page = AnnotatedRegion<SystemUiOverlayStyle>(
       value: dshSystemOverlay(theme.brightness),
       child: AppBackdrop(
@@ -181,96 +283,92 @@ class _AppPageState extends State<AppPage> {
           backgroundColor: Colors.transparent,
           body: Stack(
             children: [
-              CustomScrollView(
-                controller: _controller,
-                physics: AppMotion.scrollPhysics(context),
-                slivers: [
-                  SliverToBoxAdapter(child: SizedBox(height: top)),
-                  if (header != null)
-                    SliverPadding(
-                      padding: side,
-                      sliver: SliverToBoxAdapter(
-                        child: ValueListenableBuilder<double>(
-                          valueListenable: _offset,
-                          // Pulled past the top (only the fluid tier's lists go there), the
-                          // headline swells a little with the pull.
-                          builder: (context, offset, child) => Opacity(
-                            opacity: _headerOpacity(offset),
-                            alwaysIncludeSemantics: true,
-                            child: Transform.scale(
-                              scale: 1 + (-offset / 900).clamp(0.0, 0.1),
-                              alignment: AlignmentDirectional.topStart,
-                              child: child,
+              if (widget.nested)
+                Column(
+                  children: [
+                    // The bar lives outside the scroll area: the tab strip pins
+                    // to the top of the view below it, so it always meets the
+                    // bar's lower edge — no stacked pinned headers to drift in a
+                    // rotated window.
+                    SizedBox(
+                      height: top,
+                      child: Stack(
+                        children: [
+                          // The bar and the tab strip below it are one surface:
+                          // the same flat colour, ramped in by the same offset
+                          // the strip uses, so nothing reads as a second layer.
+                          Positioned.fill(
+                            child: ValueListenableBuilder<double>(
+                              valueListenable: _offset,
+                              builder: (context, offset, child) => Opacity(
+                                opacity: (offset / 24).clamp(0.0, 1.0),
+                                child: child,
+                              ),
+                              child: SolidTopFill(height: top, color: DshSurfaces.of(context).backdropTop),
                             ),
                           ),
-                          child: KeyedSubtree(key: _headerKey, child: header),
-                        ),
-                      ),
-                    ),
-                  for (final sliver in widget.slivers) SliverPadding(padding: side, sliver: sliver),
-                  if (widget.padBottom) SliverToBoxAdapter(child: SizedBox(height: padding.bottom + 32)),
-                ],
-              ),
-              Positioned(
-                left: 0,
-                right: 0,
-                top: 0,
-                // The veil paints the page's own backdrop, so it spans the page.
-                bottom: widget.solidBar ? 0 : null,
-                child: ValueListenableBuilder<double>(
-                  valueListenable: _offset,
-                  // Only once content is under the bar: at rest it would just
-                  // tint the glow.
-                  builder: (context, offset, child) => Opacity(opacity: (offset / 24).clamp(0.0, 1.0), child: child),
-                  child: widget.solidBar ? BackdropVeil.top(height: top, feather: 12) : TopFade(height: top + 12),
-                ),
-              ),
-              Positioned(
-                left: 0,
-                right: 0,
-                top: padding.top,
-                height: barHeight,
-                child: BackdropGroup(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12 + inset),
-                    child: NavigationToolbar(
-                      centerMiddle: true,
-                      middleSpacing: 8,
-                      leading: Center(
-                        widthFactor: 1,
-                        child: GlassIconButton(
-                          icon: AppIcons.back,
-                          tooltip: l10n.commonBack,
-                          onPressed: () => Navigator.of(context).maybePop(),
-                        ),
-                      ),
-                      middle: ValueListenableBuilder<double>(
-                        valueListenable: _offset,
-                        builder: (context, offset, child) {
-                          final t = _barTitle(offset);
-                          return Opacity(
-                            opacity: t,
-                            child: Transform.translate(offset: Offset(0, 6 * (1 - t)), child: child),
-                          );
-                        },
-                        child: Semantics(
-                          header: !_hasHeader,
-                          child: Text(
-                            widget.title,
-                            textAlign: TextAlign.center,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.titleMedium,
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            top: padding.top,
+                            height: AppPage.barHeight,
+                            child: bar,
                           ),
-                        ),
+                        ],
                       ),
-                      trailing: widget.actions.isEmpty
-                          ? const SizedBox(width: 44)
-                          : Row(mainAxisSize: MainAxisSize.min, spacing: 8, children: widget.actions),
                     ),
-                  ),
+                    Expanded(
+                      child: NestedScrollView(
+                        controller: _controller,
+                        headerSliverBuilder: (context, _) => [
+                          ?headerSliver(),
+                          SliverPersistentHeader(
+                            pinned: true,
+                            delegate: PinnedBox(
+                              extent: AppPage.tabsHeight,
+                              child: DetailsTabBand(
+                                offset: _offset,
+                                color: DshSurfaces.of(context).backdropTop,
+                                child: Padding(
+                                  padding: EdgeInsets.fromLTRB(side.left + 16, 4, side.left + 16, 12),
+                                  child: widget.tabs!,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                        body: widget.body!,
+                      ),
+                    ),
+                  ],
+                )
+              else
+                CustomScrollView(
+                  controller: _controller,
+                  slivers: [
+                    SliverToBoxAdapter(child: SizedBox(height: top)),
+                    ?headerSliver(),
+                    for (final sliver in widget.slivers) SliverPadding(padding: side, sliver: sliver),
+                    if (widget.padBottom) SliverToBoxAdapter(child: SizedBox(height: padding.bottom + 32)),
+                  ],
                 ),
-              ),
+              if (!widget.nested) ...[
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: 0,
+                  // The veil paints the page's own backdrop, so it spans the page.
+                  bottom: widget.solidBar ? 0 : null,
+                  child: veil(),
+                ),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: padding.top,
+                  height: AppPage.barHeight,
+                  child: bar,
+                ),
+              ],
             ],
           ),
         ),
@@ -281,6 +379,82 @@ class _AppPageState extends State<AppPage> {
 }
 
 /// 44dp round chrome-glass button (top bars), 22dp glyph, with press feedback.
+/// A fixed-height pinned header. The single conversation's details page, the
+/// group's and [AppPage.nested] all pin with this one.
+class PinnedBox extends SliverPersistentHeaderDelegate {
+  const PinnedBox({required this.extent, required this.child});
+
+  final double extent;
+  final Widget child;
+
+  @override
+  double get minExtent => extent;
+
+  @override
+  double get maxExtent => extent;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) => SizedBox.expand(child: child);
+
+  @override
+  bool shouldRebuild(PinnedBox oldDelegate) => oldDelegate.extent != extent || oldDelegate.child != child;
+}
+
+/// The band under a pinned tab strip: the page's own colour, solid once the
+/// page scrolls under it, feathered at the bottom so the strip has no hard
+/// edge. Both details pages draw this same one.
+class DetailsTabBand extends StatelessWidget {
+  const DetailsTabBand({super.key, required this.offset, required this.color, required this.child});
+
+  final ValueListenable<double> offset;
+  final Color color;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => ValueListenableBuilder<double>(
+    valueListenable: offset,
+    builder: (context, value, child) {
+      final a = 0.96 * (value / 24).clamp(0.0, 1.0);
+      return DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              color.withValues(alpha: color.a * a),
+              color.withValues(alpha: color.a * a),
+              color.withValues(alpha: 0),
+            ],
+            stops: const [0, 0.7, 1],
+          ),
+        ),
+        child: child,
+      );
+    },
+    child: child,
+  );
+}
+
+/// The page's own colour under a pinned bar: **one** flat surface, so a bar
+/// and the tab strip pinned under it read as one piece. The single
+/// conversation's details page has always drawn its bar this way; a details
+/// page that gave the bar the backdrop veil and the tab strip a flat colour
+/// showed two materials stacked (a colour step and a seam between them).
+class SolidTopFill extends StatelessWidget {
+  const SolidTopFill({super.key, required this.height, required this.color});
+
+  final double height;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+    child: ColoredBox(
+      color: color.withValues(alpha: color.a * 0.96),
+      child: SizedBox(height: height),
+    ),
+  );
+}
+
 class GlassIconButton extends StatelessWidget {
   const GlassIconButton({
     super.key,

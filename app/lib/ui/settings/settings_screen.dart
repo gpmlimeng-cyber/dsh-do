@@ -20,6 +20,7 @@ import '../../state/settings_state.dart';
 import '../../state/ui_mode_state.dart';
 import '../../state/update_state.dart';
 import '../account/account_page.dart';
+import '../bots/bots_page.dart';
 import '../account/account_widgets.dart';
 import '../chat/balance_widgets.dart' show formatMoney;
 import '../common/ask_ai.dart';
@@ -163,6 +164,57 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ],
         ),
+        // Bot：这支团队自己的一摊。团队、回合过程的折叠、语音输入和通知
+        // 都是「Bot 怎么说话、说话时什么样」，跟模型渠道（AI）分开。
+        SettingsSection(
+          title: l10n.hubGroupBot,
+          children: [
+            SettingsTile(
+              icon: AppIcons.team,
+              tint: SettingsHues.ai,
+              title: l10n.hubGroupBot,
+              onTap: () => _push(context, const BotsPage()),
+            ),
+            SettingsSwitchTile(
+              icon: AppIcons.foldTurns,
+              tint: SettingsHues.ai,
+              title: l10n.hubBotThinking,
+              value: settings.showThinking,
+              onChanged: (v) => unawaited(notifier.setShowThinking(v)),
+            ),
+            SettingsSwitchTile(
+              icon: AppIcons.foldTurns,
+              tint: SettingsHues.ai,
+              spot: Spots.foldTurns,
+              value: settings.foldCompletedTurns,
+              onChanged: (v) => unawaited(notifier.setFoldCompletedTurns(v)),
+            ),
+            // 消息怎么排，也是 Bot 说话的样子：平铺/气泡和气泡多宽都放这里。
+            SettingsSwitchTile(
+              icon: AppIcons.reply,
+              tint: SettingsHues.ai,
+              title: l10n.hubFlatBubbles,
+              value: settings.flatBubbles,
+              onChanged: (v) => unawaited(notifier.setFlatBubbles(v)),
+            ),
+            SettingsSegmentTile<double>(
+              icon: AppIcons.reply,
+              tint: SettingsHues.ai,
+              title: l10n.hubBubbleWidth,
+              // Percentages instead of words: no language to translate, and the
+              // share of the column is what the setting actually is.
+              segments: const [
+                PillSegment(0.72, '72%'),
+                PillSegment(0.82, '82%'),
+                PillSegment(0.95, '95%'),
+              ],
+              selected: settings.bubbleWidth,
+              onChanged: (w) => unawaited(notifier.setBubbleWidth(w)),
+            ),
+            const VoiceSettingsTile(tint: SettingsHues.ai),
+            const NotificationSettingsTile(tint: SettingsHues.ai),
+          ],
+        ),
         SettingsSection(
           title: l10n.hubGroupCapabilities,
           children: [
@@ -214,13 +266,6 @@ class SettingsScreen extends ConsumerWidget {
               selected: settings.chatTextScale,
               onChanged: (scale) => unawaited(notifier.setChatTextScale(scale)),
             ),
-            SettingsSwitchTile(
-              icon: AppIcons.foldTurns,
-              tint: SettingsHues.appearance,
-              spot: Spots.foldTurns,
-              value: settings.foldCompletedTurns,
-              onChanged: (v) => unawaited(notifier.setFoldCompletedTurns(v)),
-            ),
             const PetEntryTile(tint: SettingsHues.appearance),
           ],
         ),
@@ -235,8 +280,6 @@ class SettingsScreen extends ConsumerWidget {
               onTap: () => _push(context, const InterfacePage()),
             ),
             const LanguageSettingsTile(tint: SettingsHues.general),
-            const NotificationSettingsTile(tint: SettingsHues.general),
-            const VoiceSettingsTile(tint: SettingsHues.general),
             const PerformanceSettingsTile(tint: SettingsHues.general),
             SettingsTile(
               icon: AppIcons.keepAlive,

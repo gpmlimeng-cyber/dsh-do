@@ -1,3 +1,7 @@
+> **MODO / 修改版说明**
+> 本项目是 [dsh-go](https://github.com/ccch1mneyyy/dsh-go)（作者 **ccch1mneyyy**）的修改版，基于上游 `v1.0.10`，以 MODO 名称发布。
+> 我们的仓库：[gpmlimeng-cyber/dsh-do](https://github.com/gpmlimeng-cyber/dsh-do)。代码按 AGPL-3.0 授权，修改内容见 [NOTICE](NOTICE)。
+
 <p align="center">
   <b>简体中文</b> · <a href="README.en.md">English</a>
 </p>

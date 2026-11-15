@@ -11,10 +11,11 @@ Future<void> sendBotDraft(
   TextEditingController input, {
   String? botId,
   String? roomId,
+  bool hasAttachments = false,
   required Future<bool> Function(String text) send,
 }) async {
   final text = input.text.trim();
-  if (text.isEmpty) return;
+  if (text.isEmpty && !hasAttachments) return;
   final hub = ref.read(dsBotProvider.notifier);
   final api = hub.api;
   final origin = ref.read(dsBotProvider);

@@ -10,9 +10,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../diagnostics/app_error_log.dart';
 import '../l10n/l10n.dart';
 import '../ui/chat/secret_mask.dart';
 import 'app_info.dart';
+import 'attachments.dart' show DraftAttachment;
 import 'connection_state.dart';
 import 'hosts_state.dart';
 import 'notify_state.dart';
@@ -28,6 +30,10 @@ final dsBotApiFactoryProvider = Provider<DsBotApi? Function(HostConnection conne
 
 /// The npm package the app installs.
 const dsBotPackage = 'ds-bot';
+
+/// Where it comes from: this fork, which carries the mobile API the app talks
+/// to. The npm release does not have it yet.
+const dsBotSpec = 'github:gpmlimeng-cyber/dsh-bot';
 
 enum DsBotAvailability {
   /// No host connected.
@@ -623,13 +629,59 @@ NotifyPost dsBotPost(HostRef host, DsBotNotice notice) {
 
 // ── A Bot's own chat ─────────────────────────────────────────────────────────
 
-/// A message sent from here that the chat does not show yet.
+enum DsBotPendingStatus { sending, sent, failed }
+
+/// A message sent from here that the chat does not show yet, with the name it
+/// was sent under: the echo that carries [requestId] back removes this bubble
+/// exactly, so no text, attachment count or seq has to be compared.
 @immutable
 class DsBotPending {
-  const DsBotPending(this.text, this.at, {this.failed = false});
+  const DsBotPending(
+    this.text,
+    this.at, {
+    this.requestId = '',
+    this.status = DsBotPendingStatus.sending,
+    this.drafts = const [],
+    this.afterSeq,
+    this.itemId,
+    this.slot,
+  });
+
   final String text;
   final DateTime at;
-  final bool failed;
+
+  /// The client's name for this send; a retry reuses it.
+  final String requestId;
+  final DsBotPendingStatus status;
+  bool get failed => status == DsBotPendingStatus.failed;
+
+  /// The Host's inbox entry, when `send` answered with one, and its slot
+  /// (`next-turn` / `next-step`): the bubble words itself from these before
+  /// the inbox page arrives.
+  final String? itemId;
+  final String? slot;
+
+  DsBotPending withStatus(DsBotPendingStatus next) =>
+      DsBotPending(text, at, requestId: requestId, status: next, drafts: drafts, afterSeq: afterSeq, itemId: itemId, slot: slot);
+
+  DsBotPending withQueue({String? itemId, String? slot}) => DsBotPending(
+    text,
+    at,
+    requestId: requestId,
+    status: status,
+    drafts: drafts,
+    afterSeq: afterSeq,
+    itemId: itemId ?? this.itemId,
+    slot: slot ?? this.slot,
+  );
+
+  /// The pictures and files still being uploaded with this line: drawn as they
+  /// will look once the host echoes them, so a photo shows the moment it is sent.
+  final List<DraftAttachment> drafts;
+
+  /// The newest line the chat held when this bubble was made: a line with no text
+  /// pairs only with what came after, never with an older picture message.
+  final int? afterSeq;
 }
 
 @immutable
@@ -643,6 +695,7 @@ class BotChatState {
     this.pending = const [],
     this.streaming,
     this.sessionId,
+    this.inbox,
   });
 
   final List<DsBotItem> items;
@@ -656,6 +709,9 @@ class BotChatState {
   final String? streaming;
   final String? sessionId;
 
+  /// The Host's queue for this conversation; null on a Host that sends none.
+  final DsBotQueue? inbox;
+
   bool get hasEarlier => cursor != null;
 
   BotChatState copyWith({
@@ -667,6 +723,7 @@ class BotChatState {
     List<DsBotPending>? pending,
     String? Function()? streaming,
     String? sessionId,
+    DsBotQueue? Function()? inbox,
   }) => BotChatState(
     items: items ?? this.items,
     cursor: cursor == null ? this.cursor : cursor(),
@@ -676,25 +733,148 @@ class BotChatState {
     pending: pending ?? this.pending,
     streaming: streaming == null ? this.streaming : streaming(),
     sessionId: sessionId ?? this.sessionId,
+    inbox: inbox == null ? this.inbox : inbox(),
   );
 }
 
-/// Drops pending sends the chat now shows (the same text, from the user).
-List<DsBotPending> settlePending(List<DsBotPending> pending, Iterable<DsBotItem> shown) {
-  final texts = [
+/// Drops the bubbles the chat now shows.
+///
+/// Identity first: an echo carrying a bubble's `requestId` removes exactly that
+/// bubble. Until a Host echoes request ids, order — this app sends serially, so
+/// a bubble's echo is the first user line after the newest line it held — and a
+/// bubble nobody echoes within [pendingTimeout] becomes failed, never a queue
+/// that runs forever.
+List<DsBotPending> settlePending(
+  List<DsBotPending> pending,
+  Iterable<DsBotItem> shown, {
+  DateTime? now,
+}) {
+  final echoes = <({int? seq, String? rpcId})>[
     for (final item in shown)
-      if (item.kind == DsBotItemKind.user) item.text.trim(),
+      if (item.kind == DsBotItemKind.user)
+        // The group's old shape carries its seq as the item id; the chat's
+        // shape carries `seq` itself.
+        (seq: item.seq ?? int.tryParse(item.id ?? ''), rpcId: item.rpcId),
   ];
+  final at = now ?? DateTime.now();
+  final claimed = <int>{};
   final left = <DsBotPending>[];
   for (final entry in pending) {
-    final at = texts.indexOf(entry.text.trim());
-    if (at >= 0 && !entry.failed) {
-      texts.removeAt(at);
-    } else {
+    var matched = -1;
+    // Exact: the echo carries the bubble's own name.
+    if (entry.requestId.isNotEmpty) {
+      for (var i = 0; i < echoes.length; i++) {
+        if (!claimed.contains(i) && echoes[i].rpcId == entry.requestId) {
+          matched = i;
+          break;
+        }
+      }
+    }
+    // Until a Host echoes request ids: order. This app sends serially, so a
+    // bubble's echo is the first user line after the newest line it held, or
+    // the newest user line when it held none.
+    if (matched < 0) {
+      if (entry.afterSeq case final after?) {
+        for (var i = 0; i < echoes.length; i++) {
+          final seq = echoes[i].seq;
+          if (!claimed.contains(i) && seq != null && seq > after) {
+            matched = i;
+            break;
+          }
+        }
+      } else {
+        for (var i = echoes.length - 1; i >= 0; i--) {
+          if (!claimed.contains(i)) {
+            matched = i;
+            break;
+          }
+        }
+      }
+    }
+    if (matched >= 0) {
+      claimed.add(matched);
+      continue;
+    }
+    // Sending has a deadline: a bubble nobody echoed is a failure to show, not
+    // a queue that runs forever.
+    if (entry.failed || at.difference(entry.at) <= pendingTimeout) {
       left.add(entry);
+    } else {
+      left.add(entry.withStatus(DsBotPendingStatus.failed));
     }
   }
   return left;
+}
+
+var _inboxDiagnosed = false;
+
+/// Once a run, says what the Host's queue looked like when no bubble could
+/// claim any of it: the parsed ids and texts are what a mismatch shows up in.
+void diagnoseInbox(List<DsBotPending> pending, DsBotQueue? inbox) {
+  if (_inboxDiagnosed || inbox == null || pending.isEmpty) return;
+  if (pending.any((p) => inbox.byRpc(p.requestId) != null)) return;
+  _inboxDiagnosed = true;
+  String item(DsBotQueueItem e) => '{itemId ${e.itemId}, rpcId ${e.rpcId}, text ${e.text.length}}';
+  appErrorLog.record(
+    AppErrorSource.platform,
+    'queue: no pending bubble matched the inbox; '
+        'pending=[${pending.map((p) => '${p.requestId}:${p.itemId}/${p.slot}').join(' ')}] '
+        'nextTurn=[${inbox.nextTurn.map(item).join(' ')}] nextStep=[${inbox.nextStep.map(item).join(' ')}]',
+    StackTrace.current,
+  );
+}
+
+/// The bubbles the Host's queue implies: an entry nobody has a local bubble
+/// for (the app was reloaded, or the send answered after the page rebuilt)
+/// still has to be drawn, or a queued message vanishes until it is consumed.
+List<DsBotPending> pendingWithInbox(List<DsBotPending> pending, DsBotQueue? inbox, Iterable<DsBotItem> shown) {
+  if (inbox == null) return pending;
+  final seen = <String>{
+    for (final entry in pending)
+      if (entry.requestId.isNotEmpty) entry.requestId,
+    for (final item in shown)
+      if (item.kind == DsBotItemKind.user && item.rpcId != null) item.rpcId!,
+  };
+  final out = [...pending];
+  for (final item in [...inbox.nextStep, ...inbox.nextTurn]) {
+    final rpc = item.rpcId;
+    if (item.itemId.isEmpty || rpc == null || rpc.isEmpty || !seen.add(rpc)) continue;
+    out.add(
+      DsBotPending(
+        item.text,
+        item.time ?? DateTime.now(),
+        requestId: rpc,
+        itemId: item.itemId,
+        slot: inbox.nextStep.any((e) => e.itemId == item.itemId) ? 'next-step' : 'next-turn',
+      ),
+    );
+  }
+  return out;
+}
+
+/// How long a bubble may stay `sending` before it is shown as failed.
+const pendingTimeout = Duration(seconds: 20);
+
+var _pendingSerial = 0;
+
+/// A bubble for a send, under a name of its own: the echo that carries it back
+/// removes exactly this one.
+DsBotPending newPending(String text, {List<DraftAttachment> drafts = const [], int? afterSeq}) => DsBotPending(
+  text.trim(),
+  DateTime.now(),
+  requestId: 'p${DateTime.now().microsecondsSinceEpoch}-${_pendingSerial++}',
+  drafts: drafts,
+  afterSeq: afterSeq,
+);
+
+/// [text] without ds-bot's image reading notes: `[Image "…", read by …:] …
+/// [End of image "…"]` and the one-line "could not be read right now" form.
+/// Everything else is left alone, so text a person typed still compares as it
+/// is — a note is the only thing that ever differs between a send and its echo.
+String withoutImageNotes(String text) {
+  final block = RegExp(r'\[Image [^\]]*?[,.][\s\S]*?\[End of image [^\]]*?\]');
+  final line = RegExp(r'\[Image [^\]]*?\]');
+  return text.replaceAll(block, '').replaceAll(line, '').trim();
 }
 
 /// Pages from `chat`, new entries and the reply being written from the feed.
@@ -755,13 +935,15 @@ class BotChatController extends Notifier<BotChatState> {
           items.add(update.item);
         }
       }
+      diagnoseInbox(state.pending, page.inbox);
       state = state.copyWith(
         items: items,
         cursor: () => page.cursor,
         loading: false,
         error: () => null,
         sessionId: page.sessionId,
-        pending: settlePending(state.pending, items),
+        pending: pendingWithInbox(settlePending(state.pending, items), page.inbox, items),
+        inbox: () => page.inbox,
       );
     } catch (error) {
       if (!_current(generation) || load != _load) return;
@@ -828,17 +1010,67 @@ class BotChatController extends Notifier<BotChatState> {
     }
   }
 
-  /// Sends [text]; it shows at once and leaves the pending list when the
-  /// chat echoes it.
-  Future<bool> send(String text) async {
+  /// Takes a failed bubble away (撤回 puts its words back in the composer).
+  void dropPending(DsBotPending entry) {
+    state = state.copyWith(
+      pending: [
+        for (final p in state.pending)
+          if (!identical(p, entry)) p,
+      ],
+    );
+  }
+
+  /// Sends [text] with [images] inline and [fileReceiptIds] already staged;
+  /// it shows at once and leaves the pending list when the chat echoes it.
+  Future<bool> send(
+    String text, {
+    List<String> imageIds = const [],
+    List<String> fileReceiptIds = const [],
+    String? mode,
+    DsBotPending? pending,
+  }) async {
     final api = _api;
     final trimmed = text.trim();
-    if (api == null || trimmed.isEmpty) return false;
+    if (api == null || (trimmed.isEmpty && imageIds.isEmpty && fileReceiptIds.isEmpty)) return false;
     final generation = _generation;
-    final entry = DsBotPending(trimmed, DateTime.now());
-    state = state.copyWith(pending: [...state.pending, entry], error: () => null);
+    int? newest;
+    for (final item in state.items) {
+      if (item.seq case final seq? when newest == null || seq > newest) newest = seq;
+    }
+    final entry = pending ?? newPending(trimmed, afterSeq: newest);
+    state = state.copyWith(
+      pending: [
+        for (final p in state.pending)
+          if (!identical(p, entry)) p,
+        // A retry reuses the bubble: back to 发送中 while it is tried.
+        entry.withStatus(DsBotPendingStatus.sending),
+      ],
+      error: () => null,
+    );
     try {
-      await api.send(botId, trimmed);
+      final sent = await api.send(
+        botId,
+        trimmed,
+        imageIds: imageIds,
+        fileReceiptIds: fileReceiptIds,
+        mode: mode,
+        requestId: entry.requestId,
+      );
+      if (sent.itemId != null || sent.slot != null) {
+        state = state.copyWith(
+          pending: [
+            for (final p in state.pending)
+              if (p.requestId == entry.requestId) p.withQueue(itemId: sent.itemId, slot: sent.slot) else p,
+          ],
+        );
+        // The Host writes the queue entry just after answering: one quick read
+        // brings the inbox page in, words and actions with it.
+        unawaited(
+          Future<void>.delayed(const Duration(milliseconds: 600)).then((_) {
+            if (ref.mounted) unawaited(reload());
+          }),
+        );
+      }
       return true;
     } catch (error) {
       if (!_current(generation)) return false;
@@ -867,16 +1099,28 @@ class RoomChatState {
   const RoomChatState({
     this.items = const [],
     this.cursor,
+    this.sessionItems = const [],
+    this.sessionCursor,
     this.loading = true,
     this.loadingEarlier = false,
     this.running = false,
     this.speaking,
     this.error,
     this.pending = const [],
+    this.inbox,
   });
 
   final List<DsBotItem> items;
   final Object? cursor;
+
+  /// The Host's queue for this group; null on a Host that sends none.
+  final DsBotQueue? inbox;
+
+  /// The group Session's own messages, when the host sends them (plugin
+  /// 0.2.8+): the whole history, with times. [items] is the old `room.log`
+  /// shape, which the host keeps to its newest lines.
+  final List<DsBotItem> sessionItems;
+  final Object? sessionCursor;
   final bool loading;
   final bool loadingEarlier;
   final bool running;
@@ -886,24 +1130,33 @@ class RoomChatState {
 
   bool get hasEarlier => cursor != null;
 
+  /// Whether the group Session's history has older lines to load.
+  bool get hasSessionEarlier => sessionCursor != null;
+
   RoomChatState copyWith({
     List<DsBotItem>? items,
     Object? Function()? cursor,
+    List<DsBotItem>? sessionItems,
+    Object? Function()? sessionCursor,
     bool? loading,
     bool? loadingEarlier,
     bool? running,
     String? Function()? speaking,
     String? Function()? error,
     List<DsBotPending>? pending,
+    DsBotQueue? Function()? inbox,
   }) => RoomChatState(
     items: items ?? this.items,
     cursor: cursor == null ? this.cursor : cursor(),
+    sessionItems: sessionItems ?? this.sessionItems,
+    sessionCursor: sessionCursor == null ? this.sessionCursor : sessionCursor(),
     loading: loading ?? this.loading,
     loadingEarlier: loadingEarlier ?? this.loadingEarlier,
     running: running ?? this.running,
     speaking: speaking == null ? this.speaking : speaking(),
     error: error == null ? this.error : error(),
     pending: pending ?? this.pending,
+    inbox: inbox == null ? this.inbox : inbox(),
   );
 }
 
@@ -992,14 +1245,23 @@ class RoomChatController extends Notifier<RoomChatState> {
       final page = await api.roomChat(roomId);
       if (!_current(generation) || load != _load) return;
       final merged = mergeNewestPage(state.items, page.items);
+      // The group Session's history rides beside the old shape: it is the
+      // whole of the group, and only it carries times. An older host sends
+      // none, and the old shape stays the only source.
+      diagnoseInbox(state.pending, page.inbox);
+      final session = page.sessionItems;
+      final mergedSession = session == null ? null : mergeNewestPage(state.sessionItems, session);
       state = state.copyWith(
         items: merged.items,
         cursor: merged.joined && state.items.isNotEmpty ? null : () => page.cursor,
+        sessionItems: mergedSession?.items,
+        sessionCursor: session == null ? null : () => page.sessionCursor,
         loading: false,
         running: page.running,
         speaking: () => page.speaking,
         error: () => null,
-        pending: settlePending(state.pending, page.items),
+        pending: pendingWithInbox(settlePending(state.pending, page.items), page.inbox, page.items),
+        inbox: () => page.inbox,
       );
       _armPoll(page.running);
     } catch (error) {
@@ -1027,9 +1289,12 @@ class RoomChatController extends Notifier<RoomChatState> {
     });
   }
 
-  Future<void> loadEarlier() async {
+  /// Reads the page before the oldest shown. [session] pages the group
+  /// Session's own history — what a member's conversation reads — instead of
+  /// the old `room.log` shape the group chat itself shows.
+  Future<void> loadEarlier({bool session = false}) async {
     final api = _api;
-    final cursor = state.cursor;
+    final cursor = session ? state.sessionCursor : state.cursor;
     if (api == null || cursor == null || state.loadingEarlier) return;
     final generation = _generation;
     final load = _load;
@@ -1038,6 +1303,14 @@ class RoomChatController extends Notifier<RoomChatState> {
     try {
       final page = await api.roomChat(roomId, cursor: cursor);
       if (!_current(generation) || load != _load || earlier != _earlier) return;
+      if (session) {
+        state = state.copyWith(
+          sessionItems: [...?page.sessionItems, ...state.sessionItems],
+          sessionCursor: () => page.sessionCursor,
+          loadingEarlier: false,
+        );
+        return;
+      }
       state = state.copyWith(items: [...page.items, ...state.items], cursor: () => page.cursor, loadingEarlier: false);
     } catch (error) {
       if (!_current(generation) || load != _load || earlier != _earlier) return;
@@ -1045,15 +1318,71 @@ class RoomChatController extends Notifier<RoomChatState> {
     }
   }
 
-  Future<bool> send(String text) async {
+  /// Puts the sending bubble on screen before its upload starts: a message that
+  /// is only pictures would otherwise show nothing until the host logs it.
+  DsBotPending beginPending(String text, {List<DraftAttachment> drafts = const []}) {
+    int? newest;
+    for (final item in state.items) {
+      if (item.seq case final seq? when newest == null || seq > newest) newest = seq;
+    }
+    final entry = newPending(text, drafts: drafts, afterSeq: newest);
+    state = state.copyWith(pending: [...state.pending, entry], error: () => null);
+    return entry;
+  }
+
+  /// Takes a bubble back when the upload failed before [send] was reached.
+  void dropPending(DsBotPending entry) {
+    state = state.copyWith(
+      pending: [
+        for (final p in state.pending)
+          if (!identical(p, entry)) p,
+      ],
+    );
+  }
+
+  Future<bool> send(
+    String text, {
+    List<String> imageIds = const [],
+    List<String> fileReceiptIds = const [],
+    String? mode,
+    DsBotPending? pending,
+  }) async {
     final api = _api;
     final trimmed = text.trim();
-    if (api == null || trimmed.isEmpty) return false;
+    if (api == null || (trimmed.isEmpty && imageIds.isEmpty && fileReceiptIds.isEmpty)) return false;
     final generation = _generation;
-    final entry = DsBotPending(trimmed, DateTime.now());
-    state = state.copyWith(pending: [...state.pending, entry], error: () => null);
+    final entry = pending ?? newPending(trimmed);
+    state = state.copyWith(
+      pending: [
+        for (final p in state.pending)
+          if (!identical(p, entry)) p,
+        // A retry reuses the bubble: back to 发送中 while it is tried.
+        entry.withStatus(DsBotPendingStatus.sending),
+      ],
+      error: () => null,
+    );
     try {
-      await api.send(roomId, trimmed);
+      final sent = await api.send(
+        roomId,
+        trimmed,
+        imageIds: imageIds,
+        fileReceiptIds: fileReceiptIds,
+        mode: mode,
+        requestId: entry.requestId,
+      );
+      if (sent.itemId != null || sent.slot != null) {
+        state = state.copyWith(
+          pending: [
+            for (final p in state.pending)
+              if (p.requestId == entry.requestId) p.withQueue(itemId: sent.itemId, slot: sent.slot) else p,
+          ],
+        );
+        unawaited(
+          Future<void>.delayed(const Duration(milliseconds: 600)).then((_) {
+            if (ref.mounted) unawaited(refresh());
+          }),
+        );
+      }
       return true;
     } catch (error) {
       if (!_current(generation)) return false;

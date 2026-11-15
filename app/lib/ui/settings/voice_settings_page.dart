@@ -50,6 +50,7 @@ String voiceModelFailureText(L10n l10n, VoiceModelFailure? failure, {int? needed
   VoiceModelFailure.integrity => l10n.voiceModelFailIntegrity,
   VoiceModelFailure.storage => l10n.voiceModelFailStorage(voiceModelMegabytes(neededBytes ?? voiceModelDefaultBytes)),
   VoiceModelFailure.engine => l10n.voiceModelFailEngine,
+  VoiceModelFailure.lost => l10n.voiceModelFailLost,
   VoiceModelFailure.unknown || null => l10n.voiceModelFailUnknown,
 };
 
@@ -342,7 +343,9 @@ class VoiceModelCard extends ConsumerWidget {
 
     final (status, statusColor) = switch (model.status) {
       VoiceModelStatus.waiting => (l10n.voiceModelWaiting, colors.textTertiary),
+      VoiceModelStatus.unsupported when model.engineMissing => (l10n.voiceModelEngineMissing, colors.textTertiary),
       VoiceModelStatus.unsupported => (l10n.voiceModelUnsupported, colors.textTertiary),
+      VoiceModelStatus.absent when model.engineMissing => (l10n.voiceModelEngineMissing, colors.textTertiary),
       VoiceModelStatus.absent => (l10n.voiceModelAbsent, theme.colorScheme.onSurfaceVariant),
       VoiceModelStatus.downloading => ('${((model.fraction ?? 0) * 100).floor()}%', theme.colorScheme.onSurfaceVariant),
       VoiceModelStatus.preparing => (l10n.voiceModelPreparing, theme.colorScheme.onSurfaceVariant),
@@ -358,6 +361,7 @@ class VoiceModelCard extends ConsumerWidget {
       VoiceModelStatus.absent ||
       VoiceModelStatus.waiting when partial => l10n.voiceModelBytes(voiceModelMegabytes(model.doneBytes), total),
       VoiceModelStatus.absent || VoiceModelStatus.waiting => l10n.voiceModelAbsentNote(total),
+      VoiceModelStatus.unsupported when model.engineMissing => l10n.voiceModelEngineMissingNote,
       VoiceModelStatus.unsupported => null,
     };
 
@@ -380,6 +384,13 @@ class VoiceModelCard extends ConsumerWidget {
     );
 
     final List<(String, Widget)> actions = switch (model.status) {
+      _ when model.engineMissing => [
+        secondary(
+          l10n.voiceModelRestartEngine,
+          () => unawaited(EngineControl.restart(ProviderScope.containerOf(context, listen: false))),
+          key: const ValueKey('voice-model-restart-engine'),
+        ),
+      ],
       VoiceModelStatus.unsupported => const [],
       VoiceModelStatus.waiting when model.wanted => [
         secondary(l10n.commonCancel, () => unawaited(controller.cancel()), key: const ValueKey('voice-model-cancel')),
@@ -546,4 +557,86 @@ class _Actions extends StatelessWidget {
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: children);
     },
   );
+}
+
+/// The cloud speech models this phone can call: the engine's providers whose
+/// model declares audio input, with the key the app keeps for them. Picking one
+/// saves it; the request is then the app's own.
+class CloudVoiceModels extends ConsumerStatefulWidget {
+  const CloudVoiceModels({super.key});
+
+  @override
+  ConsumerState<CloudVoiceModels> createState() => _CloudVoiceModelsState();
+}
+
+class _CloudVoiceModelsState extends ConsumerState<CloudVoiceModels> {
+  String? _selected;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_readSelection());
+  }
+
+  Future<void> _readSelection() async {
+    final id = await CloudSpeechPrefs.selected();
+    if (!mounted) return;
+    setState(() {
+      _selected = id;
+      _loading = false;
+    });
+  }
+
+  Future<void> _choose(CloudSpeechModel model) async {
+    if (!model.ready) {
+      // The key is not on this phone: a provider set up in the web page never
+      // typed one here, so the way to fix it is the provider's own page.
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        SnackBar(content: Text(context.l10n.chatProviderKeyMissing)),
+      );
+      return;
+    }
+    await CloudSpeechPrefs.select(model.id);
+    if (!mounted) return;
+    setState(() => _selected = model.id);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final models = ref.watch(cloudSpeechModelsProvider);
+    final list = models.value ?? const <CloudSpeechModel>[];
+    return SettingsSection(
+      title: l10n.voiceCloudSection,
+      footer: Text(l10n.voiceCloudFooter),
+      children: [
+        if (_loading || models.isLoading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Center(child: SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2))),
+          )
+        else if (list.isEmpty)
+          // Nothing configured: the way there, not a dead sentence.
+          SettingsTile(
+            key: const ValueKey('voice-cloud-empty'),
+            title: l10n.voiceCloudConfigure,
+            subtitle: l10n.voiceCloudEmpty,
+            onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ProvidersPage())),
+          )
+        else
+          for (final model in list)
+            SettingsTile(
+              key: ValueKey('voice-cloud-${model.id}'),
+              title: model.name,
+              subtitle: model.ready ? model.subtitle : l10n.chatProviderKeyMissing,
+              trailing: SizedBox.square(
+                dimension: 32,
+                child: Icon(_selected == model.id ? AppIcons.radioOn : AppIcons.radioOff, size: 24),
+              ),
+              onTap: () => unawaited(_choose(model)),
+            ),
+      ],
+    );
+  }
 }

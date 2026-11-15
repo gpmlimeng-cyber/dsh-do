@@ -184,7 +184,7 @@ void main() {
   });
 
   testWidgets('permission: denied explains, blocked offers Settings', (tester) async {
-    final rig = _Rig(bridge: FakeVoiceBridge(permission: VoicePermission.denied));
+    final rig = _Rig(bridge: FakeVoiceBridge(permissionResult: VoicePermission.denied));
     await rig.pump(tester);
     await tester.tap(_mic);
     await _settle(tester);
@@ -192,7 +192,7 @@ void main() {
     expect(rig.bridge.calls, ['permission']);
     expect(rig.voice.phase, VoicePhase.idle);
 
-    rig.bridge.permission = VoicePermission.blocked;
+    rig.bridge.permissionResult = VoicePermission.blocked;
     ScaffoldMessenger.of(tester.element(find.byType(Composer))).removeCurrentSnackBar();
     await _settle(tester);
     await tester.tap(_mic);

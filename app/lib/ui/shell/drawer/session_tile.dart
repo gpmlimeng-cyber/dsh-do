@@ -25,6 +25,9 @@ class SessionTile extends StatelessWidget {
     this.pending,
     this.unread = false,
     this.pinned = false,
+    this.badge,
+    this.note,
+    this.leading,
     this.indent = 0,
     this.selecting = false,
     this.selected = false,
@@ -43,12 +46,29 @@ class SessionTile extends StatelessWidget {
   /// Shown as a small pin (inside folders; elsewhere 置顶 says it).
   final bool pinned;
 
+  /// A small tag before the marker (a Main Bot's 「主」). Never the pin: that
+  /// one says the person pinned the row, which Bot rows cannot be.
+  final String? badge;
+
+  /// A quiet phrase after the title, for the rows that can say what they are
+  /// doing (a Bot's current tool, when it last moved). Never the marker: that
+  /// one is a state, this one a sentence. Hidden while selecting, where the
+  /// check needs the room.
+  final String? note;
+
+  /// A 22 face before the title, for the rows that are a Bot or a group; the
+  /// row keeps its 44 height, so the face is inset rather than the row grown.
+  final Widget? leading;
+
   /// Content inset from the 20 line (folder members: [folderIndent]).
   final double indent;
   final bool selecting;
   final bool selected;
 
   static const height = 44.0;
+
+  /// The most a [note] takes; the title keeps everything else.
+  static const noteWidth = 96.0;
 
   /// A folder's glyph (20) plus its gap (10): members' titles line up with
   /// the folder's name.
@@ -68,11 +88,22 @@ class SessionTile extends StatelessWidget {
     final colors = DshColors.of(context);
     final shape = Squircle.border(AppShape.md);
     final highlighted = selecting ? selected : current;
+    // Big type makes every word at the end wider; the row is one line and must
+    // not overflow, so the trailing words are capped (and cut) instead.
+    // Big type: the trailing words give way instead of growing the row (the
+    // note is dropped entirely, the markers keep a fixed cap and ellipsis).
+    final scale = (MediaQuery.textScalerOf(context).scale(14) / 14).clamp(1.0, 2.0).toDouble();
+    final roomForNote = scale <= 1.4;
     final Widget? marker = switch ((pending, running, unread)) {
-      (final PendingKind kind, _, _) => Text(
-        kind.label,
-        key: const ValueKey('pending'),
-        style: theme.textTheme.labelMedium?.copyWith(color: colors.warning, fontWeight: FontWeight.w500),
+      (final PendingKind kind, _, _) => ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 64),
+        child: Text(
+          kind.label,
+          key: const ValueKey('pending'),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.labelMedium?.copyWith(color: colors.warning, fontWeight: FontWeight.w500),
+        ),
       ),
       (_, true, _) => const StatusDot(key: ValueKey('running'), tone: StatusTone.busy, size: dot),
       (_, _, true) => _UnreadDot(key: const ValueKey('unread'), color: scheme.onSurfaceVariant),
@@ -84,6 +115,7 @@ class SessionTile extends StatelessWidget {
       if (pending == null && running) l10n.shellCurrentlyRunning,
       if (pending == null && !running && unread) l10n.shellUnread,
       if (pinned) l10n.shellPinned,
+      ?badge,
     ].join(l10n.shellSemanticsSeparator);
     return Semantics(
       selected: highlighted,
@@ -120,6 +152,10 @@ class SessionTile extends StatelessWidget {
             child: Row(
               children: [
                 _CheckSlot(selecting: selecting, selected: selected),
+                if (leading case final face?) ...[
+                  SizedBox.square(dimension: 22, child: face),
+                  const SizedBox(width: 8),
+                ],
                 Expanded(
                   child: Text(
                     title,
@@ -133,9 +169,27 @@ class SessionTile extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (note case final text? when !selecting && roomForNote) ...[
+                  const SizedBox(width: 8),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: noteWidth),
+                    child: Text(
+                      text,
+                      key: const ValueKey('note'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.right,
+                      style: theme.textTheme.labelSmall?.copyWith(color: colors.textTertiary),
+                    ),
+                  ),
+                ],
                 if (pinned) ...[
                   const SizedBox(width: 8),
                   Icon(AppIcons.pinActive, size: 14, color: colors.textTertiary),
+                ],
+                if (badge case final text?) ...[
+                  const SizedBox(width: 8),
+                  _Badge(text),
                 ],
                 AnimatedSwitcher(
                   duration: AppMotion.of(context, AppMotion.quick),
@@ -221,6 +275,27 @@ class _CheckSlot extends StatelessWidget {
                 ),
         ),
       ),
+    );
+  }
+}
+
+/// A small tag on a row's end (a Main Bot's 「主」).
+class _Badge extends StatelessWidget {
+  const _Badge(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = DshColors.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+      decoration: ShapeDecoration(
+        color: theme.colorScheme.onSurface.withValues(alpha: 0.06),
+        shape: Squircle.border(AppShape.sm),
+      ),
+      child: Text(text, style: theme.textTheme.labelSmall?.copyWith(color: colors.textTertiary)),
     );
   }
 }

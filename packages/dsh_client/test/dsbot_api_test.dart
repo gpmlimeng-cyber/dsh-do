@@ -126,7 +126,7 @@ void main() {
   group('calls', () {
     test('a call posts the endpoint and payload with the cookie and Host, and returns the value', () async {
       host.handlers['hello'] = (payload) {
-        expect(payload['api'], [1]);
+        expect(payload['api'], [1, 2]);
         expect((payload['client']! as Map)['name'], 'dsh-go');
         return {
           'api': 1,
@@ -384,6 +384,28 @@ void main() {
       });
       expect(await api.stopMemberWork('r1', 'b2'), isTrue);
     });
+
+    test('send names staged photos and staged file receipts', () async {
+      // The host's `send` takes ids: a photo goes up through `stage-image`
+      // first, and naming bytes there answers bot/stale.
+      host.handlers['stage-image'] = (_) => {'id': 'i1'};
+      host.handlers['send'] = (_) => true;
+      final imageId = await api.stageImage('image/png', 'AAAA');
+      expect(imageId, 'i1');
+      expect(host.calls.last['payload'], {'mediaType': 'image/png', 'data': 'AAAA'});
+      await api.send('m1', '', imageIds: [imageId], fileReceiptIds: ['r1']);
+      // An image-only message has no text block, and each file is a receipt the
+      // host resolves in this same conversation.
+      expect(host.calls.last['payload'], {
+        'sessionId': 'm1',
+        'text': '',
+        'images': ['i1'],
+        'fileReceiptIds': ['r1'],
+      });
+      // Text alone keeps the old shape: no empty fields a host would have to read around.
+      await api.send('m1', 'plain');
+      expect(host.calls.last['payload'], {'sessionId': 'm1', 'text': 'plain'});
+    });
   });
 
   group('feed', () {
@@ -558,7 +580,7 @@ void main() {
       final hello = await api.hello();
       expect((hello.api, hello.supports('rpc')), (1, true));
       expect(relay.calls.last.$2['endpoint'], 'hello');
-      expect((relay.calls.last.$2['payload']! as Map)['api'], [1]);
+      expect((relay.calls.last.$2['payload']! as Map)['api'], [1, 2]);
       await expectLater(
         api.send('m1', 'hi'),
         throwsA(isA<DshRemoteException>().having((e) => e.code, 'code', 'bot/read-only')),

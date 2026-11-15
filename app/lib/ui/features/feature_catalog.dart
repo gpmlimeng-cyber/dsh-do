@@ -17,6 +17,7 @@ import '../../state/plugins_state.dart';
 import '../common/feature_tile.dart';
 import '../agents/team_page.dart';
 import '../bots/bots_page.dart';
+import '../bots/bot_session_routing.dart';
 import '../community/community_page.dart';
 import '../cordis/cordis_page.dart';
 import '../files/files_page.dart';
@@ -359,9 +360,12 @@ final featureSections = <FeatureSection>[
       icon: AppIcons.search,
       action: (context, ref, _) async {
         final id = await showSessionSearch(context);
-        if (id != null && context.mounted) {
-          openSessionInChat(context, ref, id);
-        }
+        if (id == null || !context.mounted) return;
+        // A Bot's or group's chat opens its own page. Deciding needs the team,
+        // which may still be loading, so this waits — check the page again.
+        if (await openTeamChatIfOwned(context, ref, id)) return;
+        if (!context.mounted) return;
+        openSessionInChat(context, ref, id);
       },
     ),
     FeatureItem.localized(

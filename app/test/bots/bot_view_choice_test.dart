@@ -113,8 +113,8 @@ void main() {
     expect((last!['inputs'] as Map)['count'], 2);
   });
 
+  // toggle 现在原生支持（值随提交走），只剩公式与没见过的输入控件。
   for (final unsafe in <Map<String, Object?>>[
-    {'type': 'toggle', 'id': 'hidden', 'label': 'Hidden', 'value': true},
     {
       'type': 'text',
       'text': {'=': 'count * 2'},

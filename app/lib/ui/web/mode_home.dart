@@ -3,6 +3,10 @@
 // cross-fades and lands on the same conversation on the same host: the web page
 // opens the native conversation; the native shell opens what the page reported
 // last (WebHome keeps currentSessionProvider current).
+//
+// 轻松模式 (lib/state/im_mode_state.dart) comes first: while it is on, this
+// build returns the IM shell and never reaches the 界面 choice — the light home
+// has no web counterpart, and its tabs replace the professional home.
 
 import 'dart:async';
 
@@ -10,10 +14,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
+import '../../state/im_mode_state.dart';
 import '../../state/sessions_state.dart';
 import '../../state/ui_mode_state.dart';
 import '../modes/mode_switch.dart';
 import '../shell/home_shell.dart';
+import '../shell/last_conversation_host.dart';
 import '../shell/page_frame.dart';
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
@@ -38,8 +44,33 @@ class _ModeHomeState extends ConsumerState<ModeHome> {
   UiMode? _shown;
   DshWebTarget? _handoff;
 
+  /// The drawer's ⇄ key posts a request instead of switching by itself: the
+  /// home is the only thing that outlives every page, so it does the switch.
+  Future<void> _becomeWeb() async {
+    // 轻松模式 draws no web home: a request that arrives while it is on would
+    // switch 网页模式 behind the IM shell and surprise the person later.
+    if (ref.read(interfaceModeProvider).light) return;
+    final container = ProviderScope.containerOf(context, listen: false);
+    await container.read(uiModeProvider.notifier).set(UiMode.web);
+    if (!mounted) return;
+    Navigator.maybeOf(context)?.popUntil((route) => route.isFirst);
+  }
+
   @override
   Widget build(BuildContext context) {
+    ref.listen(webModeRequestProvider, (_, _) => unawaited(_becomeWeb()));
+    // 轻松模式: its own home, before 界面 is even read. Read back like 界面, so
+    // the first frame is not the other home's.
+    final face = ref.watch(interfaceModeProvider);
+    if (!face.loaded) return const AppBackdrop(child: SizedBox.expand());
+    if (face.light) {
+      return AnimatedSwitcher(
+        duration: AppMotion.of(context, AppMotion.page),
+        switchInCurve: AppMotion.enter,
+        switchOutCurve: AppMotion.exit,
+        child: const KeyedSubtree(key: ValueKey(InterfaceMode.light), child: ImShell()),
+      );
+    }
     final mode = ref.watch(uiModeProvider);
     if (!mode.loaded) {
       // Read back with the rest of the settings: no frame of the other home.
@@ -51,6 +82,14 @@ class _ModeHomeState extends ConsumerState<ModeHome> {
       // page itself left off.
       final id = ref.read(currentSessionProvider);
       _handoff = id == null ? const DshWebTarget(newSession: true) : DshWebTarget(sessionId: id);
+      // A native page open over this home (a Bot chat, a group, a details
+      // page) would otherwise stay on top of the web page: the switch would
+      // look like it did nothing. The home is the first route; the page opens
+      // under it, so the page has to go.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !ref.read(uiModeProvider).web) return;
+        Navigator.maybeOf(context)?.popUntil((route) => route.isFirst);
+      });
     }
     _shown = mode.mode;
     final Widget home = mode.web
@@ -75,10 +114,14 @@ class _ModeHomeState extends ConsumerState<ModeHome> {
 /// 新对话 beside it, with 界面's own mark (the globe at the drawer's foot
 /// opens the web page on top; this one makes it the home).
 class WebModeKey extends ConsumerWidget {
-  const WebModeKey({super.key, this.size = 36, this.tier = GlassTier.chrome});
+  const WebModeKey({super.key, this.size = 36, this.tier = GlassTier.chrome, this.onSwitch});
 
   final double size;
   final GlassTier tier;
+
+  /// The drawer puts itself away first: the key is its last act there, and the
+  /// page that takes over should not open behind an open drawer.
+  final VoidCallback? onSwitch;
 
   static String get tooltip => appL10n.webSwitchToWeb;
 
@@ -89,7 +132,30 @@ class WebModeKey extends ConsumerWidget {
       tooltip: context.l10n.webSwitchToWeb,
       size: size,
       tier: tier,
-      onPressed: () => unawaited(ref.read(uiModeProvider.notifier).set(UiMode.web)),
+      onPressed: () => unawaited(_switch(context, ref)),
     );
+  }
+
+  Future<void> _switch(BuildContext context, WidgetRef ref) async {
+    // Everything is taken before the drawer goes: its context is gone by the
+    // time a failure arrives, and — in a Bot or group page, where closing the
+    // drawer tears the page down with it — this widget's `ref` is gone too, so
+    // reading the controller after [onSwitch] throws and the key looks dead on
+    // that page only. (It did: the key worked on a conversation page and did
+    // nothing at all on a group page.)
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    final container = ProviderScope.containerOf(context, listen: false);
+    // The intent goes first and synchronously: closing the drawer tears this
+    // page (and this widget) down, and anything read or written after that
+    // would be lost on a Bot or group page.
+    container.read(webModeRequestProvider.notifier).request();
+    onSwitch?.call();
+    // If the state did not move, say what it is: a switch that quietly does
+    // nothing is otherwise indistinguishable from a dead key.
+    await Future<void>.delayed(const Duration(milliseconds: 600));
+    final now = container.read(uiModeProvider).mode;
+    if (now != UiMode.web) {
+      messenger?.showSnackBar(SnackBar(content: Text('界面模式=${now.name}')));
+    }
   }
 }

@@ -1,6 +1,7 @@
 // Words and numbers the Bot pages share: what a Bot is doing, short times,
 // token counts, the DS Bot error lines.
 
+import 'package:characters/characters.dart';
 import 'package:dsh_client/dsh_client.dart';
 import 'package:intl/intl.dart';
 
@@ -68,11 +69,12 @@ String modelLabel(String? ref, List<DsBotModel> models) {
 }
 
 /// The first character of a name, upper-cased for Latin letters.
+///
+/// Takes one grapheme (`characters`), so an emoji counts as a single letter.
 String monogramOf(String name) {
   final trimmed = name.trim();
   if (trimmed.isEmpty) return '?';
-  final first = String.fromCharCodes(trimmed.runes.take(1));
-  return first.toUpperCase();
+  return trimmed.characters.first.toUpperCase();
 }
 
 /// A group's last line: 「Writer：……」, the user's own as 「你：……」.
@@ -116,7 +118,9 @@ String chatEventText(DsBotItem item, {String? roomName}) {
     'reply' => appL10n.botsEventReplied(name),
     'report' => roomName == null ? appL10n.botsGroupReplied : appL10n.botsNamedGroupReplied(roomName),
     'stopped' => appL10n.botsEventCalledStop(name),
-    _ => item.text,
+    // A turn that ended without words: the host sends no text for it, so the
+    // event's own wording is the line (otherwise it would be blank).
+    _ => item.text.trim().isNotEmpty || item.event == null ? item.text : roomEventText(item),
   };
 }
 

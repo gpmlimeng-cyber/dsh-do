@@ -3,6 +3,7 @@
 import 'dart:async';
 
 import 'package:dsh_client/dsh_client.dart' show DshRemoteException;
+import 'package:flutter/foundation.dart' show listEquals, mapEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
@@ -25,6 +26,7 @@ import 'markdown_blocks.dart';
 import 'markdown_image.dart';
 import 'markdown_math.dart';
 import 'math_syntax.dart';
+import 'message_mentions.dart';
 import 'stream_repair.dart';
 import 'table_syntax.dart';
 
@@ -74,6 +76,8 @@ class MarkdownBody extends StatefulWidget {
     this.selectable = true,
     this.secondary = false,
     this.repairBareViews = false,
+    this.mentions = const [],
+    this.onLinkTap,
   });
 
   final String text;
@@ -90,9 +94,18 @@ class MarkdownBody extends StatefulWidget {
   /// 次级排版(思考过程):小一号、次级文字色,标题也不抢眼。
   final bool secondary;
 
+  /// A caller that can open a link itself: return true when it handled the link,
+  /// false to run the default action. Null — every caller before this — leaves
+  /// links exactly as they were.
+  final bool Function(String href)? onLinkTap;
+
   /// 助手回复:模型把 `dsh-ui` 的 JSON 裸着写进正文时,也当成视图画
   /// (见 [fenceBareDshUiViews])。别的 Markdown(文档、说明页)不开。
   final bool repairBareViews;
+
+  /// 这一行里能叫到的成员:正文里的 `@名字` 用该成员自己的墨色画,像网页
+  /// 版那样(见 [markMentions])。空 —— 文档、说明页、私聊 —— 不做任何处理。
+  final List<InlineMention> mentions;
 
   /// 表格单列最宽多少;更长的单元格在列内换行,而不是把整表拉得很长。
   static const _maxColumnWidth = 260.0;
@@ -449,6 +462,8 @@ class MarkdownBody extends StatefulWidget {
   static String? workspaceLinkPath(String url, {String? baseDir}) => resolveWorkspaceLink(url, baseDir: baseDir);
 
   static Widget _codeBuilder(BuildContext context, String name, String code, bool closed) {
+    // 围栏里的 `@` 不圈(见 [mentionSpans]),这里只是兜底:记号永远不进代码。
+    code = unmarkMentions(code);
     // A closed block won't change. Handing back the same widget lets Flutter skip it,
     // or every block of the reply would rebuild on every update.
     final reveal = closed ? context.getInheritedWidgetOfExactType<_RevealStreaming>() : null;
@@ -586,7 +601,7 @@ class MarkdownBody extends StatefulWidget {
 
   static InlineSpan _inlineCodeBuilder(BuildContext context, String code, TextStyle style, InlineCodeStyle codeStyle) =>
       CodeTextSpan(
-        text: code.replaceAll(_cursorSentinel, ''),
+        text: unmarkMentions(code).replaceAll(_cursorSentinel, ''),
         codeStyle: codeStyle,
         style: style.copyWith(fontFeatures: AppType.monoFeatures),
       );
@@ -604,12 +619,15 @@ class _MarkdownBodyState extends State<MarkdownBody> {
   late String _source = _prepare();
 
   String _prepare() {
+    // `@成员` 先圈出来,再交给 Markdown —— 圈出来的只多了两个私用区字符,
+    // 记号之外一字不动,所以语法照旧。
+    final source = widget.mentions.isEmpty ? widget.text : markMentions(widget.text, widget.mentions);
     if (widget.reveal) {
-      return MarkdownBody._prepareRevealed(widget.text, repairBareViews: widget.repairBareViews);
+      return MarkdownBody._prepareRevealed(source, repairBareViews: widget.repairBareViews);
     }
     _repair = widget.streaming ? (_repair ?? StreamingMarkdownRepair()) : null;
     return MarkdownBody._prepareSource(
-      widget.text,
+      source,
       streaming: widget.streaming,
       repairBareViews: widget.repairBareViews,
       repair: _repair,
@@ -638,7 +656,8 @@ class _MarkdownBodyState extends State<MarkdownBody> {
     if (oldWidget.text != widget.text ||
         oldWidget.streaming != widget.streaming ||
         oldWidget.reveal != widget.reveal ||
-        oldWidget.repairBareViews != widget.repairBareViews) {
+        oldWidget.repairBareViews != widget.repairBareViews ||
+        !listEquals(_mentionNames(oldWidget.mentions), _mentionNames(widget.mentions))) {
       _source = _prepare();
     }
   }
@@ -691,6 +710,10 @@ class _MarkdownBodyState extends State<MarkdownBody> {
     Widget markdown = _scoped
         ? Consumer(builder: (context, ref, _) => withTint(ref.watch(tableTintProvider)))
         : withTint(TableTint.follow);
+    // 正文里的 `@成员` 要按各人的墨色画;没有成员就不套这一层。
+    if (widget.mentions.isNotEmpty) {
+      markdown = _MentionInk(ink: _mentionInk(widget.mentions), child: markdown);
+    }
     // 表格、成块公式横向放不下时,两端淡出提示还能横滑。
     markdown = ScrollConfiguration(behavior: const EdgeFadeScrollBehavior(), child: markdown);
     if (widget.reveal) markdown = _RevealStreaming(streaming: widget.streaming, blocks: _blocks, child: markdown);
@@ -700,6 +723,27 @@ class _MarkdownBodyState extends State<MarkdownBody> {
       child: MarkdownGalleryScope(child: markdown),
     );
   }
+}
+
+/// 成员名(只这一点影响正文的准备,颜色不影响)。
+List<String> _mentionNames(List<InlineMention> mentions) => [for (final mention in mentions) mention.name];
+
+/// `@名字`(小写,`@` 保留)→ 该成员的墨色。
+Map<String, Color> _mentionInk(List<InlineMention> mentions) => {
+  for (final mention in mentions) '@${mention.name.toLowerCase()}': mention.color,
+};
+
+/// The ink of each called member, looked up by the body's mention pattern.
+class _MentionInk extends InheritedWidget {
+  const _MentionInk({required this.ink, required super.child});
+
+  final Map<String, Color> ink;
+
+  static Map<String, Color>? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_MentionInk>()?.ink;
+
+  @override
+  bool updateShouldNotify(_MentionInk oldWidget) => !mapEquals(oldWidget.ink, ink);
 }
 
 /// 当前子树里有没有 ProviderScope;没有就按默认表格底色画。

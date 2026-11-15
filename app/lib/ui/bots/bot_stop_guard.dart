@@ -1,5 +1,6 @@
 // A rendered Stop action belongs to the connection and target it displayed.
 // Changes retire it immediately, including transitions before the next frame.
+import 'package:dsh_client/dsh_client.dart' show DsBotTeam;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../state/bots_state.dart';
@@ -32,6 +33,7 @@ class BotStopGuard {
       _botId,
       bot?.sessionId,
       _roomId,
+      status.team?.room(_roomId)?.sessionId,
       _roomId == null || status.team?.room(_roomId!) != null,
       status.readOnly,
     );
@@ -48,7 +50,7 @@ class BotStopGuard {
     final epoch = _epoch;
     final status = _ref.read(dsBotProvider);
     final client = _ref.read(activeConnectionProvider).value?.client;
-    final sessionId = botId == null ? roomId : status.team?.bot(botId)?.sessionId;
+    final sessionId = stopTarget(team: status.team, botId: botId, roomId: roomId);
     final available =
         _ref.read(dsBotProvider.notifier).api != null &&
         status.readOnly == null &&
@@ -69,4 +71,13 @@ class BotStopGuard {
     _status.close();
     _connection.close();
   }
+}
+
+/// The Session a Stop cancels: a Bot's current part, or the Session a group's
+/// round runs in now. The group's `id` only names its first part, so cancelling
+/// that one after a part change would stop nothing.
+String? stopTarget({required DsBotTeam? team, String? botId, String? roomId}) {
+  if (botId != null) return team?.bot(botId)?.sessionId;
+  if (roomId == null) return null;
+  return team?.room(roomId)?.sessionId ?? roomId;
 }

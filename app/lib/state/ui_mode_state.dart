@@ -72,6 +72,20 @@ class UiModeController extends Notifier<UiModeState> {
 
 final uiModeProvider = NotifierProvider<UiModeController, UiModeState>(UiModeController.new);
 
+/// A request to make the web page the home, made from anywhere (the drawer's
+/// ⇄ key, on any page). The switch itself is the home's job: a key that lives
+/// in a drawer is torn down with its page the moment the drawer closes, and a
+/// switch that happens after that teardown was silently lost on Bot and group
+/// pages. Posting an intent first survives the page.
+class WebModeRequestController extends Notifier<int> {
+  @override
+  int build() => 0;
+
+  void request() => state = state + 1;
+}
+
+final webModeRequestProvider = NotifierProvider<WebModeRequestController, int>(WebModeRequestController.new);
+
 /// Something outside the web page asks it to show [target] (a share, a
 /// launcher shortcut, 「在网页版打开」 from a native page): the web home takes
 /// it as soon as its page can.

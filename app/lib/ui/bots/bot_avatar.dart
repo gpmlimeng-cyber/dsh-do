@@ -6,11 +6,14 @@ import 'package:dsh_client/dsh_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../state/bot_avatar_state.dart';
 import '../../state/bots_state.dart';
 import '../common/display_image.dart';
 import '../common/status_dot.dart';
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
+import '../mascots/mascot_avatar.dart';
+import '../mascots/mascot_letter_avatar.dart';
 import 'bot_format.dart';
 
 /// The Bot's color for the current theme.
@@ -22,11 +25,17 @@ Color botNameInk(BuildContext context, String color) => botInk(context, color ==
 
 /// Round avatar. [working] adds a breathing dot at the lower right.
 class BotAvatar extends ConsumerWidget {
-  const BotAvatar({super.key, required this.bot, this.size = 40, this.working = false});
+  const BotAvatar({super.key, required this.bot, this.size = 40, this.working = false, this.emotion, this.animate = false});
 
   final DsBot bot;
   final double size;
   final bool working;
+
+  /// 会话状态对应的情绪（`mascotExpressions` 的键）；列表里默认静态。
+  final String? emotion;
+
+  /// 只对吉祥物生效：聊天页/资料卡传 true，列表保持 false（几十个头像不动画）。
+  final bool animate;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -48,7 +57,7 @@ class BotAvatar extends ConsumerWidget {
               gaplessPlayback: true,
               errorBuilder: (context, _, _) => BotMonogram(name: bot.name, color: bot.ink, size: size),
             ),
-          );
+    };
     if (!working) return ExcludeSemantics(child: face);
     final dot = (size * 0.28).clamp(8.0, 12.0);
     return ExcludeSemantics(
@@ -70,6 +79,34 @@ class BotAvatar extends ConsumerWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 一个表情当头像：浅色圆底 + 居中字形。
+class _EmojiFace extends StatelessWidget {
+  const _EmojiFace({required this.glyph, required this.color, required this.size});
+
+  final String glyph;
+  final String color;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return ExcludeSemantics(
+      child: SizedBox.square(
+        dimension: size,
+        child: DecoratedBox(
+          decoration: ShapeDecoration(color: botInk(context, color).withValues(alpha: 0.16), shape: const CircleBorder()),
+          child: Center(
+            child: Text(
+              glyph,
+              textScaler: TextScaler.noScaling,
+              style: TextStyle(fontSize: size * 0.52, height: 1),
+            ),
+          ),
         ),
       ),
     );
@@ -120,11 +157,17 @@ class BotMonogram extends StatelessWidget {
 
 /// A group: its first two members, the second over the first's lower right.
 class RoomAvatar extends StatelessWidget {
-  const RoomAvatar({super.key, required this.room, required this.team, this.size = 40});
+  const RoomAvatar({super.key, required this.room, required this.team, this.size = 40, this.emotion, this.animate = false});
 
   final DsBotRoom room;
   final DsBotTeam team;
   final double size;
+
+  /// 群的整体状态（等你确认/跑工具），只画在首位成员的头像上。
+  final String? emotion;
+
+  /// 成员头像要不要动（列表/瓦片/聊天头按可见性各自决定）。
+  final bool animate;
 
   @override
   Widget build(BuildContext context) {
@@ -144,7 +187,7 @@ class RoomAvatar extends StatelessWidget {
         ),
       );
     }
-    if (members.length == 1) return BotAvatar(bot: members.first, size: size);
+    if (members.length == 1) return BotAvatar(bot: members.first, size: size, emotion: emotion, animate: animate);
     final small = size * 0.6;
     final gap = (size * 0.05).clamp(1.5, 3.0);
     return ExcludeSemantics(
@@ -157,13 +200,13 @@ class RoomAvatar extends StatelessWidget {
               top: 0,
               child: ClipPath(
                 clipper: _RearClipper(offset: size - small, gap: gap),
-                child: BotAvatar(bot: members[0], size: small),
+                child: BotAvatar(bot: members[0], size: small, animate: animate),
               ),
             ),
             Positioned(
               right: 0,
               bottom: 0,
-              child: BotAvatar(bot: members[1], size: small),
+              child: BotAvatar(bot: members[1], size: small, animate: animate),
             ),
           ],
         ),

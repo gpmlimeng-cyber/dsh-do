@@ -11,11 +11,13 @@ import '../../l10n/l10n.dart';
 import '../../state/app_info.dart';
 import '../../state/star_prompt.dart' show starLinkOpenerProvider;
 import '../../state/update_state.dart';
+import '../mascots/mascot_gallery_page.dart';
 import '../shell/brand_mark.dart';
 import '../shell/page_frame.dart';
 import '../star/star_prompt_dialog.dart' show openStarProject;
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
+import '../../update/update_config.dart' show upstreamBaseline;
 import '../update/update_tiles.dart';
 import 'settings_widgets.dart';
 
@@ -42,7 +44,19 @@ class AboutPage extends ConsumerWidget {
           children: [
             SettingsTile(
               spot: Spots.version,
-              value: Text(version, style: AppType.tabular(theme.textTheme.bodyMedium!)),
+              // The version Android reports, and the upstream release it is
+              // built on (one constant: `update_config.dart`).
+              value: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  // 连点 7 下进表情墙（隐藏调试页，不放进菜单）。
+                  VersionTaps(child: Text(version, style: AppType.tabular(theme.textTheme.bodyMedium!))),
+                  Text(
+                    l10n.updateBasedOn(upstreamBaseline),
+                    style: theme.textTheme.labelSmall?.copyWith(color: colors.textTertiary),
+                  ),
+                ],
+              ),
             ),
             const AppUpdateTiles(),
             SettingsTile(
@@ -91,10 +105,12 @@ class AboutPage extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
           child: Column(
             children: [
-              BrandMark(size: 18, color: colors.textDisabled),
+              // The colour logo, not the flat silhouette: the foot of the
+              // page shows the mark itself.
+              const BrandMark(size: 22),
               const SizedBox(height: 10),
               Text(
-                AppInfo.slogan,
+                l10n.aboutPitch,
                 textAlign: TextAlign.center,
                 style: theme.textTheme.labelSmall?.copyWith(color: colors.textTertiary),
               ),

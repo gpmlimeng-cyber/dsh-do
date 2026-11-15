@@ -193,6 +193,32 @@ void main() {
       expect(find.text('在「主机默认目录」中'), findsOneWidget);
     });
 
+    testWidgets('no workspace chosen on a remote host: the chip names the one it falls back to', (tester) async {
+      usePhoneView(tester);
+      final harness = ChatHarness(connected: true);
+      await tester.pumpWidget(
+        testApp(
+          const ChatScreen(),
+          overrides: [...harness.overrides, recentWorkspaceForNewChatProvider.overrideWithValue(_workspace)],
+        ),
+      );
+      await pumpFrames(tester, 8);
+      expect(find.text(_workspaceLabel), findsOneWidget);
+    });
+
+    testWidgets('no workspace at all on a remote host: the chip names its default folder', (tester) async {
+      usePhoneView(tester);
+      final harness = ChatHarness(connected: true);
+      await tester.pumpWidget(
+        testApp(
+          const ChatScreen(),
+          overrides: [...harness.overrides, newChatInHostDefaultProvider.overrideWithValue(true)],
+        ),
+      );
+      await pumpFrames(tester, 8);
+      expect(find.text('在「主机默认目录」中'), findsOneWidget);
+    });
+
     testWidgets('the primary pill takes the workspace chip\'s place exactly', (tester) async {
       Future<(Rect, double)> slot(bool failed) async {
         await _pumpState(

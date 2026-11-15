@@ -153,10 +153,14 @@ class ComposerStrip extends StatelessWidget {
 /// The strip on the chat screen. [visible] false (a reply generating, read
 /// only) sinks it; without plugin lines it takes no room at all.
 class ComposerStripSlot extends ConsumerStatefulWidget {
-  const ComposerStripSlot({super.key, required this.sessionId, required this.visible});
+  const ComposerStripSlot({super.key, required this.sessionId, required this.visible, this.fallback});
 
   final String? sessionId;
   final bool visible;
+
+  /// 没有插件条要显示时，这一格放的东西（胶囊行）。同一格只出现一条：插件条
+  /// 在就显示插件条，不在就显示它，两条不会同时占高。
+  final Widget? fallback;
 
   @override
   ConsumerState<ComposerStripSlot> createState() => _ComposerStripSlotState();
@@ -297,9 +301,11 @@ class _ComposerStripSlotState extends ConsumerState<ComposerStripSlot> with Widg
         ),
       );
     }
+    // 没有插件条：这一格交给 fallback（胶囊行），高度不变、也不多出一行。
+    if (strip == null) return widget.fallback ?? const SizedBox(width: double.infinity);
     return RiseReveal(
       open: widget.visible && shown != null,
-      child: strip ?? const SizedBox(width: double.infinity),
+      child: strip,
     );
   }
 }

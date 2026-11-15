@@ -11,6 +11,7 @@
   "launchBackdropWhite": "白色",
   "launchBackdropBlack": "黑色",
   "launchReplace": "更换图片或视频",
+  "launchAnimation": "启动动画",
   "launchPreview": "预览",
   "launchFooter": "图片、动图 8 MB 以内，视频 30 MB 以内。冷启动时完整播放一遍，轻点可跳过",
   "launchChanged": "启动画面已更换",

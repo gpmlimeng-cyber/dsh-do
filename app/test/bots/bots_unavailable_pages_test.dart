@@ -19,6 +19,7 @@ import '../chat/support/harness.dart';
 import '../shell/golden_harness.dart' show goldenApp;
 import 'bots_mobile_unavailable_test.dart' show frames;
 import 'support.dart';
+import 'package:dsh_app/state/chat_state.dart' show chatProvider, ChatState;
 
 void main() {
   setUpAll(loadTestFonts);
@@ -61,6 +62,7 @@ void main() {
             home: page,
             brightness: Brightness.light,
             overrides: [
+              chatProvider.overrideWith2((id) => FakeChatController(id, const ChatState(loading: false))),
               activeConnectionProvider.overrideWith((ref) => AsyncData(connected ? fakeConnection : null)),
               dsBotApiFactoryProvider.overrideWithValue((_) => scenario == 'relay' ? null : DsBotApi(fake)),
             ],

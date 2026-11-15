@@ -1,0 +1,135 @@
+// 轻松模式的页面框：大标题 + 右侧玻璃圆键 + 内容。
+//
+// 为什么不用现成的 `AppPage`：它的顶栏固定画返回键（`page_frame.dart:217-224`），
+// 四个 Tab 的根页不该有返回键；大标题左右也是 24，IM 列表要贴 16。
+// 这里只复用它的高度、阅读宽和背景。
+//
+// 背景用 `WallpaperBackdrop`：与专业首页同一层——设了自定义壁纸就画壁纸，没有
+// 就退回同一个渐变（`AppBackdrop` 自己）。它顺带把淡色文字按壁纸守护一遍，
+// 所以下面用 Builder 取守护过的 Theme。
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import '../../l10n/l10n.dart';
+import '../common/side_insets.dart';
+import '../shell/page_frame.dart' show AppPage, GlassIconButton;
+import '../theme/app_icons.dart';
+import '../theme/theme.dart';
+import '../wallpaper/wallpaper_backdrop.dart';
+
+class ImPageScaffold extends StatelessWidget {
+  const ImPageScaffold({
+    super.key,
+    required this.title,
+    this.subtitle,
+    this.actions = const [],
+    this.back = false,
+    this.backdrop = true,
+    this.padding = const EdgeInsets.only(top: 4),
+    required this.child,
+  });
+
+  /// 大标题（`headlineLarge`，与 `AppPage` 同一档）。
+  final String title;
+
+  /// 标题下的一行小字。
+  final String? subtitle;
+
+  /// 顶栏右侧的玻璃圆键，最多 2 个。
+  final List<Widget> actions;
+
+  /// 从 Tab 里推进来的页面（资料卡等）为 true；Tab 根页为 false。
+  final bool back;
+
+  /// 自己画不画壁纸/渐变。壳内的四个 Tab 页传 false（背景由 `ImShell` 那一层
+  /// 铺满整屏，连底部栏一起）；被 push 的页面仍为 true，盖住壳时自己画。
+  final bool backdrop;
+
+  /// 内容自己的内边距；横向留白由本框架给。
+  final EdgeInsetsGeometry padding;
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final safe = MediaQuery.paddingOf(context);
+    final side = AppPage.sideFor(MediaQuery.sizeOf(context).width, inset: sideInsetFor(safe));
+    final l10n = context.l10n;
+    final content = Builder(
+          builder: (context) {
+            // 壁纸在时这里是守护过的 Theme（淡色文字仍够对比）。
+            final theme = Theme.of(context);
+            return Scaffold(
+              backgroundColor: Colors.transparent,
+              body: Align(
+                alignment: Alignment.topCenter,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: AppPage.contentWidth),
+                  child: Padding(
+                    padding: EdgeInsets.only(left: side, right: side),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Padding(
+                          padding: EdgeInsets.fromLTRB(back ? 8 : 16, safe.top + 8, 10, 8),
+                          child: Row(
+                            children: [
+                              if (back) ...[
+                                GlassIconButton(
+                                  icon: AppIcons.back,
+                                  tooltip: l10n.commonBack,
+                                  size: 36,
+                                  // 这里没有 BackdropGroup：单独一块玻璃就不分组采样。
+                                  grouped: false,
+                                  onPressed: () => Navigator.of(context).maybePop(),
+                                ),
+                                const SizedBox(width: 6),
+                              ],
+                              Expanded(
+                                child: Semantics(
+                                  header: true,
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        title,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: theme.textTheme.headlineLarge,
+                                      ),
+                                      if (subtitle case final subtitle? when subtitle.isNotEmpty) ...[
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          subtitle,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: theme.textTheme.bodyMedium?.copyWith(
+                                            color: theme.colorScheme.onSurfaceVariant,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              ...actions,
+                            ],
+                          ),
+                        ),
+                        Expanded(child: Padding(padding: padding, child: child)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: dshSystemOverlay(Theme.of(context).brightness),
+      // 壳内的 Tab 页不自己画背景（壳那一层铺满整屏）；被 push 的页面自己画。
+      child: backdrop ? WallpaperBackdrop(child: content) : content,
+    );
+  }
+}

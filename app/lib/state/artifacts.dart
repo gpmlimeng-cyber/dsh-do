@@ -381,6 +381,10 @@ List<TurnArtifacts> deriveArtifacts({
   final outputs = [...phoneOutputs]..sort((a, b) => a.modified.compareTo(b.modified));
 
   final out = <TurnArtifacts>[];
+  // A file already carried by an earlier turn's card is not carried again: a
+  // reply that links the same deliverable every round would otherwise hang the
+  // same card under every round of the session.
+  final claimed = <String>{};
   for (final trace in finished.values) {
     final turn = trace.turn;
     final files = <String, Artifact>{};
@@ -425,8 +429,13 @@ List<TurnArtifacts> deriveArtifacts({
         );
       }
     }
-    if (files.isEmpty) continue;
-    out.add(TurnArtifacts(turn: turn, endSeq: trace.endSeq!, files: List.unmodifiable(files.values)));
+    final fresh = {
+      for (final entry in files.entries)
+        if (!claimed.contains(entry.key)) entry.key: entry.value,
+    };
+    if (fresh.isEmpty) continue;
+    claimed.addAll(fresh.keys);
+    out.add(TurnArtifacts(turn: turn, endSeq: trace.endSeq!, files: List.unmodifiable(fresh.values)));
   }
   out.sort((a, b) => a.endSeq.compareTo(b.endSeq));
   return List.unmodifiable(out);

@@ -31,6 +31,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:meta/meta.dart';
+
 import 'carrier.dart';
 import 'connection.dart';
 import 'errors.dart';
@@ -367,6 +369,8 @@ class DsBot {
     this.createdAt,
     this.createdBy,
     this.workDir,
+    this.preview,
+    this.lastAt,
   }) : sessionId = sessionId ?? id;
 
   factory DsBot.fromJson(Object? json) {
@@ -392,6 +396,8 @@ class DsBot {
       createdAt: asEpochMs(map['createdAt']),
       createdBy: asString(map['createdBy']),
       workDir: asString(map['workDir']),
+      preview: asString(map['preview']),
+      lastAt: asEpochMs(map['lastAt']),
     );
   }
 
@@ -426,6 +432,12 @@ class DsBot {
   final String? createdBy;
   final String? workDir;
 
+  /// 最后一条有内容的消息（宿主折叠过空白）；列表第二行用它，空时回落到状态。
+  final String? preview;
+
+  /// 那条消息的时间（宿主 `lastAt`）；列表右侧的时间用它。
+  final DateTime? lastAt;
+
   /// The color it shows in: the picked one, else the one its id picks.
   String get ink => dsBotIsColor(color) ? dsBotCurrentColor(color!) : dsBotDefaultColor(id);
 
@@ -438,6 +450,7 @@ class DsBotRoom {
   const DsBotRoom({
     required this.id,
     required this.name,
+    this.sessionId,
     this.members = const [],
     this.admin,
     this.mode = 'admin',
@@ -446,9 +459,12 @@ class DsBotRoom {
     this.pausedCallIds = const [],
     this.notice = '',
     this.preview,
+    this.lastAt,
     this.createdAt,
     this.workDir,
     this.parts = const [],
+    this.permission,
+    this.sessions = const {},
   });
 
   factory DsBotRoom.fromJson(Object? json) {
@@ -456,6 +472,7 @@ class DsBotRoom {
     return DsBotRoom(
       id: asString(map['id']) ?? '',
       name: asString(map['name']) ?? '',
+      sessionId: asString(map['sessionId']),
       members: asStringList(map['members']),
       admin: asString(map['admin']),
       mode: asString(map['mode']) ?? 'admin',
@@ -467,14 +484,28 @@ class DsBotRoom {
       ],
       notice: asString(map['notice']) ?? '',
       preview: asString(map['preview']),
+      lastAt: asEpochMs(map['lastAt']),
       createdAt: asEpochMs(map['createdAt']),
       workDir: asString(map['workDir']),
       parts: asStringList(map['parts']),
+      permission: asString(map['permission']),
+      // Each member's Session *in this group* (plugin 0.2.7+): what a group's
+      // figures and files must be read from, not the member's own chat.
+      sessions: {
+        for (final entry in asMapOrEmpty(map['sessions']).entries)
+          if (entry.value is String) entry.key: entry.value as String,
+      },
     );
   }
 
   final String id;
   final String name;
+
+  /// The Session the round runs in now. `id` only names its first part, so a
+  /// group whose Session moved on has two different ids; staging a file under
+  /// the old one leaves the receipt in a conversation the prompt never reads.
+  final String? sessionId;
+
   final List<String> members;
   final String? admin;
 
@@ -494,11 +525,23 @@ class DsBotRoom {
 
   /// The last line: `User`'s words, or `Name：text`.
   final String? preview;
+
+  /// 那条消息的时间（宿主 `lastAt`）。
+  final DateTime? lastAt;
   final DateTime? createdAt;
   final String? workDir;
 
   /// The members' hidden Sessions in this group (and their earlier parts).
   final List<String> parts;
+
+  /// One preset for every member of this group, in place of each member's own;
+  /// null means each member's own. Clearing sends '', never null (null = leave
+  /// the setting alone).
+  final String? permission;
+
+  /// Member id → the Session that member works in **for this group**. Empty on a
+  /// Host older than plugin 0.2.7, and until a member first speaks here.
+  final Map<String, String> sessions;
 
   bool get adminFirst => mode != 'everyone';
 }
@@ -730,6 +773,7 @@ class DsBotTeam {
     this.modelsKey,
     this.memory = true,
     this.readOnly,
+    this.permissions,
   });
 
   factory DsBotTeam.fromJson(JsonMap map) => DsBotTeam(
@@ -746,6 +790,7 @@ class DsBotTeam {
     modelsKey: asString(map['modelsKey']),
     memory: asBool(map['memory']) ?? true,
     readOnly: asString(map['readOnly']),
+    permissions: map['permissions'] == null ? null : DsBotPermissionCatalog.fromJson(map['permissions']),
   );
 
   final int revision;
@@ -761,6 +806,10 @@ class DsBotTeam {
   final String? modelsKey;
   final bool memory;
   final String? readOnly;
+
+  /// The presets a group may set for all its members; null when the Host has no
+  /// permission service (or an older one without a catalog).
+  final DsBotPermissionCatalog? permissions;
 
   DsBot? bot(String? id) {
     if (id == null) return null;
@@ -788,11 +837,21 @@ class DsBotTeam {
     return null;
   }
 
+  /// The group whose chat Session (any part) is [sessionId].
+  DsBotRoom? roomOfSession(String sessionId) {
+    for (final room in rooms) {
+      if (room.id == sessionId || room.sessionId == sessionId || room.parts.contains(sessionId)) return room;
+    }
+    return null;
+  }
+
   /// Every DSH Session the team uses: Bots' chats (all parts), groups' own
   /// Sessions and members' hidden group Sessions.
   Set<String> get sessionIds => {
     for (final bot in bots) ...[bot.id, bot.sessionId, ...bot.parts],
-    for (final room in rooms) ...[room.id, ...room.parts],
+    // A group that moved its Session on runs in `sessionId`, which `parts`
+    // does not carry: hiding only the old ids lists its row twice.
+    for (final room in rooms) ...[room.id, if (room.sessionId case final id?) id, ...room.parts],
   };
 
   DsBotQuestion? questionOf(DsBot bot) => questions[bot.sessionId] ?? questions[bot.id];
@@ -844,9 +903,108 @@ class DsBotFileText {
   final bool? whole;
 }
 
-enum DsBotItemKind { user, bot, event, answer, divider, unknown }
+enum DsBotItemKind { user, bot, event, answer, divider, tool, thinking, unknown }
 
 /// One entry of a chat or a group chat, ready to draw.
+/// One attachment a line carries: enough to fetch an image by id, and to name
+/// a file. Files have no media type on the host; the name's extension is all.
+class DsBotAttachmentRef {
+  const DsBotAttachmentRef({required this.id, this.name, this.mediaType, this.bytes, this.width, this.height});
+
+  factory DsBotAttachmentRef.fromJson(Object? json) {
+    final map = asMapOrEmpty(json);
+    return DsBotAttachmentRef(
+      // `id` is what the room and chat pages send today; `attachmentId` is the
+      // same reference under the name the engine's own records use. A Host that
+      // still answers with that one would otherwise leave every file card without
+      // an id, so tapping it could only say it failed.
+      id: asString(map['id']) ?? asString(map['attachmentId']) ?? '',
+      name: asString(map['name']),
+      mediaType: asString(map['mediaType']),
+      bytes: asInt(map['bytes']),
+      width: asInt(map['width']),
+      height: asInt(map['height']),
+    );
+  }
+
+  final String id;
+  final String? name;
+  final String? mediaType;
+
+  /// What an image needs to be asked for again: `session/attachment` takes the
+  /// byte length and the dimensions with the id. A Host that sends only the id
+  /// leaves them null, and the picture cannot be read back.
+  final int? bytes;
+  final int? width;
+  final int? height;
+
+  bool get isImage => mediaType?.startsWith('image/') ?? false;
+}
+
+/// The presets a group may set for all its members (`state.permissions`): DSH's
+/// catalog with the session-only `auto` already filtered out by the Host.
+class DsBotPermissionCatalog {
+  const DsBotPermissionCatalog({this.options = const [], this.defaultPreset});
+
+  factory DsBotPermissionCatalog.fromJson(Object? json) {
+    if (json == null) return const DsBotPermissionCatalog();
+    final map = asMapOrEmpty(json);
+    return DsBotPermissionCatalog(
+      options: [for (final option in asListOrEmpty(map['options'])) DsBotPermissionOption.fromJson(option)],
+      defaultPreset: asString(map['defaultPreset']),
+    );
+  }
+
+  final List<DsBotPermissionOption> options;
+  final String? defaultPreset;
+
+  DsBotPermissionOption? option(String? value) {
+    for (final option in options) {
+      if (option.value == value) return option;
+    }
+    return null;
+  }
+}
+
+/// One selectable preset: the value the Host stores, and its name for display.
+class DsBotPermissionOption {
+  const DsBotPermissionOption({required this.value, required this.name, this.description});
+
+  factory DsBotPermissionOption.fromJson(Object? json) {
+    final map = asMapOrEmpty(json);
+    return DsBotPermissionOption(
+      value: asString(map['value']) ?? '',
+      name: asString(map['name']) ?? '',
+      description: asString(map['description']),
+    );
+  }
+
+  final String value;
+  final String name;
+  final String? description;
+}
+
+/// One picture a message carries: the host names it, the bytes come later
+/// through [DsBotApi.image] with this [attachmentId].
+class DsBotImageRef {
+  const DsBotImageRef({required this.attachmentId, this.mime, this.name});
+
+  factory DsBotImageRef.fromJson(Object? json) {
+    final map = asMapOrEmpty(json);
+    final id = asString(map['attachmentId']) ?? asString(map['id']) ?? '';
+    return DsBotImageRef(
+      attachmentId: id,
+      mime: asString(map['mime']) ?? asString(map['mediaType']) ?? asString(map['mimeType']),
+      name: asString(map['name']),
+    );
+  }
+
+  /// What [DsBotApi.image] takes; the host's own `block.attachment.attachmentId`.
+  final String attachmentId;
+  final String? mime;
+  final String? name;
+}
+
 class DsBotItem {
   const DsBotItem({
     required this.kind,
@@ -861,7 +1019,17 @@ class DsBotItem {
     this.role,
     this.roomId,
     this.images = 0,
+    this.imageRefs = const [],
+    this.files = const [],
+    this.callId,
+    this.toolName,
+    this.toolStatus,
+    this.turn,
+    this.seq,
+    this.rpcId,
     this.duration,
+    this.steps,
+    this.tokens,
     this.live = false,
     this.whole,
   });
@@ -876,6 +1044,8 @@ class DsBotItem {
         'event' => DsBotItemKind.event,
         'answer' => DsBotItemKind.answer,
         'divider' => DsBotItemKind.divider,
+        'tool' => DsBotItemKind.tool,
+        'thinking' => DsBotItemKind.thinking,
         _ => DsBotItemKind.unknown,
       },
       id: asString(map['id']),
@@ -889,7 +1059,21 @@ class DsBotItem {
       role: asString(map['role']),
       roomId: asString(map['roomId']),
       images: asInt(map['images']) ?? 0,
+      // Host 1.3.6+: the pictures themselves as ids (the count is [images]).
+      // An older host sends only the count.
+      imageRefs: [for (final ref in asListOrEmpty(map['imageRefs'])) DsBotImageRef.fromJson(ref)],
+      files: [for (final file in asListOrEmpty(map['files'])) DsBotAttachmentRef.fromJson(file)],
+      callId: asString(map['callId']),
+      toolName: asString(map['name']),
+      toolStatus: asString(map['status']),
+      turn: asInt(map['turn']),
+      seq: asInt(map['seq']),
+      // The sender's own request id, echoed back: the optimistic bubble is
+      // removed by this, not by matching its text.
+      rpcId: asString(map['rpcId']),
       duration: asInt(map['duration']) == null ? null : Duration(milliseconds: asInt(map['duration'])!),
+      steps: asInt(map['steps']),
+      tokens: asInt(map['tokens']),
       live: asBool(map['live']) ?? false,
       whole: whole == null ? null : DsBotLongText(asInt(whole['length']) ?? 0, asMapOrEmpty(whole['file'])),
     );
@@ -916,7 +1100,30 @@ class DsBotItem {
   final String? role;
   final String? roomId;
   final int images;
+
+  /// The photos this line carries, when the host names them (API 2).
+  final List<DsBotImageRef> imageRefs;
+
+  /// The attachments themselves, when the host names them.
+  final List<DsBotAttachmentRef> files;
+
+  /// For [DsBotItemKind.tool]: the call, the tool, and `running` / `done` /
+  /// `failed`. Nothing more is sent, so the row has nothing to expand.
+  final String? callId;
+  final String? toolName;
+  final String? toolStatus;
+
+  /// The session turn this entry belongs to, and the event sequence inside its
+  /// part. Both are per part: a Bot's chat pages through parts. Absent from a
+  /// host older than these fields.
+  final int? turn;
+  final int? seq;
+  final String? rpcId;
   final Duration? duration;
+
+  /// 这一轮的工具步数与 token 花费（群消息的脚注）；旧 Host 不发。
+  final int? steps;
+  final int? tokens;
 
   /// Said in the round still running; replaced by the logged one later.
   final bool live;
@@ -928,8 +1135,91 @@ class DsBotItem {
 }
 
 /// A page of a Bot's own chat, newest page first, oldest first within it.
+/// One message still in the Host's inbox: not part of the round yet.
+@immutable
+class DsBotQueueItem {
+  const DsBotQueueItem({required this.itemId, this.rpcId, this.text = '', this.time, this.canSteer = false});
+
+  factory DsBotQueueItem.fromJson(Object? json) {
+    final map = asMapOrEmpty(json);
+    final source = asMapOrEmpty(map['source']);
+    return DsBotQueueItem(
+      itemId: asString(map['itemId']) ?? asString(map['id']) ?? '',
+      // The flat shape the Host documents, or the projection's own
+      // `source.rpcId` — both name the same client request.
+      rpcId: asString(map['rpcId']) ?? asString(source['rpcId']),
+      text: asString(map['text']) ?? asString(map['content']) ?? asString(source['text']) ?? '',
+      time: asEpochMs(map['time']) ?? asEpochMs(map['at']),
+      canSteer: asBool(map['canSteer']) ?? false,
+    );
+  }
+
+  /// `session/updateQueue`'s item id.
+  final String itemId;
+  final String? rpcId;
+  final String text;
+  final DateTime? time;
+
+  /// The Host says this one may move into the running turn.
+  final bool canSteer;
+}
+
+/// The Host's inbox for one conversation: the two queues and the session they
+/// belong to (a Bot or group may have moved to another part).
+@immutable
+class DsBotQueue {
+  const DsBotQueue({required this.sessionId, this.nextTurn = const [], this.nextStep = const []});
+
+  factory DsBotQueue.fromJson(Object? json) {
+    final map = asMapOrEmpty(json);
+    return DsBotQueue(
+      sessionId: asString(map['sessionId']) ?? '',
+      nextTurn: [for (final item in asListOrEmpty(map['nextTurn'])) DsBotQueueItem.fromJson(item)],
+      nextStep: [for (final item in asListOrEmpty(map['nextStep'])) DsBotQueueItem.fromJson(item)],
+    );
+  }
+
+  final String sessionId;
+  final List<DsBotQueueItem> nextTurn;
+  final List<DsBotQueueItem> nextStep;
+
+  DsBotQueueItem? byRpc(String rpcId) {
+    for (final item in nextTurn) {
+      if (item.rpcId == rpcId) return item;
+    }
+    for (final item in nextStep) {
+      if (item.rpcId == rpcId) return item;
+    }
+    return null;
+  }
+
+  bool get isEmpty => nextTurn.isEmpty && nextStep.isEmpty;
+}
+
+/// `send`'s answer: the name it went under, and the inbox entry when the Host
+/// could find it at once (null is a normal race: the inbox push fills it in).
+@immutable
+class DsBotSendResult {
+  const DsBotSendResult({this.requestId, this.itemId, this.slot});
+
+  factory DsBotSendResult.fromJson(Object? json) {
+    final map = asMapOrEmpty(json);
+    return DsBotSendResult(
+      requestId: asString(map['requestId']),
+      itemId: asString(map['itemId']),
+      slot: asString(map['slot']),
+    );
+  }
+
+  final String? requestId;
+  final String? itemId;
+
+  /// `next-turn` / `next-step` / null.
+  final String? slot;
+}
+
 class DsBotChatPage {
-  const DsBotChatPage({required this.sessionId, required this.items, this.cursor});
+  const DsBotChatPage({required this.sessionId, required this.items, this.cursor, this.inbox});
 
   factory DsBotChatPage.fromJson(Object? json) {
     final map = asMapOrEmpty(json);
@@ -937,8 +1227,13 @@ class DsBotChatPage {
       sessionId: asString(map['sessionId']) ?? '',
       items: [for (final item in asListOrEmpty(map['items'])) DsBotItem.fromJson(item)],
       cursor: map['cursor'],
+      inbox: map['inbox'] == null ? null : DsBotQueue.fromJson(map['inbox']),
     );
   }
+
+  /// The Host's queue for this conversation; null on a Host that sends none
+  /// (the app then keeps its own send bubbles).
+  final DsBotQueue? inbox;
 
   /// The current part, which the feed's `message` events name.
   final String sessionId;
@@ -949,23 +1244,257 @@ class DsBotChatPage {
 }
 
 /// A page of a group chat.
+/// One round's progress in a group: [replies] mixes member replies with the
+/// round's own lines (folders, pauses, approvals), so the names are taken from
+/// each reply's `botId`, deduped, never from the array's length.
+class DsBotRoomProgress {
+  const DsBotRoomProgress({this.roomId, this.callId, this.speaking = const [], this.replies = const []});
+
+  factory DsBotRoomProgress.fromJson(Object? json) {
+    final map = asMapOrEmpty(json);
+    return DsBotRoomProgress(
+      roomId: asString(map['roomId']),
+      callId: asString(map['callId']),
+      speaking: [for (final id in asListOrEmpty(map['speaking'])) ?asString(id)],
+      replies: [for (final reply in asListOrEmpty(map['replies'])) asMapOrEmpty(reply)],
+    );
+  }
+
+  final String? roomId;
+  final String? callId;
+
+  /// Members speaking right now.
+  final List<String> speaking;
+
+  /// Every entry of the round so far, members and the round's own lines alike.
+  final List<Map<String, dynamic>> replies;
+
+  /// Members that have spoken, in the order they first did.
+  List<String> get spokenBy {
+    final seen = <String>{};
+    return [
+      for (final reply in replies)
+        if (asString(reply['botId']) case final id? when seen.add(id)) id,
+    ];
+  }
+
+  bool get isEmpty => speaking.isEmpty && replies.isEmpty;
+}
+
+
+/// A group's goal, as the goal panel draws it: the stages, each with its
+/// acceptance and the members' tasks, plus the goal's own words.
+class DsBotGoalView {
+  const DsBotGoalView({
+    required this.roomId,
+    this.goal,
+  });
+
+  factory DsBotGoalView.fromJson(Object? json) {
+    final map = asMapOrEmpty(json);
+    return DsBotGoalView(
+      roomId: asString(map['roomId']) ?? '',
+      goal: map['goal'] == null ? null : DsBotGroupGoal.fromJson(map['goal']),
+    );
+  }
+
+  final String roomId;
+  final DsBotGroupGoal? goal;
+}
+
+class DsBotGroupGoal {
+  const DsBotGroupGoal({
+    required this.id,
+    required this.revision,
+    required this.status,
+    required this.title,
+    this.objective = '',
+    this.acceptance = '',
+    this.constraints = const [],
+    this.current = -1,
+    this.stageCount = 0,
+    this.stages = const [],
+    this.brief = '',
+    this.summary = '',
+    this.evidence = '',
+    this.reason = '',
+    this.idle = false,
+  });
+
+  factory DsBotGroupGoal.fromJson(Object? json) {
+    final map = asMapOrEmpty(json);
+    return DsBotGroupGoal(
+      id: asString(map['id']) ?? '',
+      revision: asInt(map['revision']) ?? 0,
+      status: asString(map['status']) ?? '',
+      title: asString(map['title']) ?? '',
+      objective: asString(map['objective']) ?? '',
+      acceptance: asString(map['acceptance']) ?? '',
+      constraints: [for (final rule in asListOrEmpty(map['constraints'])) ?asString(rule)],
+      current: asInt(map['current']) ?? -1,
+      stageCount: asInt(map['stageCount']) ?? 0,
+      brief: asString(map['brief']) ?? '',
+      summary: asString(map['summary']) ?? '',
+      evidence: asString(map['evidence']) ?? '',
+      reason: asString(map['reason']) ?? '',
+      idle: asBool(map['idle']) ?? false,
+      stages: [for (final stage in asListOrEmpty(map['stages'])) DsBotGoalStage.fromJson(stage)],
+    );
+  }
+
+  final String id;
+  final int revision;
+
+  /// `drafting`, `active`, `paused`, `complete` or `stopped`.
+  final String status;
+  final String title;
+  final String objective;
+  final String acceptance;
+  final List<String> constraints;
+
+  /// Index of the stage being worked on; -1 before the goal starts.
+  final int current;
+  final int stageCount;
+  final List<DsBotGoalStage> stages;
+
+  /// The user's words while the goal is only a draft.
+  final String brief;
+
+  /// What the admin wrote when the goal closed.
+  final String summary;
+  final String evidence;
+
+  /// Why the user stopped it.
+  final String reason;
+
+  /// Waiting on the user before the next step.
+  final bool idle;
+
+  /// The stage being worked on, when there is one.
+  DsBotGoalStage? get stage => current >= 0 && current < stages.length ? stages[current] : null;
+
+  /// 「2/3」: which stage out of how many. Empty before the goal starts.
+  String get position => current < 0 || stageCount == 0 ? '' : '${current + 1}/$stageCount';
+}
+
+class DsBotGoalStage {
+  const DsBotGoalStage({
+    required this.title,
+    this.acceptance = '',
+    this.status = 'pending',
+    this.tasks = const [],
+    this.evidence = '',
+    this.reworks = 0,
+    this.feedback = '',
+  });
+
+  factory DsBotGoalStage.fromJson(Object? json) {
+    final map = asMapOrEmpty(json);
+    return DsBotGoalStage(
+      title: asString(map['title']) ?? '',
+      acceptance: asString(map['acceptance']) ?? '',
+      status: asString(map['status']) ?? 'pending',
+      evidence: asString(map['evidence']) ?? '',
+      reworks: asInt(map['reworks']) ?? 0,
+      feedback: asString(map['feedback']) ?? '',
+      tasks: [for (final task in asListOrEmpty(map['tasks'])) DsBotGoalTask.fromJson(task)],
+    );
+  }
+
+  final String title;
+  final String acceptance;
+
+  /// What the admin accepted this stage on.
+  final String evidence;
+
+  /// How many times it was sent back.
+  final int reworks;
+
+  /// The admin's words on the last send-back.
+  final String feedback;
+
+  /// `pending`, `active` or `passed`.
+  final String status;
+  final List<DsBotGoalTask> tasks;
+
+  bool get passed => status == 'passed';
+  bool get active => status == 'active';
+}
+
+class DsBotGoalTask {
+  const DsBotGoalTask({
+    required this.botId,
+    required this.bot,
+    required this.task,
+    this.status = 'pending',
+    this.rework = 0,
+    this.feedback,
+  });
+
+  factory DsBotGoalTask.fromJson(Object? json) {
+    final map = asMapOrEmpty(json);
+    return DsBotGoalTask(
+      botId: asString(map['botId']) ?? '',
+      bot: asString(map['bot']) ?? '',
+      task: asString(map['task']) ?? '',
+      status: asString(map['status']) ?? 'pending',
+      rework: asInt(map['rework']) ?? 0,
+      feedback: asString(map['feedback']),
+    );
+  }
+
+  final String botId;
+  final String bot;
+  final String task;
+
+  /// `pending`, `working`, `reported` or `done`.
+  final String status;
+  final int rework;
+  final String? feedback;
+}
+
 class DsBotRoomPage {
-  const DsBotRoomPage({required this.roomId, required this.items, this.cursor, this.running = false, this.speaking});
+  const DsBotRoomPage({
+    required this.roomId,
+    required this.items,
+    this.cursor,
+    this.sessionItems,
+    this.sessionCursor,
+    this.inbox,
+    this.running = false,
+    this.speaking,
+  });
 
   factory DsBotRoomPage.fromJson(Object? json) {
     final map = asMapOrEmpty(json);
+    final sessionItems = map['sessionItems'] is List
+        ? [for (final item in asListOrEmpty(map['sessionItems'])) DsBotItem.fromJson(item)]
+        : null;
     return DsBotRoomPage(
       roomId: asString(map['roomId']) ?? '',
       items: [for (final item in asListOrEmpty(map['items'])) DsBotItem.fromJson(item)],
       cursor: map['cursor'],
+      sessionItems: sessionItems,
+      sessionCursor: map['sessionCursor'],
+      inbox: map['inbox'] == null ? null : DsBotQueue.fromJson(map['inbox']),
       running: asBool(map['running']) ?? false,
       speaking: asString(map['speaking']),
     );
   }
 
   final String roomId;
+
+  /// The `room.log` shape: the newest lines of the group, capped by the host.
   final List<DsBotItem> items;
   final Object? cursor;
+
+  /// The group Session's own messages (plugin 0.2.8+): the whole history, with
+  /// times. Null on an older host, which leaves [items] the only source.
+  final List<DsBotItem>? sessionItems;
+  final Object? sessionCursor;
+
+  /// The Host's queue for this group; null on a Host that sends none.
+  final DsBotQueue? inbox;
 
   /// A round is under way.
   final bool running;
@@ -1088,15 +1617,28 @@ class DsBotMemoryEntry {
 
 /// A Bot's or a group's memory, as the memory panel shows it.
 class DsBotMemoryView {
-  const DsBotMemoryView({required this.entries, this.summary, this.summarizing = false, this.error});
+  const DsBotMemoryView({
+    required this.entries,
+    this.summary,
+    this.summarizing = false,
+    this.error,
+    this.sizes = const {},
+    this.limits = const {},
+  });
 
   factory DsBotMemoryView.fromJson(Object? json) {
     final map = asMapOrEmpty(json);
+    Map<String, int> counts(Object? value) => {
+      for (final entry in asMapOrEmpty(value).entries)
+        if (asInt(entry.value) case final count?) entry.key: count,
+    };
     return DsBotMemoryView(
       entries: [for (final entry in asListOrEmpty(map['entries'])) DsBotMemoryEntry.fromJson(entry)],
       summary: asString(asMapOrEmpty(map['summary'])['text']),
       summarizing: asBool(map['summarizing']) ?? false,
       error: asString(map['error']),
+      sizes: counts(map['sizes']),
+      limits: counts(map['limits']),
     );
   }
 
@@ -1104,6 +1646,12 @@ class DsBotMemoryView {
   final String? summary;
   final bool summarizing;
   final String? error;
+
+  /// Characters used per scope (`own`, `team`, `group`), as the host counts them.
+  final Map<String, int> sizes;
+
+  /// The host's caps, in characters: `entry`, `main` (a MEMORY.md), `topic`.
+  final Map<String, int> limits;
 }
 
 /// Token counts.
@@ -1398,7 +1946,9 @@ class DsBotApi {
   }
 
   /// Versions of the mobile API this client speaks.
-  static const supportedApi = [1];
+  /// Host versions this client speaks: 2 is `send` with images and staged
+  /// file receipts; 1 still works for everything else.
+  static const supportedApi = [1, 2];
 
   final DsBotTransport transport;
 
@@ -1434,9 +1984,114 @@ class DsBotApi {
   Future<DsBotRoomPage> roomChat(String roomId, {Object? cursor}) async =>
       DsBotRoomPage.fromJson(await call('room-chat', {'roomId': roomId, 'cursor': ?cursor}));
 
-  /// Sends [text] to a Bot (its id) or a group (its id).
-  Future<void> send(String conversationId, String text) =>
-      call('send', {'sessionId': conversationId, 'text': text}, const Duration(seconds: 40));
+  /// The group's goal with its stages and tasks; `goal` is null when the group
+  /// has none. A read, so opening the panel never starts a turn.
+  Future<DsBotGoalView> goalView(String roomId) async =>
+      DsBotGoalView.fromJson(await call('goal-view', {'roomId': roomId}));
+
+  /// The user's own pause, resume, stop or clear on a group's goal, from the
+  /// panel. [goalId] comes from [goalView]: a goal that changed meanwhile is
+  /// refused rather than acted on.
+  /// 起草目标：把用户这段话交给管理员，由它在群里对齐后写成目标。
+  Future<void> goalDraft(String roomId, String text) async {
+    await call('goal-draft', {'roomId': roomId, 'text': text});
+  }
+
+  Future<void> goalControl(String roomId, String goalId, String action, {bool stopWork = false}) async {
+    await call('goal-control', {
+      'roomId': roomId,
+      'goalId': goalId,
+      'action': action,
+      if (stopWork) 'stopWork': true,
+    });
+  }
+
+  /// A running round's progress: who has spoken, who is speaking. A read, so
+  /// watching it never starts a turn. Empty when no round is under way.
+  Future<DsBotRoomProgress> roomProgress(String roomId) async {
+    for (final raw in asListOrEmpty(await call('room-progress', {'roomId': roomId}))) {
+      final entry = DsBotRoomProgress.fromJson(raw);
+      if (entry.roomId == null || entry.roomId == roomId) return entry;
+    }
+    return const DsBotRoomProgress();
+  }
+
+  /// One picture of a message, by the id in [DsBotImageRef.attachmentId].
+  ///
+  /// [sessionId] is the conversation the picture belongs to — a Bot's current
+  /// part (`bot.sessionId`) or the group's (`room.sessionId`), never the Bot's
+  /// id: the host walks that Session's parts back to find the attachment.
+  /// [preview] asks for the host's small JPEG (longest side 512); only
+  /// `image-preview` hosts honour it, and a small picture comes back as-is
+  /// without a `preview` field. The answer is base64 in `data`.
+  Future<({String mime, String data})> image(
+    String sessionId,
+    String attachmentId, {
+    bool preview = false,
+  }) async {
+    final map = asMapOrEmpty(
+      await call(
+        'image',
+        {
+          'sessionId': sessionId,
+          'attachmentId': attachmentId,
+          if (preview) 'preview': true,
+        },
+        Duration(seconds: preview ? 30 : 45),
+      ),
+    );
+    final data = asString(map['data']);
+    if (data == null || data.isEmpty) {
+      throw const DshTransportException('The host sent no picture data');
+    }
+    return (mime: asString(map['mime']) ?? 'image/jpeg', data: data);
+  }
+
+  /// Stages one photo for the next [send] (host API 2): the bytes travel here,
+  /// the message names the returned id. The host refuses a `send` that names a
+  /// photo it never staged (`bot/stale`), so every photo goes through here
+  /// first — a message may carry several, one call each.
+  Future<String> stageImage(String mediaType, String data) async {
+    final answer = asMapOrEmpty(
+      await call(
+        'stage-image',
+        {'mediaType': mediaType, 'data': data},
+        const Duration(seconds: 60),
+      ),
+    );
+    final id = asString(answer['id']);
+    if (id == null || id.isEmpty) {
+      throw const DshTransportException('The host did not stage the photo');
+    }
+    return id;
+  }
+
+  /// Sends [text] to a Bot (its id) or a group (its id), with the ids of the
+  /// photos already staged by [stageImage] and the receipts of the files
+  /// staged in that conversation. Text alone is one of the three.
+  Future<DsBotSendResult> send(
+    String conversationId,
+    String text, {
+    List<String> imageIds = const [],
+    List<String> fileReceiptIds = const [],
+    /// How the message reaches a running turn: `steer` joins its next step,
+    /// `queue` waits for it to end. Anything else is the host's default
+    /// (`queue`), which is also what a host without this field does.
+    String? mode,
+
+    /// The client's name for this message: the echo carries it back, so a
+    /// retry with the same id is the same message, not a second one.
+    String? requestId,
+  }) async => DsBotSendResult.fromJson(
+    await call('send', {
+      'sessionId': conversationId,
+      'text': text,
+      if (imageIds.isNotEmpty) 'images': imageIds,
+      if (fileReceiptIds.isNotEmpty) 'fileReceiptIds': fileReceiptIds,
+      if (mode != null) 'mode': mode,
+      if (requestId != null && requestId.isNotEmpty) 'requestId': requestId,
+    }, const Duration(seconds: 40)),
+  );
 
   /// Reads the Host's bounded preview, retaining its completeness metadata.
   Future<DsBotFileText> readFileText(DsBotLongText long) async =>
@@ -1447,6 +2102,15 @@ class DsBotApi {
     final value = await call('file-text', {'file': long.file});
     return asString(asMapOrEmpty(value)['text']) ?? asString(value) ?? '';
   }
+
+  /// The Host's bounded text of a file a message attached (`file-text`), for
+  /// opening the file in place. The Host wants the id and the name; it answers
+  /// `bot/invalid` without an id and `bot/unavailable` when it cannot read it.
+  Future<DsBotFileText> readAttachmentText(DsBotAttachmentRef file) async => DsBotFileText.fromJson(
+    await call('file-text', {
+      'file': {'attachmentId': file.id, 'name': file.name ?? ''},
+    }),
+  );
 
   /// Copies the Bot's settings into a new Session; history and personal memory are fresh.
   Future<DsBot> duplicateBot(String id) async => DsBot.fromJson(await call('duplicate-bot', {'id': id}));
@@ -1515,6 +2179,7 @@ class DsBotApi {
     String? admin,
     List<String>? add,
     List<String>? remove,
+    String? permission,
   }) => call('update-room', {
     'id': id,
     'name': ?name,
@@ -1523,6 +2188,10 @@ class DsBotApi {
     'admin': ?admin,
     'add': ?add,
     'remove': ?remove,
+    // Passing null leaves the group's preset alone; clearing it means an empty
+    // string (the Host reads undefined as "no change" and ''/null as "each member
+    // keeps its own").
+    'permission': ?permission,
   });
 
   /// Explicit null restores the server default; omission would keep the old limit.
@@ -1541,6 +2210,26 @@ class DsBotApi {
   /// Stops what a member works on in a group; false when it was not working.
   Future<bool> stopMemberWork(String roomId, String botId) async =>
       asBool(await call('stop-member-work', {'roomId': roomId, 'botId': botId})) ?? false;
+
+  /// Stops what every member is doing in the group (`stop-room-work`), not just
+  /// the member speaking now.
+  Future<bool> stopRoomWork(String roomId) async =>
+      asBool(await call('stop-room-work', {'roomId': roomId})) ?? false;
+
+  /// DSH's own figures for a Bot's current part (`run-stats`): `sessionStats`
+  /// (turns, decode time and tokens), `tokenUsage`, `contextPressure`. Empty on a
+  /// Host that does not answer them.
+  /// DSH's own figures for a conversation (`run-stats`).
+  ///
+  /// [botId] is the member's own Session; pass [sessionId] to read another one
+  /// instead — a member's Session *in a group* is a different Session, and its
+  /// figures are the ones a group's sums need.
+  Future<Map<String, Object?>> runStats(String botId, {String? sessionId}) async {
+    final session = sessionId ?? '';
+    return asMapOrEmpty(
+      await call('run-stats', {if (session.isNotEmpty) 'sessionId': session else 'botId': botId}),
+    );
+  }
 
   Future<void> answerApproval(String id, {required bool allow}) =>
       call('approval-answer', {'id': id, 'choice': allow ? 'allow' : 'reject'});

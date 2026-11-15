@@ -26,6 +26,10 @@ void openAdaptiveDetail(
   required String sessionId,
   SessionTab? tab,
   bool toggle = false,
+  /// The caller's page shows [sessionId] itself, so the panel belongs beside
+  /// it even when it is not the home screen's current session (a Bot's chat,
+  /// a group's). False keeps the home screen's own test.
+  bool assumeCurrent = false,
   required WidgetBuilder page,
   required WidgetBuilder sheet,
 }) {
@@ -33,7 +37,7 @@ void openAdaptiveDetail(
   if (tab != null) {
     container.read(sessionDetailTabProvider.notifier).select(tab);
   }
-  final current = container.read(currentSessionProvider) == sessionId;
+  final current = assumeCurrent || container.read(currentSessionProvider) == sessionId;
   final prefs = container.read(layoutPrefsProvider);
   final layout =
       AdaptiveChrome.layoutOf(context) ??
@@ -48,8 +52,9 @@ void openAdaptiveDetail(
   final navigator = Navigator.of(context);
   switch (layout.detail) {
     case DetailPresentation.panel when current:
-      // The panel lives beside the chat: uncover it.
-      navigator.popUntil((route) => route.isFirst);
+      // The panel lives beside the chat: uncover it. A page of its own (a
+      // Bot's chat) has nothing under it to go back to.
+      if (!assumeCurrent) navigator.popUntil((route) => route.isFirst);
       final fold = toggle && layout.panelShown && tab == null;
       controller.setPanelOpen(!fold);
     case DetailPresentation.page:

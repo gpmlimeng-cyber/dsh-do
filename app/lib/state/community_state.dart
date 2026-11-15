@@ -5,7 +5,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../update/update_config.dart' show updateRepo;
+import '../update/update_config.dart' show upstreamRepo;
 import '../update/update_http.dart';
 
 /// The 社区 hub's content: picked plugins, prompt ideas, group links and
@@ -38,9 +38,9 @@ const _feedDefine = String.fromEnvironment('DSH_COMMUNITY_FEED');
 /// reachable where GitHub is not).
 List<CommunitySource> defaultCommunitySources() => [
   if (_feedDefine.isNotEmpty) ?_selfHosted(_feedDefine),
-  CommunitySource('github', Uri.parse('https://raw.githubusercontent.com/$updateRepo/main/community.json')),
-  CommunitySource('jsdelivr', Uri.parse('https://cdn.jsdelivr.net/gh/$updateRepo@main/community.json')),
-  CommunitySource('fastly', Uri.parse('https://fastly.jsdelivr.net/gh/$updateRepo@main/community.json')),
+  CommunitySource('github', Uri.parse('https://raw.githubusercontent.com/$upstreamRepo/main/community.json')),
+  CommunitySource('jsdelivr', Uri.parse('https://cdn.jsdelivr.net/gh/$upstreamRepo@main/community.json')),
+  CommunitySource('fastly', Uri.parse('https://fastly.jsdelivr.net/gh/$upstreamRepo@main/community.json')),
 ];
 
 CommunitySource? _selfHosted(String url) => switch (Uri.tryParse(url)) {

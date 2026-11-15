@@ -45865,6 +45865,560 @@ abstract class L10n {
   /// In zh, this message translates to:
   /// **'操作未完成，请查看本机引擎状态和日志。已切换的模式可在本页确认。'**
   String get workspaceRecoveryFailed;
+  /// No description provided for @aboutPitch.
+  ///
+  /// In zh, this message translates to:
+  /// **'深度理解，完美交付'**
+  String get aboutPitch;
+
+  /// No description provided for @botsABot.
+  String get botsABot;
+
+  /// No description provided for @botsAlreadySpoke.
+  ///
+  /// In zh, this message translates to:
+  /// **'已说'**
+  String get botsAlreadySpoke;
+
+  /// No description provided for @botsGoalBackToCurrent.
+  String get botsGoalBackToCurrent;
+
+  /// No description provided for @botsMemoryAlready.
+  ///
+  /// In zh, this message translates to:
+  /// **'已经保存过了'**
+  String get botsMemoryAlready;
+
+  /// No description provided for @botsMemoryFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'没能保存到记忆'**
+  String get botsMemoryFailed;
+
+  /// No description provided for @botsMemoryReasonEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有内容可保存'**
+  String get botsMemoryReasonEmpty;
+
+  /// No description provided for @botsMemoryReasonNoMatch.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有匹配的条目'**
+  String get botsMemoryReasonNoMatch;
+
+  /// No description provided for @botsMemoryReasonOther.
+  ///
+  /// In zh, this message translates to:
+  /// **'记忆没能改动'**
+  String get botsMemoryReasonOther;
+
+  /// No description provided for @botsMemoryReasonRefused.
+  ///
+  /// In zh, this message translates to:
+  /// **'记忆拒绝了这次改动'**
+  String get botsMemoryReasonRefused;
+
+  /// No description provided for @botsMemoryUnchanged.
+  ///
+  /// In zh, this message translates to:
+  /// **'记忆没有变化'**
+  String get botsMemoryUnchanged;
+
+  /// No description provided for @botsMemoryUpdated.
+  ///
+  /// In zh, this message translates to:
+  /// **'记忆已更新'**
+  String get botsMemoryUpdated;
+
+  /// No description provided for @botsMessageMode.
+  String get botsMessageMode;
+
+  /// No description provided for @botsMessageModeEmpty.
+  String get botsMessageModeEmpty;
+
+  /// No description provided for @botsMessageModeEmptyStretch.
+  String get botsMessageModeEmptyStretch;
+
+  /// No description provided for @botsMessageModeWith.
+  ///
+  /// In zh, this message translates to:
+  /// **'消息模式：{mode}'**
+  String botsMessageModeWith(String mode);
+
+  /// No description provided for @botsMessageScope.
+  String get botsMessageScope;
+
+  /// **'{name} 已完成'**
+  String botsNamedDone(String name);
+
+  /// No description provided for @botsOthersRunning.
+  ///
+  /// In zh, this message translates to:
+  /// **'另外还有 {count} 位在跑'**
+  String botsOthersRunning(int count);
+
+  /// No description provided for @botsPermissionGroupWide.
+  ///
+  /// In zh, this message translates to:
+  /// **'本群统一权限'**
+  String get botsPermissionGroupWide;
+
+  /// No description provided for @botsPermissionGroupWideOff.
+  ///
+  /// In zh, this message translates to:
+  /// **'每个成员用它自己的权限预设'**
+  String get botsPermissionGroupWideOff;
+
+  /// No description provided for @botsPermissionGroupWideOn.
+  ///
+  /// In zh, this message translates to:
+  /// **'对本群所有成员的会话生效，切换会立刻改掉现有会话'**
+  String get botsPermissionGroupWideOn;
+
+  /// No description provided for @botsReadOnlyNote.
+  String get botsReadOnlyNote;
+
+  /// No description provided for @botsRoomBackToGroupChat.
+  ///
+  /// In zh, this message translates to:
+  /// **'回到群聊 {room}'**
+  String botsRoomBackToGroupChat(String room);
+
+  /// No description provided for @botsRoomFilter.
+  ///
+  /// In zh, this message translates to:
+  /// **'群聊过滤'**
+  String get botsRoomFilter;
+
+  /// No description provided for @botsRoomFilterGroupOnly.
+  ///
+  /// In zh, this message translates to:
+  /// **'只在群聊里生效'**
+  String get botsRoomFilterGroupOnly;
+
+  /// No description provided for @botsRoomMemberChat.
+  ///
+  /// In zh, this message translates to:
+  /// **'本群会话'**
+  String get botsRoomMemberChat;
+
+  /// No description provided for @botsRoomMemberChatLine.
+  ///
+  /// In zh, this message translates to:
+  /// **'本群会话 · {room}'**
+  String botsRoomMemberChatLine(String room);
+
+  /// No description provided for @botsRoomMemberChats.
+  ///
+  /// In zh, this message translates to:
+  /// **'成员会话'**
+  String get botsRoomMemberChats;
+
+  /// No description provided for @botsRoomMemberDetails.
+  ///
+  /// In zh, this message translates to:
+  /// **'{name} 的对话详情'**
+  String botsRoomMemberDetails(String name);
+
+  /// No description provided for @botsRoomMemberLeft.
+  ///
+  /// In zh, this message translates to:
+  /// **'该成员已不在群里，已回到群聊'**
+  String get botsRoomMemberLeft;
+
+  /// No description provided for @botsRoomMemberScope.
+  ///
+  /// In zh, this message translates to:
+  /// **'只看 {name} · 本群'**
+  String botsRoomMemberScope(String name);
+
+  /// No description provided for @botsRoomMemberSessionMissing.
+  ///
+  /// In zh, this message translates to:
+  /// **'该成员还没在本群开始会话'**
+  String get botsRoomMemberSessionMissing;
+
+  /// No description provided for @botsRoomNeverSpoke.
+  ///
+  /// In zh, this message translates to:
+  /// **'还没在本群说过话'**
+  String get botsRoomNeverSpoke;
+
+  /// No description provided for @botsRoomOnly.
+  String botsRoomOnly(String name);
+
+  /// No description provided for @botsRoomOnlyThisMember.
+  ///
+  /// In zh, this message translates to:
+  /// **'只看此成员'**
+  String get botsRoomOnlyThisMember;
+
+  /// No description provided for @botsRoomOnlyWhose.
+  ///
+  /// In zh, this message translates to:
+  /// **'只看谁的发言'**
+  String get botsRoomOnlyWhose;
+
+  /// No description provided for @botsRoomScopeAll.
+  String get botsRoomScopeAll;
+
+  /// No description provided for @botsRoomSearchMembers.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索成员'**
+  String get botsRoomSearchMembers;
+
+  /// No description provided for @botsRoomSendsToGroup.
+  ///
+  /// In zh, this message translates to:
+  /// **'发送到群聊，群里都看得见'**
+  String get botsRoomSendsToGroup;
+
+  /// No description provided for @botsRoomSwitchChat.
+  ///
+  /// In zh, this message translates to:
+  /// **'切换会话'**
+  String get botsRoomSwitchChat;
+
+  /// No description provided for @botsRoomSwitchTo.
+  ///
+  /// In zh, this message translates to:
+  /// **'切换会话：{target}'**
+  String botsRoomSwitchTo(String target);
+
+  /// No description provided for @botsRoomWatching.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在看'**
+  String get botsRoomWatching;
+
+  /// No description provided for @botsSendFailed.
+  String get botsSendFailed;
+
+  /// No description provided for @botsSendStillWaiting.
+  String get botsSendStillWaiting;
+
+  /// No description provided for @botsStopAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'停全部'**
+  String get botsStopAll;
+
+  /// No description provided for @botsStopAllBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在工作的成员会立刻停下，可以再继续'**
+  String get botsStopAllBody;
+
+  /// No description provided for @botsStopAllTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'停止所有成员的本轮工作？'**
+  String get botsStopAllTitle;
+
+  /// No description provided for @chatAttachmentNoPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'This kind of file can’t be previewed here'**
+  String get chatAttachmentNoPreview;
+
+  /// No description provided for @chatGeneratingQueueHint.
+  String get chatGeneratingQueueHint;
+
+  String get chatGoalAcceptance;
+
+  String get chatGoalAcceptanceDone;
+
+  String get chatGoalAligning;
+
+  String chatGoalChecking(String title);
+
+  /// No description provided for @chatGoalCollapseToBallHint.
+  String get chatGoalCollapseToBallHint;
+
+  /// No description provided for @chatGoalConfirmStop.
+  String get chatGoalConfirmStop;
+
+  /// No description provided for @chatGoalDoneWhen.
+  String chatGoalDoneWhen(String text);
+
+  /// No description provided for @chatGoalDrafting.
+  String get chatGoalDrafting;
+
+  /// No description provided for @chatGoalEvidence.
+  String get chatGoalEvidence;
+
+  String get chatGoalFinalCheck;
+
+  String get chatGoalIdleWord;
+
+  String get chatGoalNone;
+
+  String get chatGoalPanel;
+
+  String get chatGoalPaused;
+
+  String get chatGoalReached;
+
+  String chatGoalRework(int count);
+
+  /// No description provided for @chatGoalReworkBy.
+  String chatGoalReworkBy(String admin, String feedback);
+
+  /// No description provided for @chatGoalReworkByTimes.
+  String chatGoalReworkByTimes(int count, String admin, String feedback);
+
+  String get chatGoalRule;
+
+  String get chatGoalRunning;
+
+  String get chatGoalStageCurrent;
+
+  String get chatGoalStageDone;
+
+  String get chatGoalStopped;
+
+  String get chatGoalTaskDone;
+
+  String get chatGoalTaskPending;
+
+  String get chatGoalTaskReported;
+
+  String get chatGoalTaskWorking;
+
+  String get chatGoalTasks;
+
+  /// No description provided for @chatNewContentCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 条新内容'**
+  String chatNewContentCount(int count);
+
+  /// No description provided for @chatQueueGone.
+  String get chatQueueGone;
+
+  /// No description provided for @chatStopWorkToo.
+  String get chatStopWorkToo;
+
+  /// No description provided for @companionMenuInvite.
+  ///
+  /// In zh, this message translates to:
+  /// **'主动邀请'**
+  String get companionMenuInvite;
+
+  /// No description provided for @companionMenuInviteHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'你安静陪着她时，她偶尔会邀你一起歇一会儿'**
+  String get companionMenuInviteHint;
+
+  /// No description provided for @companionNeedsAttention.
+  ///
+  /// In zh, this message translates to:
+  /// **'有件事要你确认，点这里去看'**
+  String get companionNeedsAttention;
+
+  /// No description provided for @companionTaskApproval.
+  ///
+  /// In zh, this message translates to:
+  /// **'「{title}」在等你批准。'**
+  String companionTaskApproval(String title);
+
+  /// No description provided for @companionTaskApprovalUntitled.
+  ///
+  /// In zh, this message translates to:
+  /// **'你那边有件事在等你批准。'**
+  String get companionTaskApprovalUntitled;
+
+  /// No description provided for @companionTaskDone.
+  ///
+  /// In zh, this message translates to:
+  /// **'「{title}」那边跑完啦。'**
+  String companionTaskDone(String title);
+
+  /// No description provided for @companionTaskFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'「{title}」好像出错了，要去看看吗？'**
+  String companionTaskFailed(String title);
+
+  /// No description provided for @companionTaskQuestion.
+  ///
+  /// In zh, this message translates to:
+  /// **'「{title}」有事想问你。'**
+  String companionTaskQuestion(String title);
+
+  /// No description provided for @companionTaskQuestionUntitled.
+  ///
+  /// In zh, this message translates to:
+  /// **'你那边有个问题在等你回答。'**
+  String get companionTaskQuestionUntitled;
+
+  /// No description provided for @engineModelInputTextAudio.
+  String get engineModelInputTextAudio;
+
+  String get hubBotThinking;
+
+  String get hubBubbleWidth;
+
+  String get hubFlatBubbles;
+
+  String get hubGroupBot;
+
+  /// No description provided for @lastConversationMissingObject.
+  ///
+  /// In zh, this message translates to:
+  /// **'上次的 Bot 或群已不存在'**
+  String get lastConversationMissingObject;
+
+  /// No description provided for @lastConversationMissingSession.
+  ///
+  /// In zh, this message translates to:
+  /// **'上次的会话已不存在'**
+  String get lastConversationMissingSession;
+
+  /// No description provided for @launchAnimation.
+  String get launchAnimation;
+
+  /// No description provided for @shellFolderSessions.
+  String shellFolderSessions(int count);
+
+  /// No description provided for @shellGroups.
+  String get shellGroups;
+
+  /// No description provided for @shellNewFolderName.
+  String get shellNewFolderName;
+
+  /// No description provided for @shellNewFolderTaken.
+  String get shellNewFolderTaken;
+
+  /// No description provided for @shellNewNamedBot.
+  String shellNewNamedBot(String name);
+
+  /// No description provided for @shellNewPanelBots.
+  String get shellNewPanelBots;
+
+  /// No description provided for @shellNewPanelGroups.
+  String get shellNewPanelGroups;
+
+  /// No description provided for @shellNewPanelNew.
+  String get shellNewPanelNew;
+
+  /// No description provided for @shellNewPanelRecent.
+  String get shellNewPanelRecent;
+
+  /// No description provided for @shellNewPanelSearch.
+  String get shellNewPanelSearch;
+
+  /// No description provided for @shellNewPanelStart.
+  String get shellNewPanelStart;
+
+  /// No description provided for @shellNewPanelTitle.
+  String get shellNewPanelTitle;
+
+  /// No description provided for @updateBasedOn.
+  ///
+  /// In zh, this message translates to:
+  /// **'基于上游 {version}'**
+  String updateBasedOn(String version);
+
+  /// No description provided for @updateIncludePreviews.
+  ///
+  /// In zh, this message translates to:
+  /// **'检查更新时包含预览版'**
+  String get updateIncludePreviews;
+
+  /// No description provided for @viewHtmlCantOpen.
+  ///
+  /// In zh, this message translates to:
+  /// **'这个页面打不开'**
+  String get viewHtmlCantOpen;
+
+  /// No description provided for @viewHtmlCantOpenBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'用手机应用打开还能看内容'**
+  String get viewHtmlCantOpenBody;
+
+  /// No description provided for @viewHtmlLinkBlocked.
+  ///
+  /// In zh, this message translates to:
+  /// **'已拦截不安全的链接'**
+  String get viewHtmlLinkBlocked;
+
+  /// No description provided for @viewHtmlPartialResources.
+  ///
+  /// In zh, this message translates to:
+  /// **'部分资源未能加载'**
+  String get viewHtmlPartialResources;
+
+  /// No description provided for @viewPreviewBadge.
+  ///
+  /// In zh, this message translates to:
+  /// **'预览'**
+  String get viewPreviewBadge;
+
+  /// No description provided for @voiceCloudConfigure.
+  String get voiceCloudConfigure;
+
+  /// No description provided for @voiceCloudEmpty.
+  String get voiceCloudEmpty;
+
+  /// No description provided for @voiceCloudFooter.
+  String get voiceCloudFooter;
+
+  /// No description provided for @voiceCloudNeedPick.
+  String get voiceCloudNeedPick;
+
+  /// No description provided for @voiceCloudSection.
+  String get voiceCloudSection;
+
+  /// No description provided for @voiceEngineBusy.
+  ///
+  /// In zh, this message translates to:
+  /// **'引擎正忙或响应超时，语音模型暂时用不了，稍后再点一次'**
+  String get voiceEngineBusy;
+
+  /// No description provided for @voiceEngineModelMissing.
+  ///
+  /// In zh, this message translates to:
+  /// **'语音模型已下载，但引擎没有加载它；请重启 App，或在语音设置里检查插件'**
+  String get voiceEngineModelMissing;
+
+  /// No description provided for @voiceEnginePreparing.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在准备语音模型…'**
+  String get voiceEnginePreparing;
+
+  /// No description provided for @voiceEnginePreparingTimeout.
+  ///
+  /// In zh, this message translates to:
+  /// **'语音模型还在准备，稍后再点一次'**
+  String get voiceEnginePreparingTimeout;
+
+  /// No description provided for @voiceModeCloud.
+  String get voiceModeCloud;
+
+  /// No description provided for @voiceModeCloudHint.
+  String get voiceModeCloudHint;
+
+  /// No description provided for @voiceModelEngineMissing.
+  String get voiceModelEngineMissing;
+
+  /// No description provided for @voiceModelEngineMissingNote.
+  String get voiceModelEngineMissingNote;
+
+  /// No description provided for @voiceModelFailLost.
+  String get voiceModelFailLost;
+
+  /// No description provided for @voiceModelLostNote.
+  String get voiceModelLostNote;
+
+  /// No description provided for @voiceModelRestartEngine.
+  String get voiceModelRestartEngine;
+
 }
 
 class _L10nDelegate extends LocalizationsDelegate<L10n> {

@@ -23,6 +23,7 @@ import '../../state/attachments.dart';
 import '../../state/balance_state.dart';
 import '../../state/chat_error_text.dart';
 import '../../state/chat_state.dart';
+import '../../state/cloud_speech.dart';
 import '../../state/commands_state.dart';
 import '../../state/compose_inbox.dart';
 import '../../state/composer_insert.dart';
@@ -83,7 +84,9 @@ import 'chat_header.dart';
 import 'chat_list.dart';
 import 'composer.dart';
 import 'composer_toast.dart';
+import 'chat_text_scale.dart';
 import 'dock/chat_dock.dart';
+import 'dock/dock_pill.dart' show DockMetrics;
 import 'dock/dock_stack.dart';
 import 'empty_state.dart';
 import 'new_chat_options.dart';
@@ -364,6 +367,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
           mounted &&
           (ref.read(activeConnectionProvider).value?.isLocal ?? false) &&
           ref.read(voiceModelProvider).status == VoiceModelStatus.ready,
+      hostIsLocal: () => mounted && (ref.read(activeConnectionProvider).value?.isLocal ?? false),
       // The capability probe is async and can finish after this page is gone.
       client: () => mounted ? ref.read(activeConnectionProvider).value?.client : null,
       inputOwner: () => mounted ? ref.read(activeHostProvider) : null,
@@ -1830,7 +1834,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
                               ),
                             ),
                           )
-                        : _ChatTextScale(
+                        : ChatTextScale(
                             child: MediaCardActions(
                               regenerate: readOnly ? null : (meta) => unawaited(_regenerateMedia(sessionId, meta)),
                               revise: readOnly || !mediaReady ? null : _reviseMedia,
@@ -1843,11 +1847,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
                               // Keyed by conversation: opening another one fades it in.
                               child: FluidFadeIn(
                                 key: ValueKey(sessionId),
-                                child: ChatList(
+                                // 末尾留出输入条的真实高度:正文从托板下面穿过去,
+                                // 最后一条又滚得到上方。
+                                child: ValueListenableBuilder<double>(
+                                  valueListenable: _veilHeight,
+                                  builder: (context, veil, _) => ChatList(
                                   key: ValueKey(sessionId),
                                   sessionId: sessionId,
                                   topInset: headerHeight,
-                                  bottomInset: _ChatLayout.overlap,
+                                  bottomInset: _ChatLayout.overlap + veil,
                                   scrolledUnder: _scrolledUnder,
                                   onWithdraw: _withdraw,
                                   onSendNow: _sendNow,
@@ -1856,6 +1864,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
                                   onQuote: readOnly ? null : (passage) => _quote(sessionId, passage),
                                   onToast: _composerToast,
                                   onSwitchModel: readOnly ? null : _switchModel,
+                                  ),
                                 ),
                               ),
                             ),
@@ -1878,7 +1887,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
                   // the list's 8dp bottom padding, so the last message is untouched.
                   LayoutId(
                     id: _Slot.veil,
-                    child: BackdropVeil(solidHeight: _veilHeight),
+                    // The top bar's twin: one ramp across the whole plate —
+                    // clear at its top edge, solid at its bottom.
+                    child: BackdropVeil.inside(solidHeight: _veilHeight, opacity: _ChatLayout.veilOpacity),
                   ),
                   LayoutId(
                     id: _Slot.header,
@@ -2088,40 +2099,51 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
                                 _DockAside(
                                   aside: typing,
                                   child: BackdropGroup(
-                                    child: DockStack(
-                                      cards: [
-                                        if (sessionId != null) ...[
-                                          TodoDockSlot(sessionId: sessionId),
-                                          GoalDockSlot(sessionId: sessionId),
-                                          ActivityStripSlot(
-                                            sessionId: sessionId,
-                                            onTap: () => _openRunningTrajectory(sessionId),
-                                            // The todo bar shows it, unless it is folded behind the strip.
-                                            todoProgress: ref.watch(dockFoldedProvider),
-                                          ),
+                                    // 这一格永远留一条的高度（36 + 6 = 42）：活动行与
+                                    // 插件条/胶囊行换内容不换高度，下面输入行不动。
+                                    child: ConstrainedBox(
+                                      constraints: const BoxConstraints(
+                                        minHeight: DockMetrics.height + DockMetrics.gap,
+                                      ),
+                                      child: DockStack(
+                                        cards: [
+                                          if (sessionId != null) ...[
+                                            TodoDockSlot(sessionId: sessionId),
+                                            GoalDockSlot(sessionId: sessionId),
+                                            ActivityStripSlot(
+                                              sessionId: sessionId,
+                                              onTap: () => _openRunningTrajectory(sessionId),
+                                              // The todo bar shows it, unless it is folded behind the strip.
+                                              todoProgress: ref.watch(dockFoldedProvider),
+                                              dock: true,
+                                            ),
+                                          ],
+                                          // 同一格换内容、不增行：回复生成时这一格让给
+                                          // 活动行（收成 0），闲着是插件条，没有插件条
+                                          // 就由 fallback 顶上胶囊行。
+                                          if (!readOnly)
+                                            ComposerStripSlot(
+                                              sessionId: sessionId,
+                                              visible: !running,
+                                              fallback: typing || running
+                                                  ? null
+                                                  : NativeComposerBar(
+                                                      sessionId: sessionId,
+                                                      visible: true,
+                                                      leading: pillsInCapsules ? composerPills : null,
+                                                      strip: false,
+                                                    ),
+                                            ),
                                         ],
-                                        // It gives the activity strip its place while a reply generates.
-                                        if (!readOnly) ComposerStripSlot(sessionId: sessionId, visible: !running),
-                                      ],
-                                      accessory: pillsBesideStrip
-                                          ? _stripRisk(sessionId, autoApprove: chat?.autoApprove ?? false)
-                                          : null,
+                                        accessory: pillsBesideStrip
+                                            ? _stripRisk(sessionId, autoApprove: chat?.autoApprove ?? false)
+                                            : null,
+                                      ),
                                     ),
                                   ),
                                 ),
-                                // The capsules (ui.json's and plugins'), led
-                                // by the chat's pills; they step aside while a
-                                // reply generates; nothing at all without any.
-                                if (!readOnly)
-                                  _DockAside(
-                                    aside: typing,
-                                    child: NativeComposerBar(
-                                      sessionId: sessionId,
-                                      visible: !running,
-                                      leading: pillsInCapsules ? composerPills : null,
-                                      strip: false,
-                                    ),
-                                  ),
+                                // 胶囊行已经搬进上面那一格（活动行/插件条/胶囊行三选一），
+                                // 这里不再单独占一行；上游新增的手机技能重放卡片照收。
                                 if (_preparedPhoneSkill case final prepared?)
                                   Card(
                                     child: Padding(
@@ -2507,6 +2529,11 @@ enum _Slot { body, pluginOverlay, veil, header, palette, composer }
 /// 不走「帧后报高度、下一帧再 setState」:那样胶囊升起 / 收回的每一帧列表
 /// 都晚一拍,最后一条消息和胶囊之间时而压住、时而露出一道缝。
 class _ChatLayout extends MultiChildLayoutDelegate {
+  /// The composer's plate is a little see-through: what scrolls under it stays
+  /// faintly legible.
+  static const veilOpacity = 0.86;
+
+
   _ChatLayout(this.veilHeight);
 
   /// 列表视口伸到输入条上沿以下的距离:底色在那里已经是实心,看不见裁切。
@@ -2531,7 +2558,9 @@ class _ChatLayout extends MultiChildLayoutDelegate {
     positionChild(_Slot.composer, Offset(0, top));
     veilHeight.value = math.max(0, composer.height - overlap);
 
-    layoutChild(_Slot.body, BoxConstraints.tight(Size(width, math.max(0, top + overlap))));
+    // 正文一直铺到屏幕底,从托板下面穿过去(末尾留白由列表自己的
+    // bottomInset 负责,最后一条仍能滚到输入框上方)。
+    layoutChild(_Slot.body, BoxConstraints.tight(Size(width, size.height)));
     positionChild(_Slot.body, Offset.zero);
     layoutChild(_Slot.veil, BoxConstraints.tight(size));
     positionChild(_Slot.veil, Offset.zero);
@@ -2560,41 +2589,3 @@ class _ChatLayout extends MultiChildLayoutDelegate {
   bool shouldRelayout(_ChatLayout oldDelegate) => oldDelegate.veilHeight != veilHeight;
 }
 
-/// Applies the 对话字号 setting to chat content only (header and composer
-/// keep the system size), on top of the system font scale.
-class _ChatTextScale extends ConsumerWidget {
-  const _ChatTextScale({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final factor = ref.watch(settingsProvider.select((s) => s.chatTextScale));
-    if (factor == 1.0) return child;
-    final media = MediaQuery.of(context);
-    return MediaQuery(
-      data: media.copyWith(textScaler: _ChatScaler(media.textScaler, factor)),
-      child: child,
-    );
-  }
-}
-
-/// The chat size on top of the system's: Android 14 scales large text less
-/// than small, and that curve is kept.
-class _ChatScaler extends TextScaler {
-  const _ChatScaler(this.base, this.factor);
-  final TextScaler base;
-  final double factor;
-
-  @override
-  double scale(double fontSize) => base.scale(fontSize) * factor;
-
-  @override
-  double get textScaleFactor => scale(1);
-
-  @override
-  bool operator ==(Object other) => other is _ChatScaler && other.base == base && other.factor == factor;
-
-  @override
-  int get hashCode => Object.hash(base, factor);
-}

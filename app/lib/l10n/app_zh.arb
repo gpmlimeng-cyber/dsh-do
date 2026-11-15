@@ -9,7 +9,7 @@
   "a11yRestoreGrantShizuku": "通过 Shizuku 授予",
   "a11yRestoreGrantShizukuPermission": "先授权 Shizuku，再授予权限",
   "a11yRestoreGrantAdb": "通过自连 ADB 授予",
-  "a11yRestoreRootNote": "通过已授权的 root 连接，只授予这一项权限。",
+  "a11yRestoreRootNote": "以 root 执行一次 pm grant，只授予这一项权限。",
   "a11yRestoreSetup": "配置 Shizuku 或无线调试",
   "a11yRestoreWaiting": "请在 Shizuku 中允许授权",
   "a11yRestoreWaitingSui": "请在 Sui 中允许授权",
@@ -1556,6 +1556,14 @@
   "botsAddMemory": "添加记忆",
   "botsMemoryReplyExample": "比如：回复尽量简短",
   "botsMemoryDraftExample": "比如：周五前交初稿",
+  "botsMemoryUpdated": "记忆已更新",
+  "botsMemoryAlready": "已经保存过了",
+  "botsMemoryFailed": "没能保存到记忆",
+  "botsMemoryUnchanged": "记忆没有变化",
+  "botsMemoryReasonEmpty": "没有内容可保存",
+  "botsMemoryReasonNoMatch": "没有匹配的条目",
+  "botsMemoryReasonRefused": "记忆拒绝了这次改动",
+  "botsMemoryReasonOther": "记忆没能改动",
   "botsMemoryCount": "记忆 · {count}",
   "@botsMemoryCount": {
     "placeholders": {
@@ -2114,6 +2122,109 @@
   "botsMobileApiRequired": "可先在网页版中使用",
   "botsMobileApiMissing": "手机端暂不支持，可先在网页版中使用",
   "botsCreationConnectionChanged": "连接已变化，请重新打开创建页面后再操作。",
+  "botsPermissionGroupWide": "本群统一权限",
+  "botsPermissionGroupWideOn": "对本群所有成员的会话生效，切换会立刻改掉现有会话",
+  "botsPermissionGroupWideOff": "每个成员用它自己的权限预设",
+  "botsStopAll": "停全部",
+  "botsStopAllTitle": "停止所有成员的本轮工作？",
+  "botsStopAllBody": "正在工作的成员会立刻停下，可以再继续",
+  "botsAlreadySpoke": "已说",
+  "botsMessageMode": "消息模式",
+  "botsMessageModeWith": "消息模式：{mode}",
+  "@botsMessageModeWith": {
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      }
+    }
+  },
+  "botsMessageModeEmpty": "该成员在本群还没有发言",
+  "botsNamedDone": "{name} 已完成",
+  "@botsNamedDone": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "botsRoomSwitchChat": "切换会话",
+  "botsRoomSwitchTo": "切换会话：{target}",
+  "@botsRoomSwitchTo": {
+    "placeholders": {
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "botsRoomMemberChats": "成员会话",
+  "botsRoomOnlyWhose": "只看谁的发言",
+  "botsRoomFilter": "群聊过滤",
+  "botsMessageScope": "消息范围",
+  "botsRoomFilterGroupOnly": "只在群聊里生效",
+  "botsRoomWatching": "正在看",
+  "botsRoomNeverSpoke": "还没在本群说过话",
+  "botsRoomMemberChatLine": "本群会话 · {room}",
+  "@botsRoomMemberChatLine": {
+    "placeholders": {
+      "room": {
+        "type": "String"
+      }
+    }
+  },
+  "botsRoomSearchMembers": "搜索成员",
+  "botsRoomMemberLeft": "该成员已不在群里，已回到群聊",
+  "botsRoomMemberChat": "本群会话",
+  "botsRoomSendsToGroup": "发送到群聊，群里都看得见",
+  "botsRoomOnlyThisMember": "只看此成员",
+  "botsRoomOnly": "只看 {name}",
+  "@botsRoomOnly": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "botsRoomBackToGroupChat": "回到群聊 {room}",
+  "@botsRoomBackToGroupChat": {
+    "placeholders": {
+      "room": {
+        "type": "String"
+      }
+    }
+  },
+  "botsRoomMemberDetails": "{name} 的对话详情",
+  "@botsRoomMemberDetails": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "botsRoomMemberSessionMissing": "该成员还没在本群开始会话",
+  "botsRoomMemberScope": "只看 {name} · 本群",
+  "@botsRoomMemberScope": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "botsOthersRunning": "另外还有 {count} 位在跑",
+  "@botsOthersRunning": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "botsSendFailed": "没能发送",
+  "botsSendStillWaiting": "还在等服务器确认",
+  "chatGoalDrafting": "起草中，等管理员开始",
+  "botsMessageModeEmptyStretch": "这一段里没有他的发言",
+  "botsRoomScopeAll": "全部消息",
+  "botsGoalBackToCurrent": "回到当前阶段",
+  "botsABot": "某个 Bot",
+  "botsReadOnlyNote": "这个群现在是只读的",
   "brandXiaomi": "小米 / Redmi",
   "brandHuawei": "华为",
   "brandHonor": "荣耀",
@@ -3026,6 +3137,91 @@
       }
     }
   },
+  "chatNewContentCount": "{count} 条新内容",
+  "@chatNewContentCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "chatGeneratingQueueHint": "生成中 · 可排队",
+  "chatAttachmentNoPreview": "这类文件不能直接预览",
+  "chatQueueGone": "这条已经不在队列里了",
+  "lastConversationMissingObject": "上次的 Bot 或群已不存在",
+  "lastConversationMissingSession": "上次的会话已不存在",
+  "chatGoalRunning": "进行中",
+  "chatGoalPaused": "已暂停",
+  "chatGoalStopped": "已停止",
+  "chatGoalAligning": "正在和你对齐目标",
+  "chatGoalReached": "已达成",
+  "chatGoalFinalCheck": "总验收",
+  "chatGoalChecking": "验收中 · {title}",
+  "@chatGoalChecking": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "chatGoalIdleWord": "等你处理",
+  "chatGoalNone": "还没有目标",
+  "chatGoalPanel": "目标与验收",
+  "chatGoalStageCurrent": "当前阶段",
+  "chatGoalStageDone": "完成标准",
+  "chatGoalTasks": "成员任务",
+  "chatGoalTaskPending": "待办",
+  "chatGoalTaskWorking": "在做",
+  "chatGoalTaskReported": "已交",
+  "chatGoalTaskDone": "已完成",
+  "chatGoalAcceptance": "验收",
+  "chatGoalAcceptanceDone": "达成条件",
+  "chatGoalRule": "约束",
+  "chatGoalRework": "已打回 {count} 次",
+  "@chatGoalRework": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "chatGoalCollapseToBallHint": "收起成小球，群名将完整显示",
+  "chatGoalDoneWhen": "完成标准：{text}",
+  "@chatGoalDoneWhen": {
+    "placeholders": {
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "chatGoalConfirmStop": "确认终止？",
+  "chatGoalEvidence": "证据",
+  "chatGoalReworkBy": "{admin} 打回重做：{feedback}",
+  "@chatGoalReworkBy": {
+    "placeholders": {
+      "admin": {
+        "type": "String"
+      },
+      "feedback": {
+        "type": "String"
+      }
+    }
+  },
+  "chatGoalReworkByTimes": "{admin} 已打回 {count} 次，最近一次：{feedback}",
+  "@chatGoalReworkByTimes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "admin": {
+        "type": "String"
+      },
+      "feedback": {
+        "type": "String"
+      }
+    }
+  },
+  "chatStopWorkToo": "同时停止当前工作",
   "commonCancel": "取消",
   "commonRetry": "重试",
   "commonClose": "关闭",
@@ -3488,6 +3684,43 @@
   "companionAdaptUnreadable": "模型的回答看不懂",
   "companionAdaptEmpty": "模型没找到能用的对应",
   "companionAdaptNetwork": "网络不通",
+  "companionNeedsAttention": "有件事要你确认，点这里去看",
+  "companionMenuInvite": "主动邀请",
+  "companionMenuInviteHint": "你安静陪着她时，她偶尔会邀你一起歇一会儿",
+  "companionTaskDone": "「{title}」那边跑完啦。",
+  "@companionTaskDone": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "companionTaskFailed": "「{title}」好像出错了，要去看看吗？",
+  "@companionTaskFailed": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "companionTaskApproval": "「{title}」在等你批准。",
+  "@companionTaskApproval": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "companionTaskApprovalUntitled": "你那边有件事在等你批准。",
+  "companionTaskQuestion": "「{title}」有事想问你。",
+  "@companionTaskQuestion": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "companionTaskQuestionUntitled": "你那边有个问题在等你回答。",
   "systemImeTitle": "系统输入法诊断",
   "systemImeCollect": "采集本次日志",
   "systemImePrivacy": "复现后再采集。每次须在原生弹窗确认，仅读取最近 120 秒的固定事件（最多 64 条），不含输入内容或原始日志；不会自动申请权限。",
@@ -4210,6 +4443,7 @@
   "engineModelCapabilities": "能力",
   "engineModelInputType": "输入类型",
   "engineModelInputText": "文本",
+  "engineModelInputTextAudio": "文本和音频",
   "engineModelInputTextImage": "文本和图片",
   "engineModelThinking": "思考",
   "engineModelVision": "识图",
@@ -5458,10 +5692,6 @@
   "hubTableTintFollowHint": "表头浅底，表身跟随正文",
   "hubTableTintNoneHint": "只剩网格线，最轻",
   "hubAbout": "关于 DSH Go",
-  "hubAboutAuthor": "DSH Go 原作者",
-  "hubAboutBilibili": "B站主页",
-  "hubAboutX": "X 主页",
-  "hubAboutGithub": "GitHub 主页",
   "hubAboutNewVersion": "有新版本",
   "hubValueSet": "已设置",
   "hubValueOff": "未开启",
@@ -5491,11 +5721,20 @@
   "hubPermissionPhoneConfirm": "手机操控确认",
   "hubHardwareEnterSends": "外接键盘按 Enter 发送",
   "hubHardwareEnterSendsHint": "开启后，Shift+Enter 换行。屏幕键盘仍换行；Ctrl/⌘+Enter 始终可发送。",
+  "hubAboutAuthor": "DSH Go 原作者",
+  "hubAboutBilibili": "B站主页",
+  "hubAboutX": "X 主页",
+  "hubAboutGithub": "GitHub 主页",
   "hubQuickPanel": "左滑快捷入口",
   "hubQuickPanelSwipe": "左滑打开",
   "hubQuickPanelSwipeHint": "在对话里从右向左滑。代码块、表格这些能横向滚动的内容不受影响。",
   "hubQuickPanelItems": "显示的入口",
   "hubQuickPanelItemsNone": "没有选择，左滑不会打开",
+  "aboutPitch": "Coka，Your AI Coworker",
+  "hubGroupBot": "Bot",
+  "hubBotThinking": "显示思考过程",
+  "hubFlatBubbles": "消息平铺（不用气泡）",
+  "hubBubbleWidth": "气泡宽度",
   "launchScreenTitle": "启动画面",
   "launchDefault": "默认",
   "launchCustom": "自定义",
@@ -5508,6 +5747,7 @@
   "launchBackdropWhite": "白色",
   "launchBackdropBlack": "黑色",
   "launchReplace": "更换图片或视频",
+  "launchAnimation": "启动动画",
   "launchPreview": "预览",
   "launchFooter": "图片、动图 8 MB 以内，视频 30 MB 以内。冷启动时完整播放一遍，轻点可跳过",
   "launchChanged": "启动画面已更换",
@@ -13504,6 +13744,15 @@
   "updateCheck": "检查更新",
   "updateAutoCheck": "自动检查更新",
   "updateAutoCheckDaily": "每天检查一次",
+  "updateIncludePreviews": "检查更新时包含预览版",
+  "updateBasedOn": "基于上游 {version}",
+  "@updateBasedOn": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
   "updateTileDownloading": "下载中",
   "updateTileDownloadingPercent": "下载中 {percent}%",
   "@updateTileDownloadingPercent": {

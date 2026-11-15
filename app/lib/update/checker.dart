@@ -103,7 +103,7 @@ class UpdateChecker {
       response = await http.get(
         endpoint.url,
         headers: {
-          ...endpoint.kind == EndpointKind.githubApi
+          ...endpoint.kind == EndpointKind.githubApi || endpoint.kind == EndpointKind.githubApiReleases
               ? const {'accept': 'application/vnd.github+json', 'x-github-api-version': '2022-11-28'}
               : const {'accept': 'application/json'},
           ...endpoint.headers,
@@ -133,9 +133,15 @@ class UpdateChecker {
     }
     try {
       final json = jsonDecode(body);
+      if (endpoint.kind == EndpointKind.githubApiReleases) {
+        final listed = parseGithubReleaseList(json, allowPrerelease: sources.includePrerelease);
+        if (listed == null) throw const FormatException('no usable release in the list');
+        return listed;
+      }
       return switch (endpoint.kind) {
         EndpointKind.githubApi => parseGithubRelease(json),
         EndpointKind.manifest => parseUpdateManifest(json, base: endpoint.url),
+        EndpointKind.githubApiReleases => throw const FormatException('unreachable'),
       };
     } on Object {
       // FormatException, or a TypeError from a field of the wrong type. Some

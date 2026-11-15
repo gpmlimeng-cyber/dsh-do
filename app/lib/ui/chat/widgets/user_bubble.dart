@@ -1,6 +1,7 @@
 // Portions derived from PiPilot (https://github.com/CikeSeven/pi_pilot), MIT, Copyright (c) 2026 CikeSeven. See THIRD_PARTY_NOTICES.md.
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../state/composer_quote.dart' show splitQuote;
 import '../../common/expand_reveal.dart';
@@ -27,7 +28,7 @@ import 'quote_chip.dart';
 /// 可识别的凭据(API Key、令牌、私钥、地址里的密码)只在屏幕上遮挡
 /// ([SecretText]);复制、选择文字、编辑拿到的都是原文。已发送的消息每段
 /// 带眼睛可以显示,乐观气泡只遮挡。
-class UserBubble extends StatelessWidget {
+class UserBubble extends ConsumerWidget {
   const UserBubble({
     super.key,
     required this.text,
@@ -111,6 +112,8 @@ class UserBubble extends StatelessWidget {
       );
     }
 
+    // 消息布局只管 Bot 怎么说：自己发的永远是气泡，一眼能认出哪句是自己说的。
+
     // Its own semantics node, carrying the text and the long-press action.
     final bubble = Semantics(
       container: true,
@@ -119,14 +122,18 @@ class UserBubble extends StatelessWidget {
         onLongPress: () => _menu(context),
         child: DecoratedBox(
           decoration: ShapeDecoration(color: surfaces.userBubble, shape: AppShape.bubble),
-          child: Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), child: content),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: content,
+          ),
         ),
       ),
     );
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final maxWidth = constraints.maxWidth * 0.82;
+        final prefs = ref.watch(settingsProvider);
+        final maxWidth = constraints.maxWidth * prefs.bubbleWidth;
         // Explicit nodes: the bubble's long-press node must not pull the
         // attachments' labels into one merged node.
         return Semantics(
