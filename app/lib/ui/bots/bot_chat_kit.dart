@@ -1370,6 +1370,16 @@ class _BotTranscriptState extends State<BotTranscript> {
       _frozen ??= oldWidget.rows;
       setState(() => _new += added);
     }
+    if (added != 0) {
+      // New rows change what lies above the top edge even when the list stays
+      // put: the header's shade follows the content, not only the scroll.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !_controller.hasClients) return;
+        final position = _controller.position;
+        final above = position.maxScrollExtent - position.pixels;
+        widget.scrolledUnder?.value = (above / 24).clamp(0.0, 1.0);
+      });
+    }
   }
 
   @override
