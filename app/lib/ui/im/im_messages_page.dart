@@ -284,11 +284,13 @@ class _PinnedArea extends StatelessWidget {
   final ValueChanged<_Entry> onOpen;
   final ValueChanged<_Entry> onLongPress;
 
-  static const _large = 96.0;
-  static const _small = 76.0;
-  static const _height = 118.0;
+  // 尺寸照 Miffan：1 个居中大瓦片（96），2–3 个一行均分（76），4 个以上一行最多
+  // 4 个、均分并换行（不横向滚动，用户要的是换行）。
+  static const _columns = 4;
+  static const _singleWidth = 220.0;
+  static const _rowWidth = 112.0;
 
-  Widget _tile(BuildContext context, _Entry entry, double width) => SizedBox(
+  Widget _tile(BuildContext context, _Entry entry, {required double width, required double avatar}) => SizedBox(
     width: width,
     child: _PinnedTile(
       key: ValueKey('im-pinned-tile-${entry.key}'),
@@ -297,37 +299,42 @@ class _PinnedArea extends StatelessWidget {
       inbox: inbox,
       onTap: () => onOpen(entry),
       onLongPress: () => onLongPress(entry),
-      avatarSize: width >= 90 ? 80 : 64,
+      avatarSize: avatar,
     ),
   );
 
   @override
   Widget build(BuildContext context) {
+    if (entries.isEmpty) return const SizedBox.shrink();
     if (entries.length == 1) {
       return Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
-        child: Center(child: _tile(context, entries.first, _large)),
+        padding: const EdgeInsets.only(top: 12, bottom: 8),
+        child: Center(child: _tile(context, entries.first, width: _singleWidth, avatar: 96)),
       );
     }
     if (entries.length <= 3) {
       return Padding(
-        padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Row(
-          children: [
-            for (final entry in entries) Expanded(child: _tile(context, entry, _small)),
-          ],
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [for (final entry in entries) _tile(context, entry, width: _rowWidth, avatar: 76)],
         ),
       );
     }
-    return SizedBox(
-      height: _height,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
-        itemCount: entries.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
-        itemBuilder: (context, index) => _tile(context, entries[index], _small),
-      ),
+    // 4 个以上：自适应宽度、一行最多 4 个均分、溢出换行；每格固定大小（-1 留出
+    // 浮点误差，免得第 4 个被折到下一行）。
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cell = (constraints.maxWidth - 24) / _columns - 1;
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
+          child: Wrap(
+            alignment: WrapAlignment.spaceEvenly,
+            runSpacing: 4,
+            children: [for (final entry in entries) _tile(context, entry, width: cell, avatar: 76)],
+          ),
+        );
+      },
     );
   }
 }
