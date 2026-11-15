@@ -4,11 +4,12 @@
 // MIT）；`available:false` 的条目只展示元数据，创建按钮禁用。模板只做「新建页
 // 预填」，真正创建仍在 `NewBotPage` 里由用户点「完成」。
 
+import 'package:dsh_client/dsh_client.dart' show DsBot;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
-import '../../state/bots_state.dart' show DsBot, dsBotProvider;
+import '../../state/bots_state.dart' show dsBotProvider;
 import '../bots/new_bot_page.dart';
 import '../common/app_sheet.dart';
 import '../common/list_page_row.dart';

@@ -77,7 +77,7 @@ void main() {
   });
 
   testWidgets('tapping 添加 opens the new-Bot page prefilled, and creates nothing yet', (tester) async {
-    final template = featuredPartnerTemplates[1];
+    final template = featuredPartnerTemplates.elementAt(1);
     final fake = FakeDsBotTransport();
     await openDrawer(tester, fake);
 

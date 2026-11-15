@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/l10n.dart';
 import '../bots/bot_format.dart' show monogramOf;
+import '../theme/app_icons.dart';
 import '../theme/theme.dart';
 import 'mascot_avatar.dart';
 import 'mascot_letter_avatar.dart';
