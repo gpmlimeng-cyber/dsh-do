@@ -72,9 +72,15 @@ class ImBotProfilePage extends ConsumerWidget {
 
     Future<void> editText({required String title, required String initial, required bool multiline, required Future<void> Function(String) save}) async {
       final text = await showTextEditSheet(context, title: title, initial: initial, multiline: multiline);
-      if (text == null || text == initial) return;
-      await save(text);
-      await ref.read(dsBotProvider.notifier).refresh();
+      if (text == null || text == initial || !context.mounted) return;
+      final messenger = ScaffoldMessenger.maybeOf(context);
+      try {
+        await save(text);
+        await ref.read(dsBotProvider.notifier).refresh();
+      } catch (error) {
+        // 撞名、空名、超长等都由宿主拒绝，这里给出提示而不是未捕获异常。
+        messenger?.showSnackBar(SnackBar(content: Text(describeDsBotError(error))));
+      }
     }
 
     return ImPageScaffold(
@@ -147,6 +153,12 @@ class ImBotProfilePage extends ConsumerWidget {
               subtitle: lookKind,
               onTap: editLook,
             ),
+            if (bot.imageRef != null)
+              ListPageRow(
+                icon: AppIcons.gallery,
+                title: ImStrings.profileLookPhoto,
+                onTap: () => ref.read(botAvatarProvider.notifier).set(bot.id, const BotAvatarConfig.photo()),
+              ),
             if (look != null)
               ListPageRow(
                 icon: AppIcons.restart,

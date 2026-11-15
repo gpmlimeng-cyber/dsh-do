@@ -39,6 +39,7 @@ abstract final class ImStrings {
   static String get renameRole => _zh ? '改角色' : 'Edit role';
   static String get profileLook => _zh ? '更换形象' : 'Change look';
   static String get profileLookReset => _zh ? '恢复默认形象' : 'Reset look';
+  static String get profileLookPhoto => _zh ? '用回宿主照片' : 'Use host photo';
   static String get lookKindMascot => _zh ? '吉祥物' : 'Mascot';
   static String get lookKindLetter => _zh ? '字团' : 'Letter';
   static String get lookKindEmoji => _zh ? '表情头像' : 'Emoji';
