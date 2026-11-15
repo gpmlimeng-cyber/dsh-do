@@ -44,6 +44,7 @@ class SessionSearchBar extends ConsumerWidget {
     final theme = Theme.of(context);
     final tertiary = DshColors.of(context).textTertiary;
     return Padding(
+      key: const ValueKey('drawer-search-key'),
       padding: padding,
       child: Semantics(
         button: true,
