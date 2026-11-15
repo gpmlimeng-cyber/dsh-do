@@ -66,11 +66,11 @@ void main() {
     );
   });
 
-  testWidgets('a thinking line draws under the Bot name while it runs', (tester) async {
+  testWidgets('a thinking line draws while it runs', (tester) async {
     final fake = FakeDsBotTransport()
       ..chatItems = [
         {'kind': 'bot', 'text': '我来看看', 'time': DateTime(2026, 1, 1, 10).millisecondsSinceEpoch},
-        {'kind': 'thinking', 'time': DateTime(2026, 1, 1, 10, 1).millisecondsSinceEpoch},
+        {'kind': 'thinking', 'text': '先查一下文件', 'time': DateTime(2026, 1, 1, 10, 1).millisecondsSinceEpoch},
       ];
     usePhoneView(tester);
     await tester.pumpWidget(
@@ -81,15 +81,15 @@ void main() {
       ),
     );
     await _frames(tester);
-    expect(find.byType(BotTypingLine), findsOneWidget);
-    expect(find.text('Chief · 正在思考'), findsOneWidget);
+    expect(find.byType(BotThinkingLine), findsOneWidget);
+    expect(tester.widget<BotThinkingLine>(find.byType(BotThinkingLine)).text, '先查一下文件');
   });
 
-  testWidgets('a finished turn draws no thinking line', (tester) async {
+  testWidgets('a finished turn keeps its thinking line', (tester) async {
     final fake = FakeDsBotTransport(team: sampleTeam(working: false))
       ..chatItems = [
         {'kind': 'bot', 'text': '我来看看', 'time': DateTime(2026, 1, 1, 10).millisecondsSinceEpoch},
-        {'kind': 'thinking', 'time': DateTime(2026, 1, 1, 10, 1).millisecondsSinceEpoch},
+        {'kind': 'thinking', 'text': '先查一下文件', 'time': DateTime(2026, 1, 1, 10, 1).millisecondsSinceEpoch},
       ];
     usePhoneView(tester);
     await tester.pumpWidget(
@@ -100,6 +100,6 @@ void main() {
       ),
     );
     await _frames(tester);
-    expect(find.byType(BotTypingLine), findsNothing);
+    expect(find.byType(BotThinkingLine), findsOneWidget, reason: '跑完保留那一条');
   });
 }
