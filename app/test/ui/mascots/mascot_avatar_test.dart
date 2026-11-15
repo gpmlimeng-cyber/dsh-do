@@ -77,10 +77,10 @@ void main() {
     }
   });
 
-  test('there are ten characters with distinct names and host colours', () {
-    expect(MascotCharacter.values.length, 10);
-    expect({for (final character in MascotCharacter.values) character.name}.length, 10);
-    expect({for (final character in MascotCharacter.values) character.zh}.length, 10);
+  test('there are fourteen characters with distinct names and host colours', () {
+    expect(MascotCharacter.values.length, 14);
+    expect({for (final character in MascotCharacter.values) character.name}.length, 14);
+    expect({for (final character in MascotCharacter.values) character.zh}.length, 14);
     // The host accepts only these colour names; every role's default colour must be one.
     const hostColours = {
       'deepseek', 'blue', 'violet', 'orange', 'green', 'magenta', 'cyan', 'red', 'yellow',
@@ -88,6 +88,29 @@ void main() {
     };
     for (final character in MascotCharacter.values) {
       expect(hostColours, contains(character.hostColor), reason: character.name);
+    }
+  });
+
+  test('the four fruit roles are appended after potato with their final colours', () {
+    // Order is the save index: existing roles first, the four fruits only appended.
+    expect([for (final character in MascotCharacter.values.take(10)) character.name],
+        ['sprout', 'cat', 'robot', 'ghost', 'jelly', 'orb', 'star', 'triangle', 'onigiri', 'potato']);
+    expect([for (final character in MascotCharacter.values.skip(10)) character.name],
+        ['watermelon', 'orange', 'pear', 'mango']);
+
+    // body, outline (body × 0.6), accent and the host colour, from the agreed table.
+    const table = {
+      'watermelon': (0xFF3E9E5B, 0xFF255F37, 0xFFFF6E7E, 'green'),
+      'orange': (0xFFF5811F, 0xFF934D13, 0xFFFFD7A0, 'orange'),
+      'pear': (0xFFC7D96B, 0xFF778240, 0xFFF0EFC9, 'yellow'),
+      'mango': (0xFFEFA13F, 0xFF8F6126, 0xFFFFE1A8, 'tangerine'),
+    };
+    for (final MapEntry(key: name, value: expected) in table.entries) {
+      final character = MascotCharacter.values.firstWhere((character) => character.name == name);
+      expect(character.skin.body, Color(expected.$1), reason: '$name body');
+      expect(character.skin.ink, Color(expected.$2), reason: '$name outline');
+      expect(character.skin.accent, Color(expected.$3), reason: '$name accent');
+      expect(character.hostColor, expected.$4, reason: '$name host');
     }
   });
 

@@ -19,7 +19,7 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/l10n.dart';
 
-/// 10 个角色，顺序即选择器里的顺序（新角色只能加在末尾：顺序是存档索引）。
+/// 14 个角色，顺序即选择器里的顺序（新角色只能加在末尾：顺序是存档索引）。
 enum MascotCharacter {
   sprout('芽团', 'Sprout'),
   cat('猫团', 'Cat'),
@@ -30,7 +30,11 @@ enum MascotCharacter {
   star('星团', 'Star'),
   triangle('角团', 'Triangle'),
   onigiri('饭团', 'Rice ball'),
-  potato('芋团', 'Potato');
+  potato('芋团', 'Potato'),
+  watermelon('瓜团', 'Watermelon'),
+  orange('橘团', 'Orange'),
+  pear('梨团', 'Pear'),
+  mango('芒团', 'Mango');
 
   const MascotCharacter(this.zh, this.en);
   final String zh;
@@ -49,6 +53,10 @@ enum MascotCharacter {
     MascotCharacter.triangle => const MascotSkin(Color(0xFF8FE3C8), Color(0xFF1F4A3F), Color(0xFFFFB7C5)),
     MascotCharacter.onigiri => const MascotSkin(Color(0xFFF7F1E3), Color(0xFF3A342A), Color(0xFFF19CA0)),
     MascotCharacter.potato => const MascotSkin(Color(0xFFC8A165), Color(0xFF4A3A1C), Color(0xFFE8C98F)),
+    MascotCharacter.watermelon => const MascotSkin(Color(0xFF3E9E5B), Color(0xFF255F37), Color(0xFFFF6E7E)),
+    MascotCharacter.orange => const MascotSkin(Color(0xFFF5811F), Color(0xFF934D13), Color(0xFFFFD7A0)),
+    MascotCharacter.pear => const MascotSkin(Color(0xFFC7D96B), Color(0xFF778240), Color(0xFFF0EFC9)),
+    MascotCharacter.mango => const MascotSkin(Color(0xFFEFA13F), Color(0xFF8F6126), Color(0xFFFFE1A8)),
   };
 
   /// 写进宿主 `bot.color` 的色名（model 时按角色映射，架构给的对照表）。
@@ -63,6 +71,10 @@ enum MascotCharacter {
     MascotCharacter.triangle => 'cyan',
     MascotCharacter.onigiri => 'gray',
     MascotCharacter.potato => 'brown',
+    MascotCharacter.watermelon => 'green',
+    MascotCharacter.orange => 'orange',
+    MascotCharacter.pear => 'yellow',
+    MascotCharacter.mango => 'tangerine',
   };
 }
 
@@ -634,6 +646,10 @@ class MascotPainter extends CustomPainter {
       MascotCharacter.triangle => _triangle(rect),
       MascotCharacter.onigiri => _onigiri(rect),
       MascotCharacter.potato => _potato(rect),
+      MascotCharacter.watermelon => _watermelon(rect),
+      MascotCharacter.orange => _orange(rect),
+      MascotCharacter.pear => _pear(rect),
+      MascotCharacter.mango => _mango(rect),
     };
     canvas.drawPath(path, bodyPaint);
 
@@ -804,6 +820,39 @@ class MascotPainter extends CustomPainter {
     return path..close();
   }
 
+  // 瓜团：绿皮圆球（条纹在 _charParts 里画）。
+  Path _watermelon(Rect r) => Path()..addOval(Rect.fromLTWH(r.left, r.top, r.width, r.height));
+
+  // 橘团：略扁的橙色圆球。
+  Path _orange(Rect r) => Path()
+    ..addOval(
+      Rect.fromCenter(center: r.center.translate(0, r.height * 0.03), width: r.width, height: r.height * 0.90),
+    );
+
+  // 梨团：上窄下圆的梨形。
+  Path _pear(Rect r) {
+    final path = Path()..moveTo(r.center.dx, r.top);
+    path.cubicTo(r.center.dx - r.width * 0.10, r.top + r.height * 0.18, r.left + r.width * 0.02, r.top + r.height * 0.38,
+        r.left + r.width * 0.05, r.center.dy + r.height * 0.10);
+    path.cubicTo(r.left, r.bottom + r.height * 0.02, r.right, r.bottom + r.height * 0.02,
+        r.right - r.width * 0.05, r.center.dy + r.height * 0.10);
+    path.cubicTo(r.right - r.width * 0.02, r.top + r.height * 0.38, r.center.dx + r.width * 0.10, r.top + r.height * 0.18,
+        r.center.dx, r.top);
+    return path..close();
+  }
+
+  // 芒团：歪椭圆，右上角略尖。
+  Path _mango(Rect r) {
+    final path = Path()..moveTo(r.left + r.width * 0.16, r.top + r.height * 0.30);
+    path.cubicTo(r.left + r.width * 0.30, r.top - r.height * 0.02, r.right - r.width * 0.06, r.top + r.height * 0.10,
+        r.right, r.top + r.height * 0.34);
+    path.cubicTo(r.right + r.width * 0.02, r.center.dy + r.height * 0.14, r.right - r.width * 0.12, r.bottom,
+        r.center.dx - r.width * 0.12, r.bottom);
+    path.cubicTo(r.left + r.width * 0.02, r.bottom - r.height * 0.02, r.left, r.center.dy - r.height * 0.10,
+        r.left + r.width * 0.16, r.top + r.height * 0.30);
+    return path..close();
+  }
+
   /// 顶点之间用二次贝塞尔过点，得到「圆角多边形」。
   Path _roundedPolygon(List<Offset> points) {
     final path = Path();
@@ -909,6 +958,87 @@ class MascotPainter extends CustomPainter {
         canvas.drawOval(Rect.fromCenter(center: Offset(r.left + r.width * 0.26, r.top + r.height * 0.30), width: size.width * 0.050, height: size.width * 0.034), spot);
         canvas.drawOval(Rect.fromCenter(center: Offset(r.right - r.width * 0.24, r.center.dy + r.height * 0.06), width: size.width * 0.040, height: size.width * 0.028), spot);
         canvas.drawOval(Rect.fromCenter(center: Offset(r.center.dx - r.width * 0.06, r.bottom - r.height * 0.16), width: size.width * 0.030, height: size.width * 0.022), spot);
+      case MascotCharacter.watermelon:
+        // 瓜团：竖向深色条纹 + 底部一圈浅色，裁进圆里。
+        canvas.save();
+        canvas.clipPath(Path()..addOval(Rect.fromLTWH(r.left, r.top, r.width, r.height)));
+        final stripe = Paint()
+          ..color = _darken(body, 0.34).withValues(alpha: 0.55)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = r.width * 0.055
+          ..strokeCap = StrokeCap.round;
+        for (final dx in [-0.24, 0.0, 0.24]) {
+          canvas.drawPath(
+            Path()
+              ..moveTo(r.center.dx + r.width * dx, r.top - r.height * 0.05)
+              ..quadraticBezierTo(r.center.dx + r.width * dx * 1.55, r.center.dy, r.center.dx + r.width * dx, r.bottom + r.height * 0.05),
+            stripe,
+          );
+        }
+        canvas.drawOval(
+          Rect.fromLTWH(r.left + r.width * 0.20, r.bottom - r.height * 0.24, r.width * 0.60, r.height * 0.16),
+          Paint()..color = _lighten(body, 0.34).withValues(alpha: 0.55),
+        );
+        canvas.restore();
+      case MascotCharacter.orange:
+        // 橘团：短蒂 + 一片小绿叶 + 表皮几颗低透明深点。
+        final stem = Paint()
+          ..color = _darken(body, 0.45)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = size.width * 0.018
+          ..strokeCap = StrokeCap.round;
+        canvas.drawLine(Offset(r.center.dx, r.top + r.height * 0.06), Offset(r.center.dx + r.width * 0.01, r.top - r.height * 0.07), stem);
+        canvas.save();
+        canvas.translate(r.center.dx + r.width * 0.09, r.top - r.height * 0.10);
+        canvas.rotate(-0.35);
+        canvas.drawOval(
+          Rect.fromCenter(center: Offset.zero, width: r.width * 0.16, height: r.height * 0.085),
+          Paint()..color = const Color(0xFF4F8A3C),
+        );
+        canvas.restore();
+        for (final spot in [Offset(0.30, 0.34), Offset(0.68, 0.52)]) {
+          canvas.drawCircle(
+            Offset(r.left + r.width * spot.dx, r.top + r.height * spot.dy),
+            size.width * 0.010,
+            Paint()..color = _darken(body, 0.42).withValues(alpha: 0.45),
+          );
+        }
+      case MascotCharacter.pear:
+        // 梨团：短梗 + 小叶 + 侧面几点果斑。
+        final stem = Paint()
+          ..color = const Color(0xFF6B5A2E)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = size.width * 0.018
+          ..strokeCap = StrokeCap.round;
+        canvas.drawLine(Offset(r.center.dx, r.top + r.height * 0.05), Offset(r.center.dx + r.width * 0.02, r.top - r.height * 0.08), stem);
+        canvas.save();
+        canvas.translate(r.center.dx + r.width * 0.10, r.top - r.height * 0.09);
+        canvas.rotate(-0.4);
+        canvas.drawOval(
+          Rect.fromCenter(center: Offset.zero, width: r.width * 0.14, height: r.height * 0.075),
+          Paint()..color = const Color(0xFF5E8A3E),
+        );
+        canvas.restore();
+        for (final spot in [Offset(0.36, 0.52), Offset(0.62, 0.66), Offset(0.50, 0.78)]) {
+          canvas.drawCircle(
+            Offset(r.left + r.width * spot.dx, r.top + r.height * spot.dy),
+            size.width * 0.009,
+            Paint()..color = _darken(body, 0.40).withValues(alpha: 0.40),
+          );
+        }
+      case MascotCharacter.mango:
+        // 芒团：斜向高光 + 少量深色斑点。
+        canvas.drawOval(
+          Rect.fromCenter(center: Offset(r.left + r.width * 0.34, r.top + r.height * 0.26), width: r.width * 0.30, height: r.height * 0.14),
+          Paint()..color = const Color(0xFFFFD98A).withValues(alpha: 0.55),
+        );
+        for (final spot in [Offset(0.62, 0.44), Offset(0.44, 0.66)]) {
+          canvas.drawCircle(
+            Offset(r.left + r.width * spot.dx, r.top + r.height * spot.dy),
+            size.width * 0.010,
+            Paint()..color = _darken(body, 0.40).withValues(alpha: 0.40),
+          );
+        }
       case MascotCharacter.orb:
       case MascotCharacter.star:
       case MascotCharacter.triangle:

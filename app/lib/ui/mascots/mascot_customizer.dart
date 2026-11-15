@@ -247,6 +247,10 @@ class _CharacterGrid extends StatelessWidget {
     MascotCharacter.triangle: '软糖角团 · 圆角',
     MascotCharacter.onigiri: '奶白圆身 · 底部海苔',
     MascotCharacter.potato: '不规则椭圆 · 带斑点',
+    MascotCharacter.watermelon: '绿皮圆球 · 竖条纹',
+    MascotCharacter.orange: '略扁橙球 · 顶小叶',
+    MascotCharacter.pear: '梨形小蛮腰 · 果斑',
+    MascotCharacter.mango: '歪椭圆 · 一头略尖',
   };
 
   @override

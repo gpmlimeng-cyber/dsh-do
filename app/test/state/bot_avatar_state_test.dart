@@ -316,15 +316,15 @@ void main() {
       expect(letterMascotOf(null, 'b1'), derived);
     });
 
-    test('the ten-role derivation table is stable', () {
+    test('the fourteen-role derivation table is stable', () {
       // Indices follow the enum order (new roles and Miffan colours appended at the
       // end); the colour pool is the 17 presets, model excluded; motion is 3 presets.
       final colors = [for (final color in MascotColor.values) if (color != MascotColor.model) color];
       const table = [
-        ('b1', 8, 0, 2),
-        ('b3', 6, 13, 1),
+        ('b1', 0, 0, 2),
+        ('b3', 10, 13, 1),
         ('bot-1', 2, 2, 2),
-        ('猫团', 1, 10, 1),
+        ('猫团', 13, 10, 1),
       ];
       for (final (id, character, color, motion) in table) {
         final derived = letterMascotOf(null, id);
