@@ -8,7 +8,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../chat/support/harness.dart' show loadTestFonts, usePhoneView;
-import '../shell/golden_harness.dart' show FakeSessions, goldenApp;
+import '../shell/golden_harness.dart' as shell;
+import '../shell/golden_harness.dart' show goldenApp;
 import 'support.dart';
 
 DsBotItem _thinking(int minute) =>
@@ -78,7 +79,7 @@ void main() {
       goldenApp(
         home: const BotChatPage(botId: 'm1'),
         brightness: Brightness.light,
-        overrides: [...dsBotOverrides(fake), sessionsProvider.overrideWith(() => FakeSessions(const [])),],
+        overrides: [...dsBotOverrides(fake), sessionsProvider.overrideWith(() => shell.FakeSessions(const [])),],
       ),
     );
     await _frames(tester);
@@ -97,7 +98,7 @@ void main() {
       goldenApp(
         home: const BotChatPage(botId: 'm1'),
         brightness: Brightness.light,
-        overrides: [...dsBotOverrides(fake), sessionsProvider.overrideWith(() => FakeSessions(const [])),],
+        overrides: [...dsBotOverrides(fake), sessionsProvider.overrideWith(() => shell.FakeSessions(const [])),],
       ),
     );
     await _frames(tester);
