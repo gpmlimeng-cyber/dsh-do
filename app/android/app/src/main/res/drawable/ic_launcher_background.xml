@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Adaptive icon background: the icon art's own edge colour, so the launcher
-     mask that cuts the square corners shows the same tone. -->
+<!-- Adaptive icon background: the brand picture's own edge colour, so the
+     launcher mask that cuts the square corners shows the same tone. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-    <solid android:color="#FF849EAD"/>
+    <solid android:color="#FF091928"/>
 </shape>
