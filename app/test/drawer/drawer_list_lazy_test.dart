@@ -81,9 +81,9 @@ Future<ProviderContainer> _pump(
                     if (!ref.watch(drawerViewProvider).loaded) return const SizedBox.shrink();
                     return DrawerConversationList(
                       now: sampleNow,
-                      onClose: () {},
                       onOpen: onOpen ?? (_) {},
                       onLongPress: onLongPress ?? (_) {},
+                      onClose: () {},
                     );
                   },
                 ),

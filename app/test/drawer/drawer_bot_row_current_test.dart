@@ -54,9 +54,10 @@ Future<ProviderContainer> _pump(WidgetTester tester) async {
           height: 600,
           child: DrawerConversationList(
             now: sampleNow,
-            onClose: () {},
             onOpen: (_) {},
             onLongPress: (_) {},
+            // 前端把我们的抽屉列表恢复了：Bot/群聊行还在，onClose 也回来了。
+            onClose: () {},
           ),
         ),
       ),

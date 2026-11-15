@@ -42,10 +42,13 @@ String withQuote(String text, String? quote) {
   return '> $cut\n\n$text';
 }
 
+/// 测试可以把它换成固定时间；生产里就是 [DateTime.now]。
+DateTime Function() botClock = DateTime.now;
+
 /// 「刚刚」「14:05」「昨天」「10月3日」.
 String shortTime(DateTime? time, {DateTime? now}) {
   if (time == null) return '';
-  final at = now ?? DateTime.now();
+  final at = now ?? botClock();
   final diff = at.difference(time);
   if (diff.inSeconds.abs() < 60) return appL10n.botsJustNow;
   final today = DateTime(at.year, at.month, at.day);
