@@ -959,7 +959,12 @@ class AppUpdateController extends Notifier<AppUpdateState> {
       if (digest != apk.sha256 || !bound()) return await conflict();
       final inspection = await _installer.inspect(apk.file.path);
       if (!owns()) return;
-      if (!inspection.valid) return await fail(UpdateProblem.invalid, discard: true);
+      if (!inspection.valid) {
+        // A resume that already gave up on this attempt reported it as unknown:
+        // a late inspection must not turn that into a failure.
+        if (state.task != UpdateTaskPhase.installing) return;
+        return await fail(UpdateProblem.invalid, discard: true);
+      }
       if (!inspection.samePackage) return await fail(UpdateProblem.notDsh, discard: true);
       if (inspection.signatureMatches == false ||
           route != UpdateInstallRoute.system && inspection.signatureMatches != true) {
