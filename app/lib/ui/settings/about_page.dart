@@ -11,6 +11,7 @@ import '../../l10n/l10n.dart';
 import '../../state/app_info.dart';
 import '../../state/star_prompt.dart' show starLinkOpenerProvider;
 import '../../state/update_state.dart';
+import '../mascots/mascot_gallery_page.dart';
 import '../shell/brand_mark.dart';
 import '../shell/page_frame.dart';
 import '../star/star_prompt_dialog.dart' show openStarProject;
@@ -48,7 +49,8 @@ class AboutPage extends ConsumerWidget {
               value: Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(version, style: AppType.tabular(theme.textTheme.bodyMedium!)),
+                  // 连点 7 下进表情墙（隐藏调试页，不放进菜单）。
+                  VersionTaps(child: Text(version, style: AppType.tabular(theme.textTheme.bodyMedium!))),
                   Text(
                     l10n.updateBasedOn(upstreamBaseline),
                     style: theme.textTheme.labelSmall?.copyWith(color: colors.textTertiary),

@@ -352,6 +352,10 @@ class MascotPainter extends CustomPainter {
     final s = size.shortestSide;
     final t = phase * 2 * math.pi;
     final expression = emotion == null ? expressionFor(spec) : (mascotExpressions[emotion] ?? expressionFor(spec));
+    if (spec.character == MascotCharacter.sprout) {
+      _paintSprout(canvas, size, expression, t);
+      return;
+    }
 
     // 动作：先按情绪的身体意图，再用用户选的动作兜底。
     var dy = 0.0;
@@ -708,6 +712,275 @@ class MascotPainter extends CustomPainter {
           stroke,
         );
     }
+  }
+
+  // ── 芽团（sprout）：按 lively-mascot 的数值 1:1 重画 ────────────────────
+  //
+  // 坐标系：内容 100 宽 × 148 高——叶子 6..46、身体 40..140、脚 132..148。
+  // 数值来源：src/lively-mascot.css（body 圆角/3D 渐变/内阴影/face inset 4/
+  // 眼坐标 34,43 与 66,43、眼白 rx10 ry11.5、瞳孔 r6.2、腮红 20/80,57）、
+  // src/characters/sprout.model.css|js（border-radius 50% 50% 46% 49%、叶子
+  // 37×40 在 top -34、脚的 22×16 椭圆）。
+  void _paintSprout(Canvas canvas, Size size, MascotExpression expr, double t) {
+    const contentW = 100.0;
+    const bodyTop = 40.0;
+    const contentH = 148.0;
+    final s = size.shortestSide;
+    final scale = s / contentH;
+    final dx = (s - contentW * scale) / 2;
+    Offset p(double x, double y) => Offset(dx + x * scale, y * scale);
+    final ink = _darken(body, 0.86);
+    final accent = Color.lerp(body, const Color(0xFFFF6E8A), 0.62)!;
+
+    // 身体漂浮：绕 (50, 132) 呼吸，2D 下幅度很小。
+    final origin = p(50, 132);
+    canvas.save();
+    canvas.translate(origin.dx, origin.dy);
+    final breathe = 1 + (expr.body == 'bounce' ? 0.02 : 0.006) * math.sin(t);
+    canvas.scale(1.0, breathe);
+    canvas.translate(-origin.dx, -origin.dy);
+
+    final bodyRect = Rect.fromLTWH(dx, bodyTop * scale, contentW * scale, 100 * scale);
+    final shape = RRect.fromRectAndCorners(
+      bodyRect,
+      topLeft: Radius.elliptical(50 * scale, 50 * scale),
+      topRight: Radius.elliptical(50 * scale, 50 * scale),
+      bottomRight: Radius.elliptical(46 * scale, 46 * scale),
+      bottomLeft: Radius.elliptical(49 * scale, 49 * scale),
+    );
+
+    // 脚：两个深色椭圆（22×16 的 viewBox，left 18 / 60，贴身体底）。
+    for (final left in [18.0, 60.0]) {
+      canvas.drawOval(
+        Rect.fromLTWH(dx + left * scale, 132 * scale, 22 * scale, 16 * scale),
+        Paint()..color = ink,
+      );
+    }
+
+    // 身体底色 + 3D：径向高光（25%,18%）、145° 白、325° 暗。
+    canvas.drawRRect(
+      shape,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [_lighten(body, 0.06), body, _darken(body, 0.10)],
+          stops: const [0, 0.55, 1],
+        ).createShader(bodyRect),
+    );
+    canvas.save();
+    canvas.clipRRect(shape);
+    canvas.drawRect(
+      bodyRect,
+      Paint()
+        ..shader = RadialGradient(
+          center: const Alignment(-0.5, -0.64),
+          radius: 0.62,
+          colors: [Colors.white.withValues(alpha: 0.34), Colors.white.withValues(alpha: 0.17), Colors.white.withValues(alpha: 0)],
+          stops: const [0, 0.16, 0.43],
+        ).createShader(bodyRect),
+    );
+    canvas.drawRect(
+      bodyRect,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.white.withValues(alpha: 0.13), Colors.white.withValues(alpha: 0), Colors.black.withValues(alpha: 0.20)],
+          stops: const [0, 0.43, 1],
+        ).createShader(bodyRect),
+    );
+    // 内阴影：底部/右下压暗一圈（CSS inset -12 -14 22 / 7 7 14 的近似）。
+    canvas.drawRRect(
+      shape.deflate(3 * scale),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 14 * scale
+        ..color = _darken(body, 0.55).withValues(alpha: 0.30)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, 8 * scale),
+    );
+    canvas.restore();
+
+    // 五官坐标：face wrap 是身体 inset 4、viewBox 100。
+    const faceInset = 4.0;
+    const faceScale = 0.92;
+    Offset f(double x, double y) => p(faceInset + x * faceScale, bodyTop + faceInset + y * faceScale);
+    final u = scale * faceScale;
+
+    // 腮红。
+    for (final cx in [20.0, 80.0]) {
+      canvas.drawOval(
+        Rect.fromCenter(center: f(cx, 57), width: 14 * u, height: 8 * u),
+        Paint()..color = accent.withValues(alpha: 0.75),
+      );
+    }
+
+    _sproutEyes(canvas, f, u, expr.eyes, t);
+    _sproutMouth(canvas, f, u, expr.mouth);
+    _sproutLeaf(canvas, p, scale, expr.top, t);
+    canvas.restore();
+  }
+
+  void _sproutEyes(Canvas canvas, Offset Function(double, double) f, double u, String style, double t) {
+    final ink = _darken(body, 0.86);
+    final white = Paint()..color = Colors.white;
+    final line = Paint()
+      ..color = ink
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.4 * u
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    final pupilOffset = style == 'thinking' ? Offset(-1.4 * u, -2.0 * u) : Offset.zero;
+
+    for (final cx in [34.0, 66.0]) {
+      final center = f(cx, 43);
+      switch (style) {
+        case 'happy':
+          canvas.drawPath(
+            Path()
+              ..moveTo(center.dx - 8 * u, center.dy + 2.5 * u)
+              ..quadraticBezierTo(center.dx, center.dy - 8.5 * u, center.dx + 8 * u, center.dy + 2.5 * u),
+            line,
+          );
+        case 'closed':
+          canvas.drawLine(Offset(center.dx - 8 * u, center.dy), Offset(center.dx + 8 * u, center.dy), line);
+        case 'sad':
+          canvas.drawLine(Offset(center.dx - 8 * u, center.dy + 1 * u), Offset(center.dx + 8 * u, center.dy - 2 * u), line);
+        case 'bored':
+          canvas.drawPath(
+            Path()
+              ..moveTo(center.dx - 9 * u, center.dy - 3 * u)
+              ..lineTo(center.dx + 9 * u, center.dy - 3 * u)
+              ..cubicTo(center.dx + 8 * u, center.dy + 4.5 * u, center.dx + 4 * u, center.dy + 8 * u, center.dx, center.dy + 8 * u)
+              ..cubicTo(center.dx - 4 * u, center.dy + 8 * u, center.dx - 8 * u, center.dy + 4.5 * u, center.dx - 9 * u, center.dy - 3 * u)
+              ..close(),
+            Paint()..color = Colors.white,
+          );
+        case 'angry':
+          canvas.drawOval(Rect.fromCenter(center: center, width: 20 * u, height: 23 * u), white);
+          canvas.drawOval(Rect.fromCenter(center: center, width: 20 * u, height: 23 * u), line);
+          canvas.drawLine(Offset(center.dx - 9 * u, center.dy - 8 * u), Offset(center.dx + 8 * u, center.dy - 12 * u), line);
+        case 'love':
+          final heart = Path()
+            ..moveTo(center.dx, center.dy + 6 * u)
+            ..cubicTo(center.dx - 12 * u, center.dy - 3 * u, center.dx - 6 * u, center.dy - 12 * u, center.dx, center.dy - 4 * u)
+            ..cubicTo(center.dx + 6 * u, center.dy - 12 * u, center.dx + 12 * u, center.dy - 3 * u, center.dx, center.dy + 6 * u)
+            ..close();
+          canvas.drawPath(heart, Paint()..color = ink);
+        case 'cry':
+          canvas.drawLine(Offset(center.dx - 8 * u, center.dy), Offset(center.dx + 8 * u, center.dy), line);
+          canvas.drawCircle(Offset(center.dx, center.dy + 12 * u), 2.4 * u, Paint()..color = const Color(0xFF7FB8E6));
+        case 'wide':
+          canvas.drawOval(Rect.fromCenter(center: center, width: 22 * u, height: 25 * u), white);
+          canvas.drawOval(Rect.fromCenter(center: center, width: 22 * u, height: 25 * u), line);
+          canvas.drawCircle(center + pupilOffset, 6.8 * u, Paint()..color = ink);
+          canvas.drawCircle(center + pupilOffset + Offset(2.2 * u, -2.4 * u), 2.1 * u, Paint()..color = Colors.white);
+        default:
+          // open / thinking：眼白 + 瞳孔 + 两处高光（官方 face SVG 同款）。
+          canvas.drawOval(Rect.fromCenter(center: center, width: 20 * u, height: 23 * u), white);
+          canvas.drawOval(Rect.fromCenter(center: center, width: 20 * u, height: 23 * u), line);
+          final pupil = center + pupilOffset;
+          canvas.drawCircle(pupil, 6.2 * u, Paint()..color = ink);
+          canvas.drawCircle(pupil + Offset(2.2 * u, -2.4 * u), 2.1 * u, Paint()..color = Colors.white);
+          canvas.drawCircle(pupil + Offset(-2.2 * u, 2.1 * u), 1.0 * u, Paint()..color = Colors.white.withValues(alpha: 0.82));
+      }
+    }
+  }
+
+  void _sproutMouth(Canvas canvas, Offset Function(double, double) f, double u, String mouth) {
+    final ink = _darken(body, 0.86);
+    final line = Paint()
+      ..color = ink
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3 * u
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    switch (mouth) {
+      case 'open':
+      case 'talk':
+        final rx = mouth == 'talk' ? 4.0 : 5.0;
+        final ry = mouth == 'talk' ? 5.0 : 6.0;
+        canvas.drawOval(
+          Rect.fromCenter(center: f(50, 65), width: rx * 2 * u, height: ry * 2 * u),
+          Paint()..color = ink,
+        );
+      case 'flat':
+        canvas.drawLine(f(43, 65), f(57, 65), line);
+      case 'frown':
+        canvas.drawPath(
+          Path()
+            ..moveTo(f(43, 67).dx, f(43, 67).dy)
+            ..quadraticBezierTo(f(50, 62).dx, f(50, 62).dy, f(57, 67).dx, f(57, 67).dy),
+          line,
+        );
+      default:
+        // smile / neutral：官方默认嘴。
+        canvas.drawPath(
+          Path()
+            ..moveTo(f(42, 63).dx, f(42, 63).dy)
+            ..quadraticBezierTo(f(50, 70).dx, f(50, 70).dy, f(58, 63).dx, f(58, 63).dy),
+          line,
+        );
+    }
+  }
+
+  void _sproutLeaf(Canvas canvas, Offset Function(double, double) p, double scale, String top, double t) {
+    // 叶子 37×40 在 top -34（相对身体）；viewBox 52×56。
+    const leafX = 31.5;
+    const leafY = 6.0;
+    final k = scale * (37 / 52);
+    Offset q(double x, double y) => Offset(p(leafX + x * (37 / 52), leafY + y * (40 / 56)).dx, p(leafX + x * (37 / 52), leafY + y * (40 / 56)).dy);
+    final sway = switch (top) {
+      'perk' => math.sin(t) * 0.10,
+      'listen' => math.sin(t * 0.6) * 0.14,
+      'work' => math.sin(t * 1.4) * 0.05,
+      'shake' => math.sin(t * 6) * 0.05,
+      'droop' => 0.30,
+      _ => math.sin(t) * 0.04,
+    };
+    final stemPoint = q(26, 52);
+    canvas.save();
+    canvas.translate(stemPoint.dx, stemPoint.dy);
+    canvas.rotate(sway);
+    canvas.translate(-stemPoint.dx, -stemPoint.dy);
+
+    final ink = _darken(body, 0.86);
+    final leafFill = Paint()..color = body;
+    final leafStroke = Paint()
+      ..color = ink
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0 * k
+      ..strokeJoin = StrokeJoin.round;
+    final stem = Paint()
+      ..color = ink
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.0 * k
+      ..strokeCap = StrokeCap.round;
+
+    // 茎
+    canvas.drawPath(
+      Path()
+        ..moveTo(q(26, 52).dx, q(26, 52).dy)
+        ..cubicTo(q(26, 42).dx, q(26, 42).dy, q(26, 34).dx, q(26, 34).dy, q(26, 27).dx, q(26, 27).dy),
+      stem,
+    );
+    // 两片叶
+    for (final left in [true, false]) {
+      final path = Path();
+      if (left) {
+        path.moveTo(q(26, 28).dx, q(26, 28).dy);
+        path.cubicTo(q(22, 15).dx, q(22, 15).dy, q(14, 9).dx, q(14, 9).dy, q(6, 12).dx, q(6, 12).dy);
+        path.cubicTo(q(5, 20).dx, q(5, 20).dy, q(12, 29).dx, q(12, 29).dy, q(26, 28).dx, q(26, 28).dy);
+      } else {
+        path.moveTo(q(26, 28).dx, q(26, 28).dy);
+        path.cubicTo(q(30, 15).dx, q(30, 15).dy, q(38, 9).dx, q(38, 9).dy, q(46, 12).dx, q(46, 12).dy);
+        path.cubicTo(q(47, 20).dx, q(47, 20).dy, q(40, 29).dx, q(40, 29).dy, q(26, 28).dx, q(26, 28).dy);
+      }
+      path.close();
+      canvas.drawPath(path, leafFill);
+      canvas.drawPath(path, leafStroke);
+    }
+    canvas.restore();
   }
 
   @override
