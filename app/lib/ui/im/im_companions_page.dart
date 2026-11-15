@@ -37,9 +37,13 @@ class ImCompanionsPage extends ConsumerWidget {
       backdrop: false,
       title: ImStrings.companionsTitle,
       actions: [
+        // 和消息页右上角的「+」同尺寸：40 的圆、20 的图标、不并组。
         GlassIconButton(
           icon: AppIcons.add,
           tooltip: ImStrings.newBot,
+          size: 40,
+          iconSize: 20,
+          grouped: false,
           onPressed: () => startPartnerFromTemplate(context),
         ),
       ],
