@@ -30,7 +30,6 @@ import '../chat/balance_widgets.dart' show LowBalanceBanner;
 import '../chat/usage_sheet.dart' show ContextRing, showUsageSheet;
 import '../session/session_tab.dart';
 import '../chat/voice/voice_controller.dart';
-import 'bot_avatar.dart';
 import '../chat/widgets/activity_strip.dart';
 import '../chat/widgets/permission_pill.dart';
 import '../chat/widgets/plus_panel.dart' show showPermissionSheet;
@@ -160,20 +159,10 @@ class BotComposerDeck extends ConsumerWidget {
                     sessionId: status.sessionId ?? activitySessionId ?? sessionId,
                     onTap: onRoomActivityTap,
                     todoProgress: !showSessionBars,
-                    dock: true,
-                    // 打字行里要有「谁在写」：那张脸和那个名字。
-                    face: (status.bot ?? activityBot) == null
-                        ? null
-                        : BotAvatar(bot: (status.bot ?? activityBot)!, size: 22),
-                    name: (status.bot ?? activityBot)?.name,
                   ),
                 ] else
                   ActivityStripSlot(
                     sessionId: activitySessionId ?? sessionId,
-                    dock: true,
-                    // 成员视图这条分支也要脸和名字，不然只剩一句短语。
-                    face: activityBot == null ? null : BotAvatar(bot: activityBot!, size: 22),
-                    name: activityBot?.name,
                   ),
                 // 同一格换内容、不增行：跑起来这一格让给活动行（这一条收成 0），
                 // 闲着才出现——有插件条就显示插件条，没有就由 fallback 顶上胶囊行。
@@ -265,7 +254,6 @@ VoiceInputController createBotVoice(
       alive() &&
       (ref.read(activeConnectionProvider).value?.isLocal ?? false) &&
       ref.read(voiceModelProvider).status == VoiceModelStatus.ready,
-  hostIsLocal: () => alive() && (ref.read(activeConnectionProvider).value?.isLocal ?? false),
   client: () => alive() ? ref.read(activeConnectionProvider).value?.client : null,
   onRecognized: () {
     if (alive()) ref.read(usageStatsProvider.notifier).count(UsageCount.voice);

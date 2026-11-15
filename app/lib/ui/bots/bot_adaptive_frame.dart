@@ -15,9 +15,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/l10n.dart';
 import '../../state/adaptive_layout_state.dart';
 import '../session/session_detail_page.dart';
-import '../shell/home_shell.dart' show SideParallax;
 import '../shell/session_search_page.dart' show showSessionSearch;
 import '../theme/backdrop.dart' show AppBackdrop;
+import '../theme/motion.dart' show AppMotion;
 import '../shell/adaptive/adaptive_layout.dart';
 import '../shell/adaptive/adaptive_scaffold.dart';
 import '../shell/adaptive/open_detail.dart';
@@ -116,7 +116,7 @@ class BotAdaptiveFrame extends ConsumerWidget {
         config: config,
         // The same pull home has: opening the drawer slides the three columns
         // back, so the list never stands behind it unmoved.
-        child: SideParallax(
+        child: _SideParallax(
           drawer: config.controller.animation,
           drawerWidth: width,
           quickPanel: kAlwaysCompleteAnimation,
@@ -139,7 +139,6 @@ void openBotDetail(
   WidgetRef ref, {
   required AdaptiveLayout layout,
   required String sessionId,
-  String? scopeLabel,
 }) {
   // One way in for every form: the same helper the home screen uses, told that
   // this page is showing the session, so a wide window gives the column rather
@@ -149,12 +148,8 @@ void openBotDetail(
     sessionId: sessionId,
     toggle: true,
     assumeCurrent: true,
-    page: (_) => SessionDetailPage(sessionId: sessionId, scopeLabel: scopeLabel),
-    sheet: (_) => SessionDetailPage(
-      sessionId: sessionId,
-      mode: SessionDetailMode.sheet,
-      scopeLabel: scopeLabel,
-    ),
+    page: (_) => SessionDetailPage(sessionId: sessionId),
+    sheet: (_) => SessionDetailPage(sessionId: sessionId, mode: SessionDetailMode.sheet),
   );
 }
 
@@ -173,4 +168,37 @@ void onBotMenu(BuildContext context, WidgetRef ref, AdaptiveLayout layout, VoidC
   }
   // The write is a preference; the store keeps it for this run if it cannot.
   unawaited(ref.read(layoutPrefsProvider.notifier).setSidebarOpen(layout.left != LeftPane.sidebar));
+}
+
+/// The same sideways parallax home has, local to this page: opening the drawer
+/// slides the three columns back so the list never stands behind them unmoved.
+class _SideParallax extends StatelessWidget {
+  const _SideParallax({
+    required this.drawer,
+    required this.drawerWidth,
+    required this.quickPanel,
+    required this.quickPanelWidth,
+    required this.child,
+  });
+
+  final Animation<double> drawer;
+  final double drawerWidth;
+  final Animation<double> quickPanel;
+  final double quickPanelWidth;
+  final Widget child;
+
+  static const _share = 0.14;
+
+  @override
+  Widget build(BuildContext context) {
+    final fluid = AppMotion.fluid(context);
+    return AnimatedBuilder(
+      animation: Listenable.merge([drawer, quickPanel]),
+      child: child,
+      builder: (context, child) => Transform.translate(
+        offset: Offset(fluid ? _share * (drawer.value * drawerWidth - quickPanel.value * quickPanelWidth) : 0, 0),
+        child: child,
+      ),
+    );
+  }
 }

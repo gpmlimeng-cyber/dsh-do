@@ -92,7 +92,31 @@ class _RoomAggregateDetailsPageState extends ConsumerState<RoomAggregateDetailsP
     final roomSession = room.sessionId;
     final activity = ref.watch(roomMembersActivityProvider(room.id));
     final labels = [for (final tab in _tabs) tab.label];
-    return AppPage.nested(
+    return AppPage(
+      // 上游把 AppPage.nested 收掉了：标签条放在首屏的 slivers 里，主体占满剩余
+      // 高度（标签列表照旧自己滚），视觉和原来的「条 + 内容」一致。
+      slivers: [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: Column(
+            children: [
+              GlassSegments(controller: _controller, labels: labels),
+              Expanded(
+                child: TabBarView(
+                  controller: _controller,
+                  children: [
+                    _RoomTrajectoryTab(room: room, team: team, roomSession: roomSession),
+                    _RoomChangesTab(room: room, team: team, roomSession: roomSession),
+                    _RoomFilesTab(room: room, team: team, roomSession: roomSession),
+                    _RoomProgressTab(room: room, team: team, roomSession: roomSession),
+                    _RoomContextTab(room: room, team: team, activity: activity, roomSession: roomSession),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
       // The tab bar says what the page is; the hero below keeps the group's
       // name, so the group is still what the page is about.
       title: l10n.hubSessionDetails,
@@ -106,23 +130,6 @@ class _RoomAggregateDetailsPageState extends ConsumerState<RoomAggregateDetailsP
           overflow: TextOverflow.ellipsis,
           style: Theme.of(context).textTheme.bodySmall,
         ),
-      ),
-      // The same pinned bar and tab strip the single conversation's details
-      // page pins, and the same band under it. The tab lists drive the page
-      // scroll (NestedScrollView), so the strip freezes wherever the finger
-      // starts — not only when the drag hits the hero.
-      tabs: GlassSegments(controller: _controller, labels: labels),
-      body: TabBarView(
-        controller: _controller,
-        children: [
-          // The group's own conversation: relays, replies, tools and steps,
-          // exactly as the single-conversation page draws them.
-          _RoomTrajectoryTab(room: room, team: team, roomSession: roomSession),
-          _RoomChangesTab(room: room, team: team, roomSession: roomSession),
-          _RoomFilesTab(room: room, team: team, roomSession: roomSession),
-          _RoomProgressTab(room: room, team: team, roomSession: roomSession),
-          _RoomContextTab(room: room, activity: activity, roomSession: roomSession),
-        ],
       ),
     );
   }

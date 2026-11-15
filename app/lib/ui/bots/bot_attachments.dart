@@ -32,11 +32,7 @@ Future<List<DraftAttachment>?> pickBotAttachments(
   String? roomId,
   Future<void> Function()? onGoal,
 }) async {
-  final choice = await showPlusPanel(context, files: files, sessionId: sessionId, roomId: roomId);
-  if (choice is GoalChoice) {
-    if (onGoal != null) await onGoal();
-    return null;
-  }
+  final choice = await showPlusPanel(context, files: files, sessionId: sessionId);
   if (choice is! AttachChoice) return null;
   // The panel was a page: the caller may be gone by the time it closes.
   if (!context.mounted) return null;
@@ -111,11 +107,11 @@ Widget? botItemAttachments(
   String? sessionId, {
   void Function(FileAttachment file)? onOpenFile,
 }) {
-  final files = botLineAttachments(item, sessionId, onOpenFile: onOpenFile);
   final canImages = ref.watch(dsBotProvider.select((status) => status.supports('images')));
   final images = sessionId == null || item.imageRefs.isEmpty || !canImages
       ? null
       : BotImageAttachments(sessionId: sessionId, refs: item.imageRefs);
+  final files = botFileCards(item, onOpenFile: onOpenFile);
   if (images == null) return files;
   if (files == null) return images;
   return Column(
@@ -146,12 +142,39 @@ Widget? botLineAttachments(
           height: file.height,
         ),
   ];
+  final cards = botFileCards(item, onOpenFile: onOpenFile);
+  // 图片仍交给聊天自己的组件；文件卡在本地画，因为上游的 SentAttachments
+  // 这一版不再渲染文件，也不收 onOpenFile。
+  final parts = <Widget>[
+    if (images.isNotEmpty) SentAttachments.echoed(sessionId: sessionId, images: images, files: const []),
+    if (cards != null) cards,
+  ];
+  if (parts.isEmpty) return null;
+  return parts.length == 1 ? parts.first : Column(
+    mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: CrossAxisAlignment.end,
+    children: [for (final (i, part) in parts.indexed) ...[if (i > 0) const SizedBox(height: 4), part]],
+  );
+}
+
+/// 一条消息里的文件卡：点一下由调用方打开。
+Widget? botFileCards(DsBotItem item, {void Function(FileAttachment file)? onOpenFile}) {
   final files = [
     for (final file in item.files)
-      if (!file.isImage) FileAttachment(attachmentId: file.id, name: file.name),
+      if (!file.isImage) FileAttachment(attachmentId: file.id, name: file.name, bytes: file.bytes),
   ];
-  if (images.isEmpty && files.isEmpty) return null;
-  // File cards label themselves from the file name: the host has no media type
-  // for a file, so the extension is the only hint there is.
-  return SentAttachments.echoed(sessionId: sessionId, images: images, files: files, onOpenFile: onOpenFile);
+  if (files.isEmpty) return null;
+  return Wrap(
+    alignment: WrapAlignment.end,
+    spacing: 4,
+    runSpacing: 4,
+    children: [
+      for (final file in files)
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onOpenFile == null ? null : () => onOpenFile(file),
+          child: FileCard(name: file.name ?? '', bytes: file.bytes),
+        ),
+    ],
+  );
 }

@@ -886,7 +886,6 @@ class _RoomChatPageState extends ConsumerState<RoomChatPage> with WidgetsBinding
           ref,
           layout: layout,
           sessionId: memberSession,
-          scopeLabel: l10n.botsRoomMemberScope(targetBot.name),
         );
       }
     }

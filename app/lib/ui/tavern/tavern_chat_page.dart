@@ -1570,10 +1570,11 @@ class _TavernChatPageState extends ConsumerState<TavernChatPage> {
     );
     return _IslandsScope(
       islands: islands,
-      child: BotChatFrame(
-        // The chat's picture, when it has one; the page's gradient otherwise.
-        backdrop: (child) => WallpaperBackdrop.scene(picture: scene, child: child),
-        scaffoldKey: _scaffold,
+      // 上游的 BotChatFrame 只收 header/body/bottom：背景与 舞台 抽屉挪到外面这层
+      // Scaffold 上，行为不变（舞台 仍从右侧拉出，story 仍是这张图）。
+      child: Scaffold(
+        key: _scaffold,
+        backgroundColor: Colors.transparent,
         endDrawer: beside
             ? null
             : Drawer(
@@ -1582,6 +1583,9 @@ class _TavernChatPageState extends ConsumerState<TavernChatPage> {
                 backgroundColor: Colors.transparent,
                 child: AppBackdrop(glow: false, child: SafeArea(child: stage())),
               ),
+        body: WallpaperBackdrop.scene(
+          picture: scene,
+          child: BotChatFrame(
         header: _Chrome(
           key: const ValueKey('tavern-chrome-top'),
           hidden: _immersive,
@@ -2974,6 +2978,8 @@ class TavernChapterBreak extends StatelessWidget {
           ),
           line,
         ],
+          ),
+        ),
       ),
     );
   }

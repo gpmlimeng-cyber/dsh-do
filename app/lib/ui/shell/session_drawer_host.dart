@@ -9,6 +9,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../engine/engine_screen.dart';
 import '../features/all_features_page.dart';
@@ -18,6 +19,7 @@ import '../settings/search/settings_search_page.dart';
 import '../settings/settings_screen.dart';
 import '../theme/theme.dart';
 import '../web/local_web_screen.dart';
+import '../../state/sessions_state.dart';
 import 'adaptive/adaptive_layout.dart';
 import 'drawer_drag.dart';
 import 'sessions_drawer.dart';
@@ -156,6 +158,21 @@ class _SessionDrawerHostState extends State<SessionDrawerHost> {
   /// 0 ↔ >0 edge, never per drag frame.
   late bool _open = widget.config.controller.isOpen;
 
+  /// 上游的 SessionsDrawer 不再接 onChosen：抽屉里选另一个会话时，盖在上面的
+  /// Bot/群聊页要靠这里退回。只在抽屉打开着、且会话真的换了时才回调。
+  ProviderContainer? _container;
+  ProviderSubscription<String?>? _sessionSub;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_container != null) return;
+    final container = _container = ProviderScope.containerOf(context, listen: false);
+    _sessionSub = container.listen<String?>(currentSessionProvider, (previous, next) {
+      if (next != null && next != previous && _open) widget.config.onChosen();
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -164,6 +181,7 @@ class _SessionDrawerHostState extends State<SessionDrawerHost> {
 
   @override
   void dispose() {
+    _sessionSub?.close();
     widget.config.controller.animation.removeListener(_onTick);
     _identityBar.dispose();
     super.dispose();
@@ -203,7 +221,6 @@ class _SessionDrawerHostState extends State<SessionDrawerHost> {
                 drawer: SessionsDrawer(
                   onClose: () => controller.close(context),
                   onOpen: widget.config.onDestination,
-                  onChosen: widget.config.onChosen,
                   identityBarHeight: _identityBar,
                   drawerMotion: controller.animation,
                 ),
