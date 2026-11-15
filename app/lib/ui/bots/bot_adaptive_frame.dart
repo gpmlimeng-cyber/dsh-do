@@ -139,6 +139,7 @@ void openBotDetail(
   WidgetRef ref, {
   required AdaptiveLayout layout,
   required String sessionId,
+  String? scopeLabel,
 }) {
   // One way in for every form: the same helper the home screen uses, told that
   // this page is showing the session, so a wide window gives the column rather
@@ -148,8 +149,8 @@ void openBotDetail(
     sessionId: sessionId,
     toggle: true,
     assumeCurrent: true,
-    page: (_) => SessionDetailPage(sessionId: sessionId),
-    sheet: (_) => SessionDetailPage(sessionId: sessionId, mode: SessionDetailMode.sheet),
+    page: (_) => SessionDetailPage(sessionId: sessionId, scopeLabel: scopeLabel),
+    sheet: (_) => SessionDetailPage(sessionId: sessionId, mode: SessionDetailMode.sheet, scopeLabel: scopeLabel),
   );
 }
 

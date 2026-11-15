@@ -65,6 +65,12 @@ final class CallChoice extends PlusChoice {
   const CallChoice();
 }
 
+/// 「目标」: set the Bot's own goal (DS Bot's goal panel). Only offered where
+/// the caller passes `goal: true`; upstream dropped it, our line keeps it.
+final class GoalChoice extends PlusChoice {
+  const GoalChoice();
+}
+
 /// A plugin's tool: the caller runs it, in front of the composer.
 final class NativeToolChoice extends PlusChoice {
   const NativeToolChoice(this.action);
@@ -91,6 +97,7 @@ Future<PlusChoice?> showPlusPanel(
   bool files = true,
   bool generate = false,
   bool call = false,
+  bool goal = false,
   String? sessionId,
 }) {
   return showAppSheet<PlusChoice>(
@@ -100,7 +107,7 @@ Future<PlusChoice?> showPlusPanel(
       top: false,
       child: SingleChildScrollView(
         child: SheetNavigator(
-          root: (_) => _PlusRoot(files: files, generate: generate, call: call, sessionId: sessionId),
+          root: (_) => _PlusRoot(files: files, generate: generate, call: call, goal: goal, sessionId: sessionId),
         ),
       ),
     ),
@@ -122,11 +129,12 @@ Future<void> showPermissionSheet(BuildContext context, String sessionId) {
 }
 
 class _PlusRoot extends ConsumerWidget {
-  const _PlusRoot({required this.files, required this.generate, required this.call, required this.sessionId});
+  const _PlusRoot({required this.files, required this.generate, required this.call, required this.goal, required this.sessionId});
 
   final bool files;
   final bool generate;
   final bool call;
+  final bool goal;
   final String? sessionId;
 
   @override
@@ -140,6 +148,7 @@ class _PlusRoot extends ConsumerWidget {
       if (files) (AttachChoice(AttachSource.files), AppIcons.files, l10n.chatFile, 4),
       if (generate) (const GenerateChoice(), AppIcons.generateMedia, l10n.mediaGenerateTile, 6),
       if (call) (const CallChoice(), AppIcons.call, l10n.speechCallTile, 1),
+      if (goal) (const GoalChoice(), AppIcons.goal, l10n.botsGlyphSetGoal, 3),
     ];
     return Column(
       mainAxisSize: MainAxisSize.min,

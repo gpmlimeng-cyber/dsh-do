@@ -95,12 +95,17 @@ bool dispatchedSubagents(Iterable<ChatItem> items) =>
 /// through [open]. 子代理 shows once the conversation has dispatched subagents,
 /// or when opened from a subagent entry.
 class SessionDetailPage extends ConsumerStatefulWidget {
-  const SessionDetailPage({super.key, required this.sessionId, this.initialTab, this.mode = SessionDetailMode.page});
+  const SessionDetailPage({super.key, required this.sessionId, this.initialTab, this.mode = SessionDetailMode.page, this.scopeLabel});
+
+  /// A line under the title when this view is scoped (「只看某人 · 本群」, or a
+  /// Bot's own chat). Null shows nothing.
+  final String? scopeLabel;
 
   /// 对话详情 beside the chat.
   const SessionDetailPage.panel({super.key, required this.sessionId})
     : initialTab = null,
-      mode = SessionDetailMode.panel;
+      mode = SessionDetailMode.panel,
+      scopeLabel = null;
 
   final String sessionId;
 
@@ -371,6 +376,7 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> with Tick
                   // The panel and the sheet are named in their bar; the hero
                   // keeps the figures.
                   title: _mode == SessionDetailMode.page ? shownTitle : null,
+                  scopeLabel: widget.scopeLabel,
                   gutter: sheet ? kSheetGutter : 24,
                 ),
               ),
@@ -514,10 +520,13 @@ class _FadeTop extends StatelessWidget {
 /// rounds and whether one runs, then 用时 / 步骤 / 改动文件. Without a [title]
 /// (the panel and the sheet, named in their bar) the rounds line leads.
 class SessionHero extends ConsumerWidget {
-  const SessionHero({super.key, required this.sessionId, required this.title, this.gutter = 24});
+  const SessionHero({super.key, required this.sessionId, required this.title, this.gutter = 24, this.scopeLabel});
 
   final String sessionId;
   final String? title;
+
+  /// 「只看某人 · 本群」之类的作用域说明；null 不显示。
+  final String? scopeLabel;
 
   /// Where the text starts.
   final double gutter;
@@ -534,11 +543,12 @@ class SessionHero extends ConsumerWidget {
     final finished = turns.fold(Duration.zero, (sum, t) => sum + (t.duration ?? Duration.zero));
     final steps = turns.fold(0, (sum, t) => sum + t.steps);
     final files = fileChangesOf(tools).length;
-    final subtitle = turns.isEmpty
+    final rounds = turns.isEmpty
         ? l10n.hubSessionNoTurns
         : running == null
         ? l10n.hubSessionTurns(turns.length)
         : l10n.hubSessionTurnsRunning(turns.length);
+    final subtitle = scopeLabel case final label? ? '$label · $rounds' : rounds;
 
     Widget hero(Duration total) {
       final stats = [
