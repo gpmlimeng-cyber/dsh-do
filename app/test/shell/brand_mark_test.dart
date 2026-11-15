@@ -13,6 +13,7 @@
 import 'package:dsh_app/ui/share/share_card.dart';
 import 'package:dsh_app/ui/shell/brand_glyph.g.dart';
 import 'package:dsh_app/ui/shell/brand_mark.dart';
+import 'package:dsh_app/ui/shell/brand_wordmark.dart';
 import 'package:dsh_app/ui/theme/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -97,9 +98,10 @@ void main() {
     expect(tester.getSize(find.byKey(const ValueKey('glyph'))), Size(40 * BrandMark.aspect, 40));
     expect(tester.getSize(find.byKey(const ValueKey('mono'))), Size(18 * BrandMark.aspect, 18));
     expect(tester.getSize(find.byKey(const ValueKey('tile'))), const Size(52, 52));
-    final shift = BrandMark.opticalShift(40);
-    expect(shift.dy, lessThan(0));
-    expect(shift.dx.abs(), lessThan(40 * BrandMark.aspect * 0.05));
+    // 新品牌图的可见 bbox 中心就在画布中心（512 的 art 是 (256,256)），
+    // 不再需要旧立方 C 那种负向光学补偿，归零是有意的。
+    expect(BrandMark.opticalShift(40), Offset.zero);
+    expect(BrandMark.opticalShift(120), Offset.zero);
   });
 
   group('lockup', () {
@@ -159,8 +161,12 @@ void main() {
           ),
         );
         await tester.pump();
-        final word = await expectBrandLockup(tester, find.byType(BrandLockup));
-        final tagline = tester.getRect(find.text('手机上的 DSH · 扫码获取'));
+        // 分享卡换了自己的品牌行：BrandWordmark + 一行说明，不再是 BrandLockup。
+        final brand = find.byKey(const ValueKey('share-brand'));
+        expect(brand, findsOneWidget);
+        expect(find.descendant(of: brand, matching: find.byType(BrandLockup)), findsNothing);
+        final word = tester.getRect(find.descendant(of: brand, matching: find.byType(BrandWordmark)));
+        final tagline = tester.getRect(find.descendant(of: brand, matching: find.text('手机上的 DSH · 扫码获取')));
         expect(tagline.left, closeTo(word.left, 0.01));
         expect(tagline.top, greaterThanOrEqualTo(word.bottom));
       });
