@@ -34,14 +34,32 @@ class MascotPreview extends StatelessWidget {
   }
 }
 
+/// 用户选的结果：继续用文字头像，还是换成这只吉祥物。
+class MascotChoice {
+  const MascotChoice({required this.spec, required this.text});
+
+  final MascotSpec spec;
+  final bool text;
+
+  MascotChoice copyWith({MascotSpec? spec, bool? text}) => MascotChoice(spec: spec ?? this.spec, text: text ?? this.text);
+}
+
 /// 打开自定义页；返回 null 表示取消。
-Future<MascotSpec?> openMascotCustomizer(BuildContext context, {required MascotSpec initial}) =>
-    Navigator.of(context).push<MascotSpec>(MaterialPageRoute(builder: (_) => MascotCustomizer(initial: initial)));
+Future<MascotChoice?> openMascotCustomizer(
+  BuildContext context, {
+  required MascotSpec initial,
+  bool text = false,
+}) => Navigator.of(context).push<MascotChoice>(
+  MaterialPageRoute(builder: (_) => MascotCustomizer(initial: initial, text: text)),
+);
 
 class MascotCustomizer extends StatefulWidget {
-  const MascotCustomizer({super.key, required this.initial});
+  const MascotCustomizer({super.key, required this.initial, this.text = false});
 
   final MascotSpec initial;
+
+  /// 进来时是「文字头像」。
+  final bool text;
 
   @override
   State<MascotCustomizer> createState() => _MascotCustomizerState();
@@ -51,6 +69,7 @@ enum _Tab { character, color, motion }
 
 class _MascotCustomizerState extends State<MascotCustomizer> {
   late MascotSpec _spec = widget.initial;
+  late bool _text = widget.text;
   _Tab _tab = _Tab.character;
   void _update(MascotSpec next) => setState(() => _spec = next);
 
@@ -78,7 +97,7 @@ class _MascotCustomizerState extends State<MascotCustomizer> {
                         ),
                       ),
                       FilledButton(
-                        onPressed: () => Navigator.of(context).pop(_spec),
+                        onPressed: () => Navigator.of(context).pop(MascotChoice(spec: _spec, text: _text)),
                         child: Text(_t('完成', 'Done')),
                       ),
                     ],
@@ -96,7 +115,24 @@ class _MascotCustomizerState extends State<MascotCustomizer> {
                       ),
                       const SizedBox(height: 14),
                       switch (_tab) {
-                        _Tab.character => _CharacterGrid(spec: _spec, onPick: (c) => _update(_spec.copyWith(character: c))),
+                        _Tab.character => Column(
+                            children: [
+                              _CharacterGrid(
+                                spec: _spec,
+                                text: _text,
+                                onText: () => setState(() => _text = true),
+                                onPick: (c) => setState(() {
+                                  _text = false;
+                                  _spec = _spec.copyWith(character: c);
+                                }),
+                              ),
+                              const SizedBox(height: 14),
+                              _FaceRow(
+                                spec: _spec,
+                                onPick: (f) => _update(_spec.copyWith(face: f)),
+                              ),
+                            ],
+                          ),
                         _Tab.color => _ColorGrid(
                             spec: _spec,
                             onPick: (c) => _update(_spec.copyWith(color: c, followAppColor: false)),
@@ -193,9 +229,11 @@ class _TabBar extends StatelessWidget {
 }
 
 class _CharacterGrid extends StatelessWidget {
-  const _CharacterGrid({required this.spec, required this.onPick});
+  const _CharacterGrid({required this.spec, required this.text, required this.onText, required this.onPick});
 
   final MascotSpec spec;
+  final bool text;
+  final VoidCallback onText;
   final ValueChanged<MascotCharacter> onPick;
 
   static const _hints = {
@@ -216,13 +254,20 @@ class _CharacterGrid extends StatelessWidget {
       crossAxisSpacing: 10,
       childAspectRatio: 0.92,
       children: [
+        _CharacterCell(
+          label: _t('文字头像', 'Text'),
+          hint: _t('名字的首字', 'First letter'),
+          selected: text,
+          onTap: onText,
+          avatar: _TextFace(spec: spec, size: 44),
+        ),
         for (final character in MascotCharacter.values)
           _CharacterCell(
-            character: character,
-            spec: spec,
+            label: character.zh,
             hint: _t(_hints[character]!, _hints[character]!),
-            selected: spec.character == character,
+            selected: !text && spec.character == character,
             onTap: () => onPick(character),
+            avatar: MascotAvatar(spec: spec.copyWith(character: character), size: 44),
           ),
       ],
     );
@@ -231,16 +276,16 @@ class _CharacterGrid extends StatelessWidget {
 
 class _CharacterCell extends StatelessWidget {
   const _CharacterCell({
-    required this.character,
-    required this.spec,
+    required this.label,
     required this.hint,
     required this.selected,
     required this.onTap,
+    required this.avatar,
   });
 
-  final MascotCharacter character;
-  final MascotSpec spec;
+  final String label;
   final String hint;
+  final Widget avatar;
   final bool selected;
   final VoidCallback onTap;
 
@@ -266,9 +311,9 @@ class _CharacterCell extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            MascotAvatar(spec: spec.copyWith(character: character), size: 44),
+            avatar,
             const SizedBox(height: 8),
-            Text(character.zh, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+            Text(label, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
             const SizedBox(height: 2),
             Text(
               hint,
@@ -280,6 +325,89 @@ class _CharacterCell extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// 文字头像的预览：名字首字占位 + 当前颜色。
+class _TextFace extends StatelessWidget {
+  const _TextFace({required this.spec, required this.size});
+
+  final MascotSpec spec;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final dark = theme.brightness == Brightness.dark;
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(shape: BoxShape.circle, color: spec.color.ink.withValues(alpha: dark ? 0.30 : 0.18)),
+      child: Center(
+        child: Text(
+          _t('字', 'A'),
+          style: theme.textTheme.titleMedium?.copyWith(
+            color: spec.color.ink,
+            fontWeight: FontWeight.w600,
+            fontSize: size * 0.38,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 五官三档。
+class _FaceRow extends StatelessWidget {
+  const _FaceRow({required this.spec, required this.onPick});
+
+  final MascotSpec spec;
+  final ValueChanged<MascotFace> onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(_t('五官', 'Face'), style: theme.textTheme.labelMedium?.copyWith(color: DshColors.of(context).textTertiary)),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            for (final face in MascotFace.values) ...[
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => onPick(face),
+                  behavior: HitTestBehavior.opaque,
+                  child: AnimatedContainer(
+                    duration: AppMotion.of(context, AppMotion.quick),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    decoration: ShapeDecoration(
+                      color: spec.face == face ? theme.colorScheme.primary.withValues(alpha: 0.10) : theme.colorScheme.surface,
+                      shape: RoundedSuperellipseBorder(
+                        borderRadius: const BorderRadius.all(Radius.circular(AppShape.md)),
+                        side: BorderSide(
+                          color: spec.face == face ? theme.colorScheme.primary : theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
+                          width: spec.face == face ? 1.6 : 0.8,
+                        ),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        MascotAvatar(spec: spec.copyWith(face: face), size: 34),
+                        const SizedBox(height: 4),
+                        Text(face.zh, style: theme.textTheme.labelMedium),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              if (face != MascotFace.values.last) const SizedBox(width: 8),
+            ],
+          ],
+        ),
+      ],
     );
   }
 }

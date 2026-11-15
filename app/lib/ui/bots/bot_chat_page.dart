@@ -58,6 +58,7 @@ import 'bot_details_page.dart';
 import 'bot_memory_notice.dart';
 import 'bot_memory_page.dart';
 import 'bot_format.dart';
+import 'mascot_mood.dart';
 import 'bot_pending_card.dart';
 import '../im/im_bot_profile_page.dart';
 import '../im/im_intro.dart';
@@ -539,12 +540,15 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
         face: BotAvatar(
           bot: bot,
           size: BotChatHeader.faceSize,
-          // 聊天页是「可见页面」：按状态播动画（等你确认 39 / 思考 20 / 空闲 02）。
-          emotion: question != null || view != null
-              ? '39'
-              : work != null
-              ? '20'
-              : '02',
+          // 聊天页是「可见页面」：按状态播动画；错误态只有这里拿得到（chat.error）。
+          emotion: mascotMoodOf(
+            status: status,
+            live: status.live,
+            inbox: ref.watch(dsBotInboxProvider),
+            bot: bot,
+            team: team,
+            error: chat.error != null,
+          ).emotion.id,
           animate: true,
         ),
         title: bot.name,

@@ -33,8 +33,8 @@ enum MascotCharacter {
 /// 3 种五官。
 enum MascotFace {
   gentle('温和', 'Gentle'),
-  curious('好奇', 'Curious'),
-  happy('开心', 'Happy');
+  curious('机灵', 'Curious'),
+  happy('呆萌', 'Happy');
 
   const MascotFace(this.zh, this.en);
   final String zh;
@@ -71,6 +71,18 @@ enum MascotColor {
 
   /// 跟着 App 主题走时用它（`MascotSpec.followAppColor`）。
   static Color fromTheme(ColorScheme scheme) => scheme.primary;
+
+  /// 写进宿主 `bot.color` 的名字：宿主只认色名白名单，不收 hex（架构核过
+  /// `ds-bot/src/host/constants.js`）。只影响文字头像底色和其他端，吉祥物自身
+  /// 用 [ink] 画。
+  String get hostName => switch (this) {
+    MascotColor.classic => 'orange',
+    MascotColor.matcha => 'green',
+    MascotColor.sakura => 'magenta',
+    MascotColor.moonlight => 'violet',
+    MascotColor.seasalt => 'cyan',
+    MascotColor.inkJade => 'deepseek',
+  };
 }
 
 /// 头像的全部可配置项。序列化用 [toJson]/[fromJson]（键名对应架构定的本地配置）。
@@ -147,6 +159,25 @@ class MascotSpec {
 
   @override
   int get hashCode => Object.hash(character, face, motion, color, followAppColor, seed);
+
+  /// Miffan 的「随机换一个」：角色和颜色都换掉，动作随机（五官不动），
+  /// 种子存下来可以复现。与 `random` 的区别是「整组不同」不够——只换动作也算
+  /// 不同，这里按产品规则必须换角色和颜色。
+  factory MascotSpec.randomDifferent(MascotSpec avoid, math.Random random) {
+    final seed = random.nextInt(1 << 31);
+    final r = math.Random(seed);
+    // 角色：从另外 4 只里挑。
+    final others = [for (final c in MascotCharacter.values) if (c != avoid.character) c];
+    // 颜色：从另外 6 色里挑。
+    final colors = [for (final c in MascotColor.values) if (c != avoid.color) c];
+    return MascotSpec(
+      character: others[r.nextInt(others.length)],
+      face: avoid.face,
+      motion: MascotMotion.values[r.nextInt(MascotMotion.values.length)],
+      color: colors[r.nextInt(colors.length)],
+      seed: seed,
+    );
+  }
 
   /// 「随机换一个」：用种子生成，存下 [seed] 就能复现。
   factory MascotSpec.random(math.Random random, {int? seed}) {

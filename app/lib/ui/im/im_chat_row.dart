@@ -22,6 +22,7 @@ class ImChatRow extends StatelessWidget {
     required this.inbox,
     required this.onTap,
     this.onLongPress,
+    this.emotion,
   });
 
   final DsBot bot;
@@ -30,6 +31,9 @@ class ImChatRow extends StatelessWidget {
   final DsBotInbox inbox;
   final VoidCallback onTap;
   final VoidCallback? onLongPress;
+
+  /// 这一行此刻的情绪 id（`mascotEmotionId` 由调用方用 `emotionFor` 算好）。
+  final String? emotion;
 
   static const height = 72.0;
   static const avatarSize = 48.0;
@@ -68,18 +72,6 @@ class ImChatRow extends StatelessWidget {
     } else {
       preview = bot.role.isEmpty ? l10n.botsNoChats : bot.role;
     }
-    // 状态→情绪（架构的 emotionFor 落地后可以换成它；这里先按同一张表取）：
-    // 等你确认 39、搜索 23、改文件 26、思考 20、空闲 02。
-    final activity = (live.activity[bot.id] ?? '').toLowerCase();
-    final emotion = question || bot.waiting
-        ? '39'
-        : doing == null
-        ? '02'
-        : activity.contains('search') || activity.contains('搜')
-        ? '23'
-        : activity.contains('edit') || activity.contains('write') || activity.contains('改')
-        ? '26'
-        : '20';
     return ImChatRowShell(
       avatar: BotAvatar(bot: bot, size: avatarSize, working: work != null, emotion: emotion),
       name: bot.name,
@@ -108,6 +100,7 @@ class ImRoomRow extends StatelessWidget {
     required this.inbox,
     required this.onTap,
     this.onLongPress,
+    this.emotion,
   });
 
   final DsBotRoom room;
@@ -116,6 +109,7 @@ class ImRoomRow extends StatelessWidget {
   final DsBotInbox inbox;
   final VoidCallback onTap;
   final VoidCallback? onLongPress;
+  final String? emotion;
 
   @override
   Widget build(BuildContext context) {
@@ -142,9 +136,8 @@ class ImRoomRow extends StatelessWidget {
     } else {
       preview = l10n.botsMemberCount(room.members.length);
     }
-    final roomEmotion = waiting ? '39' : (working.isNotEmpty ? '20' : '02');
     return ImChatRowShell(
-      avatar: RoomAvatar(room: room, team: team, size: ImChatRow.avatarSize, emotion: roomEmotion),
+      avatar: RoomAvatar(room: room, team: team, size: ImChatRow.avatarSize, emotion: emotion),
       name: room.name,
       preview: preview,
       previewColor: previewColor,

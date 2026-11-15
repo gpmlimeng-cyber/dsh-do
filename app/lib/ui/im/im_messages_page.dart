@@ -14,6 +14,7 @@ import '../../l10n/l10n.dart';
 import '../../state/bots_state.dart';
 import '../bots/bot_avatar.dart';
 import '../bots/install_card.dart';
+import '../bots/mascot_mood.dart';
 import '../bots/new_bot_page.dart';
 import '../bots/new_room_sheet.dart';
 import '../common/app_sheet.dart';
@@ -198,20 +199,25 @@ class _List extends ConsumerWidget {
     Widget rowFor(_Entry entry) {
       final bot = entry.bot;
       if (bot != null) {
+        final mood = mascotMoodOf(status: status, live: status.live, inbox: inbox, bot: bot, team: team);
         return ImChatRow(
           bot: bot,
           team: team,
           live: status.live,
           inbox: inbox,
+          emotion: mood.emotion.id,
           onTap: () => open(entry),
           onLongPress: () => longPress(entry),
         );
       }
+      final room = entry.room!;
+      final mood = mascotRoomMoodOf(status: status, live: status.live, inbox: inbox, room: room);
       return ImRoomRow(
-        room: entry.room!,
+        room: room,
         team: team,
         live: status.live,
         inbox: inbox,
+        emotion: mood.emotion.id,
         onTap: () => open(entry),
         onLongPress: () => longPress(entry),
       );
