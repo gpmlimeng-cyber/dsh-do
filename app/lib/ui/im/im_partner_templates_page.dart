@@ -12,7 +12,9 @@ import '../../l10n/l10n.dart';
 import '../../state/bots_state.dart' show dsBotProvider;
 import '../bots/new_bot_page.dart';
 import '../common/app_sheet.dart';
+import '../common/capsule_chip.dart';
 import '../common/list_page_row.dart';
+import '../common/search_capsule.dart';
 import '../common/sheet_title_bar.dart';
 import '../mascots/mascot_avatar.dart';
 import '../theme/app_icons.dart';
@@ -240,21 +242,17 @@ class _ImPartnerTemplatesPageState extends State<ImPartnerTemplatesPage> {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-            child: TextField(
+            // 原生搜索胶囊：填充底、无描边，和设置页的搜索一致。
+            child: KeyedSubtree(
               key: const ValueKey('template-search'),
-              controller: _search,
-              onChanged: (_) => setState(() {}),
-              textInputAction: TextInputAction.search,
-              decoration: InputDecoration(
-                hintText: ImStrings.templateSearch,
-                prefixIcon: const Icon(AppIcons.search, size: 20),
-                isDense: true,
-                filled: true,
-                fillColor: theme.colorScheme.onSurface.withValues(alpha: 0.05),
-                border: const OutlineInputBorder(
-                  borderRadius: AppShape.radiusLg,
-                  borderSide: BorderSide.none,
-                ),
+              child: SearchCapsule(
+                controller: _search,
+                hint: ImStrings.templateSearch,
+                onChanged: (_) => setState(() {}),
+                onClear: () {
+                  _search.clear();
+                  setState(() {});
+                },
               ),
             ),
           ),
@@ -264,13 +262,19 @@ class _ImPartnerTemplatesPageState extends State<ImPartnerTemplatesPage> {
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),
               children: [
-                _Chip(label: ImStrings.templateAllCategory, selected: _category == null, onTap: () => setState(() => _category = null)),
-                for (final category in partnerTemplateCategories)
-                  _Chip(
+                CapsuleChoiceChip(
+                  label: ImStrings.templateAllCategory,
+                  selected: _category == null,
+                  onSelected: () => setState(() => _category = null),
+                ),
+                for (final category in partnerTemplateCategories) ...[
+                  const SizedBox(width: 8),
+                  CapsuleChoiceChip(
                     label: AppLocale.isEnglish ? category.en : category.zh,
                     selected: _category == category.id,
-                    onTap: () => setState(() => _category = category.id),
+                    onSelected: () => setState(() => _category = category.id),
                   ),
+                ],
               ],
             ),
           ),
@@ -297,44 +301,6 @@ class _ImPartnerTemplatesPageState extends State<ImPartnerTemplatesPage> {
   }
 }
 
-class _Chip extends StatelessWidget {
-  const _Chip({required this.label, required this.selected, required this.onTap});
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: AnimatedContainer(
-          duration: AppMotion.of(context, AppMotion.quick),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: ShapeDecoration(
-            color: selected ? theme.colorScheme.primary.withValues(alpha: 0.12) : theme.colorScheme.surface,
-            shape: StadiumBorder(
-              side: BorderSide(
-                color: selected ? theme.colorScheme.primary : theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
-                width: selected ? 1.4 : 0.8,
-              ),
-            ),
-          ),
-          child: Text(
-            label,
-            style: theme.textTheme.labelMedium?.copyWith(
-              color: selected ? theme.colorScheme.primary : DshColors.of(context).textTertiary,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 class _TemplateRow extends StatelessWidget {
   const _TemplateRow({required this.template, required this.onTap});
