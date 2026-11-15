@@ -157,7 +157,7 @@ class _MascotAvatarState extends State<MascotAvatar> with SingleTickerProviderSt
     final scheme = Theme.of(context).colorScheme;
     final skin = mascotSkinOf(widget.spec, scheme);
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final active = widget.animate && !(MediaQuery.maybeDisableAnimationsOf(context) ?? false) && TickerMode.of(context);
+    final active = widget.animate && !(MediaQuery.maybeDisableAnimationsOf(context) ?? false) && TickerMode.valuesOf(context).enabled;
     final clock = active ? _clock : null;
 
     MascotPainter frame({double phase = 0.35, MascotClock? clock, Duration? period}) => MascotPainter(
