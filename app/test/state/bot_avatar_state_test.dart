@@ -139,10 +139,10 @@ void main() {
   });
 
   group('colours', () {
-    test('there are 11 presets plus the model default', () {
-      expect(MascotColor.values.length, 12);
+    test('there are 17 presets (11 demo + 6 Miffan) plus the model default', () {
+      expect(MascotColor.values.length, 18);
       expect(MascotColor.values, contains(MascotColor.model));
-      expect(MascotColor.values.where((color) => color != MascotColor.model).length, 11);
+      expect(MascotColor.values.where((color) => color != MascotColor.model).length, 17);
     });
 
     test('every colour name survives the spec JSON round trip', () {
@@ -159,6 +159,28 @@ void main() {
       expect(MascotColor.paleCyan.ink, const Color(0xFFBDEEF2));
       expect(MascotColor.charcoal.ink, const Color(0xFF3D4852));
       expect(MascotColor.berry.ink, const Color(0xFFF29CC2));
+    });
+
+    test('the six Miffan colours are the Miffan palette', () {
+      // Positions 11..16: the six are appended after the demo presets and before model.
+      const expected = [
+        (0xFFC76644, 0xFF773D29, 0xFFFFE8A9, 'tangerine'),
+        (0xFF5F7F50, 0xFF394C30, 0xFFE8F0B4, 'green'),
+        (0xFFC86F83, 0xFF78434F, 0xFFFFE5D7, 'rose'),
+        (0xFF5A5F91, 0xFF363957, 0xFFE2DCF8, 'violet'),
+        (0xFF3E8391, 0xFF254F57, 0xFFDCF1E8, 'cyan'),
+        (0xFF354947, 0xFF202C2B, 0xFF9EDBC3, 'charcoal'),
+      ];
+      for (var i = 0; i < expected.length; i++) {
+        final color = MascotColor.values[11 + i];
+        // A wire name that matches a legacy alias (`classic`, `matcha`, ...) would be
+        // read back as its nearest demo preset, so the six must be prefixed.
+        expect(color.name, startsWith('miffan'), reason: '${color.name} must not collide with a legacy alias');
+        expect(color.ink, Color(expected[i].$1), reason: '${color.name} body');
+        expect(color.outlineInk, Color(expected[i].$2), reason: '${color.name} outline');
+        expect(color.accent, Color(expected[i].$3), reason: '${color.name} accent');
+        expect(color.hostName, expected[i].$4, reason: '${color.name} host');
+      }
     });
 
     test('the model default draws each character\'s own skin', () {
@@ -295,14 +317,14 @@ void main() {
     });
 
     test('the ten-role derivation table is stable', () {
-      // Indices follow the enum order (new roles appended after jelly); the colour
-      // pool is the 11 presets, model excluded, and motion is the 3 presets.
+      // Indices follow the enum order (new roles and Miffan colours appended at the
+      // end); the colour pool is the 17 presets, model excluded; motion is 3 presets.
       final colors = [for (final color in MascotColor.values) if (color != MascotColor.model) color];
       const table = [
-        ('b1', 8, 4, 2),
-        ('b3', 6, 7, 1),
-        ('bot-1', 2, 1, 2),
-        ('猫团', 1, 6, 1),
+        ('b1', 8, 0, 2),
+        ('b3', 6, 13, 1),
+        ('bot-1', 2, 2, 2),
+        ('猫团', 1, 10, 1),
       ];
       for (final (id, character, color, motion) in table) {
         final derived = letterMascotOf(null, id);

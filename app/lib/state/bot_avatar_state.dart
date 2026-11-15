@@ -184,7 +184,8 @@ MascotSpec letterMascotOf(BotAvatarConfig? config, String botId) {
   final configured = config?.mascot;
   if (configured != null) return configured;
   final seed = stableSeedOf(botId);
-  // 派生不用 model：那是「跟随角色默认」，两个同角色 Bot 会撞脸。
+  // 派生池 = 当前全部角色 / 全部预设色（不含 model）：加角色或加色时，
+  // 未配置过的 Bot 会跟着换一次形象，配置过的不受影响（产品已确认）。
   final colors = [for (final color in MascotColor.values) if (color != MascotColor.model) color];
   return MascotSpec(
     character: MascotCharacter.values[seed % MascotCharacter.values.length],
@@ -192,6 +193,8 @@ MascotSpec letterMascotOf(BotAvatarConfig? config, String botId) {
     motion: MascotMotion.values[(seed ~/ 13) % MascotMotion.values.length],
   );
 }
+
+
 
 /// FNV-1a over UTF-8: 稳定、跨进程一致（`String.hashCode` 不保证这一点）。
 int stableSeedOf(String value) {

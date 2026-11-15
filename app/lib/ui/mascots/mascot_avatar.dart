@@ -115,7 +115,7 @@ enum MascotMotion {
   final String hintZh;
 }
 
-/// demo 的 11 个预设配色（第 12 个「果冻默认色」按角色 skin 画，不存进 spec）。
+/// 11 个 demo 预设 + 6 个 Miffan 预设，最后一项「跟随角色默认」按角色 skin 画、不存色值。
 enum MascotColor {
   mint('薄荷绿', 'Mint', Color(0xFF48FF42), Color(0xFF080808), Color(0xFFFF9FB6)),
   sky('天空蓝', 'Sky blue', Color(0xFF6EC7FF), Color(0xFF0B1E3A), Color(0xFFFF9FB6)),
@@ -129,7 +129,16 @@ enum MascotColor {
   paleCyan('浅青', 'Pale cyan', Color(0xFFBDEEF2), Color(0xFF23434D), Color(0xFFA9D9FF)),
   berry('莓果粉', 'Berry pink', Color(0xFFF29CC2), Color(0xFF5A243E), Color(0xFFFFE0A8)),
 
-  /// 第 12 项「跟随角色默认色」：能存能恢复；实际颜色按角色 skin 取
+  // Miffan 的 6 个预设色（`MiffanPalette`）：描边色由身体色压暗 40% 算得，不用纯黑。
+  // key 带 `miffan` 前缀，避免和旧存档别名（classic/matcha/… → 旧色）撞名。
+  miffanClassic('经典', 'Miffan classic', Color(0xFFC76644), Color(0xFF773D29), Color(0xFFFFE8A9)),
+  miffanMatcha('抹茶', 'Miffan matcha', Color(0xFF5F7F50), Color(0xFF394C30), Color(0xFFE8F0B4)),
+  miffanSakura('樱花', 'Miffan sakura', Color(0xFFC86F83), Color(0xFF78434F), Color(0xFFFFE5D7)),
+  miffanMoonlight('月光', 'Miffan moonlight', Color(0xFF5A5F91), Color(0xFF363957), Color(0xFFE2DCF8)),
+  miffanSeaSalt('海盐', 'Miffan sea salt', Color(0xFF3E8391), Color(0xFF254F57), Color(0xFFDCF1E8)),
+  miffanInkJade('墨玉', 'Miffan ink jade', Color(0xFF354947), Color(0xFF202C2B), Color(0xFF9EDBC3)),
+
+  /// 最后一项「跟随角色默认色」：能存能恢复；实际颜色按角色 skin 取
   /// （`mascotSkinOf`），这里的 hex 只是占位。
   model('跟随默认', 'Model default', Color(0xFF48FF42), Color(0xFF080808), Color(0xFFFF9FB6));
 
@@ -165,6 +174,12 @@ enum MascotColor {
     MascotColor.steel => 'cobalt',
     MascotColor.paleCyan => 'cyan',
     MascotColor.berry => 'magenta',
+    MascotColor.miffanClassic => 'tangerine',
+    MascotColor.miffanMatcha => 'green',
+    MascotColor.miffanSakura => 'rose',
+    MascotColor.miffanMoonlight => 'violet',
+    MascotColor.miffanSeaSalt => 'cyan',
+    MascotColor.miffanInkJade => 'charcoal',
     // model 要看角色，用 `hostColorOf(spec)`。
     MascotColor.model => 'green',
   };
@@ -331,9 +346,9 @@ class MascotSpec {
   factory MascotSpec.randomDifferent(MascotSpec avoid, math.Random random) {
     final seed = random.nextInt(1 << 31);
     final r = math.Random(seed);
-    // 角色：从另外 4 只里挑。
+    // 角色：从另外 9 只里挑。
     final others = [for (final c in MascotCharacter.values) if (c != avoid.character) c];
-    // 颜色：除当前外的 11 个（含 model）；角色和颜色必换。
+    // 颜色：除当前外的 17 个（含 model）；角色和颜色必换。
     final colors = [for (final c in MascotColor.values) if (c != avoid.color) c];
     return MascotSpec(
       character: others[r.nextInt(others.length)],

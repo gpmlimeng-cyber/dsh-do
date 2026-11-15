@@ -342,7 +342,7 @@ class _ColorGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 紧凑网格：4 列、12 格预设（「跟随默认」是第 12 格），一屏看全。
+    // 紧凑网格：4 列、18 格（17 个预设 + 「跟随默认」），5 行一屏看全。
     // 格子高度按内容算（头像 58 + 标签 + 内边距），换屏幕宽度也不会溢出。
     const columns = 4;
     const gap = 8.0;
