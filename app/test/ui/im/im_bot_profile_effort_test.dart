@@ -40,7 +40,7 @@ void main() {
   }
 
   testWidgets('a model with thinking levels shows the row and its current tier', (tester) async {
-    await open(tester, FakeDsBotTransport());
+    await open(tester, FakeDsBotTransport(team: teamWithModel('deepseek/deepseek-v4-pro')));
     expect(find.text('想多久再回'), findsOneWidget);
     // 没存 effort 就是「看情况」。
     expect(find.textContaining('看情况'), findsOneWidget);
@@ -58,7 +58,7 @@ void main() {
   });
 
   testWidgets('picking 多想想 writes effort high and closes', (tester) async {
-    final fake = FakeDsBotTransport();
+    final fake = FakeDsBotTransport(team: teamWithModel('deepseek/deepseek-v4-pro'));
     fake.handlers['update-bot'] = (_) => true;
     await open(tester, fake);
 
@@ -74,7 +74,7 @@ void main() {
   });
 
   testWidgets('看情况 with nothing stored sends no request', (tester) async {
-    final fake = FakeDsBotTransport();
+    final fake = FakeDsBotTransport(team: teamWithModel('deepseek/deepseek-v4-pro'));
     fake.handlers['update-bot'] = (_) => true;
     await open(tester, fake);
 
@@ -87,7 +87,7 @@ void main() {
   });
 
   testWidgets('a failed save keeps the sheet open and shows the snackbar', (tester) async {
-    final fake = FakeDsBotTransport();
+    final fake = FakeDsBotTransport(team: teamWithModel('deepseek/deepseek-v4-pro'));
     fake.handlers['update-bot'] = (_) => throw StateError('boom');
     await open(tester, fake);
 
