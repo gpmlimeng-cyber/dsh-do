@@ -27,11 +27,10 @@ void main() {
       final faces = find.byType(BotAvatar);
       final back = tester.getRect(faces.first);
       final front = tester.getRect(faces.last);
-      final glyph = tester.getRect(find.text('C'));
+      // 默认头像换成派生的吉祥物后没有字母可量；改验后一块头像的左上角
+      // 露在前一块的圆外，含义和原来「字母不被盖住」一致。
       final gap = (size * .05).clamp(1.5, 3.0);
-      for (final point in [glyph.topLeft, glyph.topRight, glyph.bottomLeft, glyph.bottomRight]) {
-        expect((point - front.center).distance, greaterThan(front.width / 2 + gap + .5));
-      }
+      expect((back.topLeft - front.center).distance, greaterThan(front.width / 2 + gap + .5));
       expect(back.width, closeTo(size * .6, .01));
       expect(back.height, closeTo(size * .6, .01));
       expect(front.size, back.size);

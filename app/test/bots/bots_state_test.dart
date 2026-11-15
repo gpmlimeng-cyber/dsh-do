@@ -276,7 +276,9 @@ void main() {
 
       expect(await chat.send('  写个开场白 '), isTrue);
       expect(transport.calls.last.$1, 'send');
-      expect(transport.calls.last.$2, {'sessionId': 'b2', 'text': '写个开场白'});
+      final sent = Map<String, Object?>.from(transport.calls.last.$2);
+      expect(sent.remove('requestId'), isA<String>(), reason: '每条发送带幂等 id');
+      expect(sent, {'sessionId': 'b2', 'text': '写个开场白'});
       expect(container.read(botChatProvider('b2')).pending.single.text, '写个开场白');
 
       final time = DateTime.now().millisecondsSinceEpoch;
@@ -320,13 +322,13 @@ void main() {
       addTearDown(sub.close);
       await settle();
       await container.read(botChatProvider('b2').notifier).send('插一句', mode: 'steer');
-      expect(transport.calls.last.$2, {
-        'sessionId': 'b2',
-        'text': '插一句',
-        'mode': 'steer',
-      });
+      final steer = Map<String, Object?>.from(transport.calls.last.$2);
+      expect(steer.remove('requestId'), isA<String>());
+      expect(steer, {'sessionId': 'b2', 'text': '插一句', 'mode': 'steer'});
       await container.read(botChatProvider('b2').notifier).send('排着');
-      expect(transport.calls.last.$2, {'sessionId': 'b2', 'text': '排着'});
+      final queued = Map<String, Object?>.from(transport.calls.last.$2);
+      expect(queued.remove('requestId'), isA<String>());
+      expect(queued, {'sessionId': 'b2', 'text': '排着'});
     });
 
     test('a failed send goes back to the draft side and says why', () async {

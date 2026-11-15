@@ -55,9 +55,11 @@ Future<ProviderContainer> _pump(
       brightness: Brightness.light,
       home: HomeShell(chatBuilder: (_) => const SizedBox.expand(), initiallyOpen: true),
       overrides: [
-        localRuntimeProvider.overrideWith(
-          () => FakeRuntime(const LocalRuntimeState(loaded: true, status: runningStatus)),
-        ),
+        // dsBotOverrides（extra）自带 localRuntime，同一容器不能覆盖两次。
+        if (extra.isEmpty)
+          localRuntimeProvider.overrideWith(
+            () => FakeRuntime(const LocalRuntimeState(loaded: true, status: runningStatus)),
+          ),
         sessionsProvider.overrideWith(() => FakeSessions(sessions ?? sampleSessions())),
         currentSessionProvider.overrideWith(() => FakeCurrentSession('s2')),
         pendingInteractionsProvider.overrideWith(() => FixedPending(pending)),

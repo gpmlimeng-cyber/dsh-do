@@ -5,8 +5,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'support.dart';
-import 'package:dsh_app/state/chat_state.dart' show chatProvider, ChatState;
-import '../chat/support/harness.dart' show FakeChatController;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -24,7 +22,6 @@ void main() {
       var opens = 0;
       final container = ProviderContainer(
         overrides: [
-              chatProvider.overrideWith2((id) => FakeChatController(id, const ChatState(loading: false))),
           ...(dsBotOverrides(old)..removeAt(1)),
           dsBotApiFactoryProvider.overrideWithValue((_) => DsBotApi(opens++ == 0 ? old : next)),
         ],

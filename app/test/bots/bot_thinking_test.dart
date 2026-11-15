@@ -39,34 +39,38 @@ void main() {
     expect(items.last.kind, DsBotItemKind.thinking);
   });
 
-  test('a finished turn keeps no thinking', () {
+  test('a finished turn keeps its thinking line', () {
+    // botTranscriptItems 现在直通：思考行「一条、跑到哪跟到哪」，不按 running 丢。
     final items = botTranscriptItems([_bot('先说说', 1), _thinking(2)], running: false);
-    expect(items.map((item) => item.kind), [DsBotItemKind.bot]);
+    expect(items.map((item) => item.kind), [DsBotItemKind.bot, DsBotItemKind.thinking]);
   });
 
-  test('thinking followed by a reply or a tool row is over', () {
-    expect(botTranscriptItems([_thinking(1), _bot('答复', 2)], running: true), hasLength(1));
-    expect(botTranscriptItems([_thinking(1), _tool('read_file', 2)], running: true), hasLength(1));
+  test('thinking stays when a reply or a tool row follows', () {
+    expect(botTranscriptItems([_thinking(1), _bot('答复', 2)], running: true), hasLength(2));
+    expect(botTranscriptItems([_thinking(1), _tool('read_file', 2)], running: true), hasLength(2));
   });
 
-  test('several steps of one turn make one line', () {
+  test('every thinking row is kept; the row itself collapses the details', () {
     final items = botTranscriptItems(
       [_thinking(1), _tool('read_file', 2), _thinking(3), _tool('bash', 4), _thinking(5)],
       running: true,
     );
-    expect(items.where((item) => item.kind == DsBotItemKind.thinking), hasLength(1));
+    expect(items.where((item) => item.kind == DsBotItemKind.thinking), hasLength(3));
     expect(items.last.kind, DsBotItemKind.thinking);
   });
 
-  test('a history page without a running turn adds nothing', () {
-    expect(botTranscriptItems([_bot('旧消息', 1), _thinking(2)], running: false).single.kind, DsBotItemKind.bot);
+  test('a history page keeps its thinking row too', () {
+    expect(
+      botTranscriptItems([_bot('旧消息', 1), _thinking(2)], running: false).map((item) => item.kind),
+      [DsBotItemKind.bot, DsBotItemKind.thinking],
+    );
   });
 
-  testWidgets('a thinking line draws under the Bot name while it runs', (tester) async {
+  testWidgets('a thinking line draws while it runs', (tester) async {
     final fake = FakeDsBotTransport()
       ..chatItems = [
         {'kind': 'bot', 'text': '我来看看', 'time': DateTime(2026, 1, 1, 10).millisecondsSinceEpoch},
-        {'kind': 'thinking', 'time': DateTime(2026, 1, 1, 10, 1).millisecondsSinceEpoch},
+        {'kind': 'thinking', 'text': '先查一下文件', 'time': DateTime(2026, 1, 1, 10, 1).millisecondsSinceEpoch},
       ];
     usePhoneView(tester);
     await tester.pumpWidget(
@@ -77,15 +81,15 @@ void main() {
       ),
     );
     await _frames(tester);
-    expect(find.byType(BotTypingLine), findsOneWidget);
-    expect(find.text('Chief · 正在思考'), findsOneWidget);
+    expect(find.byType(BotThinkingLine), findsOneWidget);
+    expect(tester.widget<BotThinkingLine>(find.byType(BotThinkingLine)).text, '先查一下文件');
   });
 
-  testWidgets('a finished turn draws no thinking line', (tester) async {
+  testWidgets('a finished turn keeps its thinking line', (tester) async {
     final fake = FakeDsBotTransport(team: sampleTeam(working: false))
       ..chatItems = [
         {'kind': 'bot', 'text': '我来看看', 'time': DateTime(2026, 1, 1, 10).millisecondsSinceEpoch},
-        {'kind': 'thinking', 'time': DateTime(2026, 1, 1, 10, 1).millisecondsSinceEpoch},
+        {'kind': 'thinking', 'text': '先查一下文件', 'time': DateTime(2026, 1, 1, 10, 1).millisecondsSinceEpoch},
       ];
     usePhoneView(tester);
     await tester.pumpWidget(
@@ -96,6 +100,6 @@ void main() {
       ),
     );
     await _frames(tester);
-    expect(find.byType(BotTypingLine), findsNothing);
+    expect(find.byType(BotThinkingLine), findsOneWidget, reason: '跑完保留那一条');
   });
 }

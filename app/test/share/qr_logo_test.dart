@@ -18,6 +18,7 @@ import 'dart:convert';
 import 'package:dsh_app/ui/share/qr_code.dart';
 import 'package:dsh_app/ui/shell/brand_mark.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Annex E: alignment pattern centres (rows and columns) by version.
@@ -266,9 +267,11 @@ void main() {
   group('QrCodeView', () {
     Future<void> pump(WidgetTester tester, QrCodeView view) async {
       await tester.pumpWidget(
-        Directionality(
-          textDirection: TextDirection.ltr,
-          child: Center(child: view),
+        ProviderScope(
+          child: Directionality(
+            textDirection: TextDirection.ltr,
+            child: Center(child: view),
+          ),
         ),
       );
     }

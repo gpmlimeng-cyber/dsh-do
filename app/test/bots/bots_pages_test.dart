@@ -79,7 +79,9 @@ void main() {
     await tester.tap(find.byIcon(AppIcons.send));
     await tester.pump();
     expect(fake.calls.last.$1, 'send');
-    expect(fake.calls.last.$2, {'sessionId': 'b2', 'text': '海报文案今晚给我'});
+    final sent = Map<String, Object?>.from(fake.calls.last.$2);
+    expect(sent.remove('requestId'), isA<String>());
+    expect(sent, {'sessionId': 'b2', 'text': '海报文案今晚给我'});
     expect(find.text('发送中'), findsOneWidget);
 
     fake.emit('message', {
@@ -179,7 +181,9 @@ void main() {
     await tester.pump();
     await tester.tap(find.byIcon(AppIcons.send));
     await tester.pump();
-    expect(fake.calls.last.$2, {'sessionId': 'r1', 'text': '@Coder 演示环境好了吗'});
+    final sent = Map<String, Object?>.from(fake.calls.last.$2);
+    expect(sent.remove('requestId'), isA<String>());
+    expect(sent, {'sessionId': 'r1', 'text': '@Coder 演示环境好了吗'});
   });
 
   testWidgets('the new Bot form asks for a name, then creates and opens the chat', (tester) async {

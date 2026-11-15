@@ -18,7 +18,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../chat/support/harness.dart';
 import '../shell/golden_harness.dart' show goldenApp;
 import 'support.dart';
-import 'package:dsh_app/state/chat_state.dart' show chatProvider, ChatState;
 
 class MissingFeed extends FakeDsBotTransport {
   final stream = StreamController<DsBotSseEvent>();
@@ -62,7 +61,7 @@ void main() {
           home: page,
           brightness: Brightness.light,
           overrides: [
-              chatProvider.overrideWith2((id) => FakeChatController(id, const ChatState(loading: false))),...dsBotOverrides(fake), dsBotWebOpenerProvider.overrideWithValue((_, _) => webOpens++)],
+              ...dsBotOverrides(fake), dsBotWebOpenerProvider.overrideWithValue((_, _) => webOpens++)],
         ),
       );
       await frames(tester);
