@@ -809,6 +809,10 @@ class MascotPainter extends CustomPainter {
 
   // ── 身体形状 ──
 
+  /// 五官的颜色：深色身体上用白色，浅色身体上按本色压暗，保证看得清。
+  Color get _featureInk =>
+      body.computeLuminance() < 0.42 ? Colors.white.withValues(alpha: 0.95) : _darken(body, 0.62);
+
   Path _bowl(Rect r) {
     // 陶碗：上宽下窄，碗口一圈亮边。
     final path = Path()
@@ -1177,7 +1181,7 @@ class MascotPainter extends CustomPainter {
     final eyeY = r.top + r.height * 0.44 + gy + faceDrop;
     final lx = r.center.dx - r.width * 0.18 + drift + gx;
     final rx = r.center.dx + r.width * 0.18 + drift + gx;
-    final ink = _darken(body, 0.62);
+    final ink = _featureInk;
     final white = Paint()..color = Colors.white.withValues(alpha: 0.92);
     final dark = Paint()..color = ink;
     final stroke = Paint()
@@ -1510,7 +1514,7 @@ class MascotPainter extends CustomPainter {
   void _sproutEyes(Canvas canvas, Offset Function(double, double) f, double u, String style, double t, MascotFace face, bool blinking, {required bool three, Offset look = Offset.zero}) {
     final white = Paint()..color = Colors.white;
     final line = Paint()
-      ..color = ink
+      ..color = _featureInk
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.4 * u
       ..strokeCap = StrokeCap.round
@@ -1597,7 +1601,7 @@ class MascotPainter extends CustomPainter {
   }
 
   void _sproutMouth(Canvas canvas, Offset Function(double, double) f, double u, String mouth) {
-    final ink = _darken(body, 0.86);
+    final ink = _featureInk;
     final line = Paint()
       ..color = ink
       ..style = PaintingStyle.stroke
