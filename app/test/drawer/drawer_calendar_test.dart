@@ -62,6 +62,7 @@ void main() {
     test('drawerBlocks uses calendar groups for ${sort.name} sorting across spring transition', () {
       final at = DateTime(2026, 3, 8, 23, 30).toUtc();
       final blocks = drawerBlocks(
+        bots: const [],
         sessions: [
           SessionSummary.fromJson({
             'sessionId': 'yesterday',
@@ -82,7 +83,8 @@ void main() {
       expect(blocks, hasLength(1));
       final day = blocks.single as DayBlock;
       expect(day.day, SessionDay.yesterday);
-      expect(day.items.single.sessionId, 'yesterday');
+      // 我们的 drawerBlocks 返回 DrawerRow（SessionRow / BotDrawerRow），id 在基类上。
+      expect(day.items.single.id, 'yesterday');
     });
   }
 }
