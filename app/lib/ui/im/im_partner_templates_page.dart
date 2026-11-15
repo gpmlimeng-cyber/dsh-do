@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import '../../l10n/l10n.dart';
 import '../bots/new_bot_page.dart';
 import '../common/app_sheet.dart';
+import '../common/sheet_title_bar.dart';
 import '../mascots/mascot_avatar.dart';
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';

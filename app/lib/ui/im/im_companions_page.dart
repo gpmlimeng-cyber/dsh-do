@@ -114,8 +114,8 @@ class _CompanionList extends StatelessWidget {
   final ValueChanged<String> onOpenBot;
 
   bool _waiting(DsBot bot) =>
-      live.questionOf(bot) != null ||
-      live.viewOf(bot) != null ||
+      team.questionOf(bot) != null ||
+      team.viewOf(bot) != null ||
       bot.waiting ||
       live.approvals.any((a) => a.botId == bot.id);
 

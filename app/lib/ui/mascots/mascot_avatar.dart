@@ -622,7 +622,10 @@ class MascotPainter extends CustomPainter {
     canvas.scale(1, scaleY);
     canvas.translate(-size.width / 2 + shake, -size.height / 2 + dy);
 
-    final rect = Rect.fromLTWH(s * 0.10, s * 0.20, s * 0.80, s * 0.70);
+    // 角团下宽上尖，重心压在底部：整体上移一点，视觉重心才落在画布中央。
+    // 其余角色按原矩形画，不动。
+    final lift = spec.character == MascotCharacter.triangle ? s * 0.08 : 0.0;
+    final rect = Rect.fromLTWH(s * 0.10, s * 0.20 - lift, s * 0.80, s * 0.70);
     final top = _lighten(body, 0.34);
     final bottom = _darken(body, 0.30);
 
