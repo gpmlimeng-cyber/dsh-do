@@ -446,7 +446,7 @@ class BotChatHeader extends StatelessWidget {
                   if (action case final action?) ...[
                     const SizedBox(width: 8),
                     _RoundKey(
-                      key: const ValueKey('bot-action-key'),
+                      key: const ValueKey('bot-action'),
                       icon: action.icon,
                       tooltip: action.tooltip,
                       onTap: action.onTap,
