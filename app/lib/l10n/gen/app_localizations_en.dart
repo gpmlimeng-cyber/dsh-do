@@ -2587,6 +2587,30 @@ class L10nEn extends L10n {
   String get botsMemoryDraftExample => 'For example: First draft by Friday';
 
   @override
+  String get botsMemoryUpdated => 'Memory updated';
+
+  @override
+  String get botsMemoryAlready => 'Already saved';
+
+  @override
+  String get botsMemoryFailed => 'Couldn\'t save to memory';
+
+  @override
+  String get botsMemoryUnchanged => 'Memory not changed';
+
+  @override
+  String get botsMemoryReasonEmpty => 'Write something to save';
+
+  @override
+  String get botsMemoryReasonNoMatch => 'No saved entry matched';
+
+  @override
+  String get botsMemoryReasonRefused => 'The memory refused this change';
+
+  @override
+  String get botsMemoryReasonOther => 'The memory could not be changed';
+
+  @override
   String botsMemoryCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: 'Memory · $count', one: 'Memory · 1');
     return '$_temp0';
@@ -3454,6 +3478,145 @@ class L10nEn extends L10n {
 
   @override
   String get botsCreationConnectionChanged => 'The connection changed. Reopen this form to create on the current host.';
+
+  @override
+  String get botsPermissionGroupWide => 'One permission preset for this group';
+
+  @override
+  String get botsPermissionGroupWideOn =>
+      'Applies to every member’s sessions here; switching changes the ones already open';
+
+  @override
+  String get botsPermissionGroupWideOff => 'Each member uses their own permission preset';
+
+  @override
+  String get botsStopAll => 'Stop all';
+
+  @override
+  String get botsStopAllTitle => 'Stop what every member is doing this round?';
+
+  @override
+  String get botsStopAllBody => 'Members at work stop at once; you can continue again';
+
+  @override
+  String get botsAlreadySpoke => 'Spoke';
+
+  @override
+  String get botsMessageMode => 'Message mode';
+
+  @override
+  String botsMessageModeWith(String mode) {
+    return 'Message mode: $mode';
+  }
+
+  @override
+  String get botsMessageModeEmpty => 'This member has not spoken in this group yet';
+
+  @override
+  String botsNamedDone(String name) {
+    return '$name is done';
+  }
+
+  @override
+  String get botsRoomSwitchChat => 'Switch conversation';
+
+  @override
+  String botsRoomSwitchTo(String target) {
+    return 'Switch to $target';
+  }
+
+  @override
+  String get botsRoomMemberChats => 'Member conversations';
+
+  @override
+  String get botsRoomOnlyWhose => 'Whose messages only';
+
+  @override
+  String get botsRoomFilter => 'Group chat filters';
+
+  @override
+  String get botsMessageScope => 'Message range';
+
+  @override
+  String get botsRoomFilterGroupOnly => 'Works in the group chat only';
+
+  @override
+  String get botsRoomWatching => 'Viewing';
+
+  @override
+  String get botsRoomNeverSpoke => 'Has not spoken in this group yet';
+
+  @override
+  String botsRoomMemberChatLine(String room) {
+    return 'Group conversation · $room';
+  }
+
+  @override
+  String get botsRoomSearchMembers => 'Search members';
+
+  @override
+  String get botsRoomMemberLeft => 'That member is no longer in this group; back to the group chat';
+
+  @override
+  String get botsRoomMemberChat => 'Group conversation';
+
+  @override
+  String get botsRoomSendsToGroup => 'Sends to the group chat; everyone there sees it';
+
+  @override
+  String get botsRoomOnlyThisMember => 'Only this member';
+
+  @override
+  String botsRoomOnly(String name) {
+    return 'Only $name';
+  }
+
+  @override
+  String botsRoomBackToGroupChat(String room) {
+    return 'Back to $room';
+  }
+
+  @override
+  String botsRoomMemberDetails(String name) {
+    return '$name\'s conversation details';
+  }
+
+  @override
+  String get botsRoomMemberSessionMissing => 'This member has not started a conversation in this group yet';
+
+  @override
+  String botsRoomMemberScope(String name) {
+    return 'Only $name · this group';
+  }
+
+  @override
+  String botsOthersRunning(int count) {
+    return '$count more running';
+  }
+
+  @override
+  String get botsSendFailed => 'Could not send';
+
+  @override
+  String get botsSendStillWaiting => 'Still waiting for the server';
+
+  @override
+  String get chatGoalDrafting => 'Drafting — waiting for the admin to start';
+
+  @override
+  String get botsMessageModeEmptyStretch => 'Nothing from them in this stretch';
+
+  @override
+  String get botsRoomScopeAll => 'All messages';
+
+  @override
+  String get botsGoalBackToCurrent => 'Back to current stage';
+
+  @override
+  String get botsABot => 'a Bot';
+
+  @override
+  String get botsReadOnlyNote => 'This group is read-only now';
 
   @override
   String get brandXiaomi => 'Xiaomi / Redmi';
@@ -4999,6 +5162,120 @@ class L10nEn extends L10n {
   String chatArtifactSemantics(String name, String description) {
     return '$name, $description';
   }
+
+  @override
+  String chatNewContentCount(int count) {
+    return '$count new';
+  }
+
+  @override
+  String get chatGeneratingQueueHint => 'Working · queued sends wait';
+
+  @override
+  String get chatAttachmentNoPreview => 'This kind of file can’t be previewed here';
+
+  @override
+  String get chatQueueGone => 'That message is no longer in the queue';
+
+  @override
+  String get lastConversationMissingObject => 'That Bot or group is gone';
+
+  @override
+  String get lastConversationMissingSession => 'The conversation you left is gone';
+
+  @override
+  String get chatGoalRunning => 'Running';
+
+  @override
+  String get chatGoalPaused => 'Paused';
+
+  @override
+  String get chatGoalStopped => 'Stopped';
+
+  @override
+  String get chatGoalAligning => 'Aligning the goal with you';
+
+  @override
+  String get chatGoalReached => 'Goal reached';
+
+  @override
+  String get chatGoalFinalCheck => 'Final check';
+
+  @override
+  String chatGoalChecking(String title) {
+    return 'Checking · $title';
+  }
+
+  @override
+  String get chatGoalIdleWord => 'Waiting for you';
+
+  @override
+  String get chatGoalNone => 'No goal yet';
+
+  @override
+  String get chatGoalPanel => 'Goal and checks';
+
+  @override
+  String get chatGoalStageCurrent => 'Current stage';
+
+  @override
+  String get chatGoalStageDone => 'Done when';
+
+  @override
+  String get chatGoalTasks => 'Members\' tasks';
+
+  @override
+  String get chatGoalTaskPending => 'To do';
+
+  @override
+  String get chatGoalTaskWorking => 'Working';
+
+  @override
+  String get chatGoalTaskReported => 'Reported';
+
+  @override
+  String get chatGoalTaskDone => 'Done';
+
+  @override
+  String get chatGoalAcceptance => 'Checks';
+
+  @override
+  String get chatGoalAcceptanceDone => 'Done when';
+
+  @override
+  String get chatGoalRule => 'Rule';
+
+  @override
+  String chatGoalRework(int count) {
+    return 'Sent back $count×';
+  }
+
+  @override
+  String get chatGoalCollapseToBallHint => 'Collapse to a ball — the group name shows in full';
+
+  @override
+  String chatGoalDoneWhen(String text) {
+    return 'Done when: $text';
+  }
+
+  @override
+  String get chatGoalConfirmStop => 'Stop the goal?';
+
+  @override
+  String get chatGoalEvidence => 'Evidence';
+
+  @override
+  String chatGoalReworkBy(String admin, String feedback) {
+    return 'Sent back by $admin: $feedback';
+  }
+
+  @override
+  String chatGoalReworkByTimes(int count, String admin, String feedback) {
+    return 'Sent back $count times by $admin. Last time: $feedback';
+  }
+
+  @override
+  String get chatStopWorkToo => 'Stop current work too';
 
   @override
   String get commonCancel => 'Cancel';
@@ -7465,6 +7742,9 @@ class L10nEn extends L10n {
   String get engineModelInputText => 'Text';
 
   @override
+  String get engineModelInputTextAudio => 'Text and audio';
+
+  @override
   String get engineModelInputTextImage => 'Text + image';
 
   @override
@@ -9472,6 +9752,9 @@ class L10nEn extends L10n {
 
   @override
   String get launchReplace => 'Replace picture or video';
+
+  @override
+  String get launchAnimation => 'Launch animation';
 
   @override
   String get launchPreview => 'Preview';
@@ -23990,6 +24273,14 @@ class L10nEn extends L10n {
   String get updateAutoCheckDaily => 'Once a day';
 
   @override
+  String get updateIncludePreviews => 'Include preview builds when checking';
+
+  @override
+  String updateBasedOn(String version) {
+    return 'Based on upstream $version';
+  }
+
+  @override
   String get updateTileDownloading => 'Downloading';
 
   @override
@@ -25822,6 +26113,21 @@ class L10nEn extends L10n {
 
   @override
   String get viewUiDialectNote => 'Shown in DSH Web';
+
+  @override
+  String get viewPreviewBadge => 'Preview';
+
+  @override
+  String get viewHtmlCantOpen => 'This page won\'t open';
+
+  @override
+  String get viewHtmlCantOpenBody => 'Open it in another app to read it';
+
+  @override
+  String get viewHtmlPartialResources => 'Some resources did not load';
+
+  @override
+  String get viewHtmlLinkBlocked => 'Blocked an unsafe link';
 
   @override
   String get voiceSettingsTitle => 'Voice';

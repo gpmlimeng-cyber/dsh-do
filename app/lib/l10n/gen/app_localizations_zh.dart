@@ -2446,6 +2446,30 @@ class L10nZh extends L10n {
   String get botsMemoryDraftExample => '比如：周五前交初稿';
 
   @override
+  String get botsMemoryUpdated => '记忆已更新';
+
+  @override
+  String get botsMemoryAlready => '已经保存过了';
+
+  @override
+  String get botsMemoryFailed => '没能保存到记忆';
+
+  @override
+  String get botsMemoryUnchanged => '记忆没有变化';
+
+  @override
+  String get botsMemoryReasonEmpty => '没有内容可保存';
+
+  @override
+  String get botsMemoryReasonNoMatch => '没有匹配的条目';
+
+  @override
+  String get botsMemoryReasonRefused => '记忆拒绝了这次改动';
+
+  @override
+  String get botsMemoryReasonOther => '记忆没能改动';
+
+  @override
   String botsMemoryCount(int count) {
     return '记忆 · $count';
   }
@@ -3278,6 +3302,144 @@ class L10nZh extends L10n {
 
   @override
   String get botsCreationConnectionChanged => '连接已变化，请重新打开创建页面后再操作。';
+
+  @override
+  String get botsPermissionGroupWide => '本群统一权限';
+
+  @override
+  String get botsPermissionGroupWideOn => '对本群所有成员的会话生效，切换会立刻改掉现有会话';
+
+  @override
+  String get botsPermissionGroupWideOff => '每个成员用它自己的权限预设';
+
+  @override
+  String get botsStopAll => '停全部';
+
+  @override
+  String get botsStopAllTitle => '停止所有成员的本轮工作？';
+
+  @override
+  String get botsStopAllBody => '正在工作的成员会立刻停下，可以再继续';
+
+  @override
+  String get botsAlreadySpoke => '已说';
+
+  @override
+  String get botsMessageMode => '消息模式';
+
+  @override
+  String botsMessageModeWith(String mode) {
+    return '消息模式：$mode';
+  }
+
+  @override
+  String get botsMessageModeEmpty => '该成员在本群还没有发言';
+
+  @override
+  String botsNamedDone(String name) {
+    return '$name 已完成';
+  }
+
+  @override
+  String get botsRoomSwitchChat => '切换会话';
+
+  @override
+  String botsRoomSwitchTo(String target) {
+    return '切换会话：$target';
+  }
+
+  @override
+  String get botsRoomMemberChats => '成员会话';
+
+  @override
+  String get botsRoomOnlyWhose => '只看谁的发言';
+
+  @override
+  String get botsRoomFilter => '群聊过滤';
+
+  @override
+  String get botsMessageScope => '消息范围';
+
+  @override
+  String get botsRoomFilterGroupOnly => '只在群聊里生效';
+
+  @override
+  String get botsRoomWatching => '正在看';
+
+  @override
+  String get botsRoomNeverSpoke => '还没在本群说过话';
+
+  @override
+  String botsRoomMemberChatLine(String room) {
+    return '本群会话 · $room';
+  }
+
+  @override
+  String get botsRoomSearchMembers => '搜索成员';
+
+  @override
+  String get botsRoomMemberLeft => '该成员已不在群里，已回到群聊';
+
+  @override
+  String get botsRoomMemberChat => '本群会话';
+
+  @override
+  String get botsRoomSendsToGroup => '发送到群聊，群里都看得见';
+
+  @override
+  String get botsRoomOnlyThisMember => '只看此成员';
+
+  @override
+  String botsRoomOnly(String name) {
+    return '只看 $name';
+  }
+
+  @override
+  String botsRoomBackToGroupChat(String room) {
+    return '回到群聊 $room';
+  }
+
+  @override
+  String botsRoomMemberDetails(String name) {
+    return '$name 的对话详情';
+  }
+
+  @override
+  String get botsRoomMemberSessionMissing => '该成员还没在本群开始会话';
+
+  @override
+  String botsRoomMemberScope(String name) {
+    return '只看 $name · 本群';
+  }
+
+  @override
+  String botsOthersRunning(int count) {
+    return '另外还有 $count 位在跑';
+  }
+
+  @override
+  String get botsSendFailed => '没能发送';
+
+  @override
+  String get botsSendStillWaiting => '还在等服务器确认';
+
+  @override
+  String get chatGoalDrafting => '起草中，等管理员开始';
+
+  @override
+  String get botsMessageModeEmptyStretch => '这一段里没有他的发言';
+
+  @override
+  String get botsRoomScopeAll => '全部消息';
+
+  @override
+  String get botsGoalBackToCurrent => '回到当前阶段';
+
+  @override
+  String get botsABot => '某个 Bot';
+
+  @override
+  String get botsReadOnlyNote => '这个群现在是只读的';
 
   @override
   String get brandXiaomi => '小米 / Redmi';
@@ -4697,6 +4859,120 @@ class L10nZh extends L10n {
   String chatArtifactSemantics(String name, String description) {
     return '$name，$description';
   }
+
+  @override
+  String chatNewContentCount(int count) {
+    return '$count 条新内容';
+  }
+
+  @override
+  String get chatGeneratingQueueHint => '生成中 · 可排队';
+
+  @override
+  String get chatAttachmentNoPreview => '这类文件不能直接预览';
+
+  @override
+  String get chatQueueGone => '这条已经不在队列里了';
+
+  @override
+  String get lastConversationMissingObject => '上次的 Bot 或群已不存在';
+
+  @override
+  String get lastConversationMissingSession => '上次的会话已不存在';
+
+  @override
+  String get chatGoalRunning => '进行中';
+
+  @override
+  String get chatGoalPaused => '已暂停';
+
+  @override
+  String get chatGoalStopped => '已停止';
+
+  @override
+  String get chatGoalAligning => '正在和你对齐目标';
+
+  @override
+  String get chatGoalReached => '已达成';
+
+  @override
+  String get chatGoalFinalCheck => '总验收';
+
+  @override
+  String chatGoalChecking(String title) {
+    return '验收中 · $title';
+  }
+
+  @override
+  String get chatGoalIdleWord => '等你处理';
+
+  @override
+  String get chatGoalNone => '还没有目标';
+
+  @override
+  String get chatGoalPanel => '目标与验收';
+
+  @override
+  String get chatGoalStageCurrent => '当前阶段';
+
+  @override
+  String get chatGoalStageDone => '完成标准';
+
+  @override
+  String get chatGoalTasks => '成员任务';
+
+  @override
+  String get chatGoalTaskPending => '待办';
+
+  @override
+  String get chatGoalTaskWorking => '在做';
+
+  @override
+  String get chatGoalTaskReported => '已交';
+
+  @override
+  String get chatGoalTaskDone => '已完成';
+
+  @override
+  String get chatGoalAcceptance => '验收';
+
+  @override
+  String get chatGoalAcceptanceDone => '达成条件';
+
+  @override
+  String get chatGoalRule => '约束';
+
+  @override
+  String chatGoalRework(int count) {
+    return '已打回 $count 次';
+  }
+
+  @override
+  String get chatGoalCollapseToBallHint => '收起成小球，群名将完整显示';
+
+  @override
+  String chatGoalDoneWhen(String text) {
+    return '完成标准：$text';
+  }
+
+  @override
+  String get chatGoalConfirmStop => '确认终止？';
+
+  @override
+  String get chatGoalEvidence => '证据';
+
+  @override
+  String chatGoalReworkBy(String admin, String feedback) {
+    return '$admin 打回重做：$feedback';
+  }
+
+  @override
+  String chatGoalReworkByTimes(int count, String admin, String feedback) {
+    return '$admin 已打回 $count 次，最近一次：$feedback';
+  }
+
+  @override
+  String get chatStopWorkToo => '同时停止当前工作';
 
   @override
   String get commonCancel => '取消';
@@ -7070,6 +7346,9 @@ class L10nZh extends L10n {
   String get engineModelInputText => '文本';
 
   @override
+  String get engineModelInputTextAudio => '文本和音频';
+
+  @override
   String get engineModelInputTextImage => '文本和图片';
 
   @override
@@ -8977,6 +9256,9 @@ class L10nZh extends L10n {
 
   @override
   String get launchReplace => '更换图片或视频';
+
+  @override
+  String get launchAnimation => '启动动画';
 
   @override
   String get launchPreview => '预览';
@@ -22777,6 +23059,14 @@ class L10nZh extends L10n {
   String get updateAutoCheckDaily => '每天检查一次';
 
   @override
+  String get updateIncludePreviews => '检查更新时包含预览版';
+
+  @override
+  String updateBasedOn(String version) {
+    return '基于上游 $version';
+  }
+
+  @override
   String get updateTileDownloading => '下载中';
 
   @override
@@ -24491,6 +24781,21 @@ class L10nZh extends L10n {
 
   @override
   String get viewUiDialectNote => '在网页版查看';
+
+  @override
+  String get viewPreviewBadge => '预览';
+
+  @override
+  String get viewHtmlCantOpen => '这个页面打不开';
+
+  @override
+  String get viewHtmlCantOpenBody => '用手机应用打开还能看内容';
+
+  @override
+  String get viewHtmlPartialResources => '部分资源未能加载';
+
+  @override
+  String get viewHtmlLinkBlocked => '已拦截不安全的链接';
 
   @override
   String get voiceSettingsTitle => '语音';
