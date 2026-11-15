@@ -751,7 +751,10 @@ class MascotPainter extends CustomPainter {
   }
 
   // 圆团：纯球，没有顶饰。
-  Path _orb(Rect r) => Path()..addOval(Rect.fromLTWH(r.left, r.top, r.width, r.height));
+  /// 圆团是正圆：身体矩形是 0.80×0.70 的扁椭圆，这里取短边作直径，
+  /// 免得它跟着身体框被拉宽。
+  Path _orb(Rect r) =>
+      Path()..addOval(Rect.fromCircle(center: r.center, radius: r.shortestSide / 2));
 
   /// 四角星：特效用的，和星团的海星形状无关。
   void _sparkleStar(Canvas canvas, Offset center, double radius, Color color) {
