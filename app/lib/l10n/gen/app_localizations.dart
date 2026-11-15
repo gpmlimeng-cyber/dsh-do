@@ -17051,7 +17051,7 @@ abstract class L10n {
   /// No description provided for @aboutPitch.
   ///
   /// In zh, this message translates to:
-  /// **'Coka，Your AI Coworker'**
+  /// **'DSH Go，你的 AI 同事'**
   String get aboutPitch;
 
   /// No description provided for @hubGroupBot.

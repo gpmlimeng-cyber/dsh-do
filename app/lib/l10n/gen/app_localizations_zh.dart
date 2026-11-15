@@ -9254,7 +9254,7 @@ class L10nZh extends L10n {
   String get hubQuickPanelItemsNone => '没有选择，左滑不会打开';
 
   @override
-  String get aboutPitch => 'Coka，Your AI Coworker';
+  String get aboutPitch => 'DSH Go，你的 AI 同事';
 
   @override
   String get hubGroupBot => 'Bot';

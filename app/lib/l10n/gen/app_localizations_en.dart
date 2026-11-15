@@ -9750,7 +9750,7 @@ class L10nEn extends L10n {
   String get hubQuickPanelItemsNone => 'Nothing chosen: a left swipe won\'t open it';
 
   @override
-  String get aboutPitch => 'Coka, Your AI Coworker';
+  String get aboutPitch => 'DSH Go, your AI coworker';
 
   @override
   String get hubGroupBot => 'Bots';
