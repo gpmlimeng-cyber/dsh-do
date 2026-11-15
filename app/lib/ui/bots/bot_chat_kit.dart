@@ -2616,7 +2616,6 @@ class _BotViewCardState extends State<BotViewCard> {
   List<Widget> _render(Object? node, int depth) {
     if (node is! Map || depth > 8) return const [];
     final theme = Theme.of(context);
-    final l10n = context.l10n;
     final dsh = DshColors.of(context);
     switch (node['type']) {
       case 'text':

@@ -8,7 +8,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../l10n/l10n.dart';
 import '../../state/bot_avatar_state.dart';
 import '../../state/bot_effort.dart';
 import '../../state/bots_state.dart';
