@@ -536,7 +536,17 @@ class _BotChatPageState extends ConsumerState<BotChatPage> with WidgetsBindingOb
         // Three columns: the rail owns the chats key, the header drops its own.
         // 轻松模式的左键固定是「返回消息」。
         showLeading: light ? true : !layout.isExpanded,
-        face: BotAvatar(bot: bot, size: BotChatHeader.faceSize),
+        face: BotAvatar(
+          bot: bot,
+          size: BotChatHeader.faceSize,
+          // 聊天页是「可见页面」：按状态播动画（等你确认 39 / 思考 20 / 空闲 02）。
+          emotion: question != null || view != null
+              ? '39'
+              : work != null
+              ? '20'
+              : '02',
+          animate: true,
+        ),
         title: bot.name,
         status: label,
         tone: tone,

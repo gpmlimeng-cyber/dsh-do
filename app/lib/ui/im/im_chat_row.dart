@@ -68,8 +68,20 @@ class ImChatRow extends StatelessWidget {
     } else {
       preview = bot.role.isEmpty ? l10n.botsNoChats : bot.role;
     }
+    // 状态→情绪（架构的 emotionFor 落地后可以换成它；这里先按同一张表取）：
+    // 等你确认 39、搜索 23、改文件 26、思考 20、空闲 02。
+    final activity = (live.activity[bot.id] ?? '').toLowerCase();
+    final emotion = question || bot.waiting
+        ? '39'
+        : doing == null
+        ? '02'
+        : activity.contains('search') || activity.contains('搜')
+        ? '23'
+        : activity.contains('edit') || activity.contains('write') || activity.contains('改')
+        ? '26'
+        : '20';
     return ImChatRowShell(
-      avatar: BotAvatar(bot: bot, size: avatarSize, working: work != null),
+      avatar: BotAvatar(bot: bot, size: avatarSize, working: work != null, emotion: emotion),
       name: bot.name,
       preview: preview,
       previewColor: previewColor,
@@ -130,8 +142,9 @@ class ImRoomRow extends StatelessWidget {
     } else {
       preview = l10n.botsMemberCount(room.members.length);
     }
+    final roomEmotion = waiting ? '39' : (working.isNotEmpty ? '20' : '02');
     return ImChatRowShell(
-      avatar: RoomAvatar(room: room, team: team, size: ImChatRow.avatarSize),
+      avatar: RoomAvatar(room: room, team: team, size: ImChatRow.avatarSize, emotion: roomEmotion),
       name: room.name,
       preview: preview,
       previewColor: previewColor,
