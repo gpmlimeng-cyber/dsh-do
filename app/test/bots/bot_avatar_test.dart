@@ -75,7 +75,8 @@ void main() {
     ));
     await tester.pump();
     expect(find.byType(MascotLetterAvatar), findsOneWidget);
-    expect(find.byType(MascotAvatar), findsNothing);
+    // 字团 is a mascot body with the name's letter where the face would be.
+    expect(tester.widget<MascotAvatar>(find.byType(MascotAvatar)).letter, 'C');
     expect(find.byType(Image), findsNothing);
   });
 

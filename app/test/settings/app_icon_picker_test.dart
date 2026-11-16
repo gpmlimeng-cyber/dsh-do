@@ -290,11 +290,25 @@ void main() {
         at += 4;
       }
       final pixel = [for (var i = 0; i < 4; i++) rgba.getUint8(at + i)];
-      final mono = AppIconArt.of(AppIcon.ink).mono!;
-      expect(pixel[3], 255, reason: 'the mono cut is opaque somewhere');
-      expect(pixel[0], closeTo((mono.r * 255).round(), 2));
-      expect(pixel[1], closeTo((mono.g * 255).round(), 2));
-      expect(pixel[2], closeTo((mono.b * 255).round(), 2));
+      // 墨's foreground is the brand picture's pale object, not a flat cut: the
+      // glyph reads light on the near-black tile. (The monochrome cut below is
+      // the one that must be pure white.)
+      expect(pixel[3], 255, reason: 'the glyph is opaque somewhere');
+      for (final channel in pixel.take(3)) {
+        expect(channel, greaterThan(120), reason: 'the glyph stays light on ink');
+      }
+      final monoBytes = File('$res/mipmap-xxxhdpi/ic_launcher_monochrome.png').readAsBytesSync();
+      final monoRgba = (await tester.runAsync(() async {
+        final frame = await (await ui.instantiateImageCodec(monoBytes)).getNextFrame();
+        return await frame.image.toByteData();
+      }))!;
+      var monoAt = 0;
+      while (monoAt + 3 < monoRgba.lengthInBytes && monoRgba.getUint8(monoAt + 3) != 255) {
+        monoAt += 4;
+      }
+      for (final channel in [for (var i = 0; i < 3; i++) monoRgba.getUint8(monoAt + i)]) {
+        expect(channel, 255, reason: 'the monochrome (themed) cut is white');
+      }
     });
   });
 

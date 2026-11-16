@@ -7,9 +7,11 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../chat/support/harness.dart' show pumpFrames, testApp;
 
+void _ignoreQuote(String _) {}
+
 void main() {
   testWidgets('a Bot reply offers copy and share on long press', (tester) async {
-    await tester.pumpWidget(testApp(const Scaffold(body: BotReplyText(text: '写好了'))));
+    await tester.pumpWidget(testApp(Scaffold(body: BotReplyText(text: '写好了', onQuote: (_) {}))));
     await tester.longPress(find.byType(MarkdownBody));
     await pumpFrames(tester, 4);
     expect(find.text('复制'), findsOneWidget);
@@ -35,6 +37,7 @@ void main() {
             item: DsBotItem(kind: DsBotItemKind.bot, text: '收到'),
             bot: const DsBot(id: 'b1', name: 'Writer', sessionId: 'b1c'),
             continued: false,
+            onQuote: _ignoreQuote,
           ),
         ),
       ),
@@ -43,8 +46,8 @@ void main() {
     await pumpFrames(tester, 4);
     expect(find.text('复制'), findsOneWidget);
     expect(find.text('分享'), findsOneWidget);
-    // 群聊不是会话：选择文字不该出现；引用现在是有的。
-    expect(find.text('选择文字'), findsNothing);
+    // A group line is still a line of text: 选择文字 applies; 引用 where given.
+    expect(find.text('选择文字'), findsOneWidget);
     expect(find.text('引用'), findsOneWidget);
   });
 

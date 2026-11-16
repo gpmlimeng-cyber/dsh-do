@@ -210,7 +210,8 @@ void main() {
       expect(tester.getRect(find.text('Chief')).left - tester.getRect(drawer).left, 50);
 
       await tester.tap(find.text('Chief'));
-      await tester.pumpAndSettle();
+      // The chat header's mascot keeps a shared clock running: frames, not settle.
+      await pumpFrames(tester, 8);
       expect(find.byType(BotChatPage), findsOneWidget);
     });
 

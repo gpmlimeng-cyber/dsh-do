@@ -230,15 +230,18 @@ class _NewBotPageState extends ConsumerState<NewBotPage> {
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(color: DshColors.of(context).textTertiary),
                   ),
                   const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  // Narrow screens with large text: the two buttons wrap under
+                  // each other instead of running off the right edge.
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 10,
+                    runSpacing: 8,
                     children: [
                       OutlinedButton(
                         key: const ValueKey('bot-avatar-customize'),
                         onPressed: _customize,
                         child: Text(_t('换个样子', 'Change')),
                       ),
-                      const SizedBox(width: 10),
                       OutlinedButton.icon(
                         key: const ValueKey('bot-avatar-random'),
                         onPressed: _randomize,
