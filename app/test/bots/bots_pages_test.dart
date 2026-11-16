@@ -121,9 +121,15 @@ void main() {
       ),
     );
     await frames(tester);
+    // 档案卡可能被上面的头部挤到折叠线以下，先滚到它再点。
+    await tester.scrollUntilVisible(
+      find.text('模型'),
+      200,
+      scrollable: find.descendant(of: find.byType(BotDetailsPage), matching: find.byType(Scrollable)).first,
+    );
     await tester.tap(find.text('模型'));
     await frames(tester);
-    await tester.tap(find.text('Plain Model'));
+    await tester.tap(find.text('Plain model'));
     await frames(tester);
     expect(fake.calls.lastWhere((call) => call.$1 == 'update-bot').$2, {
       'id': 'm1',
