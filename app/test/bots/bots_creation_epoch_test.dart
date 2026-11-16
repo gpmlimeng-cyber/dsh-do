@@ -14,6 +14,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../chat/support/harness.dart';
+import 'package:dsh_app/state/sessions_state.dart' show sessionsProvider;
+import 'package:dsh_app/state/models_state.dart' show modelCatalogProvider;
+import 'package:dsh_app/state/workspaces_state.dart' show workspacesProvider;
 import 'package:dsh_app/state/usage_state.dart' show SessionUsage, sessionUsageProvider;
 import '../shell/golden_harness.dart' show goldenApp;
 import 'support.dart';
@@ -83,6 +86,9 @@ void main() {
             ),
             overrides: [
               chatProvider.overrideWith2((id) => FakeChatController(id, const ChatState(loading: false))),
+              sessionsProvider.overrideWith(() => FakeSessions(const [])),
+              modelCatalogProvider.overrideWith((_) async => testCatalog),
+              workspacesProvider.overrideWith(FakeWorkspaces.new),
               sessionUsageProvider.overrideWith2((id) => FakeUsage(id, SessionUsage.empty)),
               activeHostProvider.overrideWith(_Host.new),
               activeConnectionProvider.overrideWith((ref) {
