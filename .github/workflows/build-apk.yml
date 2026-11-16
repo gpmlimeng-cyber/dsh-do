@@ -61,7 +61,10 @@ jobs:
         run: |
           sdk="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
           yes | "$sdk/cmdline-tools/latest/bin/sdkmanager" --install "ndk;28.2.13676358" > /dev/null
-          ls "$sdk/ndk"
+          # The image exports ANDROID_NDK_HOME pointing at its own, older NDK;
+          # the helper checks Pkg.Revision and refuses that one.
+          echo "ANDROID_NDK_HOME=$sdk/ndk/28.2.13676358" >> "$GITHUB_ENV"
+          grep Pkg.Revision "$sdk"/ndk/*/source.properties
 
       # The runtime only changes when runtime/** changes: without this, every
       # build re-downloads and re-packs the whole rootfs (ten-ish minutes).
