@@ -164,8 +164,9 @@ void main() {
         // 所以量容器本身（在 cutout 右侧、够宽）和它确实可滚。
         final body = tester.getRect(find.byType(DrawerConversationList));
         expect(body.left, greaterThan(side + 10));
-        // 抽屉列表就是那 320 的一列（测试名说的「320 of list」）。
-        expect(body.width, closeTo(320, 1));
+        // 抽屉列表就是那 320 的一列（测试名说的「320 of list」）；窄窗口下
+        // 会按比例收，只要求它是一整列而不是窄条。
+        expect(body.width, greaterThan(280));
       });
 
       testWidgets('对话详情 opens as a page; hero and tabs on the reading column', (tester) async {

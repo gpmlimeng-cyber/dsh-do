@@ -21,12 +21,15 @@ void main() {
     expect(find.text('重新生成'), findsNothing);
   });
 
-  testWidgets('a line the person wrote offers the same two', (tester) async {
+  testWidgets('a line the person wrote offers copy and select, quote only when given', (tester) async {
     await tester.pumpWidget(testApp(const Scaffold(body: BotUserMessage(text: '你好'))));
     await tester.longPress(find.text('你好'));
     await pumpFrames(tester, 4);
+    // 人的气泡没有「分享」；「引用」只在给了回调时出现。
     expect(find.text('复制'), findsOneWidget);
-    expect(find.text('分享'), findsOneWidget);
+    expect(find.text('选择文字'), findsOneWidget);
+    expect(find.text('分享'), findsNothing);
+    expect(find.text('引用'), findsNothing);
   });
 
   testWidgets('a group line offers the same two', (tester) async {

@@ -58,7 +58,8 @@ void main() {
       expect(card.left, moreOrLessEquals(capsule.left, epsilon: _tol));
       expect(card.right, moreOrLessEquals(capsule.right, epsilon: _tol));
       final heading = (section.widget as SettingsSection).title!;
-      expect(tester.getRect(find.text(heading)).left, moreOrLessEquals(24, epsilon: _tol), reason: heading);
+      // 「Bot」既是组标题也是该组第一个 tile 的标题，取上面那个（组标题）。
+      expect(tester.getRect(find.text(heading).first).left, moreOrLessEquals(24, epsilon: _tol), reason: heading);
 
       // One hue per group.
       final discs = tester.widgetList<SettingsIcon>(
