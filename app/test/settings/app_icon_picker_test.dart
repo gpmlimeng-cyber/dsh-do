@@ -279,10 +279,10 @@ void main() {
 
     testWidgets("墨's glyph colour", (tester) async {
       final bytes = File('$res/mipmap-xxxhdpi/ic_launcher_ink_foreground.png').readAsBytesSync();
-      final rgba = await tester.runAsync(() async {
+      final rgba = (await tester.runAsync(() async {
         final frame = await (await ui.instantiateImageCodec(bytes)).getNextFrame();
-        return (await frame.image.toByteData())!;
-      });
+        return await frame.image.toByteData();
+      }))!;
       // The cut changed with the brand picture, so take the first opaque pixel
       // of the silhouette instead of a fixed point inside the old body.
       var at = 0;
