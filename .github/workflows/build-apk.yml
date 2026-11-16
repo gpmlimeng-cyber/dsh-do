@@ -54,6 +54,15 @@ jobs:
           java -version
           python3 --version
 
+      # The root helper (runtime/tawcroot) is pinned to this NDK, and the
+      # runner image no longer ships it: the APK build failed at
+      # "needs NDK 28.2.13676358" the first time 2.2.2 was attempted.
+      - name: Install the NDK the root helper is pinned to
+        run: |
+          sdk="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          yes | "$sdk/cmdline-tools/latest/bin/sdkmanager" --install "ndk;28.2.13676358" > /dev/null
+          ls "$sdk/ndk"
+
       # The runtime only changes when runtime/** changes: without this, every
       # build re-downloads and re-packs the whole rootfs (ten-ish minutes).
       - name: Restore the bundled runtime
