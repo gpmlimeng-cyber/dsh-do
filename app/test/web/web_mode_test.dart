@@ -408,15 +408,24 @@ void main() {
       expect(find.text('网页首页 {newSession: true}'), findsOneWidget);
     });
 
-    testWidgets('the drawer\'s key switches to the web', (tester) async {
+    // 抽屉的键只发请求，真正切界面的是 Home（它活得比页面久）。所以这里要
+    // 把键放进 ModeHome 里点，别再单独 pump 一个没有监听者的键。
+    testWidgets('the drawer\'s key hands the switch to the home', (tester) async {
       SharedPreferences.setMockInitialValues({UiModeController.key: 'native'});
-      await tester.pumpWidget(testApp(const Scaffold(body: Center(child: WebModeKey()))));
+      await tester.pumpWidget(testApp(
+        ModeHome(
+          native: const Center(child: WebModeKey()),
+          web: (initial) => Text('网页首页 ${initial?.toJson()}'),
+        ),
+        overrides: [currentSessionProvider.overrideWith(() => FixedSession('s1'))],
+      ));
       await tester.pumpAndSettle();
       final container = ProviderScope.containerOf(tester.element(find.byType(WebModeKey)));
       expect(tester.getSize(find.byType(GlassIconButton)), const Size.square(36));
       await tester.tap(find.byType(WebModeKey));
       await tester.pumpAndSettle();
       expect(container.read(uiModeProvider).mode, UiMode.web);
+      expect(find.textContaining('网页首页'), findsOneWidget);
     });
   });
 }
