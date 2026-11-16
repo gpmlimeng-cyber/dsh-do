@@ -8,6 +8,7 @@ import 'dart:ui' as ui;
 
 import 'package:dsh_app/ui/shell/brand_mark.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/widgets.dart' show MediaQuery;
 import 'package:flutter_test/flutter_test.dart';
 
 /// Top and bottom of [char]'s ink, from the top of its line box, drawn in
@@ -69,9 +70,12 @@ Future<Rect> expectBrandLockup(WidgetTester tester, Finder lockup) async {
   final word = tester.getRect(wordFinder);
   final paragraph = tester.renderObject<RenderParagraph>(wordFinder);
   final style = (paragraph.text as TextSpan).style!;
-  final drawn = paragraph.textScaler.scale(style.fontSize!);
+  // 锁排自己那层的缩放：外层（抽屉、分享卡）会对锁排单独缩放，段落上报的
+  // `textScaler` 不是它——用后者算出来的期望值会比实际画出来的大 1/dy。
+  final lockupScaler = MediaQuery.textScalerOf(tester.element(lockup));
+  final drawn = lockupScaler.scale(style.fontSize!);
   final lowercase = label.contains(RegExp('[a-z]'));
-  final (top, bottom, lineHeight) = await inkBand(tester, style, paragraph.textScaler, lowercase ? 'x' : 'H');
+  final (top, bottom, lineHeight) = await inkBand(tester, style, lockupScaler, lowercase ? 'x' : 'H');
   // 单字的行框与整词的行框不一定同高（整词可能回退到别的字体）；按比例把墨带
   // 落回整词自己的行框，否则差的是行框原点，不是字形。
   final dy = word.height / lineHeight;
