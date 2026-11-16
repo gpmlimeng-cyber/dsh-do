@@ -78,7 +78,7 @@ void main() {
       expect(find.text('生成中'), findsOneWidget);
       expect(find.textContaining('生成中 · 0:'), findsNothing);
       expect(find.byType(ActivityStrip), findsOneWidget);
-      expect(find.text('跑'), findsOneWidget);
+      expect(find.text('跑测试'), findsOneWidget);
       // The strip counts the turn, like the header.
       expect(find.text('0:19'), findsOneWidget);
       // The todo bar above the strip carries the count (the strip leaves it
