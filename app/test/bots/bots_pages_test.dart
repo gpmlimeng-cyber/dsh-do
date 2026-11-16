@@ -14,7 +14,6 @@ import 'package:dsh_app/ui/bots/room_details_page.dart';
 import 'package:dsh_app/ui/shell/page_frame.dart';
 import 'package:dsh_app/ui/theme/app_icons.dart';
 import 'package:dsh_client/dsh_client.dart';
-import 'package:dsh_app/state/settings_state.dart' show settingsProvider;
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
@@ -134,7 +133,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.text('模型'),
       200,
-      scrollable: detailsScrollable(BotDetailsPage),
+      scrollable: detailsScrollable(find.byKey(const ValueKey('bot-info-m1'))),
     );
     await tester.tap(find.text('模型'));
     await frames(tester);
@@ -211,7 +210,7 @@ void main() {
       const NewBotPage(),
       transport: fake,
       // 可视化回复默认开：把设置按已加载给出，别让表单去等真实加载。
-      extra: [settingsProvider.overrideWith(FakeSettings.new)],
+      extra: [settingsWith()],
     );
     await tester.tap(find.byKey(const ValueKey('bot-create')));
     await tester.pump();
@@ -270,7 +269,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.text('发布会定在周五下午三点'),
       200,
-      scrollable: detailsScrollable(BotDetailsPage),
+      scrollable: detailsScrollable(find.byKey(const ValueKey('bot-info-m1'))),
     );
     await tester.tap(find.text('发布会定在周五下午三点'));
     await frames(tester, 4);

@@ -109,7 +109,9 @@ void main() {
         await tester.scrollUntilVisible(
           find.text(label),
           250,
-          scrollable: detailsScrollable(isRoom ? RoomDetailsPage : BotDetailsPage),
+          scrollable: isRoom
+              ? detailsScrollable(find.byType(RoomDetailsPage))
+              : detailsScrollable(find.byKey(const ValueKey('bot-info-m1'))),
         );
         await tester.ensureVisible(find.text(label));
         await frames(tester);

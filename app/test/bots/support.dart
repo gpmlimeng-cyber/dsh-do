@@ -177,13 +177,13 @@ List<Override> dsBotOverrides(
   if (workspaces) workspacesProvider.overrideWith(FakeWorkspaces.new),
 ];
 
-/// 详情页（Bot/房间详情）并入对话详情的「信息」页签后，
-/// 外层是水平的 `TabBarView`，内容在里面的 `ListView`。`scrollUntilVisible`
-/// 默认拿 `find.byType(Scrollable).first`，命中的是水平页签，怎么拖都到不了
-/// 目标；这里只取页面子树里的垂直滚动区。
-Finder detailsScrollable(Type page) => find
+/// 详情页并入对话详情的「信息」页签后，外层是水平的 `TabBarView`，内容在
+/// 里面那个垂直 `ListView`。`scrollUntilVisible` 默认拿
+/// `find.byType(Scrollable).first`，命中的是水平页签，怎么拖都到不了目标；
+/// 这里只取 [infoPane]（`bot-info-<id>` / `room-info-<id>`，或整页）里的垂直滚动区。
+Finder detailsScrollable(Finder infoPane) => find
     .descendant(
-      of: find.byType(page),
+      of: infoPane,
       matching: find.byWidgetPredicate(
         (w) => w is Scrollable && (w.axisDirection == AxisDirection.down || w.axisDirection == AxisDirection.up),
       ),
@@ -201,14 +201,9 @@ List<Override> get quietEngine => [
 
 /// Settings already loaded: a page reads `settings.loaded && x` before acting on
 /// a preference, and a test should not race the real load to get there.
-class FakeSettings extends SettingsController {
-  FakeSettings({this.visualReplies = true});
-
-  final bool visualReplies;
-
-  @override
-  AppSettings build() => AppSettings(loaded: true, visualReplies: visualReplies);
-}
+Override settingsWith({bool visualReplies = true}) => settingsProvider.overrideWith(
+  () => shell.FakeSettings(AppSettings(loaded: true, visualReplies: visualReplies)),
+);
 
 /// A workspace list that never asks the host: the page header only needs the state.
 class FakeWorkspaces extends WorkspacesController {
