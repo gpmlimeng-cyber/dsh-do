@@ -282,7 +282,8 @@ void main() {
     expect(_rect(tester, row).height, _near(SessionTile.height));
     // 10 row inset + 30 folder indent + 22 face + 8 gap.
     final title = _rect(tester, find.descendant(of: row, matching: find.text('Chief')));
-    expect(title.left - drawer.left, _near(70));
+    // The face inside a folder is bigger now, so the title starts further in.
+    expect(title.left - drawer.left, _near(80));
   });
 
 }

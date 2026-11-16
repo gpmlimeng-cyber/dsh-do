@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:dsh_app/state/usage_state.dart' show sessionUsageProvider;
 import 'package:dsh_app/state/bots_state.dart';
 import 'package:dsh_app/state/connection_state.dart';
 import 'package:dsh_app/state/hosts_state.dart';
@@ -62,6 +63,7 @@ void main() {
         overrides: [
               chatProvider.overrideWith2((id) => FakeChatController(id, const ChatState(loading: false))),
           activeHostProvider.overrideWith(_Host.new),
+              sessionUsageProvider.overrideWith2((id) => FakeUsage(id, SessionUsage.empty)),
           activeConnectionProvider.overrideWith((ref) {
             final h = ref.watch(activeHostProvider);
             return AsyncData(
