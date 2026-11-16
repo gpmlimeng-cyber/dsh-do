@@ -41,7 +41,9 @@ void main() {
         if (!details) expect(find.text('有成员等你批准'), findsOneWidget);
         await tester.tap(find.text(allow ? '允许本次' : '拒绝'));
         await _frames(tester);
-        expect(fake.endpoints, ['approval-answer', 'state']);
+        // goal 入口恢复后页面挂载时会先取一次 goal-view；只锁「答一次、再刷新」。
+        expect(fake.endpoints.where((e) => e == 'approval-answer'), hasLength(1));
+        expect(fake.endpoints.where((e) => e == 'state'), hasLength(1));
         expect(fake.calls.first.$2, {'id': 'a1', 'choice': allow ? 'allow' : 'reject'});
       });
     }
@@ -56,7 +58,7 @@ void main() {
       await tester.pump();
       expect(tester.widget<FilledButton>(find.widgetWithText(FilledButton, '允许本次')).onPressed, isNull);
       expect(tester.widget<OutlinedButton>(find.widgetWithText(OutlinedButton, '拒绝')).onPressed, isNull);
-      expect(fake.endpoints, ['approval-answer']);
+      expect(fake.endpoints.where((e) => e == 'approval-answer'), hasLength(1));
       gate.completeError(const DshRemoteException('bot/failed', 'raw-secret'));
       await _frames(tester);
       expect(find.byType(SnackBar), findsOneWidget);

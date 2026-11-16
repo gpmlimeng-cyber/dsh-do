@@ -22,6 +22,7 @@ import 'package:dsh_app/ui/chat/widgets/whale_tail.dart' show WhaleSprites;
 import 'package:dsh_app/ui/common/app_sheet.dart' show SheetDragHandle;
 import 'package:dsh_app/ui/session/session_detail_page.dart';
 import 'package:dsh_app/ui/settings/settings_screen.dart';
+import 'package:dsh_app/ui/shell/drawer/drawer_list.dart';
 import 'package:dsh_app/ui/shell/session_search_page.dart';
 import 'package:dsh_app/ui/terminal/terminal_keys.dart';
 import 'package:dsh_app/ui/terminal/terminal_page.dart';
@@ -156,13 +157,15 @@ void main() {
         await _home(tester, win);
         await tester.tap(find.byKey(const ValueKey('chat-menu')));
         await pumpFrames(tester, 8);
-        final search = tester.getRect(find.text('搜索对话').first);
+        // 抽屉的搜索是一颗 36 的圆键，不再有整宽的「搜索对话」条。
+        final search = tester.getRect(find.byKey(const Key('drawer-search-key')));
         expect(search.left, greaterThan(side + 10));
-        // Scrolling the list takes the brand, search and filters with it.
-        final before = tester.getRect(find.text('给设置页加深色模式').last).top;
-        await tester.drag(find.text('给设置页加深色模式').last, const Offset(0, -200));
+        // 列表整块滚：行是懒构建的，头像放大后首屏不一定建到，所以量列表自己。
+        final list = find.descendant(of: find.byType(DrawerConversationList), matching: find.byType(Scrollable));
+        final before = tester.state<ScrollableState>(list).position.pixels;
+        await tester.drag(find.byType(DrawerConversationList), const Offset(0, -200));
         await pumpFrames(tester, 8);
-        expect(tester.getRect(find.text('给设置页加深色模式').last).top, lessThan(before - 150));
+        expect(tester.state<ScrollableState>(list).position.pixels, greaterThan(before + 150));
       });
 
       testWidgets('对话详情 opens as a page; hero and tabs on the reading column', (tester) async {

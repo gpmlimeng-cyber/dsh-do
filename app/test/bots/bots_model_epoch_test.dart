@@ -80,14 +80,13 @@ void main() {
         ),
       );
       await frames(t);
-      final c = ProviderScope.containerOf(t.element(find.byType(BotDetailsPage)));
-      // 档案卡可能被头部挤到折叠线以下，先滚到「模型」那一行。
-      await t.scrollUntilVisible(
-        find.text('模型'),
-        200,
-        scrollable: find.descendant(of: find.byType(BotDetailsPage), matching: find.byType(Scrollable)).first,
-      );
-      await t.tap(find.text('模型'));
+      // 外层薄壳与页签里的 embedded 都是 BotDetailsPage；容器同一个，取第一个。
+      final c = ProviderScope.containerOf(t.element(find.byType(BotDetailsPage).first));
+      // 档案卡可能被头部挤到折叠线以下，先滚到「模型」那一行；只点页签里那份。
+      final pane = find.byKey(const ValueKey('bot-info-m1'));
+      final modelRow = find.descendant(of: pane, matching: find.text('模型'));
+      await t.scrollUntilVisible(modelRow, 200, scrollable: detailsScrollable(pane));
+      await t.tap(modelRow);
       await frames(t);
       switch (change) {
         case 'host':

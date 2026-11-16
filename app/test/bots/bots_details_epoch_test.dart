@@ -93,8 +93,10 @@ void main() {
           ),
         );
         await frames(tester);
+        // 详情页恢复后，「Bot 详情」是外层薄壳 + 页签里的 embedded 两份，
+        // byType 会命中两处；容器是同一个，取第一个就够。
         final container = ProviderScope.containerOf(
-          tester.element(isRoom ? find.byType(RoomDetailsPage) : find.byType(BotDetailsPage)),
+          tester.element(isRoom ? find.byType(RoomDetailsPage) : find.byType(BotDetailsPage).first),
         );
         final label = switch (action) {
           'bot-delete' => appL10n.botsDeleteBot,
@@ -106,19 +108,16 @@ void main() {
           _ => appL10n.botsAddMemory,
         };
         // 详情的「信息」页签外层是水平页签，滚它到不了目标；只滚内容本身。
-        await tester.scrollUntilVisible(
-          find.text(label),
-          250,
-          scrollable: isRoom
-              ? detailsScrollable(find.byType(RoomDetailsPage))
-              : detailsScrollable(find.byKey(const ValueKey('bot-info-m1'))),
-        );
-        await tester.ensureVisible(find.text(label));
+        // 文本也只在页签里那一份上点：`find.text` 全局找会连外层一起命中。
+        final pane = isRoom ? find.byType(RoomDetailsPage) : find.byKey(const ValueKey('bot-info-m1'));
+        final target = find.descendant(of: pane, matching: find.text(label));
+        await tester.scrollUntilVisible(target, 250, scrollable: detailsScrollable(pane));
+        await tester.ensureVisible(target);
         await frames(tester);
-        await tester.tap(find.text(label));
+        await tester.tap(target);
         await frames(tester);
         if (action == 'memory-edit') {
-          await tester.tap(find.text(appL10n.commonEdit));
+          await tester.tap(find.descendant(of: pane, matching: find.text(appL10n.commonEdit)));
           await frames(tester);
         }
         if (!action.endsWith('delete') && action != 'room-member') {

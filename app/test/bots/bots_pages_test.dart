@@ -129,15 +129,14 @@ void main() {
       ),
     );
     await frames(tester);
-    // 档案卡可能被上面的头部挤到折叠线以下，先滚到它再点。
-    await tester.scrollUntilVisible(
-      find.text('模型'),
-      200,
-      scrollable: detailsScrollable(find.byKey(const ValueKey('bot-info-m1'))),
-    );
-    await tester.tap(find.text('模型'));
+    // 档案卡可能被上面的头部挤到折叠线以下，先滚到它再点；只点页签里那份。
+    final pane = find.byKey(const ValueKey('bot-info-m1'));
+    final modelRow = find.descendant(of: pane, matching: find.text('模型'));
+    await tester.scrollUntilVisible(modelRow, 200, scrollable: detailsScrollable(pane));
+    await tester.tap(modelRow);
     await frames(tester);
-    await tester.tap(find.text('Plain model'));
+    // 面板上的名字走 shortModelName：每个词首字母大写。
+    await tester.tap(find.text('Plain Model'));
     await frames(tester);
     expect(fake.calls.lastWhere((call) => call.$1 == 'update-bot').$2, {
       'id': 'm1',
@@ -271,7 +270,9 @@ void main() {
       200,
       scrollable: detailsScrollable(find.byKey(const ValueKey('bot-info-m1'))),
     );
-    await tester.tap(find.text('发布会定在周五下午三点'));
+    // 条目本身是 ListPageRow 的 onTap；点文本命中的可能是它上面那层 Opacity。
+    final entry = find.ancestor(of: find.text('发布会定在周五下午三点'), matching: find.byType(ListPageRow));
+    await tester.tap(entry.last);
     await frames(tester, 4);
     await tester.tap(find.text('编辑'));
     await frames(tester, 4);

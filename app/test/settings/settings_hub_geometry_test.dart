@@ -45,7 +45,8 @@ void main() {
     await tester.pumpAndSettle();
 
     final sections = tester.widgetList<SettingsSection>(find.byType(SettingsSection)).toList();
-    expect([for (final s in sections) s.title], ['AI', '能力', '外观', '通用', '主机', '帮助与关于']);
+    // 「Bot」组是合并后加回来的，排在 AI 之后。
+    expect([for (final s in sections) s.title], ['AI', 'Bot', '能力', '外观', '通用', '主机', '帮助与关于']);
 
     final capsule = tester.getRect(find.byType(SearchCapsuleButton));
     for (final section in find.byType(SettingsSection).evaluate()) {
