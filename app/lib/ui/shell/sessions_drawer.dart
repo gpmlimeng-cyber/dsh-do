@@ -172,11 +172,13 @@ class SessionsDrawer extends ConsumerWidget {
                       const SizedBox(width: 8),
                       const WebModeKey(tier: GlassTier.pill),
                       const SizedBox(width: 8),
+                      SessionSearchBar(onClose: onClose),
+                      const SizedBox(width: 8),
                       // When even the lockup's room is not enough, 新对话
                       // keeps its glyph and lets its words go.
                       NewChatButton(
                         onTap: newChat,
-                        compact: NewChatButton.widthOf(context) > box.maxWidth - (36 + 8 + 36 + 8),
+                        compact: NewChatButton.widthOf(context) > box.maxWidth - (36 + 8 + 36 + 8 + 36 + 8),
                       ),
                     ],
                   ),
@@ -187,7 +189,6 @@ class SessionsDrawer extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
         onDetails: () => onOpen(DrawerDestination.engine),
       ),
-      SessionSearchBar(onClose: onClose),
       // The workspace switcher (once the host's workspace list has
       // arrived) and the list's options, then the status filters.
       SmoothSize(

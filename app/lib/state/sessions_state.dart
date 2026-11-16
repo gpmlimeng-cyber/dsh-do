@@ -11,6 +11,7 @@ import '../companion/companion_state.dart';
 import '../runtime/runtime_state.dart';
 import 'connection_state.dart';
 import 'hosts_state.dart';
+import 'last_conversation.dart';
 import 'read_list_cache.dart';
 import 'read_list_identity.dart';
 import 'settings_state.dart';
@@ -972,12 +973,22 @@ class CurrentSessionController extends Notifier<String?> {
     }
   }
 
+  /// Picks the conversation on screen, and remembers it for the next launch.
+  ///
+  /// What a cold start reopens is [LastConversation]: a native session here,
+  /// a Bot's chat or a group's from their own pages.
   void select(String? sessionId) {
     _selectionRevision++;
     _touched = true;
     final host = ref.read(activeHostProvider);
+    // Read here, not after the first await: this notifier can be disposed
+    // while the preferences write is still in flight.
+    final store = ref.read(lastConversationStoreProvider);
     ref.read(pendingSessionFolderProvider.notifier).select(null);
     state = sessionId;
+    // The shared record first: it is what a cold start reads, and a caller may
+    // read it right after choosing (the per-host key follows in its own write).
+    unawaited(sessionId == null ? store.forget() : store.rememberSession(sessionId));
     unawaited(_persist(host, sessionId));
   }
 

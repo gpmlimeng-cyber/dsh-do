@@ -1636,7 +1636,7 @@ class _TavernChatPageState extends ConsumerState<TavernChatPage> {
             child: layout == TavernLayout.visualNovel
                 ? ListenableBuilder(
                     listenable: _live,
-                    builder: (context, _) => TavernVisualNovelView(
+                    builder: (context, _) => _AboveComposer(child: TavernVisualNovelView(
                       pages: [
                         ...tavernPages(
                           messages ?? const [],
@@ -1695,7 +1695,7 @@ class _TavernChatPageState extends ConsumerState<TavernChatPage> {
                               onSibling: (d) => unawaited(_sibling(m, d)),
                             )
                           : null,
-                    ),
+                    )),
                   )
                 : canvas
                 ? ref.watch(tavernCanvasBuilderProvider)(
@@ -1744,11 +1744,16 @@ class _TavernChatPageState extends ConsumerState<TavernChatPage> {
                       // A tap on the story brings the header and the box back.
                       behavior: HitTestBehavior.translucent,
                       onTap: () => _immersive.value = false,
-                      child: ListView(
+                      child: Builder(builder: (context) {
+                        final composer = ComposerInsetScope.maybeOf(context);
+                        Widget list(double inset) => ListView(
                         key: const ValueKey('tavern-transcript'),
                         controller: _transcript,
                         reverse: true,
-                        padding: EdgeInsets.fromLTRB(16, 12, 16, topInset + 8),
+                        // EdgeInsets stay physical in a reversed list: the
+                        // composer's measured height keeps the newest row (its
+                        // dice and memory buttons) above the plate.
+                        padding: EdgeInsets.fromLTRB(16, 12, 16, topInset + 8 + inset),
                         children: [
                           // Keyed by message: a new one below keeps each row's
                           // state with its message, not with its place.
@@ -1768,7 +1773,14 @@ class _TavernChatPageState extends ConsumerState<TavernChatPage> {
                               child: Center(child: QuietSpinner()),
                             ),
                         ],
-                      ),
+                        );
+                        return composer == null
+                            ? list(0)
+                            : ValueListenableBuilder<double>(
+                                valueListenable: composer,
+                                builder: (_, height, _) => list(height),
+                              );
+                      }),
                     ),
                   ),
           ),
@@ -2988,6 +3000,25 @@ class TavernChapterBreak extends StatelessWidget {
           line,
         ],
       ),
+    );
+  }
+}
+
+/// Keeps a full-height scene clear of the composer's plate: the body runs
+/// behind the plate, so the scene (a visual-novel page, its box) must end
+/// above it instead of under it.
+class _AboveComposer extends StatelessWidget {
+  const _AboveComposer({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final height = ComposerInsetScope.maybeOf(context);
+    if (height == null) return child;
+    return ValueListenableBuilder<double>(
+      valueListenable: height,
+      builder: (context, value, _) => Padding(padding: EdgeInsets.only(bottom: value), child: child),
     );
   }
 }

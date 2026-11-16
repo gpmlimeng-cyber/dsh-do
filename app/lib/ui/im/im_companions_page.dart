@@ -267,7 +267,7 @@ class _CompanionRow extends StatelessWidget {
         : null;
     return Semantics(
       button: true,
-      label: [bot.name, oneLiner, if (statusText != null) statusText].join('，'),
+      label: [bot.name, oneLiner, ?statusText].join('，'),
       excludeSemantics: true,
       child: Material(
         color: theme.colorScheme.surfaceContainerLow,

@@ -116,8 +116,7 @@ RoomStatus roomStatusOf({
     others: others,
     otherBots: [
       for (final work in working)
-        if (work.botId != mainWork?.botId)
-          if (team.bot(work.botId) case final other?) other,
+        if (work.botId != mainWork?.botId) ?team.bot(work.botId),
     ],
     members: room.members.length,
     sessionId: mainBot == null ? null : _memberSession(room, mainBot),

@@ -131,7 +131,7 @@ class BackdropVeil extends StatelessWidget {
 
   /// The page's own backdrop over the whole box it is given (the composer's
   /// plate): [opacity] below 1 lets the conversation behind show through.
-  BackdropVeil.area({super.key, this.feather = 14, this.glow = true, this.opacity = 0.86})
+  const BackdropVeil.area({super.key, this.feather = 14, this.glow = true, this.opacity = 0.86})
     : solidHeight = const _FixedHeight(100000),
       featherShare = null,
       inside = false,
@@ -139,7 +139,7 @@ class BackdropVeil extends StatelessWidget {
 
   /// 底部整块渐变:板子多高就覆盖多高,从顶边的全透明缓到底边的实心 —— 输入框
   /// 和它上面那行活动条一起落在渐变里,不再在板子上方另起一段。
-  BackdropVeil.inside({super.key, required this.solidHeight, this.glow = true, this.opacity = 0.86})
+  const BackdropVeil.inside({super.key, required this.solidHeight, this.glow = true, this.opacity = 0.86})
     : feather = 0,
       featherShare = null,
       inside = true,

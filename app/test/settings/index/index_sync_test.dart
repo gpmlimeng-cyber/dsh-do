@@ -63,7 +63,7 @@ final Map<SettingsPageId, List<String Function(L10n)>> _unlisted = {
   SettingsPageId.pets: [(l) => l.botsPetShowNow, (l) => l.botsPetSwitchDisabled, (l) => l.botsPetHiddenToday],
   SettingsPageId.remote: [(l) => l.remoteWebConsole],
   // 上游 1.1.0 在设置首页加的「Bot」分组：直达 DS Bot 页，不是可检索的设置项。
-  SettingsPageId.hub: [(l) => l.hubGroupBot],
+  SettingsPageId.hub: [(l) => l.hubGroupBot, (l) => l.hubBotThinking, (l) => l.hubFlatBubbles],
 };
 
 /// Entries whose row shows the thing itself rather than the page's name

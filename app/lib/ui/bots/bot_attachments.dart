@@ -151,7 +151,7 @@ Widget? botLineAttachments(
   // 这一版不再渲染文件，也不收 onOpenFile。
   final parts = <Widget>[
     if (images.isNotEmpty) SentAttachments.echoed(sessionId: sessionId, images: images, files: const []),
-    if (cards != null) cards,
+    ?cards,
   ];
   if (parts.isEmpty) return null;
   return parts.length == 1 ? parts.first : Column(

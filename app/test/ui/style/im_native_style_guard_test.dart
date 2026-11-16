@@ -20,8 +20,8 @@ const _scanned = ['lib/ui/im', 'lib/ui/mascots'];
 const _paintFiles = {'lib/ui/mascots/mascot_avatar.dart'};
 
 /// 命中：行号（从 1 开始）与整行原文，报错时直接能定位。
-class _Hit {
-  const _Hit(this.line, this.text);
+class StyleHit {
+  const StyleHit(this.line, this.text);
   final int line;
   final String text;
 }
@@ -98,28 +98,28 @@ String _codeOnly(String source) {
 /// [identBoundary] 为真时，要求命中点前面不是标识符字符——用来把
 /// `FooColor(0x...)` 这类自定义类排除在界面色值之外。圆角规则关掉它，
 /// 这样 `BorderRadius.circular(24)` 和 `Radius.circular(24)` 一样被当作裸半径。
-List<_Hit> _scan(String source, RegExp pattern, {bool identBoundary = true}) {
+List<StyleHit> _scan(String source, RegExp pattern, {bool identBoundary = true}) {
   final code = _codeOnly(source);
   final sourceLines = source.split('\n');
-  final hits = <_Hit>[];
+  final hits = <StyleHit>[];
   for (final match in pattern.allMatches(code)) {
     if (identBoundary && match.start > 0 && _isIdentCode(code.codeUnitAt(match.start - 1))) {
       continue;
     }
     final line = '\n'.allMatches(code.substring(0, match.start)).length + 1;
     final text = line <= sourceLines.length ? sourceLines[line - 1].trim() : '';
-    hits.add(_Hit(line, text));
+    hits.add(StyleHit(line, text));
   }
   return hits;
 }
 
 /// 十六进制色值：`Color(0xFF112233)`。
-List<_Hit> hexColorHits(String source) =>
+List<StyleHit> hexColorHits(String source) =>
     _scan(source, RegExp(r'Color\(\s*0x[0-9a-fA-F]'));
 
 /// 数字字面量半径：`Radius.circular(8)`、`BorderRadius.circular(24)`。
 /// 只认纯数字参数，`Radius.circular(r.width * 0.1)` 这类按比例算的不算。
-List<_Hit> numericRadiusHits(String source) => _scan(
+List<StyleHit> numericRadiusHits(String source) => _scan(
       source,
       RegExp(r'Radius\.circular\(\s*[0-9]+(?:\.[0-9]+)?\s*\)'),
       identBoundary: false,

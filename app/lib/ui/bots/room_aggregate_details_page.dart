@@ -338,7 +338,7 @@ class _RoomChangesTab extends ConsumerWidget {
             children: [
               for (final (i, file) in files.indexed)
                 ListPageRow(
-                  icon: file.created ? AppIcons.newChat : AppIcons.document,
+                  icon: file.created ? AppIcons.fileNew : AppIcons.file,
                   title: file.fileName,
                   subtitle: [
                     if (file.directory.isNotEmpty) file.directory,

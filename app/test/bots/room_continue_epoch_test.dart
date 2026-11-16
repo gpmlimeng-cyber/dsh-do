@@ -1,6 +1,7 @@
 // Regression based on the independent W1 review reproducer.
 import 'dart:async';
 
+import 'package:dsh_app/state/usage_state.dart' show SessionUsage, sessionUsageProvider;
 import 'package:dsh_app/state/bots_state.dart';
 import 'package:dsh_app/state/connection_state.dart';
 import 'package:dsh_app/state/hosts_state.dart';
@@ -50,6 +51,7 @@ void main() {
         overrides: [
               chatProvider.overrideWith2((id) => FakeChatController(id, const ChatState(loading: false))),
           activeHostProvider.overrideWith(_Host.new),
+              sessionUsageProvider.overrideWith2((id) => FakeUsage(id, SessionUsage.empty)),
           activeConnectionProvider.overrideWith((ref) {
             final host = ref.watch(activeHostProvider);
             return AsyncData(

@@ -120,12 +120,6 @@ class AboutPage extends ConsumerWidget {
                 textAlign: TextAlign.center,
                 style: theme.textTheme.labelSmall?.copyWith(color: colors.textTertiary),
               ),
-              const SizedBox(height: 8),
-              Text(
-                AppInfo.disclaimer,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.labelSmall?.copyWith(color: colors.textTertiary),
-              ),
             ],
           ),
         ),
