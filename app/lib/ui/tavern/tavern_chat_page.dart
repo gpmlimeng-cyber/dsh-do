@@ -1636,7 +1636,7 @@ class _TavernChatPageState extends ConsumerState<TavernChatPage> {
             child: layout == TavernLayout.visualNovel
                 ? ListenableBuilder(
                     listenable: _live,
-                    builder: (context, _) => TavernVisualNovelView(
+                    builder: (context, _) => _AboveComposer(child: TavernVisualNovelView(
                       pages: [
                         ...tavernPages(
                           messages ?? const [],
@@ -1695,7 +1695,7 @@ class _TavernChatPageState extends ConsumerState<TavernChatPage> {
                               onSibling: (d) => unawaited(_sibling(m, d)),
                             )
                           : null,
-                    ),
+                    )),
                   )
                 : canvas
                 ? ref.watch(tavernCanvasBuilderProvider)(
@@ -2999,6 +2999,25 @@ class TavernChapterBreak extends StatelessWidget {
           line,
         ],
       ),
+    );
+  }
+}
+
+/// Keeps a full-height scene clear of the composer's plate: the body runs
+/// behind the plate, so the scene (a visual-novel page, its box) must end
+/// above it instead of under it.
+class _AboveComposer extends StatelessWidget {
+  const _AboveComposer({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final height = ComposerInsetScope.maybeOf(context);
+    if (height == null) return child;
+    return ValueListenableBuilder<double>(
+      valueListenable: height,
+      builder: (context, value, _) => Padding(padding: EdgeInsets.only(bottom: value), child: child),
     );
   }
 }
