@@ -18,63 +18,38 @@ import '../common/side_insets.dart';
 import '../common/status_dot.dart';
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
+import '../bots/bot_session_routing.dart';
 import 'drawer/session_deletion.dart';
 import 'page_frame.dart';
 import 'sessions_drawer.dart' show sessionSelectionColor, sessionTitle;
 
-/// "搜索对话" at the top of the sessions drawer. Opens [SessionSearchPage];
-/// picking a result opens that conversation and closes the drawer.
+/// "搜索对话" beside 网页模式 in the sessions drawer: a key, not a bar.
+/// Opens [SessionSearchPage]; picking a result opens that conversation (a
+/// Bot's or a group's own page included) and closes the drawer.
 class SessionSearchBar extends ConsumerWidget {
-  const SessionSearchBar({super.key, required this.onClose, this.padding = const EdgeInsets.fromLTRB(10, 2, 10, 6)});
+  const SessionSearchBar({super.key, required this.onClose});
 
   /// Closes the drawer.
   final VoidCallback onClose;
-  final EdgeInsetsGeometry padding;
 
   Future<void> _open(BuildContext context, WidgetRef ref) async {
     final sessionId = await showSessionSearch(context);
     if (sessionId == null || !context.mounted) return;
-    ref.read(currentSessionProvider.notifier).select(sessionId);
+    final container = ProviderScope.containerOf(context, listen: false);
+    // A Bot's or group's chat opens its page; the drawer closes either way.
+    if (await openTeamChatIfOwned(context, ref, sessionId, beforeOpen: onClose)) return;
+    container.read(currentSessionProvider.notifier).select(sessionId);
     onClose();
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = context.l10n;
-    final theme = Theme.of(context);
-    final tertiary = DshColors.of(context).textTertiary;
-    return Padding(
-      key: const ValueKey('drawer-search-key'),
-      padding: padding,
-      child: Semantics(
-        button: true,
-        label: l10n.shellSearchChats,
-        onTap: () => _open(context, ref),
-        excludeSemantics: true,
-        child: GlassSurface(
-          tier: GlassTier.pill,
-          stadium: true,
-          onTap: () => _open(context, ref),
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 40),
-            child: Row(
-              children: [
-                Icon(AppIcons.search, size: 20, color: tertiary),
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    l10n.shellSearchChats,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium?.copyWith(color: tertiary),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+    return GlassIconButton(
+      key: const Key('drawer-search-key'),
+      icon: AppIcons.search,
+      tooltip: context.l10n.shellSearchChats,
+      size: 36,
+      onPressed: () => _open(context, ref),
     );
   }
 }
