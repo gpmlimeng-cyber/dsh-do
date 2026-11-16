@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
 import '../../state/adaptive_layout_state.dart';
+import '../../state/bots_state.dart' show dsBotProvider;
 import '../../state/agents_state.dart';
 import '../../state/app_notes.dart';
 import '../../state/chat_state.dart';
