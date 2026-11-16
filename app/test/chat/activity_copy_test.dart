@@ -333,9 +333,9 @@ void main() {
       final s = runInfoState();
       final a = runActivityOf(s)!;
       expect(a.kind, ActivityKind.tool);
-      expect(a.title, '跑');
-      expect(a.detail, 'flutter test');
-      expect(a.detailIsCode, isTrue);
+      // 命令类活动行只说人话：flutter test 归到「跑测试」，命令原文不摆上来。
+      expect(a.title, '跑测试');
+      expect(a.detail, isEmpty);
       expect(a.since, runInfoTestDispatched);
       expect(a.turnStart, runInfoTurnTwoStart);
       expect(a.narration, isNull, reason: 'tools have their own detail');

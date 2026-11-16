@@ -95,8 +95,10 @@ void main() {
         _line(DsBotItemKind.bot, 'b3'),
       ];
       final shown = visibleRoomItems(items, RoomMessageMode.member('b3'));
-      expect(shown.length, 1);
-      expect(shown.single.botId, 'b3');
+      // 成员视图保留「我」说的话（否则回复会接不上话头），只滤掉别的成员。
+      expect(shown.length, 2);
+      expect(shown.first.kind, DsBotItemKind.user);
+      expect(shown.last.botId, 'b3');
     });
   });
 }
