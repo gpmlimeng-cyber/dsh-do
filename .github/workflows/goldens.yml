@@ -137,5 +137,6 @@ jobs:
           tag="goldens-$(date -u +%Y%m%d-%H%M)-${GITHUB_SHA::7}"
           tar czf goldens.tgz -C golden-updates .
           gh release create "$tag" goldens.tgz --prerelease \
+            --repo "$GITHUB_REPOSITORY" \
             --title "Goldens ${GITHUB_SHA::7}" \
             --notes "Regenerated golden screenshots from ${GITHUB_SHA}."
