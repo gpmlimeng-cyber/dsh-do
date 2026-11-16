@@ -189,31 +189,26 @@ class _RingPainter extends CustomPainter {
   bool shouldRepaint(_RingPainter old) => old.color != color || old.icon != icon || old.mask != mask;
 }
 
-/// How each launcher icon is drawn: the gradient of its background layer
-/// (`res/drawable/ic_launcher[_<name>]_background.xml`, the same diagonal for
-/// all four) and its glyph.
+/// How each launcher icon is drawn: the flat colour of its background layer
+/// (`res/drawable/ic_launcher[_<name>]_background.xml`, one solid colour per
+/// look, the brand picture's own edge tone) and its glyph.
 class AppIconArt {
-  const AppIconArt._(this.from, this.to, this.glyph, [this.mono]);
+  const AppIconArt._(this.background, this.glyph, [this.mono]);
 
-  /// Top-left and bottom-right of the background gradient.
-  final Color from;
-  final Color to;
+  /// The background layer's solid colour.
+  final Color background;
   final AppIconGlyph glyph;
 
   /// The flat glyph colour, for [AppIconGlyph.mono].
   final Color? mono;
 
-  /// The gradient's ends in the launcher's 108 grid (ic_launcher_background.xml).
-  static const start = Offset(7.57, -5.87);
-  static const end = Offset(100.43, 113.87);
-
   static AppIconArt of(AppIcon icon) => switch (icon) {
-    // The default icon; on the phone its glyph is the original art, here the
-    // brand master's glass (the same fit).
-    AppIcon.mist => const AppIconArt._(Color(0xFF9AB0E8), Color(0xFF405AAD), AppIconGlyph.glassDark),
-    AppIcon.night => const AppIconArt._(Color(0xFF2C3D6C), Color(0xFF0C122D), AppIconGlyph.glassDark),
-    AppIcon.frost => const AppIconArt._(Color(0xFFFCFDFF), Color(0xFFDDE5F8), AppIconGlyph.glassLight),
-    AppIcon.ink => const AppIconArt._(Color(0xFF292B30), Color(0xFF0D0E11), AppIconGlyph.mono, Color(0xFFF5F7FB)),
+    // The default icon: the brand picture's edge colour, as the adaptive
+    // background and the launcher tile are drawn from one master.
+    AppIcon.mist => const AppIconArt._(Color(0xFF091928), AppIconGlyph.glassDark),
+    AppIcon.night => const AppIconArt._(Color(0xFF0A112A), AppIconGlyph.glassDark),
+    AppIcon.frost => const AppIconArt._(Color(0xFFEEF2F5), AppIconGlyph.glassLight),
+    AppIcon.ink => const AppIconArt._(Color(0xFF020403), AppIconGlyph.mono, Color(0xFFFFFFFF)),
   };
 }
 
