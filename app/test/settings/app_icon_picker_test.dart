@@ -272,9 +272,9 @@ void main() {
             Color(int.parse(m.group(1)!, radix: 16)),
         ];
         final art = AppIconArt.of(icon);
-        expect(colors, [art.from, art.to], reason: file);
-        expect(Offset(attr('startX'), attr('startY')), AppIconArt.start, reason: file);
-        expect(Offset(attr('endX'), attr('endY')), AppIconArt.end, reason: file);
+        // The background layer is one solid colour now, not a gradient: the
+        // launcher art is cut from the brand picture and carries its edge tone.
+        expect(colors, [art.background], reason: file);
       }
     });
 
@@ -284,11 +284,15 @@ void main() {
         final frame = await (await ui.instantiateImageCodec(bytes)).getNextFrame();
         return (await frame.image.toByteData())!;
       });
-      // Inside the body (108 grid (53.5, 70)), at 4 px per unit.
-      final at = (280 * 432 + 214) * 4;
+      // The cut changed with the brand picture, so take the first opaque pixel
+      // of the silhouette instead of a fixed point inside the old body.
+      var at = 0;
+      while (at + 3 < rgba!.lengthInBytes && rgba!.getUint8(at + 3) != 255) {
+        at += 4;
+      }
       final pixel = [for (var i = 0; i < 4; i++) rgba!.getUint8(at + i)];
       final mono = AppIconArt.of(AppIcon.ink).mono!;
-      expect(pixel[3], 255);
+      expect(pixel[3], 255, reason: 'the mono cut is opaque somewhere');
       expect(pixel[0], closeTo((mono.r * 255).round(), 2));
       expect(pixel[1], closeTo((mono.g * 255).round(), 2));
       expect(pixel[2], closeTo((mono.b * 255).round(), 2));
