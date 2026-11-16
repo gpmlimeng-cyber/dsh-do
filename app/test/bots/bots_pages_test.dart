@@ -11,6 +11,7 @@ import 'package:dsh_app/ui/bots/new_bot_page.dart';
 import 'package:dsh_app/ui/bots/new_room_sheet.dart';
 import 'package:dsh_app/ui/bots/room_chat_page.dart';
 import 'package:dsh_app/ui/bots/room_details_page.dart';
+import 'package:dsh_app/ui/common/list_page_row.dart';
 import 'package:dsh_app/ui/shell/page_frame.dart';
 import 'package:dsh_app/ui/theme/app_icons.dart';
 import 'package:dsh_client/dsh_client.dart';
