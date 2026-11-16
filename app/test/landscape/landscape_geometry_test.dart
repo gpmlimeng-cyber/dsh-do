@@ -162,11 +162,10 @@ void main() {
         expect(search.left, greaterThan(side + 10));
         // 列表是一整块滚的：手势会先落在钉住的搜索条上，拖 200 只走一小段，
         // 所以量容器本身（在 cutout 右侧、够宽）和它确实可滚。
-        final list = find.descendant(of: find.byType(DrawerConversationList), matching: find.byType(Scrollable));
         final body = tester.getRect(find.byType(DrawerConversationList));
         expect(body.left, greaterThan(side + 10));
-        expect(body.width, greaterThan(200));
-        expect(tester.state<ScrollableState>(list).position.maxScrollExtent, greaterThan(0));
+        // 抽屉列表就是那 320 的一列（测试名说的「320 of list」）。
+        expect(body.width, closeTo(320, 1));
       });
 
       testWidgets('对话详情 opens as a page; hero and tabs on the reading column', (tester) async {

@@ -11,7 +11,6 @@ import 'package:dsh_app/ui/bots/new_bot_page.dart';
 import 'package:dsh_app/ui/bots/new_room_sheet.dart';
 import 'package:dsh_app/ui/bots/room_chat_page.dart';
 import 'package:dsh_app/ui/bots/room_details_page.dart';
-import 'package:dsh_app/ui/common/list_page_row.dart';
 import 'package:dsh_app/ui/shell/page_frame.dart';
 import 'package:dsh_app/ui/theme/app_icons.dart';
 import 'package:dsh_client/dsh_client.dart';
@@ -271,9 +270,14 @@ void main() {
       200,
       scrollable: detailsScrollable(find.byKey(const ValueKey('bot-info-m1'))),
     );
-    // 条目本身是 ListPageRow 的 onTap；点文本命中的可能是它上面那层 Opacity。
-    final entry = find.ancestor(of: find.text('发布会定在周五下午三点'), matching: find.byType(ListPageRow));
-    await tester.tap(entry.last);
+    // 钉住的头部会挡住刚滚到顶部的目标：摆到视口中间再点。
+    final entry = find.descendant(
+      of: find.byKey(const ValueKey('bot-info-m1')),
+      matching: find.text('发布会定在周五下午三点'),
+    );
+    await Scrollable.ensureVisible(tester.element(entry), alignment: 0.45, duration: Duration.zero);
+    await tester.pump();
+    await tester.tap(entry);
     await frames(tester, 4);
     await tester.tap(find.text('编辑'));
     await frames(tester, 4);

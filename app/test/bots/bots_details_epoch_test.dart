@@ -7,7 +7,6 @@ import 'package:dsh_app/state/features_state.dart' show permissionStateProvider;
 import 'package:dsh_app/state/models_state.dart' show modelCatalogProvider;
 import 'package:dsh_app/ui/bots/bot_details_page.dart';
 import 'package:dsh_app/ui/bots/room_details_page.dart';
-import 'package:dsh_app/ui/common/list_page_row.dart';
 import 'package:dsh_client/dsh_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -123,7 +122,8 @@ void main() {
         await tester.tap(tapTarget);
         await frames(tester);
         if (action == 'memory-edit') {
-          await tester.tap(find.descendant(of: pane, matching: find.text(appL10n.commonEdit)));
+          // 编辑按钮在记忆条的 modal sheet 里，不在详情页子树内。
+          await tester.tap(find.text(appL10n.commonEdit));
           await frames(tester);
         }
         if (!action.endsWith('delete') && action != 'room-member') {
