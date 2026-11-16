@@ -14,7 +14,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// [style] with [scaler] (rendered at 8× and read at half coverage). Any word in
 /// the same style puts its glyphs on the same baseline in its box, so this is
 /// the band the word's lowercase (or capitals) occupy on screen.
-Future<(double, double)> inkBand(WidgetTester tester, TextStyle style, TextScaler scaler, String char) async {
+Future<(double, double, double)> inkBand(WidgetTester tester, TextStyle style, TextScaler scaler, String char) async {
   const k = 8.0;
   final painter = TextPainter(
     text: TextSpan(
@@ -26,6 +26,9 @@ Future<(double, double)> inkBand(WidgetTester tester, TextStyle style, TextScale
   )..layout();
   final w = (painter.width * k).ceil();
   final h = (painter.height * k).ceil();
+  // 这个字自己那一行的行框高：整词的行框可能因为它回退到了别的字体而更高，
+  // 两者的行框顶不是同一个原点。
+  final lineHeight = painter.height;
   final recorder = ui.PictureRecorder();
   painter.paint(Canvas(recorder)..scale(k), Offset.zero);
   painter.dispose();
@@ -54,7 +57,7 @@ Future<(double, double)> inkBand(WidgetTester tester, TextStyle style, TextScale
     bottom--;
   }
   if (top >= h) throw StateError('no ink for $char');
-  return (top / k, (bottom + 1) / k);
+  return (top / k, (bottom + 1) / k, lineHeight);
 }
 
 /// The lockup found by [lockup] is built to the rules (see [BrandLockup]).
@@ -68,9 +71,15 @@ Future<Rect> expectBrandLockup(WidgetTester tester, Finder lockup) async {
   final style = (paragraph.text as TextSpan).style!;
   final drawn = paragraph.textScaler.scale(style.fontSize!);
   final lowercase = label.contains(RegExp('[a-z]'));
-  final (top, bottom) = await inkBand(tester, style, paragraph.textScaler, lowercase ? 'x' : 'H');
-  final band = (word.top + top, word.top + bottom);
+  final (top, bottom, lineHeight) = await inkBand(tester, style, paragraph.textScaler, lowercase ? 'x' : 'H');
+  // 单字的行框与整词的行框不一定同高（整词可能回退到别的字体）；按比例把墨带
+  // 落回整词自己的行框，否则差的是行框原点，不是字形。
+  final dy = word.height / lineHeight;
+  final band = (word.top + top * dy, word.top + bottom * dy);
   final centre = glyph.top + BrandMark.visualCentre.dy * glyph.height;
+  printOnFailure(
+    '「$label」 band=$band centre=$centre wordHeight=${word.height} lineHeight=$lineHeight dy=$dy',
+  );
 
   expect(
     centre,

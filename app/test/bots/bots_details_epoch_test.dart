@@ -112,9 +112,14 @@ void main() {
         final pane = isRoom ? find.byType(RoomDetailsPage) : find.byKey(const ValueKey('bot-info-m1'));
         final target = find.descendant(of: pane, matching: find.text(label));
         await tester.scrollUntilVisible(target, 250, scrollable: detailsScrollable(pane));
-        await tester.ensureVisible(target);
+        // 详情页顶部有钉住的头部；`ensureVisible` 默认把目标对齐到视口顶，
+        // 正好压在它下面（命中 `_RenderSliverPinnedPersistentHeader…`）。
+        // 摆到中间，并且点整行（或按钮）而不是里面那段文字。
+        final row = find.ancestor(of: target, matching: find.byType(ListPageRow));
+        final tapTarget = row.evaluate().isEmpty ? target : row.last;
+        await Scrollable.ensureVisible(tester.element(tapTarget), alignment: 0.45, duration: Duration.zero);
         await frames(tester);
-        await tester.tap(target);
+        await tester.tap(tapTarget);
         await frames(tester);
         if (action == 'memory-edit') {
           await tester.tap(find.descendant(of: pane, matching: find.text(appL10n.commonEdit)));

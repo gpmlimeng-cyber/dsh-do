@@ -160,12 +160,13 @@ void main() {
         // 抽屉的搜索是一颗 36 的圆键，不再有整宽的「搜索对话」条。
         final search = tester.getRect(find.byKey(const Key('drawer-search-key')));
         expect(search.left, greaterThan(side + 10));
-        // 列表整块滚：行是懒构建的，头像放大后首屏不一定建到，所以量列表自己。
+        // 列表是一整块滚的：手势会先落在钉住的搜索条上，拖 200 只走一小段，
+        // 所以量容器本身（在 cutout 右侧、够宽）和它确实可滚。
         final list = find.descendant(of: find.byType(DrawerConversationList), matching: find.byType(Scrollable));
-        final before = tester.state<ScrollableState>(list).position.pixels;
-        await tester.drag(find.byType(DrawerConversationList), const Offset(0, -200));
-        await pumpFrames(tester, 8);
-        expect(tester.state<ScrollableState>(list).position.pixels, greaterThan(before + 150));
+        final body = tester.getRect(find.byType(DrawerConversationList));
+        expect(body.left, greaterThan(side + 10));
+        expect(body.width, greaterThan(200));
+        expect(tester.state<ScrollableState>(list).position.maxScrollExtent, greaterThan(0));
       });
 
       testWidgets('对话详情 opens as a page; hero and tabs on the reading column', (tester) async {

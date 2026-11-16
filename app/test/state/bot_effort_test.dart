@@ -22,7 +22,9 @@ ModelCatalog _catalog() => ModelCatalog(
     );
 
 void main() {
-  final full = _efforts(['off', 'low', 'high', 'max']);
+  // 「支持全部档」的模型：paceOf 对不支持的档位一律读成「看情况」，
+  // 所以这份 fixture 必须真的含 minimal，否则下面那条断言测的是另一回事。
+  final full = _efforts(['off', 'minimal', 'low', 'high', 'max']);
 
   group('四档写回宿主的值', () {
     test('秒回 takes off, and falls back to the lowest level', () {
