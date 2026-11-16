@@ -13,7 +13,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../chat/support/harness.dart';
-import '../shell/golden_harness.dart' show FakeSessions, goldenApp;
+import '../shell/golden_harness.dart' as shell;
+import '../shell/golden_harness.dart' show goldenApp;
 
 import 'support.dart';
 import 'package:dsh_app/state/chat_state.dart' show chatProvider, ChatState;
@@ -46,7 +47,7 @@ void main() {
           home: const BotDetailsPage(botId: 'm1'),
           brightness: Brightness.light,
           overrides: [
-              sessionsProvider.overrideWith(() => FakeSessions(const [])),
+              sessionsProvider.overrideWith(() => shell.FakeSessions(const [])),
               workspacesProvider.overrideWith(FakeWorkspaces.new),
               chatProvider.overrideWith2((id) => FakeChatController(id, const ChatState(loading: false))),
             activeHostProvider.overrideWith(_Host.new),

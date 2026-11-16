@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:dsh_app/state/usage_state.dart' show sessionUsageProvider;
+import 'package:dsh_app/state/usage_state.dart' show SessionUsage, sessionUsageProvider;
 import 'package:dsh_app/state/bots_state.dart';
 import 'package:dsh_app/state/connection_state.dart';
 import 'package:dsh_app/state/hosts_state.dart';
