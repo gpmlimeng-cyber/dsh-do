@@ -49,7 +49,13 @@ android {
     }
 
     defaultConfig {
-        applicationId = "io.github.ccch1mneyyy.dsh_app"
+        // A side-by-side build of our own (DSH_APP_ID/DSH_APP_LABEL) installs
+        // beside the shipped app instead of trying to update it: the two are
+        // signed with different keys, so an in-place update can never work.
+        // Unset, the upstream identity stays, so ordinary builds keep their line.
+        applicationId = System.getenv("DSH_APP_ID")?.takeIf { it.isNotBlank() }
+            ?: "io.github.ccch1mneyyy.dsh_app"
+        manifestPlaceholders["dshAppLabel"] = System.getenv("DSH_APP_LABEL")?.takeIf { it.isNotBlank() } ?: "DSH Go"
         // java.nio.file (symlinks while unpacking the rootfs) needs API 26.
         minSdk = 26
         // Target 28 like Termux, so the API 29+ exec restriction on app-private

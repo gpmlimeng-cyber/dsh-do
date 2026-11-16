@@ -21,6 +21,14 @@ on:
         required: false
         type: boolean
         default: false
+      app_id:
+        description: 'Package id for a side-by-side build (empty: update the shipped app)'
+        required: false
+        default: ''
+      app_label:
+        description: 'Launcher label for a side-by-side build (empty: DSH Go)'
+        required: false
+        default: ''
 
 # Publishing a release for each build: Actions artifacts live on a storage
 # host some phone networks cannot reach, release assets on another.
@@ -114,6 +122,10 @@ jobs:
         # and then still reports the old version.
         env:
           VERSION_IN: ${{ inputs.version }}
+          # A side-by-side build carries its own id and label; empty keeps the
+          # upstream identity, which is what a normal update build wants.
+          DSH_APP_ID: ${{ inputs.app_id }}
+          DSH_APP_LABEL: ${{ inputs.app_label }}
           # The runners are not in China: the mainland Maven mirror answered 502
           # often enough to lose whole builds, while the official repositories
           # are a local fetch there. settings.gradle.kts keys this switch.
