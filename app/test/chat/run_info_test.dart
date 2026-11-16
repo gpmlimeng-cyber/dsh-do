@@ -124,7 +124,8 @@ void main() {
       final activity = runActivityOf(s)!;
       expect(activity.kind, ActivityKind.tool);
       expect(activity.title, '跑测试');
-      expect(activity.detail, 'flutter test');
+      // 命令原文不再摆到活动行上：只说人话（见 run_info.dart 的 commandPhrase）。
+      expect(activity.detail, isEmpty);
       expect(activity.since, runInfoTestDispatched);
       expect((activity.todoDone, activity.todoTotal), (4, 5));
       expect(runActivityOf(runInfoState(finished: true)), isNull);

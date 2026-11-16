@@ -62,6 +62,7 @@ void main() {
             home: page,
             brightness: Brightness.light,
             overrides: [
+              ...quietEngine,
               chatProvider.overrideWith2((id) => FakeChatController(id, const ChatState(loading: false))),
               activeConnectionProvider.overrideWith((ref) => AsyncData(connected ? fakeConnection : null)),
               dsBotApiFactoryProvider.overrideWithValue((_) => scenario == 'relay' ? null : DsBotApi(fake)),

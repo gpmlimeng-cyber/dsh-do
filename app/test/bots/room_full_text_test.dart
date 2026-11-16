@@ -61,6 +61,7 @@ void main() {
         brightness: brightness,
         home: const RoomChatPage(roomId: 'r1'),
         overrides: [
+          ...quietEngine,
               chatProvider.overrideWith2((id) => FakeChatController(id, const ChatState(loading: false))),
           activeHostProvider.overrideWith(_Host.new),
               sessionUsageProvider.overrideWith2((id) => FakeUsage(id, SessionUsage.empty)),

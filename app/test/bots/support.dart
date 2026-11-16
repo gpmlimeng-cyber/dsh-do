@@ -15,10 +15,12 @@ import 'package:dsh_app/ui/chat/voice/voice_bridge.dart';
 import 'package:dsh_app/state/models_state.dart';
 import 'package:dsh_app/state/notify_state.dart';
 import 'package:dsh_app/state/sessions_state.dart' show sessionsProvider;
+import 'package:dsh_app/state/settings_state.dart';
 import 'package:dsh_app/state/workspaces_state.dart';
 import 'package:dsh_app/state/plugins_state.dart';
 import 'package:dsh_app/ui/bots/bot_format.dart' show botClock;
 import 'package:dsh_client/dsh_client.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
@@ -174,6 +176,39 @@ List<Override> dsBotOverrides(
   if (sessions) sessionsProvider.overrideWith(() => shell.FakeSessions(const [])),
   if (workspaces) workspacesProvider.overrideWith(FakeWorkspaces.new),
 ];
+
+/// 详情页（Bot/房间详情）并入对话详情的「信息」页签后，
+/// 外层是水平的 `TabBarView`，内容在里面的 `ListView`。`scrollUntilVisible`
+/// 默认拿 `find.byType(Scrollable).first`，命中的是水平页签，怎么拖都到不了
+/// 目标；这里只取页面子树里的垂直滚动区。
+Finder detailsScrollable(Type page) => find
+    .descendant(
+      of: find.byType(page),
+      matching: find.byWidgetPredicate(
+        (w) => w is Scrollable && (w.axisDirection == AxisDirection.down || w.axisDirection == AxisDirection.up),
+      ),
+    )
+    .first;
+
+/// The two controllers a drawer builds on sight, and both of them ask the
+/// engine over a WebSocket the widget test cannot upgrade. Spread this into a
+/// page test that writes its own `overrides:` list instead of [dsBotOverrides].
+/// A test that overrides either provider itself must not also spread this.
+List<Override> get quietEngine => [
+  sessionsProvider.overrideWith(() => shell.FakeSessions(const [])),
+  workspacesProvider.overrideWith(FakeWorkspaces.new),
+];
+
+/// Settings already loaded: a page reads `settings.loaded && x` before acting on
+/// a preference, and a test should not race the real load to get there.
+class FakeSettings extends SettingsController {
+  FakeSettings({this.visualReplies = true});
+
+  final bool visualReplies;
+
+  @override
+  AppSettings build() => AppSettings(loaded: true, visualReplies: visualReplies);
+}
 
 /// A workspace list that never asks the host: the page header only needs the state.
 class FakeWorkspaces extends WorkspacesController {

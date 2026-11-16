@@ -51,6 +51,7 @@ void main() {
             brightness: Brightness.light,
             home: room ? const RoomChatPage(roomId: 'r1') : const BotChatPage(botId: 'b2'),
             overrides: [
+              ...quietEngine,
               chatProvider.overrideWith2((id) => FakeChatController(id, const ChatState(loading: false))),
               activeConnectionProvider.overrideWithValue(AsyncData(fakeConnection)),
               dsBotApiFactoryProvider.overrideWithValue((_) => DsBotApi(reconnect ? next : old)),
