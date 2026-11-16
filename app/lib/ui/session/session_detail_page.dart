@@ -24,6 +24,9 @@ import '../chat/step_detail_page.dart';
 import '../chat/trajectory_sheet.dart';
 import '../chat/turn_summary.dart';
 import '../chat/usage_sheet.dart';
+import '../bots/bot_details_page.dart' show BotDetailsPage, botForSession;
+import '../bots/room_details_page.dart' show roomForSession;
+import '../bots/room_info_tab.dart' show RoomInfoTab;
 import '../chat/widgets/activity_strip.dart' show TodoProgress;
 import '../chat/widgets/change_card.dart' show DiffCounts;
 import '../chat/widgets/live_clock.dart';
@@ -140,6 +143,12 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> with Tick
   static const _tabsHeight = 52.0;
 
   /// The tabs but 插件, decided when the page opens.
+  /// 这个会话归哪个 Bot（自己的对话，或它在群里的那份）。有 Bot 才有「信息」
+  /// 页签：它装的是 Bot 的资料，不是这一轮对话的统计。
+  String? _botId;
+
+  /// 群自己的会话：「信息」页签装群的只读概览 + 一个跳转（能改的留在群详情）。
+  String? _roomId;
   late final List<SessionTab> _baseTabs;
   late List<SessionTab> _tabs;
   late TabController _controller;
@@ -157,12 +166,24 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> with Tick
     super.initState();
     final items = ref.read(chatProvider(widget.sessionId)).items;
     final delegated = dispatchedSubagents(items) || ref.read(subagentLineageProvider(widget.sessionId)).isNotEmpty;
+    final team = ref.read(dsBotProvider).team;
+    final bot = botForSession(team, widget.sessionId);
+    final room = bot == null ? roomForSession(team, widget.sessionId) : null;
+    _botId = bot?.id;
+    _roomId = room?.id;
     final SessionTab initial =
         widget.initialTab ??
-        (_mode == SessionDetailMode.page ? SessionTab.trajectory : ref.read(sessionDetailTabProvider));
+        (_mode == SessionDetailMode.page
+            // Bot 会话先落在「信息」：那一页是这个 Bot 的资料，会话的统计在后面的
+            // 页签里。别的会话照旧从轨迹起。
+            ? (bot != null || room != null ? SessionTab.details : SessionTab.trajectory)
+            : ref.read(sessionDetailTabProvider));
     _baseTabs = [
+      if (bot != null || room != null) SessionTab.details,
       for (final tab in SessionTab.values)
-        if (tab != SessionTab.plugins && (tab != SessionTab.subagents || delegated || initial == SessionTab.subagents))
+        if (tab != SessionTab.plugins &&
+            tab != SessionTab.details &&
+            (tab != SessionTab.subagents || delegated || initial == SessionTab.subagents))
           tab,
     ];
     final plugins = !ref.read(sessionPluginPlanProvider(widget.sessionId)).isEmpty;
@@ -423,7 +444,17 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> with Tick
           padding: EdgeInsets.symmetric(horizontal: gutter - 16 + column),
           child: TabBarView(
             controller: _controller,
-            children: [for (final tab in _tabs) ConversationPane.ofTab(tab).build(id)],
+            children: [
+              for (final tab in _tabs)
+                if (tab == SessionTab.details)
+                  switch ((_botId, _roomId)) {
+                    (final botId?, _) => BotDetailsPage.embedded(key: ValueKey('bot-info-$botId'), botId: botId),
+                    (_, final roomId?) => RoomInfoTab(key: ValueKey('room-info-$roomId'), roomId: roomId),
+                    _ => const SizedBox.shrink(),
+                  }
+                else
+                  ConversationPane.ofTab(tab).build(id),
+            ],
           ),
         ),
       ),

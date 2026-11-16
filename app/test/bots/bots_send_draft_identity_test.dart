@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:dsh_app/state/bots_state.dart';
+import 'package:dsh_app/state/usage_state.dart' show SessionUsage, sessionUsageProvider;
 import 'package:dsh_app/state/connection_state.dart';
 import 'package:dsh_app/ui/bots/bot_chat_page.dart';
 import 'package:dsh_app/ui/bots/room_chat_page.dart';
@@ -53,6 +54,7 @@ void main() {
             overrides: [
               ...quietEngine,
               chatProvider.overrideWith2((id) => FakeChatController(id, const ChatState(loading: false))),
+              sessionUsageProvider.overrideWith2((id) => FakeUsage(id, SessionUsage.empty)),
               activeConnectionProvider.overrideWithValue(AsyncData(fakeConnection)),
               dsBotApiFactoryProvider.overrideWithValue((_) => DsBotApi(reconnect ? next : old)),
             ],

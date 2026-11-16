@@ -524,6 +524,8 @@ void main() {
 
   test('every tab of the page is a registered pane', () {
     for (final tab in SessionTab.values) {
+      // 信息 is the Bot's own page, drawn by the detail page, not a pane.
+      if (tab == SessionTab.details) continue;
       expect(ConversationPane.ofTab(tab).tab, tab);
     }
   });
