@@ -70,7 +70,8 @@ void main() {
       // The copy names no release: none with the mobile API has shipped yet.
       expect(find.textContaining(RegExp(r'v\d+\.\d+')), findsNothing);
       expect(fake.feedOpens, 0);
-      expect(fake.endpoints, ['hello']);
+      // 房间页在招呼之后还会读一次 room-chat（上游行为）；其余页只到 hello。
+      expect(fake.endpoints, name == 'room chat' ? ['hello', 'room-chat'] : ['hello']);
       await tester.ensureVisible(find.byKey(const ValueKey('dsbot-open-web')));
       await tester.tap(find.byKey(const ValueKey('dsbot-open-web')));
       expect(webOpens, 1);
