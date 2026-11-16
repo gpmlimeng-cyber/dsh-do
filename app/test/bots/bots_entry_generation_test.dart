@@ -24,6 +24,7 @@ import '../shell/golden_harness.dart' show goldenApp;
 import 'room_continue_test.dart' show frames;
 import 'support.dart';
 import 'package:dsh_app/state/chat_state.dart' show chatProvider, ChatState;
+import 'package:dsh_app/state/workspaces_state.dart' show workspacesProvider;
 
 class _Host extends ActiveHostController {
   @override
@@ -84,6 +85,7 @@ void main() {
             overrides: [
               chatProvider.overrideWith2((id) => FakeChatController(id, const ChatState(loading: false))),
               activeHostProvider.overrideWith(_Host.new),
+              workspacesProvider.overrideWith(FakeWorkspaces.new),
               activeConnectionProvider.overrideWith((ref) {
                 final host = ref.watch(activeHostProvider);
                 return AsyncData(
