@@ -986,10 +986,13 @@ class CurrentSessionController extends Notifier<String?> {
     final store = ref.read(lastConversationStoreProvider);
     ref.read(pendingSessionFolderProvider.notifier).select(null);
     state = sessionId;
-    unawaited(_persist(host, sessionId, store));
+    // The shared record first: it is what a cold start reads, and a caller may
+    // read it right after choosing (the per-host key follows in its own write).
+    unawaited(sessionId == null ? store.forget() : store.rememberSession(sessionId));
+    unawaited(_persist(host, sessionId));
   }
 
-  Future<void> _persist(HostRef host, String? sessionId, LastConversationStore store) async {
+  Future<void> _persist(HostRef host, String? sessionId) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       // One value owns both pieces, including an explicit new-chat choice.
@@ -997,9 +1000,6 @@ class CurrentSessionController extends Notifier<String?> {
       await prefs.setString(_selectionKey, jsonEncode({'host': _hostKey(host), 'sessionId': sessionId}));
       await prefs.remove(_key);
     } catch (_) {}
-    // The launch restore reads one record for every kind of conversation: a
-    // native session chosen here is the same memory a Bot or group page writes.
-    unawaited(sessionId == null ? store.forget() : store.rememberSession(sessionId));
   }
 }
 
