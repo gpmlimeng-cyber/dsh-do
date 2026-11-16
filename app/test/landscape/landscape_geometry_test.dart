@@ -163,7 +163,8 @@ void main() {
         // 列表是一整块滚的：手势会先落在钉住的搜索条上，拖 200 只走一小段，
         // 所以量容器本身（在 cutout 右侧、够宽）和它确实可滚。
         final body = tester.getRect(find.byType(DrawerConversationList));
-        expect(body.left, greaterThan(side + 10));
+        // 容器本身从安全边起：行在里面另作内缩，所以这里只要求不落在 cutout 里。
+        expect(body.left, greaterThanOrEqualTo(side));
         // 抽屉列表就是那 320 的一列（测试名说的「320 of list」）；窄窗口下
         // 会按比例收，只要求它是一整列而不是窄条。
         expect(body.width, greaterThan(280));
