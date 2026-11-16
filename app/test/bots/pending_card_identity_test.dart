@@ -13,6 +13,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../chat/support/harness.dart';
+import 'package:dsh_app/state/usage_state.dart' show SessionUsage, sessionUsageProvider;
 import '../shell/golden_harness.dart' show goldenApp;
 import 'support.dart';
 import 'package:dsh_app/state/chat_state.dart' show chatProvider, ChatState;
@@ -54,6 +55,7 @@ void main() {
         home: const BotChatPage(botId: 'writer'),
         overrides: [
               chatProvider.overrideWith2((id) => FakeChatController(id, const ChatState(loading: false))),
+              sessionUsageProvider.overrideWith2((id) => FakeUsage(id, SessionUsage.empty)),
           activeHostProvider.overrideWith(_Host.new),
           activeConnectionProvider.overrideWith((ref) {
             final h = ref.watch(activeHostProvider);

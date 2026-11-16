@@ -118,10 +118,9 @@ class BrandLockup extends StatelessWidget {
   static const capHeight = 0.711;
 
   /// Height above the baseline of the line the glyph centres on, for [label] set at
-  /// [size]. A word drawn with any capital centres on its capitals; only an
-  /// all-lowercase word centres on its x-height.
+  /// [size].
   static double centreRise(String label, double size) =>
-      (label.contains(RegExp('[A-Z]')) ? capHeight : xHeight) * size / 2;
+      (label.contains(RegExp('[a-z]')) ? xHeight : capHeight) * size / 2;
 
   /// Where the word starts, from the lockup's left edge, for a word drawn at [size]
   /// (after text scaling): glyph width + gap.
