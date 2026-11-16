@@ -251,7 +251,12 @@ void main() {
 
   testWidgets('a memory entry is edited in place', (tester) async {
     final fake = await open(tester, const BotDetailsPage(botId: 'm1'));
-    await tester.scrollUntilVisible(find.text('发布会定在周五下午三点'), 200);
+    // 页面里不止一个可滚动区（页头/抽屉），显式指定详情页自己的那个。
+    await tester.scrollUntilVisible(
+      find.text('发布会定在周五下午三点'),
+      200,
+      scrollable: find.descendant(of: find.byType(BotDetailsPage), matching: find.byType(Scrollable)).first,
+    );
     await tester.tap(find.text('发布会定在周五下午三点'));
     await frames(tester, 4);
     await tester.tap(find.text('编辑'));
