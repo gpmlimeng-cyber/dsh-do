@@ -133,7 +133,8 @@ void main() {
     return ProviderScope.containerOf(t.element(find.byType(BotChatPage)));
   }
 
-  for (final schema in ['slider', 'formula', 'future-input']) {
+  // slider/number/toggle 这版已经能原生画了，只剩公式和不认识的输入退回网页。
+  for (final schema in ['formula', 'future-input']) {
     testWidgets('$schema has only current-host web fallback, no answer', (t) async {
       final old = FakeDsBotTransport(team: fallbackTeam(schema));
       final next = FakeDsBotTransport(team: fallbackTeam(schema));
@@ -155,9 +156,9 @@ void main() {
   }
   for (final change in ['host', 'api', 'boot', 'session']) {
     testWidgets('stale web callback is retired after $change', (t) async {
-      final team = fallbackTeam('slider');
+      final team = fallbackTeam('future-input');
       final old = FakeDsBotTransport(team: team);
-      final next = FakeDsBotTransport(team: fallbackTeam('slider'));
+      final next = FakeDsBotTransport(team: fallbackTeam('future-input'));
       final opened = <String>[];
       final c = await open(t, old, next, opened);
       final callback = t.widget<FilledButton>(find.byKey(const ValueKey('bot-view-open-web'))).onPressed!;
@@ -187,7 +188,7 @@ void main() {
     });
   }
   testWidgets('read-only unsupported card may open its web view without answering', (t) async {
-    final old = FakeDsBotTransport(team: fallbackTeam('slider', readOnly: true));
+    final old = FakeDsBotTransport(team: fallbackTeam('future-input', readOnly: true));
     final opened = <String>[];
     await open(t, old, old, opened);
     await t.tap(find.byKey(const ValueKey('bot-view-open-web')));

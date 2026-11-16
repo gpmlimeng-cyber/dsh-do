@@ -105,16 +105,11 @@ void main() {
           'memory-edit' || 'memory-delete' => '回复尽量简短，先说结论',
           _ => appL10n.botsAddMemory,
         };
-        // 页头/抽屉也有可滚动区，滚详情页自己的那个，别滚错。
+        // 详情的「信息」页签外层是水平页签，滚它到不了目标；只滚内容本身。
         await tester.scrollUntilVisible(
           find.text(label),
           250,
-          scrollable: find
-              .descendant(
-                of: isRoom ? find.byType(RoomDetailsPage) : find.byType(BotDetailsPage),
-                matching: find.byType(Scrollable),
-              )
-              .first,
+          scrollable: detailsScrollable(isRoom ? RoomDetailsPage : BotDetailsPage),
         );
         await tester.ensureVisible(find.text(label));
         await frames(tester);

@@ -14,8 +14,10 @@ import 'package:dsh_app/ui/bots/room_details_page.dart';
 import 'package:dsh_app/ui/shell/page_frame.dart';
 import 'package:dsh_app/ui/theme/app_icons.dart';
 import 'package:dsh_client/dsh_client.dart';
+import 'package:dsh_app/state/settings_state.dart' show settingsProvider;
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -33,10 +35,17 @@ void main() {
   setUpAll(loadTestFonts);
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  Future<FakeDsBotTransport> open(WidgetTester tester, Widget page, {FakeDsBotTransport? transport}) async {
+  Future<FakeDsBotTransport> open(
+    WidgetTester tester,
+    Widget page, {
+    FakeDsBotTransport? transport,
+    List<Override> extra = const [],
+  }) async {
     final fake = transport ?? FakeDsBotTransport();
     usePhoneView(tester);
-    await tester.pumpWidget(goldenApp(home: page, brightness: Brightness.light, overrides: dsBotOverrides(fake)));
+    await tester.pumpWidget(
+      goldenApp(home: page, brightness: Brightness.light, overrides: [...dsBotOverrides(fake), ...extra]),
+    );
     await frames(tester);
     return fake;
   }
@@ -125,7 +134,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.text('模型'),
       200,
-      scrollable: find.descendant(of: find.byType(BotDetailsPage), matching: find.byType(Scrollable)).first,
+      scrollable: detailsScrollable(BotDetailsPage),
     );
     await tester.tap(find.text('模型'));
     await frames(tester);
@@ -197,7 +206,13 @@ void main() {
   testWidgets('the new Bot form asks for a name, then creates and opens the chat', (tester) async {
     final fake = FakeDsBotTransport();
     fake.handlers['create-bot'] = (payload) => {'id': 'b9', 'name': payload['name'], 'sessionId': 'b9'};
-    await open(tester, const NewBotPage(), transport: fake);
+    await open(
+      tester,
+      const NewBotPage(),
+      transport: fake,
+      // 可视化回复默认开：把设置按已加载给出，别让表单去等真实加载。
+      extra: [settingsProvider.overrideWith(FakeSettings.new)],
+    );
     await tester.tap(find.byKey(const ValueKey('bot-create')));
     await tester.pump();
     // 空名字直接忽略、不发请求（main 上就是这样，不弹提示）。
@@ -255,7 +270,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.text('发布会定在周五下午三点'),
       200,
-      scrollable: find.descendant(of: find.byType(BotDetailsPage), matching: find.byType(Scrollable)).first,
+      scrollable: detailsScrollable(BotDetailsPage),
     );
     await tester.tap(find.text('发布会定在周五下午三点'));
     await frames(tester, 4);

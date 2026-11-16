@@ -105,7 +105,19 @@ class _SheetBundle extends CachingAssetBundle {
 }
 
 void main() {
-  setUp(() => SharedPreferences.setMockInitialValues({}));
+  final binding = TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+    // 轻模式首页会订阅网络变化、引擎事件；测试里没有原生侧，未接管的通道
+    // 会把 MissingPluginException 记成「本测试冒出的异常」，撞上 takeException。
+    final messenger = binding.defaultBinaryMessenger;
+    for (final name in ['dev.fluttercommunity.plus/connectivity_status', 'dsh/runtime/events']) {
+      messenger.setMockStreamHandler(
+        EventChannel(name),
+        MockStreamHandler.inline(onListen: (arguments, sink) {}),
+      );
+    }
+  });
 
   testWidgets('an unavailable native plugin never activates an event channel', (tester) async {
     final channel = PerformanceChannel();

@@ -1,5 +1,6 @@
 // 新建 Bot 的默认指令：可视化回复开着才追加一句 dsh-ui 提示；关着不加，
 // 用户自己写过 dsh-ui 也不重复加。
+import 'package:dsh_app/state/settings_state.dart' show settingsProvider;
 import 'package:dsh_app/ui/bots/new_bot_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -42,7 +43,11 @@ void main() {
       fake.handlers['create-bot'] = (payload) => {'id': 'b9', 'name': payload['name'], 'sessionId': 'b9'};
       usePhoneView(tester);
       await tester.pumpWidget(
-        goldenApp(home: const NewBotPage(), brightness: Brightness.light, overrides: dsBotOverrides(fake)),
+        goldenApp(
+          home: const NewBotPage(),
+          brightness: Brightness.light,
+          overrides: [...dsBotOverrides(fake), settingsProvider.overrideWith(FakeSettings.new)],
+        ),
       );
       await pumpFrames(tester, 8);
       await tester.enterText(find.byKey(const ValueKey('bot-name')), '设计师');
@@ -58,7 +63,14 @@ void main() {
       fake.handlers['create-bot'] = (payload) => {'id': 'b9', 'name': payload['name'], 'sessionId': 'b9'};
       usePhoneView(tester);
       await tester.pumpWidget(
-        goldenApp(home: const NewBotPage(), brightness: Brightness.light, overrides: dsBotOverrides(fake)),
+        goldenApp(
+          home: const NewBotPage(),
+          brightness: Brightness.light,
+          overrides: [
+            ...dsBotOverrides(fake),
+            settingsProvider.overrideWith(() => FakeSettings(visualReplies: false)),
+          ],
+        ),
       );
       await pumpFrames(tester, 8);
       await tester.enterText(find.byKey(const ValueKey('bot-name')), '设计师');
