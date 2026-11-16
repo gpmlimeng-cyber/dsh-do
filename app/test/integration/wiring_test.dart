@@ -206,8 +206,8 @@ void main() {
       expect(find.descendant(of: botRow, matching: find.text('主')), findsOneWidget);
       final row = tester.getRect(botRow);
       expect(row.height, 44);
-      // Row inset 10, its 22 face, then 8: the title follows the face.
-      expect(tester.getRect(find.text('Chief')).left - tester.getRect(drawer).left, 40);
+      // 行头像放大后：行内缩 10 + 更大的头像 + 间距，标题起点跟着移到 50。
+      expect(tester.getRect(find.text('Chief')).left - tester.getRect(drawer).left, 50);
 
       await tester.tap(find.text('Chief'));
       await tester.pumpAndSettle();

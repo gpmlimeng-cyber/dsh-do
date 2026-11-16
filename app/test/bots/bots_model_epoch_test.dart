@@ -2,6 +2,8 @@
 import 'package:dsh_app/state/bots_state.dart';
 import 'package:dsh_app/state/connection_state.dart';
 import 'package:dsh_app/state/hosts_state.dart';
+import 'package:dsh_app/state/sessions_state.dart' show sessionsProvider;
+import 'package:dsh_app/state/workspaces_state.dart' show workspacesProvider;
 import 'package:dsh_app/state/models_state.dart';
 import 'package:dsh_app/ui/bots/bot_details_page.dart';
 import 'package:dsh_client/dsh_client.dart';
@@ -11,7 +13,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../chat/support/harness.dart';
-import '../shell/golden_harness.dart' show goldenApp;
+import '../shell/golden_harness.dart' show FakeSessions, goldenApp;
 
 import 'support.dart';
 import 'package:dsh_app/state/chat_state.dart' show chatProvider, ChatState;
@@ -44,6 +46,8 @@ void main() {
           home: const BotDetailsPage(botId: 'm1'),
           brightness: Brightness.light,
           overrides: [
+              sessionsProvider.overrideWith(() => FakeSessions(const [])),
+              workspacesProvider.overrideWith(FakeWorkspaces.new),
               chatProvider.overrideWith2((id) => FakeChatController(id, const ChatState(loading: false))),
             activeHostProvider.overrideWith(_Host.new),
             activeConnectionProvider.overrideWith((ref) {
@@ -76,6 +80,12 @@ void main() {
       );
       await frames(t);
       final c = ProviderScope.containerOf(t.element(find.byType(BotDetailsPage)));
+      // 档案卡可能被头部挤到折叠线以下，先滚到「模型」那一行。
+      await t.scrollUntilVisible(
+        find.text('模型'),
+        200,
+        scrollable: find.descendant(of: find.byType(BotDetailsPage), matching: find.byType(Scrollable)).first,
+      );
       await t.tap(find.text('模型'));
       await frames(t);
       switch (change) {

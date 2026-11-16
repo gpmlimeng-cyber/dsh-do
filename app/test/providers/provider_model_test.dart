@@ -134,8 +134,13 @@ bool _switchOn(WidgetTester tester) => tester.widget<Switch>(find.byType(Switch)
 
 Future<void> _toggleThinking(WidgetTester tester) => _tap(tester, find.byType(Switch));
 
-bool _imagesChosen(WidgetTester tester) =>
-    tester.widget<SegmentedPill<bool>>(find.byType(SegmentedPill<bool>)).selected;
+/// 页面上的输入类型胶囊是 `SegmentedPill<_Input>`（私有枚举），按基型找再读选中值。
+Finder _inputPill() => find.byWidgetPredicate((widget) => widget is SegmentedPill);
+
+bool _imagesChosen(WidgetTester tester) {
+  final pill = tester.widget(_inputPill()) as dynamic;
+  return (pill.selected as Enum).name == 'textImage';
+}
 
 Future<void> _tap(WidgetTester tester, Finder target) async {
   await tester.tap(target);
@@ -351,7 +356,7 @@ void main() {
         _field('名称'),
         _field('上下文长度'),
         _field('最大输出'),
-        find.byType(SegmentedPill<bool>),
+        _inputPill(),
         for (final row in ['低', '最高']) _level(row),
       ];
       for (final control in controls) {
@@ -372,7 +377,7 @@ void main() {
 
       // The switch's track ends on the field edge; ticks sit on the labels' edge.
       final track = tester.getRect(find.byType(Switch)).right - FieldSwitch.trackInset;
-      expect(track, moreOrLessEquals(tester.getRect(find.byType(SegmentedPill<bool>)).right));
+      expect(track, moreOrLessEquals(tester.getRect(_inputPill()).right));
       final labelLeft = tester.getRect(find.text('可选档位')).left;
       for (final tick in tester.widgetList<SelectionTick>(find.byType(SelectionTick))) {
         expect(tester.getRect(find.byWidget(tick)).left, labelLeft);
