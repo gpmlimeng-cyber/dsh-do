@@ -14,6 +14,7 @@ import 'package:dsh_app/state/features_state.dart' show skillsProvider;
 import 'package:dsh_app/state/media_generation.dart' show mediaPluginProvider, MediaPluginState;
 import 'package:dsh_app/state/hosts_state.dart';
 import 'package:dsh_app/state/phone_skill_use.dart';
+import 'package:dsh_app/state/voice_model_state.dart' show VoiceModelController, VoiceModelState, voiceModelProvider;
 import 'package:dsh_app/state/sessions_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -105,6 +106,9 @@ void main() {
       petScopedStateProvider.overrideWith((ref, scope) => const PetState()),
       // These are plain-text phone-route tests, not media generation tests.
       mediaPluginProvider.overrideWithValue(MediaPluginState.absent),
+      // 语音模型会去真客户端拉插件清单，那条 HTTP 的 2 分钟超时会在测试收尾时
+      // 还挂着；这些是纯文本的输入法路由测试，不需要它。
+      voiceModelProvider.overrideWith(_NoVoiceModel.new),
       for (final override in ui.overrides)
         if (override.origin != activeConnectionProvider && override.origin != chatProvider &&
             override.origin != localConnectionProvider) override,
@@ -230,4 +234,9 @@ void main() {
       } finally { pending.dispose(); }
     } finally { await disposeHarness(tester, h); }
   });
+}
+
+class _NoVoiceModel extends VoiceModelController {
+  @override
+  VoiceModelState build() => const VoiceModelState();
 }
