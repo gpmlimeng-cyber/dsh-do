@@ -23,6 +23,7 @@ import '../chat/support/harness.dart';
 import 'package:dsh_app/state/sessions_state.dart' show sessionsProvider;
 import 'package:dsh_app/state/usage_state.dart' show SessionUsage, sessionUsageProvider;
 import '../shell/golden_harness.dart' show goldenApp;
+import '../shell/golden_harness.dart' as shell;
 import 'room_continue_test.dart' show frames;
 import 'support.dart';
 import 'package:dsh_app/state/chat_state.dart' show chatProvider, ChatState;
@@ -86,7 +87,7 @@ void main() {
             home: page,
             overrides: [
               chatProvider.overrideWith2((id) => FakeChatController(id, const ChatState(loading: false))),
-              sessionsProvider.overrideWith(() => FakeSessions(const [])),
+              sessionsProvider.overrideWith(() => shell.FakeSessions(const [])),
               sessionUsageProvider.overrideWith2((id) => FakeUsage(id, SessionUsage.empty)),
               activeHostProvider.overrideWith(_Host.new),
               workspacesProvider.overrideWith(FakeWorkspaces.new),

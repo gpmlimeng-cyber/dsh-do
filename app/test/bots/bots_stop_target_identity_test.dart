@@ -16,6 +16,7 @@ import 'package:dsh_app/state/models_state.dart' show modelCatalogProvider;
 import 'package:dsh_app/state/usage_state.dart' show SessionUsage, sessionUsageProvider;
 import '../chat/support/composer_fakes.dart';
 import '../shell/golden_harness.dart' show goldenApp;
+import '../shell/golden_harness.dart' as shell;
 import 'support.dart';
 import 'package:dsh_app/state/chat_state.dart' show chatProvider, ChatState;
 import 'package:dsh_app/state/workspaces_state.dart' show workspacesProvider;
@@ -75,7 +76,7 @@ void main() {
             home: room ? const RoomChatPage(roomId: 'r1') : const BotChatPage(botId: 'm1'),
             overrides: [
               chatProvider.overrideWith2((id) => FakeChatController(id, const ChatState(loading: false))),
-              sessionsProvider.overrideWith(() => FakeSessions(const [])),
+              sessionsProvider.overrideWith(() => shell.FakeSessions(const [])),
               modelCatalogProvider.overrideWith((_) async => testCatalog),
               sessionUsageProvider.overrideWith2((id) => FakeUsage(id, SessionUsage.empty)),
               activeHostProvider.overrideWith(_Host.new),
