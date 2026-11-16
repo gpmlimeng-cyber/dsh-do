@@ -266,7 +266,6 @@ void main() {
       for (final icon in AppIcon.values) {
         final file = icon == AppIcon.mist ? 'ic_launcher_background' : 'ic_launcher_${icon.name}_background';
         final xml = File('$res/drawable/$file.xml').readAsStringSync();
-        double attr(String a) => double.parse(RegExp('android:$a="([-0-9.]+)"').firstMatch(xml)!.group(1)!);
         final colors = [
           for (final m in RegExp('android:color="#([0-9A-Fa-f]{8})"').allMatches(xml))
             Color(int.parse(m.group(1)!, radix: 16)),
@@ -287,10 +286,10 @@ void main() {
       // The cut changed with the brand picture, so take the first opaque pixel
       // of the silhouette instead of a fixed point inside the old body.
       var at = 0;
-      while (at + 3 < rgba!.lengthInBytes && rgba!.getUint8(at + 3) != 255) {
+      while (at + 3 < rgba.lengthInBytes && rgba.getUint8(at + 3) != 255) {
         at += 4;
       }
-      final pixel = [for (var i = 0; i < 4; i++) rgba!.getUint8(at + i)];
+      final pixel = [for (var i = 0; i < 4; i++) rgba.getUint8(at + i)];
       final mono = AppIconArt.of(AppIcon.ink).mono!;
       expect(pixel[3], 255, reason: 'the mono cut is opaque somewhere');
       expect(pixel[0], closeTo((mono.r * 255).round(), 2));
