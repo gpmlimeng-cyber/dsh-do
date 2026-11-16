@@ -205,14 +205,15 @@ void main() {
 
     await tester.enterText(find.byKey(const ValueKey('bot-name')), '设计师');
     await tester.enterText(find.byKey(const ValueKey('bot-role')), '画海报');
-    await tester.tap(find.byKey(const ValueKey('color-green')));
     await tester.tap(find.byKey(const ValueKey('bot-create')));
     await frames(tester);
     final call = fake.calls.firstWhere((c) => c.$1 == 'create-bot');
-    expect(call.$2, {
+    final payload = Map<String, Object?>.from(call.$2);
+    // 颜色不再由单独的格子选：形象随机派生，宿主色名跟着它走，只要求是合法色名。
+    expect(payload.remove('color'), isA<String>());
+    expect(payload, {
       'name': '设计师',
       'role': '画海报',
-      'color': 'green',
       'model': 'deepseek/deepseek-v4-flash',
       // 可视化回复 is on by default: a new Bot is told to use dsh-ui.
       'instructions': newBotInstructions('', visualReplies: true),

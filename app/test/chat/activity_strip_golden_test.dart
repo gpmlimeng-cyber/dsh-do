@@ -117,7 +117,7 @@ void main() {
         ActivityStrip(activity: states[4].$1, speedLevel: 1),
         ActivityStrip(activity: states[3].$1, speedLevel: 4),
       ]);
-      expect(find.text('跑'), findsOneWidget);
+      expect(find.text('跑测试'), findsOneWidget);
       expect(find.text('flutter test test/auth'), findsOneWidget);
       expect(find.text('进度 3/5'), findsOneWidget);
       // The clock is the turn's, not the step's.
@@ -289,7 +289,7 @@ void main() {
         ),
       );
       await pumpFrames(tester, 3);
-      expect(find.text('跑'), findsOneWidget);
+      expect(find.text('跑测试'), findsOneWidget);
       expect(tester.widget<WhaleTail>(find.byType(WhaleTail)).level, 1);
 
       pulse.observe(UnknownEvent(70, runInfoTestDispatched, 'compaction/start', const {}));
@@ -297,7 +297,7 @@ void main() {
       expect(find.text('压缩上下文'), findsOneWidget);
       pulse.observe(UnknownEvent(71, runInfoTestDispatched, 'compaction/end', const {}));
       await pumpFrames(tester, 3);
-      expect(find.text('跑'), findsOneWidget);
+      expect(find.text('跑测试'), findsOneWidget);
     });
   });
 

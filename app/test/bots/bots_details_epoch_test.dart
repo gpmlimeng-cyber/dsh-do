@@ -2,6 +2,7 @@ import 'package:dsh_app/l10n/l10n.dart';
 import 'package:dsh_app/state/bots_state.dart';
 import 'package:dsh_app/state/connection_state.dart';
 import 'package:dsh_app/state/hosts_state.dart';
+import 'package:dsh_app/state/features_state.dart' show permissionStateProvider;
 import 'package:dsh_app/state/models_state.dart' show modelCatalogProvider;
 import 'package:dsh_app/ui/bots/bot_details_page.dart';
 import 'package:dsh_app/ui/bots/room_details_page.dart';
@@ -70,6 +71,7 @@ void main() {
               sessionsProvider.overrideWith(() => shell.FakeSessions(const [])),
               workspacesProvider.overrideWith(FakeWorkspaces.new),
               modelCatalogProvider.overrideWith((ref) async => testCatalog),
+              permissionStateProvider.overrideWith((ref, sessionId) async => null),
               chatProvider.overrideWith2((id) => FakeChatController(id, const ChatState(loading: false))),
               activeHostProvider.overrideWith(_Host.new),
               activeConnectionProvider.overrideWith((ref) {

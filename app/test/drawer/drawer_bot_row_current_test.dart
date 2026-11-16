@@ -39,7 +39,7 @@ Future<ProviderContainer> _pump(WidgetTester tester) async {
     goldenApp(
       brightness: Brightness.light,
       overrides: [
-        ...dsBotOverrides(FakeDsBotTransport()),
+        ...dsBotOverrides(FakeDsBotTransport(), workspaces: false),
         drawerScopeProvider.overrideWithValue(
           DrawerScope(sessions: [_session('s1', '一'), _session('s2', '二')], bots: const [], scoped: false),
         ),
