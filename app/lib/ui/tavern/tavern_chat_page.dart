@@ -1750,9 +1750,10 @@ class _TavernChatPageState extends ConsumerState<TavernChatPage> {
                         key: const ValueKey('tavern-transcript'),
                         controller: _transcript,
                         reverse: true,
-                        // Reversed list: the composer's measured height belongs
-                        // at the visual bottom, which is this padding's top.
-                        padding: EdgeInsets.fromLTRB(16, 12 + inset, 16, topInset + 8),
+                        // EdgeInsets stay physical in a reversed list: the
+                        // composer's measured height keeps the newest row (its
+                        // dice and memory buttons) above the plate.
+                        padding: EdgeInsets.fromLTRB(16, 12, 16, topInset + 8 + inset),
                         children: [
                           // Keyed by message: a new one below keeps each row's
                           // state with its message, not with its place.
