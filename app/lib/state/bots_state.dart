@@ -35,6 +35,12 @@ const dsBotPackage = 'ds-bot';
 /// to. The npm release does not have it yet.
 const dsBotSpec = 'github:gpmlimeng-cyber/dsh-bot';
 
+/// The copy the app's own runtime seeds from its bundle
+/// (`runtime/bundled/seed-plugins.sh`, installed by the engine launcher), so a
+/// fresh phone installs DS Bot without fetching the repository. Its own
+/// dependency still comes from the registry, as any plugin install does.
+const dsBotBundledSpec = 'file:/root/.dsh/local-bundles/ds-bot-1.3.6.tgz';
+
 enum DsBotAvailability {
   /// No host connected.
   offline,

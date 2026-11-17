@@ -25,24 +25,62 @@ final dsBotWebOpenerProvider = Provider<void Function(BuildContext context, Widg
       (context, ref) => openDshWeb(context, ref, target: const DshWebTarget(sidebar: true)),
 );
 
-class DsBotInstallCard extends ConsumerWidget {
+class DsBotInstallCard extends ConsumerStatefulWidget {
   const DsBotInstallCard({super.key, required this.status});
 
   final DsBotStatus status;
 
-  bool get _update => status.availability == DsBotAvailability.outdated;
+  @override
+  ConsumerState<DsBotInstallCard> createState() => _DsBotInstallCardState();
+}
+
+class _DsBotInstallCardState extends ConsumerState<DsBotInstallCard> {
+  /// 内置：安装包由运行时随包发放，进到这一页就自己装上，不用先去点一遍。
+  bool _autoTried = false;
+
+  bool get _update => widget.status.availability == DsBotAvailability.outdated;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _autoInstall());
+  }
+
+  /// 只在主机能自己装、且没有正在进行的安装时跑一次。
+  Future<void> _autoInstall() async {
+    if (_autoTried || !mounted) return;
+    final host = ref.read(pluginHostProvider);
+    final job = ref.read(pluginInstallsProvider.select((jobs) => jobs[dsBotPackage]));
+    if (host?.canInstall != true || (job?.isActive ?? false)) return;
+    _autoTried = true;
+    await _install(context, ref);
+  }
 
   Future<void> _install(BuildContext context, WidgetRef ref) async {
     final hub = ref.read(dsBotProvider.notifier);
-    final job = await runPluginInstall(
+    // The runtime carries the package; only when that copy is not there (an
+    // older environment, a remote host) fall back to the repository.
+    var job = await runPluginInstall(
       context,
-      PluginInstallRequest(name: dsBotPackage, spec: dsBotSpec, title: 'DS Bot', replaceInstalled: _update),
+      PluginInstallRequest(
+        name: dsBotPackage,
+        spec: dsBotBundledSpec,
+        title: 'DS Bot',
+        replaceInstalled: _update,
+      ),
     );
+    if (job.phase == PluginInstallPhase.failed) {
+      if (!context.mounted) return;
+      job = await runPluginInstall(
+        context,
+        PluginInstallRequest(name: dsBotPackage, spec: dsBotSpec, title: 'DS Bot', replaceInstalled: _update),
+      );
+    }
     if (job.phase == PluginInstallPhase.succeeded && !job.needsRestart) hub.retry();
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final l10n = context.l10n;
     final host = ref.watch(pluginHostProvider);
     final job = ref.watch(pluginInstallsProvider.select((jobs) => jobs[dsBotPackage]));
