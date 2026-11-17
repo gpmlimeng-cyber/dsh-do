@@ -31,6 +31,9 @@ DSH_WEB_PATCH = "/etc/dsh-app/dsh-web.patch.yml"
 DSH_GO_BRIDGE = "/opt/dsh-go/dsh-go-bridge"
 # runtime/boot/boot-cache.mjs: path cache for `dsh web` while it boots, preloaded by the dsh shim.
 BOOT_CACHE = "/opt/dsh-go/boot-cache.mjs"
+# Bundled plugin payloads (runtime/bundled): where the app finds a plugin it can
+# install without fetching from a registry-hosted repo.
+DSH_GO_BUNDLED = "/opt/dsh-go/bundled"
 BOOT_CACHE_SRC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "boot", "boot-cache.mjs")
 DIRECT_SRC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "direct")
 PNPM_BINS = {"pnpm": "pnpm.mjs", "pnpx": "pnpx.mjs", "pn": "pnpm.mjs", "pnx": "pnpx.mjs"}
@@ -1449,6 +1452,8 @@ def cmd_assemble(args):
                  "pnpm", pnpm_drop_reason)
     if args.bridge:
         add_tree(args.bridge, DSH_GO_BRIDGE.lstrip("/"), "bridge", lambda rel, abi, prune: None)
+    if args.bundled:
+        add_tree(args.bundled, DSH_GO_BUNDLED.lstrip("/"), "bundled", lambda rel, abi, prune: None)
 
     # 4. dsh-app overlay (wins over everything above)
     for p, e in overlay_entries(runtime_info, with_python=bool(args.python), with_pnpm=bool(args.pnpm_prefix),
@@ -1613,7 +1618,12 @@ def launch_template():
     ] + guest_env + [
         "{GUEST_ENV}",
         "/bin/sh", "-c",
-        "echo $$ > /tmp/dsh-web.pid; exec /usr/local/bin/dsh web --patch " + DSH_WEB_PATCH
+        "echo $$ > /tmp/dsh-web.pid; "
+        # A bundled plugin (runtime/bundled) is dropped where an install reads it
+        # from, so the app never has to fetch it; it is a plain copy, never a
+        # profile change, and a failure must not keep the engine from starting.
+        "[ -x " + DSH_GO_BUNDLED + "/seed-plugins.sh ] && " + DSH_GO_BUNDLED + "/seed-plugins.sh 2>/dev/null; "
+        "exec /usr/local/bin/dsh web --patch " + DSH_WEB_PATCH
         + " --host 127.0.0.1 --port {PORT} --no-open",
     ]
     env = {
@@ -1799,6 +1809,7 @@ def main():
     p.add_argument("--deb", action="append", help="extra .deb to unpack and register (no maintainer scripts)")
     p.add_argument("--python", help="python-build-standalone install_only tarball -> /opt/python")
     p.add_argument("--bridge", help="dsh-go-bridge package dir -> " + DSH_GO_BRIDGE + " (+ overlay row)")
+    p.add_argument("--bundled", help="bundled plugin payloads dir -> " + DSH_GO_BUNDLED)
     p.set_defaults(fn=cmd_assemble)
 
     p = sub.add_parser("manifest")
