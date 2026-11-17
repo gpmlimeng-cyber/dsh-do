@@ -41,7 +41,7 @@ void main() {
     final grid = find.byType(GridView);
     expect(grid, findsOneWidget);
     for (final color in MascotColor.values) {
-      final label = color == MascotColor.model ? (AppLocale.isEnglish ? 'Model' : '默认色') : color.label;
+      final label = color.label;
       // The preview caption also names the selected colour, so count inside the grid only.
       expect(find.descendant(of: grid, matching: find.text(label)), findsOneWidget, reason: color.name);
     }

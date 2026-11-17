@@ -28,13 +28,11 @@ MascotSkin mascotSkinOf(MascotSpec spec, ColorScheme scheme) {
     final body = scheme.primary;
     return MascotSkin(body, Color.lerp(body, Colors.black, 0.86)!, Color.lerp(body, const Color(0xFFFF6E8A), 0.62)!);
   }
-  if (spec.color == MascotColor.model) return spec.character.skin;
   return MascotSkin(spec.color.ink, spec.color.outlineInk, spec.color.accent);
 }
 
-/// `bot.color` 的色名：model 跟随角色，其余用预设映射。
-String hostColorOf(MascotSpec spec) =>
-    spec.color == MascotColor.model ? spec.character.hostColor : spec.color.hostName;
+/// `bot.color` 的色名：走预设的映射表。
+String hostColorOf(MascotSpec spec) => spec.color.hostName;
 
 /// 一个吉祥物头像。
 ///
@@ -358,7 +356,7 @@ class MascotPainter extends CustomPainter {
       canvas.restore();
     }
 
-    // 角色专属零件（叶子/耳朵/天线/呆毛）。
+    // 角色专属零件（天线/海苔/斑点/高光）；头上一律不带芽叶。
     _charParts(canvas, size, rect, t, expression.top, three: three);
 
     // 五官；字团时把五官位置换成名字的首字。
@@ -603,21 +601,13 @@ class MascotPainter extends CustomPainter {
         canvas.drawOval(Rect.fromCenter(center: Offset(r.right - r.width * 0.24, r.center.dy + r.height * 0.06), width: size.width * 0.040, height: size.width * 0.028), spot);
         canvas.drawOval(Rect.fromCenter(center: Offset(r.center.dx - r.width * 0.06, r.bottom - r.height * 0.16), width: size.width * 0.030, height: size.width * 0.022), spot);
       case MascotCharacter.orange:
-        // 橘团：短蒂 + 一片小绿叶 + 表皮几颗低透明深点。
+        // 橘团：短蒂 + 表皮几颗低透明深点（角色头上一律不带芽叶）。
         final stem = Paint()
           ..color = _darken(body, 0.45)
           ..style = PaintingStyle.stroke
           ..strokeWidth = size.width * 0.018
           ..strokeCap = StrokeCap.round;
-        canvas.drawLine(Offset(r.center.dx, r.top + r.height * 0.06), Offset(r.center.dx + r.width * 0.01, r.top - r.height * 0.07), stem);
-        canvas.save();
-        canvas.translate(r.center.dx + r.width * 0.09, r.top - r.height * 0.10);
-        canvas.rotate(-0.35);
-        canvas.drawOval(
-          Rect.fromCenter(center: Offset.zero, width: r.width * 0.16, height: r.height * 0.085),
-          Paint()..color = const Color(0xFF4F8A3C),
-        );
-        canvas.restore();
+        canvas.drawLine(Offset(r.center.dx, r.top + r.height * 0.06), Offset(r.center.dx + r.width * 0.01, r.top - r.height * 0.05), stem);
         for (final spot in [Offset(0.30, 0.34), Offset(0.68, 0.52)]) {
           canvas.drawCircle(
             Offset(r.left + r.width * spot.dx, r.top + r.height * spot.dy),
@@ -626,21 +616,13 @@ class MascotPainter extends CustomPainter {
           );
         }
       case MascotCharacter.pear:
-        // 梨团：短梗 + 小叶 + 侧面几点果斑。
+        // 梨团：短梗 + 侧面几点果斑（角色头上一律不带芽叶）。
         final stem = Paint()
           ..color = const Color(0xFF6B5A2E)
           ..style = PaintingStyle.stroke
           ..strokeWidth = size.width * 0.018
           ..strokeCap = StrokeCap.round;
-        canvas.drawLine(Offset(r.center.dx, r.top + r.height * 0.05), Offset(r.center.dx + r.width * 0.02, r.top - r.height * 0.08), stem);
-        canvas.save();
-        canvas.translate(r.center.dx + r.width * 0.10, r.top - r.height * 0.09);
-        canvas.rotate(-0.4);
-        canvas.drawOval(
-          Rect.fromCenter(center: Offset.zero, width: r.width * 0.14, height: r.height * 0.075),
-          Paint()..color = const Color(0xFF5E8A3E),
-        );
-        canvas.restore();
+        canvas.drawLine(Offset(r.center.dx, r.top + r.height * 0.05), Offset(r.center.dx + r.width * 0.02, r.top - r.height * 0.06), stem);
         for (final spot in [Offset(0.36, 0.52), Offset(0.62, 0.66), Offset(0.50, 0.78)]) {
           canvas.drawCircle(
             Offset(r.left + r.width * spot.dx, r.top + r.height * spot.dy),

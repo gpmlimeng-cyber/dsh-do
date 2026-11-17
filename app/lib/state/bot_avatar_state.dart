@@ -183,7 +183,7 @@ class BotAvatarStore extends Notifier<Map<String, BotAvatarConfig>> {
 /// 只在没有配置过形象时生效：配置过就按存档走，和别的 Bot 一样。
 const chiefMascot = MascotSpec(
   character: MascotCharacter.pebble,
-  color: MascotColor.model,
+  color: MascotColor.silver,
   motion: MascotMotion.quiet,
   view: MascotView.three,
 );
@@ -203,9 +203,9 @@ MascotSpec derivedMascotOf(BotAvatarConfig? config, String botId, {String? name}
   if (configured != null) return configured;
   if (isChiefBot(name)) return chiefMascot;
   final seed = stableSeedOf(botId);
-  // 派生池 = 当前全部角色 / 全部预设色（不含 model）：加角色、删角色或加色时，
+  // 派生池 = 当前全部角色 / 全部颜色：加角色、删角色或加色时，
   // 未配置过的 Bot 会跟着换一次形象，配置过的不受影响（产品已确认）。
-  final colors = [for (final color in MascotColor.values) if (color != MascotColor.model) color];
+  final colors = MascotColor.values;
   return MascotSpec(
     character: MascotCharacter.values[seed % MascotCharacter.values.length],
     color: colors[(seed ~/ 7) % colors.length],

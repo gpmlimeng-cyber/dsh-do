@@ -329,7 +329,7 @@ class _ColorGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 紧凑网格：4 列、18 格（17 个预设 + 「跟随默认」），5 行一屏看全。
+    // 紧凑网格：4 列、16 格（都是具体色值），4 行一屏看全。
     // 格子高度按内容算（头像 58 + 标签 + 内边距），换屏幕宽度也不会溢出。
     const columns = 4;
     const gap = 8.0;
@@ -406,7 +406,7 @@ class _ColorCell extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              color == MascotColor.model ? _t('默认色', 'Model') : color.label,
+              color.label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.labelSmall?.copyWith(

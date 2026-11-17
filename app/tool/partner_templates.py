@@ -53,13 +53,13 @@ CATEGORIES = [
     ('creator', '创作', 'Creation', 'jelly', 'rose', 'lively'),
     ('research', '研究', 'Research', 'triangle', 'lavender', 'quiet'),
     ('personal', '生活', 'Life', 'star', 'lemon', 'lively'),
-    ('marketing', '营销', 'Marketing', 'orb', 'berry', 'lively'),
+    ('marketing', '营销', 'Marketing', 'orb', 'rose', 'lively'),
     ('finance', '财务', 'Finance', 'onigiri', 'cream', 'quiet'),
     ('support', '客服', 'Support', 'ghost', 'paleCyan', 'lively'),
     ('sales', '销售', 'Sales', 'mango', 'sky', 'lively'),
     ('product', '产品', 'Product', 'triangle', 'steel', 'quiet'),
-    ('meta', '元', 'Meta', 'robot', 'charcoal', 'quiet'),
-    ('legal', '法律', 'Legal', 'ghost', 'charcoal', 'quiet'),
+    ('meta', '元', 'Meta', 'robot', 'miffanInkJade', 'quiet'),
+    ('legal', '法律', 'Legal', 'ghost', 'miffanInkJade', 'quiet'),
 ]
 BY_CATEGORY = {c[0]: c for c in CATEGORIES}
 SOURCE = {

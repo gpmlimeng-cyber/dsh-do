@@ -152,7 +152,7 @@ void main() {
         'sakura': MascotColor.rose,
         'moonlight': MascotColor.lavender,
         'seasalt': MascotColor.paleCyan,
-        'inkJade': MascotColor.charcoal,
+        'inkJade': MascotColor.miffanInkJade,
       };
       for (final MapEntry(key: old, value: expected) in mapping.entries) {
         final config = BotAvatarConfig.fromJson({
@@ -165,10 +165,11 @@ void main() {
   });
 
   group('colours', () {
-    test('there are 17 presets (11 demo + 6 Miffan) plus the model default', () {
-      expect(MascotColor.values.length, 18);
-      expect(MascotColor.values, contains(MascotColor.model));
-      expect(MascotColor.values.where((color) => color != MascotColor.model).length, 17);
+    test('there are 16 presets: 9 demo, 6 Miffan and the brand silver', () {
+      expect(MascotColor.values.length, 16);
+      // 炭灰、莓果粉和「跟随默认」已下线，色板上只剩具体色值。
+      expect({for (final color in MascotColor.values) color.name},
+          isNot(containsAll(['charcoal', 'berry', 'model'])));
     });
 
     test('every colour name survives the spec JSON round trip', () {
@@ -183,12 +184,12 @@ void main() {
     test('the preset hex values are the demo ones', () {
       expect(MascotColor.mint.ink, const Color(0xFF48FF42));
       expect(MascotColor.paleCyan.ink, const Color(0xFFBDEEF2));
-      expect(MascotColor.charcoal.ink, const Color(0xFF3D4852));
-      expect(MascotColor.berry.ink, const Color(0xFFF29CC2));
+      expect(MascotColor.steel.ink, const Color(0xFF6F879B));
+      expect(MascotColor.rose.ink, const Color(0xFFFF9FB6));
     });
 
     test('the six Miffan colours are the Miffan palette', () {
-      // Positions 11..16: the six are appended after the demo presets and before model.
+      // Positions 9..14: the six are appended after the demo presets, silver last.
       const expected = [
         (0xFFC76644, 0xFF773D29, 0xFFFFE8A9, 'tangerine'),
         (0xFF5F7F50, 0xFF394C30, 0xFFE8F0B4, 'green'),
@@ -198,7 +199,7 @@ void main() {
         (0xFF354947, 0xFF202C2B, 0xFF9EDBC3, 'charcoal'),
       ];
       for (var i = 0; i < expected.length; i++) {
-        final color = MascotColor.values[11 + i];
+        final color = MascotColor.values[9 + i];
         // A wire name that matches a legacy alias (`classic`, `matcha`, ...) would be
         // read back as its nearest demo preset, so the six must be prefixed.
         expect(color.name, startsWith('miffan'), reason: '${color.name} must not collide with a legacy alias');
@@ -206,16 +207,6 @@ void main() {
         expect(color.outlineInk, Color(expected[i].$2), reason: '${color.name} outline');
         expect(color.accent, Color(expected[i].$3), reason: '${color.name} accent');
         expect(color.hostName, expected[i].$4, reason: '${color.name} host');
-      }
-    });
-
-    test('the model default draws each character\'s own skin', () {
-      for (final character in MascotCharacter.values) {
-        final skin = mascotSkinOf(
-          MascotSpec(character: character, color: MascotColor.model),
-          const ColorScheme.light(),
-        );
-        expect(skin.body, character.skin.body, reason: character.name);
       }
     });
 
@@ -227,25 +218,13 @@ void main() {
         MascotColor.lavender: 'violet',
         MascotColor.rose: 'rose',
         MascotColor.lemon: 'yellow',
-        MascotColor.charcoal: 'graphite',
         MascotColor.cream: 'gray',
         MascotColor.steel: 'cobalt',
         MascotColor.paleCyan: 'cyan',
-        MascotColor.berry: 'magenta',
         MascotColor.silver: 'gray',
       };
       for (final MapEntry(key: color, value: name) in presets.entries) {
         expect(hostColorOf(MascotSpec(color: color)), name);
-      }
-      const models = {
-        MascotCharacter.pebble: 'gray',
-        MascotCharacter.pear: 'yellow',
-        MascotCharacter.robot: 'gray',
-        MascotCharacter.ghost: 'cyan',
-        MascotCharacter.jelly: 'rose',
-      };
-      for (final MapEntry(key: character, value: name) in models.entries) {
-        expect(hostColorOf(MascotSpec(character: character, color: MascotColor.model)), name);
       }
     });
   });
@@ -335,7 +314,7 @@ void main() {
       // The character pool grows with the enum, so b1's derived body changes when a
       // role is added; every other Bot keeps its id-derived stability.
       final seed = stableSeedOf('b1');
-      final colors = [for (final color in MascotColor.values) if (color != MascotColor.model) color];
+      final colors = MascotColor.values;
       final derived = derivedMascotOf(null, 'b1');
       expect(derived.character, MascotCharacter.values[seed % MascotCharacter.values.length]);
       expect(derived.color, colors[(seed ~/ 7) % colors.length]);
@@ -345,13 +324,13 @@ void main() {
 
     test('the twelve-role derivation table is stable', () {
       // Indices follow the enum order (pebble first, new roles and colours appended
-      // at the end); the colour pool is the 18 presets, model excluded; motion is 3.
-      final colors = [for (final color in MascotColor.values) if (color != MascotColor.model) color];
+      // at the end); the colour pool is all 16 presets; motion is 3.
+      final colors = MascotColor.values;
       const table = [
-        ('b1', 0, 6, 2),
-        ('b3', 10, 13, 1),
-        ('bot-1', 0, 4, 2),
-        ('猫团', 11, 5, 1),
+        ('b1', 0, 4, 2),
+        ('b3', 10, 9, 1),
+        ('bot-1', 0, 10, 2),
+        ('猫团', 11, 7, 1),
       ];
       for (final (id, character, color, motion) in table) {
         final derived = derivedMascotOf(null, id);
@@ -366,7 +345,7 @@ void main() {
       final chief = derivedMascotOf(null, 'b1', name: 'Chief');
       expect(chief.character, MascotCharacter.pebble);
       expect(derivedMascotOf(null, 'b1', name: ' chief '), chief);
-      expect(derivedMascotOf(null, 'b1', name: 'Chief').color, MascotColor.model);
+      expect(derivedMascotOf(null, 'b1', name: 'Chief').color, MascotColor.silver);
       // 别的 Bot 不受影响；Chief 自己存过形象就按存档。
       expect(derivedMascotOf(null, 'b1', name: 'Frontend').character,
           MascotCharacter.values[stableSeedOf('b1') % MascotCharacter.values.length]);

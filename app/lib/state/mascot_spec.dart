@@ -33,7 +33,7 @@ enum MascotCharacter {
   String get label => AppLocale.isEnglish ? en : zh;
   final String en;
 
-  /// 角色默认配色（demo 每个角色自带 skin；「跟随默认」用它）。
+  /// 角色自己的默认配色（demo 每个角色自带 skin），新 Bot 的模板和派生用得上。
   MascotSkin get skin => switch (this) {
     MascotCharacter.robot => const MascotSkin(Color(0xFF6F879B), Color(0xFF162332), Color(0xFF74E5FF)),
     MascotCharacter.ghost => const MascotSkin(Color(0xFFBDEEF2), Color(0xFF23434D), Color(0xFFA9D9FF)),
@@ -106,7 +106,7 @@ enum MascotMotion {
   String get hint => AppLocale.isEnglish ? hintEn : hintZh;
 }
 
-/// 11 个 demo 预设 + 6 个 Miffan 预设 + 1 个品牌银灰，最后一项「跟随角色默认」按角色 skin 画、不存色值。
+/// 9 个 demo 预设 + 6 个 Miffan 预设 + 1 个品牌银灰；「跟随角色默认」已下线，颜色只认具体色值。
 enum MascotColor {
   mint('薄荷绿', 'Mint', Color(0xFF48FF42), Color(0xFF080808), Color(0xFFFF9FB6)),
   sky('天空蓝', 'Sky blue', Color(0xFF6EC7FF), Color(0xFF0B1E3A), Color(0xFFFF9FB6)),
@@ -114,11 +114,9 @@ enum MascotColor {
   lavender('薰衣草紫', 'Lavender', Color(0xFFC9A6FF), Color(0xFF2E1A4D), Color(0xFFFF9FB6)),
   rose('玫瑰粉', 'Rose', Color(0xFFFF9FB6), Color(0xFF5C1F33), Color(0xFFFFE0A8)),
   lemon('柠檬黄', 'Lemon', Color(0xFFFFE066), Color(0xFF4D3D00), Color(0xFFFF9FB6)),
-  charcoal('炭灰', 'Charcoal', Color(0xFF3D4852), Color(0xFF131A20), Color(0xFFEEB3C1)),
   cream('奶油白', 'Cream', Color(0xFFF1E7D8), Color(0xFF463A2E), Color(0xFFFF9FB6)),
   steel('钢蓝', 'Steel blue', Color(0xFF6F879B), Color(0xFF162332), Color(0xFF74E5FF)),
   paleCyan('浅青', 'Pale cyan', Color(0xFFBDEEF2), Color(0xFF23434D), Color(0xFFA9D9FF)),
-  berry('莓果粉', 'Berry pink', Color(0xFFF29CC2), Color(0xFF5A243E), Color(0xFFFFE0A8)),
 
   // Miffan 的 6 个预设色（`MiffanPalette`）：描边色由身体色压暗 40% 算得，不用纯黑。
   // key 带 `miffan` 前缀，避免和旧存档别名（classic/matcha/… → 旧色）撞名。
@@ -131,11 +129,7 @@ enum MascotColor {
 
   /// 银灰：App 图标那颗石头的本色（数据取自 brand-icon-source.jpg），
   /// 和银团的默认 skin 是同一组颜色。
-  silver('银灰', 'Silver', Color(0xFFC9CED5), Color(0xFF4A525E), Color(0xFFA8C6DA)),
-
-  /// 最后一项「跟随角色默认色」：能存能恢复；实际颜色按角色 skin 取
-  /// （`mascotSkinOf`），这里的 hex 只是占位。
-  model('跟随默认', 'Model default', Color(0xFF48FF42), Color(0xFF080808), Color(0xFFFF9FB6));
+  silver('银灰', 'Silver', Color(0xFFC9CED5), Color(0xFF4A525E), Color(0xFFA8C6DA));
 
   const MascotColor(this.zh, this.en, this.ink, this.outlineInk, this.accent);
   final String zh;
@@ -161,11 +155,9 @@ enum MascotColor {
     MascotColor.lavender => 'violet',
     MascotColor.rose => 'rose',
     MascotColor.lemon => 'yellow',
-    MascotColor.charcoal => 'graphite',
     MascotColor.cream => 'gray',
     MascotColor.steel => 'cobalt',
     MascotColor.paleCyan => 'cyan',
-    MascotColor.berry => 'magenta',
     MascotColor.miffanClassic => 'tangerine',
     MascotColor.miffanMatcha => 'green',
     MascotColor.miffanSakura => 'rose',
@@ -173,8 +165,6 @@ enum MascotColor {
     MascotColor.miffanSeaSalt => 'cyan',
     MascotColor.miffanInkJade => 'charcoal',
     MascotColor.silver => 'gray',
-    // model 要看角色，用 `hostColorOf(spec)`。
-    MascotColor.model => 'green',
   };
 }
 
@@ -341,7 +331,7 @@ class MascotSpec {
     final r = math.Random(seed);
     // 角色：从另外 9 只里挑。
     final others = [for (final c in MascotCharacter.values) if (c != avoid.character) c];
-    // 颜色：除当前外的 17 个（含 model）；角色和颜色必换。
+    // 颜色：除当前外的 15 个；角色和颜色必换。
     final colors = [for (final c in MascotColor.values) if (c != avoid.color) c];
     return MascotSpec(
       character: others[r.nextInt(others.length)],
@@ -471,7 +461,7 @@ MascotColor _colorOf(Object? value) => switch (value) {
   'sakura' => MascotColor.rose,
   'moonlight' => MascotColor.lavender,
   'seasalt' => MascotColor.paleCyan,
-  'inkJade' => MascotColor.charcoal,
+  'inkJade' => MascotColor.miffanInkJade,
   _ => _byName(MascotColor.values, value, MascotColor.mint),
 };
 // l10n:keep-end
