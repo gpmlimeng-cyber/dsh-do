@@ -747,6 +747,9 @@ class MascotPainter extends CustomPainter {
     final recessed = spec.character == MascotCharacter.pebble;
     final white = Paint()..color = Colors.white.withValues(alpha: 0.92);
     final dark = Paint()..color = ink;
+    // 眼白描边、瞳孔固定用深色：跟着 `ink` 走的话，深色身体上连瞳孔都会被
+    // 涂成白色，眼睛就剩两团白（炭灰、钢蓝和六个 Miffan 色都是这样）。
+    final eyeInk = _darken(body, 0.72);
     final stroke = Paint()
       ..color = ink
       ..style = PaintingStyle.stroke
@@ -757,7 +760,7 @@ class MascotPainter extends CustomPainter {
       if (recessed) {
         // 银团：深色椭圆槽 + 外侧一圈被磨起的亮边 + 一点反光，和图标同一个意思。
         final socket = Rect.fromCenter(center: Offset(x, eyeY), width: radius * 2.9, height: radius * 2.8);
-        canvas.drawOval(socket, Paint()..color = ink.withValues(alpha: 0.94));
+        canvas.drawOval(socket, Paint()..color = eyeInk.withValues(alpha: 0.94));
         canvas.drawOval(
           socket.inflate(radius * 0.20),
           Paint()
@@ -779,11 +782,11 @@ class MascotPainter extends CustomPainter {
       canvas.drawOval(
         eye,
         Paint()
-          ..color = ink
+          ..color = eyeInk
           ..style = PaintingStyle.stroke
           ..strokeWidth = radius * 0.30,
       );
-      canvas.drawCircle(Offset(x + radius * 0.12 + dx, eyeY + radius * 0.10 + dy), radius * 0.82, dark);
+      canvas.drawCircle(Offset(x + radius * 0.12 + dx, eyeY + radius * 0.10 + dy), radius * 0.82, Paint()..color = eyeInk);
       canvas.drawCircle(Offset(x - radius * 0.34 + dx, eyeY - radius * 0.42 + dy), radius * 0.30, white);
     }
 
@@ -835,7 +838,7 @@ class MascotPainter extends CustomPainter {
     }
 
     // 五官三档对每个角色都生效：简约＝竖条眼，圆点＝小圆眼；
-    // 「开心」仍画弧线，免得情绪全被档位吃掉。芽团另有自己的实现。
+    // 「开心」仍画弧线，免得情绪全被档位吃掉。
     // 五官档位优先于情绪：选简约/圆点后眼睛形状固定，情绪只走嘴和特效。
     final fixedFace = spec.face != MascotFace.standard;
     void simpleEye(double x) => canvas.drawRRect(
