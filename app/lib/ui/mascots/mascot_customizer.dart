@@ -213,7 +213,6 @@ class _CharacterGrid extends StatelessWidget {
   final ValueChanged<MascotCharacter> onPick;
 
   static const _hints = {
-    MascotCharacter.sprout: '摇叶倾听 · 刻纹陶碗',
     MascotCharacter.robot: '天线轻闪 · 圆角铁壳',
     MascotCharacter.ghost: '漂浮无声 · 波浪尾巴',
     MascotCharacter.jelly: '轻晃光泽 · 弹性半球',
@@ -229,7 +228,6 @@ class _CharacterGrid extends StatelessWidget {
   };
 
   static const _hintsEn = {
-    MascotCharacter.sprout: 'Leaf sway · carved bowl',
     MascotCharacter.robot: 'Blinking antenna · round case',
     MascotCharacter.ghost: 'Floats · wavy tail',
     MascotCharacter.jelly: 'Soft shine · springy dome',
@@ -247,7 +245,7 @@ class _CharacterGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GridView.count(
-      // 紧凑网格：4 列，格子矮一些，一屏能看完 13 个角色。
+      // 紧凑网格：4 列，格子矮一些，一屏能看完 12 个角色。
       crossAxisCount: 4,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),

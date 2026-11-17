@@ -23,7 +23,7 @@ void main() {
     await tester.pump();
   }
 
-  testWidgets('the character tab shows the thirteen roles and no 字团', (tester) async {
+  testWidgets('the character tab shows the twelve roles and no 字团', (tester) async {
     await open(tester);
     final grid = find.byType(GridView);
     expect(grid, findsOneWidget);

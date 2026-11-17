@@ -11,9 +11,11 @@ import '../l10n/l10n.dart';
 
 // l10n:keep-begin 吉祥物本地名称（迁移到 arb 前不参与扫描）
 
-/// 13 个角色，顺序即选择器里的顺序（新角色只能加在末尾：顺序是存档索引）。
+/// 12 个角色，顺序即选择器里的顺序（顺序是选择器顺序，存档按名字读写）。
 enum MascotCharacter {
-  sprout('芽团', 'Sprout'),
+  // 银团（App 图标那颗银灰石）排第一：它是主 Bot 的默认形象，
+  // 选择器和新 Bot 的预览都按枚举顺序取第一个。
+  pebble('银团', 'Pebble'),
   robot('机团', 'Robot'),
   ghost('幽团', 'Ghost'),
   jelly('果冻', 'Jelly'),
@@ -24,8 +26,7 @@ enum MascotCharacter {
   potato('芋团', 'Potato'),
   orange('橘团', 'Orange'),
   pear('梨团', 'Pear'),
-  mango('芒团', 'Mango'),
-  pebble('银团', 'Pebble');
+  mango('芒团', 'Mango');
 
   const MascotCharacter(this.zh, this.en);
   final String zh;
@@ -34,7 +35,6 @@ enum MascotCharacter {
 
   /// 角色默认配色（demo 每个角色自带 skin；「跟随默认」用它）。
   MascotSkin get skin => switch (this) {
-    MascotCharacter.sprout => const MascotSkin(Color(0xFF48FF42), Color(0xFF080808), Color(0xFFFF9FB6)),
     MascotCharacter.robot => const MascotSkin(Color(0xFF6F879B), Color(0xFF162332), Color(0xFF74E5FF)),
     MascotCharacter.ghost => const MascotSkin(Color(0xFFBDEEF2), Color(0xFF23434D), Color(0xFFA9D9FF)),
     MascotCharacter.jelly => const MascotSkin(Color(0xFFF29CC2), Color(0xFF5A243E), Color(0xFFFFE0A8)),
@@ -52,7 +52,6 @@ enum MascotCharacter {
 
   /// 写进宿主 `bot.color` 的色名（model 时按角色映射，架构给的对照表）。
   String get hostColor => switch (this) {
-    MascotCharacter.sprout => 'green',
     MascotCharacter.robot => 'gray',
     MascotCharacter.ghost => 'cyan',
     MascotCharacter.jelly => 'rose',
@@ -107,7 +106,7 @@ enum MascotMotion {
   String get hint => AppLocale.isEnglish ? hintEn : hintZh;
 }
 
-/// 11 个 demo 预设 + 6 个 Miffan 预设，最后一项「跟随角色默认」按角色 skin 画、不存色值。
+/// 11 个 demo 预设 + 6 个 Miffan 预设 + 1 个品牌银灰，最后一项「跟随角色默认」按角色 skin 画、不存色值。
 enum MascotColor {
   mint('薄荷绿', 'Mint', Color(0xFF48FF42), Color(0xFF080808), Color(0xFFFF9FB6)),
   sky('天空蓝', 'Sky blue', Color(0xFF6EC7FF), Color(0xFF0B1E3A), Color(0xFFFF9FB6)),
@@ -129,6 +128,10 @@ enum MascotColor {
   miffanMoonlight('月光', 'Miffan moonlight', Color(0xFF5A5F91), Color(0xFF363957), Color(0xFFE2DCF8)),
   miffanSeaSalt('海盐', 'Miffan sea salt', Color(0xFF3E8391), Color(0xFF254F57), Color(0xFFDCF1E8)),
   miffanInkJade('墨玉', 'Miffan ink jade', Color(0xFF354947), Color(0xFF202C2B), Color(0xFF9EDBC3)),
+
+  /// 银灰：App 图标那颗石头的本色（数据取自 brand-icon-source.jpg），
+  /// 和银团的默认 skin 是同一组颜色。
+  silver('银灰', 'Silver', Color(0xFFC9CED5), Color(0xFF4A525E), Color(0xFFA8C6DA)),
 
   /// 最后一项「跟随角色默认色」：能存能恢复；实际颜色按角色 skin 取
   /// （`mascotSkinOf`），这里的 hex 只是占位。
@@ -169,6 +172,7 @@ enum MascotColor {
     MascotColor.miffanMoonlight => 'violet',
     MascotColor.miffanSeaSalt => 'cyan',
     MascotColor.miffanInkJade => 'charcoal',
+    MascotColor.silver => 'gray',
     // model 要看角色，用 `hostColorOf(spec)`。
     MascotColor.model => 'green',
   };
@@ -187,7 +191,7 @@ enum MascotView {
 /// 头像的全部可配置项。序列化用 [toJson]/[fromJson]（键名对应架构定的本地配置）。
 class MascotSpec {
   const MascotSpec({
-    this.character = MascotCharacter.sprout,
+    this.character = MascotCharacter.pebble,
     this.face = MascotFace.standard,
     this.motion = MascotMotion.lively,
     this.color = MascotColor.mint,
@@ -293,7 +297,7 @@ class MascotSpec {
   factory MascotSpec.fromJson(Object? json) {
     if (json is! Map) return const MascotSpec();
     return MascotSpec(
-      character: _byName(MascotCharacter.values, json['character'], MascotCharacter.sprout),
+      character: _byName(MascotCharacter.values, json['character'], MascotCharacter.pebble),
       face: _faceOf(json['face']),
       motion: _byName(MascotMotion.values, json['motion'], MascotMotion.lively),
       color: _colorOf(json['color']),

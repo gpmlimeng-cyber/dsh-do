@@ -4,7 +4,7 @@
 // CustomPainter 画完，列表用 `animate: false` 时不起 ticker。
 //
 // 形状对照（lively-mascot dist/characters/*.css）：
-//   sprout 碗 + 顶上一片叶子；cat 圆身 + 双耳；robot 圆角方身 + 天线；
+//   pebble 磨砂银石 + 凹陷五官；robot 圆角方身 + 天线；
 //   ghost 圆顶 + 波浪底；jelly 半球 + 果冻光泽。
 // 3D：径向渐变 + 底部内阴影 + 高光，**不描边**（用户要求）。
 //
@@ -248,11 +248,6 @@ class MascotPainter extends CustomPainter {
     // 注视与眨眼：都只读共享时钟，不另起计时器。
     final look = gaze?.resolve(seed: gazeSeed) ?? Offset.zero;
     final blinking = _blinkingNow();
-    if (spec.character == MascotCharacter.sprout) {
-      _paintSprout(canvas, size, expression, t, letter, look: look, blinking: blinking);
-      return;
-    }
-
     // 动作：先按情绪的身体意图，再用用户选的动作兜底。
     var dy = 0.0;
     var scaleY = 1.0;
@@ -320,7 +315,6 @@ class MascotPainter extends CustomPainter {
         : (Paint()..color = body);
 
     final path = switch (spec.character) {
-      MascotCharacter.sprout => _bowl(rect),
       MascotCharacter.robot => _robot(rect),
       MascotCharacter.ghost => _ghost(rect),
       MascotCharacter.jelly => _jelly(rect),
@@ -387,18 +381,6 @@ class MascotPainter extends CustomPainter {
       return body.computeLuminance() < 0.30 ? Colors.white.withValues(alpha: 0.92) : _darken(body, 0.80);
     }
     return body.computeLuminance() < 0.42 ? Colors.white.withValues(alpha: 0.95) : _darken(body, 0.62);
-  }
-
-  Path _bowl(Rect r) {
-    // 陶碗：上宽下窄，碗口一圈亮边。
-    final path = Path()
-      ..moveTo(r.left + r.width * 0.06, r.top + r.height * 0.18)
-      ..quadraticBezierTo(r.center.dx, r.top + r.height * 0.02, r.right - r.width * 0.06, r.top + r.height * 0.18)
-      ..quadraticBezierTo(r.right + r.width * 0.02, r.center.dy + r.height * 0.10, r.center.dx + r.width * 0.34, r.bottom - r.height * 0.04)
-      ..quadraticBezierTo(r.center.dx, r.bottom + r.height * 0.06, r.center.dx - r.width * 0.34, r.bottom - r.height * 0.04)
-      ..quadraticBezierTo(r.left - r.width * 0.02, r.center.dy + r.height * 0.10, r.left + r.width * 0.06, r.top + r.height * 0.18)
-      ..close();
-    return path;
   }
 
   Path _robot(Rect r) {
@@ -572,32 +554,6 @@ class MascotPainter extends CustomPainter {
 
   void _charParts(Canvas canvas, Size size, Rect r, double t, String top, {required bool three}) {
     switch (spec.character) {
-      case MascotCharacter.sprout:
-        // 茎 + 叶，随动作轻摆。
-        final sway = switch (top) {
-          'perk' => math.sin(t) * 0.10,
-          'listen' => math.sin(t * 0.6) * 0.14,
-          'work' => math.sin(t * 1.4) * 0.06,
-          'shake' => math.sin(t * 6) * 0.05,
-          'droop' => 0.28 + math.sin(t * 0.5) * 0.03,
-          _ => math.sin(t) * 0.05,
-        };
-        canvas.save();
-        canvas.translate(r.center.dx, r.top + r.height * 0.16);
-        canvas.rotate(sway);
-        final stem = Paint()
-          ..color = _darken(body, 0.22)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = size.width * 0.018
-          ..strokeCap = StrokeCap.round;
-        canvas.drawLine(Offset.zero, Offset(0, -r.height * 0.20), stem);
-        final leaf = Path()
-          ..moveTo(0, -r.height * 0.16)
-          ..quadraticBezierTo(r.width * 0.20, -r.height * 0.34, r.width * 0.02, -r.height * 0.40)
-          ..quadraticBezierTo(-r.width * 0.06, -r.height * 0.26, 0, -r.height * 0.16)
-          ..close();
-        canvas.drawPath(leaf, Paint()..color = _lighten(body, 0.10));
-        canvas.restore();
       case MascotCharacter.robot:
         // 天线 + 两侧耳钉。
         final antenna = Paint()
@@ -991,330 +947,6 @@ class MascotPainter extends CustomPainter {
             stroke,
           );
         }
-    }
-    canvas.restore();
-  }
-
-  // ── 芽团（sprout）：按 lively-mascot 的数值 1:1 重画 ────────────────────
-  //
-  // 坐标系：内容 100 宽 × 148 高——叶子 6..46、身体 40..140、脚 132..148。
-  // 数值来源：src/lively-mascot.css（body 圆角/3D 渐变/内阴影/face inset 4/
-  // 眼坐标 34,43 与 66,43、眼白 rx10 ry11.5、瞳孔 r6.2、腮红 20/80,57）、
-  // src/characters/sprout.model.css|js（border-radius 50% 50% 46% 49%、叶子
-  // 37×40 在 top -34、脚的 22×16 椭圆）。
-  void _paintSprout(Canvas canvas, Size size, MascotExpression expr, double t, String? letter, {Offset look = Offset.zero, bool blinking = false}) {
-    const contentW = 100.0;
-    const bodyTop = 40.0;
-    const contentH = 148.0;
-    final s = size.shortestSide;
-    final scale = s / contentH;
-    final dx = (s - contentW * scale) / 2;
-    Offset p(double x, double y) => Offset(dx + x * scale, y * scale);
-    // 视图跟随 spec（默认 2D）；边框固定关。
-    final three = spec.view == MascotView.three;
-
-    // 身体漂浮：绕 (50, 132) 呼吸，2D 下幅度很小。
-    final origin = p(50, 132);
-    canvas.save();
-    canvas.translate(origin.dx, origin.dy);
-    final breathe = 1 + (expr.body == 'bounce' ? 0.02 : 0.006) * math.sin(t);
-    canvas.scale(1.0, breathe);
-    canvas.translate(-origin.dx, -origin.dy);
-
-    final bodyRect = Rect.fromLTWH(dx, bodyTop * scale, contentW * scale, 100 * scale);
-    final shape = RRect.fromRectAndCorners(
-      bodyRect,
-      topLeft: Radius.elliptical(50 * scale, 50 * scale),
-      topRight: Radius.elliptical(50 * scale, 50 * scale),
-      bottomRight: Radius.elliptical(46 * scale, 46 * scale),
-      bottomLeft: Radius.elliptical(49 * scale, 49 * scale),
-    );
-
-    // 脚：两个深色椭圆（22×16 的 viewBox，left 18 / 60，贴身体底）。
-    for (final left in [18.0, 60.0]) {
-      canvas.drawOval(
-        Rect.fromLTWH(dx + left * scale, 132 * scale, 22 * scale, 16 * scale),
-        Paint()..color = ink,
-      );
-    }
-
-    // 描边/投影（demo 默认开、用户默认关）：2D 硬投影，3D 柔和落影。
-    // 身体底色：3D 用渐变 + 三层高光 + 内阴影；2D 是扁平贴纸。
-    if (!three) {
-      canvas.drawRRect(shape, Paint()..color = body);
-    } else {
-      canvas.drawRRect(
-        shape,
-        Paint()
-          ..shader = LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [_lighten(body, 0.06), body, _darken(body, 0.10)],
-            stops: const [0, 0.55, 1],
-          ).createShader(bodyRect),
-      );
-      canvas.save();
-      canvas.clipRRect(shape);
-      canvas.drawRect(
-        bodyRect,
-        Paint()
-          ..shader = RadialGradient(
-            center: const Alignment(-0.5, -0.64),
-            radius: 0.62,
-            colors: [Colors.white.withValues(alpha: 0.34), Colors.white.withValues(alpha: 0.17), Colors.white.withValues(alpha: 0)],
-            stops: const [0, 0.16, 0.43],
-          ).createShader(bodyRect),
-      );
-      canvas.drawRect(
-        bodyRect,
-        Paint()
-          ..shader = LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Colors.white.withValues(alpha: 0.13), Colors.white.withValues(alpha: 0), Colors.black.withValues(alpha: 0.20)],
-            stops: const [0, 0.43, 1],
-          ).createShader(bodyRect),
-      );
-      // 内阴影：底部/右下压暗一圈（CSS inset -12 -14 22 / 7 7 14 的近似）。
-      canvas.drawRRect(
-        shape.deflate(3 * scale),
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 14 * scale
-          ..color = _darken(body, 0.55).withValues(alpha: 0.30)
-          ..maskFilter = MaskFilter.blur(BlurStyle.normal, 8 * scale),
-      );
-      canvas.restore();
-    }
-    // 五官坐标：face wrap 是身体 inset 4、viewBox 100。
-    const faceInset = 4.0;
-    const faceScale = 0.92;
-    Offset f(double x, double y) => p(faceInset + x * faceScale, bodyTop + faceInset + y * faceScale);
-    final u = scale * faceScale;
-
-    _sproutLeaf(canvas, p, scale, expr.top, t);
-    if (letter case final glyph?) {
-      // 字团：五官位置换成名字首字，不画眼/嘴/腮红。
-      _sproutGlyph(canvas, f, u, glyph);
-    } else {
-      // 注视：脸整体轻微旋转/缩放（瞳孔偏移在 _sproutEyes 里）。
-      final pivot = f(50, 50);
-      canvas.save();
-      canvas.translate(pivot.dx, pivot.dy);
-      canvas.rotate(look.dx * (three ? 0.06 : 0.087));
-      canvas.scale(1 + look.dx.abs() * 0.035, 1 - look.dx.abs() * 0.1);
-      canvas.translate(-pivot.dx, -pivot.dy);
-      // 腮红。
-      for (final cx in [20.0, 80.0]) {
-        canvas.drawOval(
-          Rect.fromCenter(center: f(cx, 57), width: 14 * u, height: 8 * u),
-          Paint()..color = accent.withValues(alpha: 0.75),
-        );
-      }
-      _sproutEyes(canvas, f, u, expr.eyes, t, spec.face, blinking, three: three, look: look);
-      _sproutMouth(canvas, f, u, expr.mouth);
-      canvas.restore();
-    }
-    canvas.restore();
-    // 特效锚点在角色头上（engine 的 head 锚点 50,14；按身体比例折算）。
-    _drawEffect(canvas, size, expr.effect, t, head: Offset(size.width / 2, 0.16 * size.shortestSide));
-  }
-
-  void _sproutGlyph(Canvas canvas, Offset Function(double, double) f, double u, String glyph) {
-    final glyphInk = body.computeLuminance() < 0.42 ? Colors.white.withValues(alpha: 0.94) : _darken(body, 0.62);
-    final painter = TextPainter(
-      text: TextSpan(
-        text: glyph,
-        style: TextStyle(color: glyphInk, fontSize: 46 * u, fontWeight: FontWeight.w700, height: 1),
-      ),
-      textDirection: TextDirection.ltr,
-      maxLines: 1,
-    )..layout();
-    final center = f(50, 50);
-    painter.paint(canvas, Offset(center.dx - painter.width / 2, center.dy - painter.height / 2));
-  }
-
-  void _sproutEyes(Canvas canvas, Offset Function(double, double) f, double u, String style, double t, MascotFace face, bool blinking, {required bool three, Offset look = Offset.zero}) {
-    final white = Paint()..color = Colors.white;
-    final line = Paint()
-      ..color = _featureInk
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.4 * u
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-    final pupilOffset = style == 'thinking' ? Offset(-1.4 * u, -2.0 * u) : Offset.zero;
-
-    for (final cx in [34.0, 66.0]) {
-      final center = f(cx, 43) + Offset(look.dx * 8 * u, look.dy * 6 * u);
-      if (blinking && face == MascotFace.standard && style != 'happy' && style != 'closed') {
-        canvas.drawLine(Offset(center.dx - 8 * u, center.dy), Offset(center.dx + 8 * u, center.dy), line);
-        continue;
-      }
-      // 简约 / 圆点：形状固定，情绪只做轻微姿势（开心变弧线）。
-      if (face == MascotFace.simple) {
-        canvas.drawRRect(
-          RRect.fromRectAndRadius(
-            Rect.fromCenter(center: center, width: 9 * u, height: 24 * u),
-            Radius.circular(4.5 * u),
-          ),
-          Paint()..color = ink,
-        );
-        continue;
-      }
-      if (face == MascotFace.dot) {
-        canvas.drawCircle(center, 5.5 * u, Paint()..color = ink);
-        continue;
-      }
-      switch (style) {
-        case 'happy':
-          canvas.drawPath(
-            Path()
-              ..moveTo(center.dx - 8 * u, center.dy + 2.5 * u)
-              ..quadraticBezierTo(center.dx, center.dy - 8.5 * u, center.dx + 8 * u, center.dy + 2.5 * u),
-            line,
-          );
-        case 'closed':
-          canvas.drawLine(Offset(center.dx - 8 * u, center.dy), Offset(center.dx + 8 * u, center.dy), line);
-        case 'sad':
-          canvas.drawLine(Offset(center.dx - 8 * u, center.dy + 1 * u), Offset(center.dx + 8 * u, center.dy - 2 * u), line);
-        case 'bored':
-          canvas.drawPath(
-            Path()
-              ..moveTo(center.dx - 9 * u, center.dy - 3 * u)
-              ..lineTo(center.dx + 9 * u, center.dy - 3 * u)
-              ..cubicTo(center.dx + 8 * u, center.dy + 4.5 * u, center.dx + 4 * u, center.dy + 8 * u, center.dx, center.dy + 8 * u)
-              ..cubicTo(center.dx - 4 * u, center.dy + 8 * u, center.dx - 8 * u, center.dy + 4.5 * u, center.dx - 9 * u, center.dy - 3 * u)
-              ..close(),
-            Paint()..color = Colors.white,
-          );
-        case 'angry':
-          canvas.drawOval(Rect.fromCenter(center: center, width: 20 * u, height: 23 * u), white);
-          canvas.drawOval(Rect.fromCenter(center: center, width: 20 * u, height: 23 * u), line);
-          canvas.drawLine(Offset(center.dx - 9 * u, center.dy - 8 * u), Offset(center.dx + 8 * u, center.dy - 12 * u), line);
-        case 'love':
-          final heart = Path()
-            ..moveTo(center.dx, center.dy + 6 * u)
-            ..cubicTo(center.dx - 12 * u, center.dy - 3 * u, center.dx - 6 * u, center.dy - 12 * u, center.dx, center.dy - 4 * u)
-            ..cubicTo(center.dx + 6 * u, center.dy - 12 * u, center.dx + 12 * u, center.dy - 3 * u, center.dx, center.dy + 6 * u)
-            ..close();
-          canvas.drawPath(heart, Paint()..color = ink);
-        case 'cry':
-          canvas.drawLine(Offset(center.dx - 8 * u, center.dy), Offset(center.dx + 8 * u, center.dy), line);
-          canvas.drawCircle(Offset(center.dx, center.dy + 12 * u), 2.4 * u, Paint()..color = const Color(0xFF7FB8E6));
-        case 'wide':
-          canvas.drawOval(Rect.fromCenter(center: center, width: 22 * u, height: 25 * u), white);
-          canvas.drawOval(Rect.fromCenter(center: center, width: 22 * u, height: 25 * u), line);
-          canvas.drawCircle(center + pupilOffset, 6.8 * u, Paint()..color = ink);
-          if (three) {
-            canvas.drawCircle(center + pupilOffset + Offset(2.2 * u, -2.4 * u), 2.1 * u, Paint()..color = Colors.white);
-          }
-        default:
-          // open / thinking：眼白 + 瞳孔 + 两处高光（官方 face SVG 同款）。
-          canvas.drawOval(Rect.fromCenter(center: center, width: 20 * u, height: 23 * u), white);
-          canvas.drawOval(Rect.fromCenter(center: center, width: 20 * u, height: 23 * u), line);
-          final pupil = center + pupilOffset;
-          canvas.drawCircle(pupil, 6.2 * u, Paint()..color = ink);
-          // 2D 不留高光点，瞳孔是纯色。
-          if (three) {
-            canvas.drawCircle(pupil + Offset(2.2 * u, -2.4 * u), 2.1 * u, Paint()..color = Colors.white);
-            canvas.drawCircle(pupil + Offset(-2.2 * u, 2.1 * u), 1.0 * u, Paint()..color = Colors.white.withValues(alpha: 0.82));
-          }
-      }
-    }
-  }
-
-  void _sproutMouth(Canvas canvas, Offset Function(double, double) f, double u, String mouth) {
-    final ink = _featureInk;
-    final line = Paint()
-      ..color = ink
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3 * u
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-    switch (mouth) {
-      case 'open':
-      case 'talk':
-        final rx = mouth == 'talk' ? 4.0 : 5.0;
-        final ry = mouth == 'talk' ? 5.0 : 6.0;
-        canvas.drawOval(
-          Rect.fromCenter(center: f(50, 65), width: rx * 2 * u, height: ry * 2 * u),
-          Paint()..color = ink,
-        );
-      case 'flat':
-        canvas.drawLine(f(43, 65), f(57, 65), line);
-      case 'frown':
-        canvas.drawPath(
-          Path()
-            ..moveTo(f(43, 67).dx, f(43, 67).dy)
-            ..quadraticBezierTo(f(50, 62).dx, f(50, 62).dy, f(57, 67).dx, f(57, 67).dy),
-          line,
-        );
-      default:
-        // smile / neutral：官方默认嘴。
-        canvas.drawPath(
-          Path()
-            ..moveTo(f(42, 63).dx, f(42, 63).dy)
-            ..quadraticBezierTo(f(50, 70).dx, f(50, 70).dy, f(58, 63).dx, f(58, 63).dy),
-          line,
-        );
-    }
-  }
-
-  void _sproutLeaf(Canvas canvas, Offset Function(double, double) p, double scale, String top, double t) {
-    // 叶子 37×40 在 top -34（相对身体）；viewBox 52×56。
-    const leafX = 31.5;
-    const leafY = 6.0;
-    final k = scale * (37 / 52);
-    Offset q(double x, double y) => Offset(p(leafX + x * (37 / 52), leafY + y * (40 / 56)).dx, p(leafX + x * (37 / 52), leafY + y * (40 / 56)).dy);
-    final sway = switch (top) {
-      'perk' => math.sin(t) * 0.10,
-      'listen' => math.sin(t * 0.6) * 0.14,
-      'work' => math.sin(t * 1.4) * 0.05,
-      'shake' => math.sin(t * 6) * 0.05,
-      'droop' => 0.30,
-      _ => math.sin(t) * 0.04,
-    };
-    final stemPoint = q(26, 52);
-    canvas.save();
-    canvas.translate(stemPoint.dx, stemPoint.dy);
-    canvas.rotate(sway);
-    canvas.translate(-stemPoint.dx, -stemPoint.dy);
-
-    final ink = _darken(body, 0.86);
-    final leafFill = Paint()..color = body;
-    final leafStroke = Paint()
-      ..color = ink
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0 * k
-      ..strokeJoin = StrokeJoin.round;
-    final stem = Paint()
-      ..color = ink
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.0 * k
-      ..strokeCap = StrokeCap.round;
-
-    // 茎
-    canvas.drawPath(
-      Path()
-        ..moveTo(q(26, 52).dx, q(26, 52).dy)
-        ..cubicTo(q(26, 42).dx, q(26, 42).dy, q(26, 34).dx, q(26, 34).dy, q(26, 27).dx, q(26, 27).dy),
-      stem,
-    );
-    // 两片叶
-    for (final left in [true, false]) {
-      final path = Path();
-      if (left) {
-        path.moveTo(q(26, 28).dx, q(26, 28).dy);
-        path.cubicTo(q(22, 15).dx, q(22, 15).dy, q(14, 9).dx, q(14, 9).dy, q(6, 12).dx, q(6, 12).dy);
-        path.cubicTo(q(5, 20).dx, q(5, 20).dy, q(12, 29).dx, q(12, 29).dy, q(26, 28).dx, q(26, 28).dy);
-      } else {
-        path.moveTo(q(26, 28).dx, q(26, 28).dy);
-        path.cubicTo(q(30, 15).dx, q(30, 15).dy, q(38, 9).dx, q(38, 9).dy, q(46, 12).dx, q(46, 12).dy);
-        path.cubicTo(q(47, 20).dx, q(47, 20).dy, q(40, 29).dx, q(40, 29).dy, q(26, 28).dx, q(26, 28).dy);
-      }
-      path.close();
-      canvas.drawPath(path, leafFill);
-      canvas.drawPath(path, leafStroke);
     }
     canvas.restore();
   }

@@ -77,10 +77,10 @@ void main() {
     }
   });
 
-  test('there are thirteen characters with distinct names and host colours', () {
-    expect(MascotCharacter.values.length, 13);
-    expect({for (final character in MascotCharacter.values) character.name}.length, 13);
-    expect({for (final character in MascotCharacter.values) character.zh}.length, 13);
+  test('there are twelve characters with distinct names and host colours', () {
+    expect(MascotCharacter.values.length, 12);
+    expect({for (final character in MascotCharacter.values) character.name}.length, 12);
+    expect({for (final character in MascotCharacter.values) character.zh}.length, 12);
     // The host accepts only these colour names; every role's default colour must be one.
     const hostColours = {
       'deepseek', 'blue', 'violet', 'orange', 'green', 'magenta', 'cyan', 'red', 'yellow',
@@ -91,13 +91,14 @@ void main() {
     }
   });
 
-  test('the fruit roles and the brand pebble are appended after potato with their final colours', () {
-    // Order is the save index: existing roles first, the fruits and the pebble
-    // only appended. cat and watermelon were removed with the 字团 cut.
+  test('the brand pebble leads and the fruit roles follow potato', () {
+    // Order is the selector order: 银团 first (the main Bot's default look and the
+    // new-Bot preview), the fruits last. sprout was removed with the 银团 swap;
+    // cat and watermelon were removed with the 字团 cut.
     expect([for (final character in MascotCharacter.values.take(9)) character.name],
-        ['sprout', 'robot', 'ghost', 'jelly', 'orb', 'star', 'triangle', 'onigiri', 'potato']);
+        ['pebble', 'robot', 'ghost', 'jelly', 'orb', 'star', 'triangle', 'onigiri', 'potato']);
     expect([for (final character in MascotCharacter.values.skip(9)) character.name],
-        ['orange', 'pear', 'mango', 'pebble']);
+        ['orange', 'pear', 'mango']);
 
     // body, outline (body × 0.6), accent and the host colour, from the agreed table.
     const table = {

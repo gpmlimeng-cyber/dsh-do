@@ -83,7 +83,7 @@ void main() {
         'mascot': {'character': 'dragon', 'face': 7, 'motion': null, 'color': 'plaid', 'view': '2d', 'seed': 'x'},
       });
       expect(config.isMascot, isTrue);
-      expect(config.mascot!.character, MascotCharacter.sprout);
+      expect(config.mascot!.character, MascotCharacter.pebble);
       expect(config.mascot!.face, MascotFace.standard);
       expect(config.mascot!.motion, MascotMotion.lively);
       expect(config.mascot!.color, MascotColor.mint);
@@ -121,14 +121,15 @@ void main() {
   });
 
   group('old saves', () {
-    test('removed roles read back as sprout and keep the rest', () {
-      // cat / watermelon went away with the 字团 cut; the name no longer resolves.
-      for (final old in ['cat', 'watermelon']) {
+    test('removed roles read back as the default and keep the rest', () {
+      // cat / watermelon went away with the 字团 cut, sprout with the 银团 swap;
+      // the name no longer resolves, so it lands on the default role.
+      for (final old in ['cat', 'watermelon', 'sprout']) {
         final config = BotAvatarConfig.fromJson({
           'kind': 'mascot',
           'mascot': {'character': old, 'color': 'sky', 'motion': 'quiet'},
         });
-        expect(config.mascot!.character, MascotCharacter.sprout, reason: old);
+        expect(config.mascot!.character, MascotCharacter.pebble, reason: old);
         expect(config.mascot!.color, MascotColor.sky, reason: '$old keeps its colour');
         expect(config.mascot!.motion, MascotMotion.quiet, reason: '$old keeps its motion');
       }
@@ -231,12 +232,13 @@ void main() {
         MascotColor.steel: 'cobalt',
         MascotColor.paleCyan: 'cyan',
         MascotColor.berry: 'magenta',
+        MascotColor.silver: 'gray',
       };
       for (final MapEntry(key: color, value: name) in presets.entries) {
         expect(hostColorOf(MascotSpec(color: color)), name);
       }
       const models = {
-        MascotCharacter.sprout: 'green',
+        MascotCharacter.pebble: 'gray',
         MascotCharacter.pear: 'yellow',
         MascotCharacter.robot: 'gray',
         MascotCharacter.ghost: 'cyan',
@@ -312,13 +314,13 @@ void main() {
 
     test('a preset caption follows the app language too', () {
       addTearDown(() => AppLocale.use(AppLocale.zhCN));
-      final preset = MascotSpec(character: MascotCharacter.sprout, color: MascotColor.mint);
+      final preset = MascotSpec(character: MascotCharacter.pebble, color: MascotColor.mint);
       AppLocale.use(AppLocale.en);
       expect(preset.caption,
-          '${MascotCharacter.sprout.en} · ${MascotColor.mint.en} · ${MascotFace.standard.en}·${MascotMotion.lively.en}');
+          '${MascotCharacter.pebble.en} · ${MascotColor.mint.en} · ${MascotFace.standard.en}·${MascotMotion.lively.en}');
       AppLocale.use(AppLocale.zhCN);
       expect(preset.caption,
-          '${MascotCharacter.sprout.zh} · ${MascotColor.mint.zh} · ${MascotFace.standard.zh}·${MascotMotion.lively.zh}');
+          '${MascotCharacter.pebble.zh} · ${MascotColor.mint.zh} · ${MascotFace.standard.zh}·${MascotMotion.lively.zh}');
     });
   });
 
@@ -342,14 +344,14 @@ void main() {
     });
 
     test('the twelve-role derivation table is stable', () {
-      // Indices follow the enum order (new roles and Miffan colours appended at the
-      // end); the colour pool is the 17 presets, model excluded; motion is 3 presets.
+      // Indices follow the enum order (pebble first, new roles and colours appended
+      // at the end); the colour pool is the 18 presets, model excluded; motion is 3.
       final colors = [for (final color in MascotColor.values) if (color != MascotColor.model) color];
       const table = [
-        ('b1', 0, 0, 2),
+        ('b1', 0, 6, 2),
         ('b3', 10, 13, 1),
-        ('bot-1', 0, 2, 2),
-        ('猫团', 11, 10, 1),
+        ('bot-1', 0, 4, 2),
+        ('猫团', 11, 5, 1),
       ];
       for (final (id, character, color, motion) in table) {
         final derived = derivedMascotOf(null, id);
