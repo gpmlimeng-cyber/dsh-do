@@ -44,8 +44,8 @@ LOOKS = {
 
 # How much of the tile the artwork takes. Legacy icons sit a little larger than the
 # adaptive foreground, which must stay inside the 66/108 safe circle.
-LEGACY_SCALE = 0.80
-FOREGROUND_SCALE = 0.56
+LEGACY_SCALE = 0.70
+FOREGROUND_SCALE = 0.47
 
 
 def cut_out(source: Image.Image) -> tuple[Image.Image, tuple[int, int, int]]:
