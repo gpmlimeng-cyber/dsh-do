@@ -332,6 +332,7 @@ class MascotPainter extends CustomPainter {
       MascotCharacter.orange => _orange(rect),
       MascotCharacter.pear => _pear(rect),
       MascotCharacter.mango => _mango(rect),
+      MascotCharacter.pebble => _pebble(rect),
     };
     canvas.drawPath(path, bodyPaint);
 
@@ -364,7 +365,7 @@ class MascotPainter extends CustomPainter {
     }
 
     // 角色专属零件（叶子/耳朵/天线/呆毛）。
-    _charParts(canvas, size, rect, t, expression.top);
+    _charParts(canvas, size, rect, t, expression.top, three: three);
 
     // 五官；字团时把五官位置换成名字的首字。
     if (letter case final glyph?) {
@@ -380,8 +381,13 @@ class MascotPainter extends CustomPainter {
   // ── 身体形状 ──
 
   /// 五官的颜色：深色身体上用白色，浅色身体上按本色压暗，保证看得清。
-  Color get _featureInk =>
-      body.computeLuminance() < 0.42 ? Colors.white.withValues(alpha: 0.95) : _darken(body, 0.62);
+  /// 银团的五官是磨在金属上的凹槽，始终走深色，和图标一样。
+  Color get _featureInk {
+    if (spec.character == MascotCharacter.pebble) {
+      return body.computeLuminance() < 0.30 ? Colors.white.withValues(alpha: 0.92) : _darken(body, 0.80);
+    }
+    return body.computeLuminance() < 0.42 ? Colors.white.withValues(alpha: 0.95) : _darken(body, 0.62);
+  }
 
   Path _bowl(Rect r) {
     // 陶碗：上宽下窄，碗口一圈亮边。
@@ -532,6 +538,21 @@ class MascotPainter extends CustomPainter {
     return path..close();
   }
 
+  // 银团：App 图标那颗银灰磨砂石——软方的鹅卵形，四角半径各不相同才不呆板。
+  Path _pebble(Rect r) {
+    final base = math.min(r.width, r.height);
+    return Path()
+      ..addRRect(
+        RRect.fromRectAndCorners(
+          r,
+          topLeft: Radius.circular(base * 0.46),
+          topRight: Radius.circular(base * 0.53),
+          bottomRight: Radius.circular(base * 0.50),
+          bottomLeft: Radius.circular(base * 0.44),
+        ),
+      );
+  }
+
   /// 顶点之间用二次贝塞尔过点，得到「圆角多边形」。
   Path _roundedPolygon(List<Offset> points) {
     final path = Path();
@@ -549,7 +570,7 @@ class MascotPainter extends CustomPainter {
 
   // ── 角色专属零件 ──
 
-  void _charParts(Canvas canvas, Size size, Rect r, double t, String top) {
+  void _charParts(Canvas canvas, Size size, Rect r, double t, String top, {required bool three}) {
     switch (spec.character) {
       case MascotCharacter.sprout:
         // 茎 + 叶，随动作轻摆。
@@ -689,6 +710,20 @@ class MascotPainter extends CustomPainter {
       case MascotCharacter.triangle:
         // 圆团/星团/三角没有额外顶饰。
         break;
+      case MascotCharacter.pebble:
+        // 银团：3D 时左上有一道斜向磨砂高光（和图标一样的金属反光）；
+        // 2D 是纯色贴纸，不加。
+        if (three) {
+          canvas.save();
+          canvas.clipPath(_pebble(r));
+          canvas.translate(r.left + r.width * 0.33, r.top + r.height * 0.21);
+          canvas.rotate(-0.55);
+          canvas.drawOval(
+            Rect.fromCenter(center: Offset.zero, width: r.width * 0.56, height: r.height * 0.24),
+            Paint()..color = Colors.white.withValues(alpha: 0.20),
+          );
+          canvas.restore();
+        }
     }
   }
 
@@ -752,6 +787,8 @@ class MascotPainter extends CustomPainter {
     final lx = r.center.dx - r.width * 0.18 + drift + gx;
     final rx = r.center.dx + r.width * 0.18 + drift + gx;
     final ink = _featureInk;
+    // 银团的五官是凹进去的槽（图标那两处），不是贴上去的白眼球。
+    final recessed = spec.character == MascotCharacter.pebble;
     final white = Paint()..color = Colors.white.withValues(alpha: 0.92);
     final dark = Paint()..color = ink;
     final stroke = Paint()
@@ -761,6 +798,24 @@ class MascotPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
 
     void roundEye(double x, double radius, {double dx = 0, double dy = 0}) {
+      if (recessed) {
+        // 银团：深色椭圆槽 + 外侧一圈被磨起的亮边 + 一点反光，和图标同一个意思。
+        final socket = Rect.fromCenter(center: Offset(x, eyeY), width: radius * 2.9, height: radius * 2.8);
+        canvas.drawOval(socket, Paint()..color = ink.withValues(alpha: 0.94));
+        canvas.drawOval(
+          socket.inflate(radius * 0.20),
+          Paint()
+            ..color = _lighten(body, 0.62).withValues(alpha: 0.50)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = radius * 0.24,
+        );
+        canvas.drawCircle(
+          Offset(x - radius * 0.32 + dx, eyeY - radius * 0.36 + dy),
+          radius * 0.28,
+          Paint()..color = Colors.white.withValues(alpha: 0.45),
+        );
+        return;
+      }
       // 默认五官对齐 lively-mascot：白眼球 + 深色描边 + 大瞳孔 + 高光。
       // 2D 也这么画，否则「默认」在小缩略图上和「圆点」分不出来。
       final eye = Rect.fromCenter(center: Offset(x, eyeY), width: radius * 2.8, height: radius * 3.1);
@@ -876,7 +931,25 @@ class MascotPainter extends CustomPainter {
     }
 
     final mouthY = eyeY + r.height * 0.16;
+    // 银团的嘴也是磨出来的槽：多数情绪是一枚横胶囊（图标里那枚），
+    // 只有皱眉/哭这种需要弧线的才画线。
+    void pillMouth({double width = 0.115, double height = 0.045}) {
+      final pill = Rect.fromCenter(
+        center: Offset(r.center.dx, mouthY + r.height * 0.005),
+        width: r.width * width,
+        height: r.height * height,
+      );
+      canvas.drawRRect(RRect.fromRectAndRadius(pill, Radius.circular(pill.height / 2)), dark);
+    }
+
     switch (mouth) {
+      case 'smile' when recessed:
+      case 'flat' when recessed:
+        pillMouth();
+      case 'open' when recessed:
+        pillMouth(width: 0.10, height: 0.075);
+      case 'talk' when recessed:
+        pillMouth(width: 0.09, height: 0.060);
       case 'smile':
         canvas.drawPath(
           Path()
@@ -908,12 +981,16 @@ class MascotPainter extends CustomPainter {
           stroke,
         );
       default:
-        // neutral
-        canvas.drawLine(
-          Offset(r.center.dx - r.width * 0.03, mouthY),
-          Offset(r.center.dx + r.width * 0.03, mouthY),
-          stroke,
-        );
+        if (recessed) {
+          pillMouth(width: 0.085, height: 0.042);
+        } else {
+          // neutral
+          canvas.drawLine(
+            Offset(r.center.dx - r.width * 0.03, mouthY),
+            Offset(r.center.dx + r.width * 0.03, mouthY),
+            stroke,
+          );
+        }
     }
     canvas.restore();
   }

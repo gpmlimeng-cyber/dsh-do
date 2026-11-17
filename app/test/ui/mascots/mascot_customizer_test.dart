@@ -23,7 +23,7 @@ void main() {
     await tester.pump();
   }
 
-  testWidgets('the character tab shows the twelve roles and no 字团', (tester) async {
+  testWidgets('the character tab shows the thirteen roles and no 字团', (tester) async {
     await open(tester);
     final grid = find.byType(GridView);
     expect(grid, findsOneWidget);
@@ -34,7 +34,7 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('the colour tab shows all twelve options', (tester) async {
+  testWidgets('the colour tab shows every colour option', (tester) async {
     await open(tester);
     await tester.tap(find.text('颜色'));
     await tester.pump();

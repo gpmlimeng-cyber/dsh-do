@@ -179,15 +179,29 @@ class BotAvatarStore extends Notifier<Map<String, BotAvatarConfig>> {
   }
 }
 
+/// 主 Bot（Chief）默认用 App 图标那颗银灰石（[MascotCharacter.pebble]）。
+/// 只在没有配置过形象时生效：配置过就按存档走，和别的 Bot 一样。
+const chiefMascot = MascotSpec(
+  character: MascotCharacter.pebble,
+  color: MascotColor.model,
+  motion: MascotMotion.quiet,
+  view: MascotView.three,
+);
+
+/// 名字就是主 Bot 的（团队里的「Chief」，中英文大小写不敏感）。
+bool isChiefBot(String? name) => name?.trim().toLowerCase() == 'chief';
+
 /// 兜底形象：有配置过的 mascot 就用它（在字团和吉祥物之间切换时保留同一副身体），
 /// 没配过就按 botId 稳定派生——同一个 Bot 每次冷启动都长一样，不同 Bot 大概率不同。
 /// 不新增存档字段。
 ///
 /// 两个调用方：`ui/bots/bot_avatar.dart`（没配置、没照片的 Bot 兜底，以及旧
 /// `kind=text` 的字团身体）和资料卡「更换形象」的初始值，必须同源。
-MascotSpec derivedMascotOf(BotAvatarConfig? config, String botId) {
+/// [name] 是 Bot 的显示名，只用来认主 Bot；不传就和以前一样按 id 派生。
+MascotSpec derivedMascotOf(BotAvatarConfig? config, String botId, {String? name}) {
   final configured = config?.mascot;
   if (configured != null) return configured;
+  if (isChiefBot(name)) return chiefMascot;
   final seed = stableSeedOf(botId);
   // 派生池 = 当前全部角色 / 全部预设色（不含 model）：加角色、删角色或加色时，
   // 未配置过的 Bot 会跟着换一次形象，配置过的不受影响（产品已确认）。

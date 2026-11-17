@@ -59,7 +59,7 @@ class ImBotProfilePage extends ConsumerWidget {
     final ability = preset == null ? null : permissionName(preset);
 
     Future<void> editLook() async {
-      final initial = look?.mascot ?? derivedMascotOf(look, bot.id);
+      final initial = look?.mascot ?? derivedMascotOf(look, bot.id, name: bot.name);
       final choice = await openMascotCustomizer(context, initial: initial);
       if (choice == null || !context.mounted) return;
       await ref.read(botAvatarProvider.notifier).set(bot.id, BotAvatarConfig.mascot(choice.spec));

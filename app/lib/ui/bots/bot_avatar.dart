@@ -45,14 +45,14 @@ class BotAvatar extends ConsumerWidget {
     final config = ref.watch(botAvatarProvider.select((byBot) => byBot[bot.id]));
     // 旧 kind=text 存档仍画字团；没配置（也没照片）的 Bot 改成按 id 派生的吉祥物。
     Widget letter() => MascotLetterAvatar(
-      spec: derivedMascotOf(config, bot.id),
+      spec: derivedMascotOf(config, bot.id, name: bot.name),
       letter: monogramOf(bot.name),
       size: size,
       animate: animate,
       emotion: emotion,
     );
     Widget derived() => MascotAvatar(
-      spec: derivedMascotOf(config, bot.id),
+      spec: derivedMascotOf(config, bot.id, name: bot.name),
       size: size,
       animate: animate,
       emotion: emotion,

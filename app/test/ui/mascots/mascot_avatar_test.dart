@@ -77,10 +77,10 @@ void main() {
     }
   });
 
-  test('there are twelve characters with distinct names and host colours', () {
-    expect(MascotCharacter.values.length, 12);
-    expect({for (final character in MascotCharacter.values) character.name}.length, 12);
-    expect({for (final character in MascotCharacter.values) character.zh}.length, 12);
+  test('there are thirteen characters with distinct names and host colours', () {
+    expect(MascotCharacter.values.length, 13);
+    expect({for (final character in MascotCharacter.values) character.name}.length, 13);
+    expect({for (final character in MascotCharacter.values) character.zh}.length, 13);
     // The host accepts only these colour names; every role's default colour must be one.
     const hostColours = {
       'deepseek', 'blue', 'violet', 'orange', 'green', 'magenta', 'cyan', 'red', 'yellow',
@@ -91,19 +91,21 @@ void main() {
     }
   });
 
-  test('the three fruit roles are appended after potato with their final colours', () {
-    // Order is the save index: existing roles first, the fruits only appended.
-    // cat and watermelon were removed with the 字团 cut, so the pool is 12.
+  test('the fruit roles and the brand pebble are appended after potato with their final colours', () {
+    // Order is the save index: existing roles first, the fruits and the pebble
+    // only appended. cat and watermelon were removed with the 字团 cut.
     expect([for (final character in MascotCharacter.values.take(9)) character.name],
         ['sprout', 'robot', 'ghost', 'jelly', 'orb', 'star', 'triangle', 'onigiri', 'potato']);
     expect([for (final character in MascotCharacter.values.skip(9)) character.name],
-        ['orange', 'pear', 'mango']);
+        ['orange', 'pear', 'mango', 'pebble']);
 
     // body, outline (body × 0.6), accent and the host colour, from the agreed table.
     const table = {
       'orange': (0xFFF5811F, 0xFF934D13, 0xFFFFD7A0, 'orange'),
       'pear': (0xFFC7D96B, 0xFF778240, 0xFFF0EFC9, 'yellow'),
       'mango': (0xFFEFA13F, 0xFF8F6126, 0xFFFFE1A8, 'tangerine'),
+      // 银团 = App 图标那颗银灰石，灰度按 brand-icon-source.jpg 取。
+      'pebble': (0xFFC9CED5, 0xFF1A2230, 0xFFA8C6DA, 'gray'),
     };
     for (final MapEntry(key: name, value: expected) in table.entries) {
       final character = MascotCharacter.values.firstWhere((character) => character.name == name);

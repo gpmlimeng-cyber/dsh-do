@@ -359,6 +359,19 @@ void main() {
       }
     });
 
+    test('Chief derives the brand pebble, and a saved look still wins', () {
+      // 主 Bot 默认用 App 图标那颗银灰石；名字大小写不敏感。
+      final chief = derivedMascotOf(null, 'b1', name: 'Chief');
+      expect(chief.character, MascotCharacter.pebble);
+      expect(derivedMascotOf(null, 'b1', name: ' chief '), chief);
+      expect(derivedMascotOf(null, 'b1', name: 'Chief').color, MascotColor.model);
+      // 别的 Bot 不受影响；Chief 自己存过形象就按存档。
+      expect(derivedMascotOf(null, 'b1', name: 'Frontend').character,
+          MascotCharacter.values[stableSeedOf('b1') % MascotCharacter.values.length]);
+      final ghost = const MascotSpec(character: MascotCharacter.ghost);
+      expect(derivedMascotOf(BotAvatarConfig.mascot(ghost), 'b1', name: 'Chief'), ghost);
+    });
+
     test('different Bots do not all get the same body', () {
       final looks = {for (final id in ['a', 'b', 'c', 'd', 'e']) derivedMascotOf(null, id)};
       expect(looks.length, greaterThan(1));

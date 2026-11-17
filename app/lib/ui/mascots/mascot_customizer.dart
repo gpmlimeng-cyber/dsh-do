@@ -225,6 +225,7 @@ class _CharacterGrid extends StatelessWidget {
     MascotCharacter.orange: '略扁橙球 · 顶小叶',
     MascotCharacter.pear: '梨形小蛮腰 · 果斑',
     MascotCharacter.mango: '歪椭圆 · 一头略尖',
+    MascotCharacter.pebble: '磨砂银石 · 凹陷五官',
   };
 
   static const _hintsEn = {
@@ -240,12 +241,13 @@ class _CharacterGrid extends StatelessWidget {
     MascotCharacter.orange: 'Flattened orange · tiny leaf',
     MascotCharacter.pear: 'Pear waist · fruit freckles',
     MascotCharacter.mango: 'Tilted oval · pointed tip',
+    MascotCharacter.pebble: 'Matte silver stone · inset face',
   };
 
   @override
   Widget build(BuildContext context) {
     return GridView.count(
-      // 紧凑网格：4 列，格子矮一些，一屏能看完 12 个角色。
+      // 紧凑网格：4 列，格子矮一些，一屏能看完 13 个角色。
       crossAxisCount: 4,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),

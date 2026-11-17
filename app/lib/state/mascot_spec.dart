@@ -11,7 +11,7 @@ import '../l10n/l10n.dart';
 
 // l10n:keep-begin 吉祥物本地名称（迁移到 arb 前不参与扫描）
 
-/// 14 个角色，顺序即选择器里的顺序（新角色只能加在末尾：顺序是存档索引）。
+/// 13 个角色，顺序即选择器里的顺序（新角色只能加在末尾：顺序是存档索引）。
 enum MascotCharacter {
   sprout('芽团', 'Sprout'),
   robot('机团', 'Robot'),
@@ -24,7 +24,8 @@ enum MascotCharacter {
   potato('芋团', 'Potato'),
   orange('橘团', 'Orange'),
   pear('梨团', 'Pear'),
-  mango('芒团', 'Mango');
+  mango('芒团', 'Mango'),
+  pebble('银团', 'Pebble');
 
   const MascotCharacter(this.zh, this.en);
   final String zh;
@@ -45,6 +46,8 @@ enum MascotCharacter {
     MascotCharacter.orange => const MascotSkin(Color(0xFFF5811F), Color(0xFF934D13), Color(0xFFFFD7A0)),
     MascotCharacter.pear => const MascotSkin(Color(0xFFC7D96B), Color(0xFF778240), Color(0xFFF0EFC9)),
     MascotCharacter.mango => const MascotSkin(Color(0xFFEFA13F), Color(0xFF8F6126), Color(0xFFFFE1A8)),
+    // 银团：App 图标那颗银灰磨砂石（灰度取自 brand-icon-source.jpg）。
+    MascotCharacter.pebble => const MascotSkin(Color(0xFFC9CED5), Color(0xFF1A2230), Color(0xFFA8C6DA)),
   };
 
   /// 写进宿主 `bot.color` 的色名（model 时按角色映射，架构给的对照表）。
@@ -61,6 +64,7 @@ enum MascotCharacter {
     MascotCharacter.orange => 'orange',
     MascotCharacter.pear => 'yellow',
     MascotCharacter.mango => 'tangerine',
+    MascotCharacter.pebble => 'gray',
   };
 }
 
